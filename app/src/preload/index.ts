@@ -1,22 +1,19 @@
-import { contextBridge } from 'electron'
-import { electronAPI } from '@electron-toolkit/preload'
+import { contextBridge, ipcRenderer } from 'electron'
+import { CHANNELS, type HorizonteApi } from '../shared/api'
+import type { Snapshot } from '../shared/types'
 
-// Custom APIs for renderer
-const api = {}
-
-// Use `contextBridge` APIs to expose Electron APIs to
-// renderer only if context isolation is enabled, otherwise
-// just add to the DOM global.
-if (process.contextIsolated) {
-  try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
-    contextBridge.exposeInMainWorld('api', api)
-  } catch (error) {
-    console.error(error)
+const api: HorizonteApi = {
+  getSnapshot: () => ipcRenderer.invoke(CHANNELS.snapshot),
+  dispatch: (event) => ipcRenderer.invoke(CHANNELS.dispatch, event),
+  updateSettings: (patch) => ipcRenderer.invoke(CHANNELS.updateSettings, patch),
+  listHosts: () => ipcRenderer.invoke(CHANNELS.hosts),
+  onSnapshot: (callback) => {
+    const handler = (_event: unknown, snapshot: Snapshot): void => callback(snapshot)
+    ipcRenderer.on(CHANNELS.push, handler)
+    return () => {
+      ipcRenderer.removeListener(CHANNELS.push, handler)
+    }
   }
-} else {
-  // @ts-ignore (define in dts)
-  window.electron = electronAPI
-  // @ts-ignore (define in dts)
-  window.api = api
 }
+
+contextBridge.exposeInMainWorld('horizonte', api)
