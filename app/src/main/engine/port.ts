@@ -12,16 +12,8 @@ export interface ApproveRequest {
   name: string
 }
 
-export interface EngineEvents {
-  onPairRequest(callback: (request: PairRequest) => void): () => void
-  onPairCancelled(callback: (pairingId: string) => void): () => void
-  onClientConnected(callback: (device: string) => void): () => void
-  onClientDisconnected(callback: () => void): () => void
-  onStreamEnded(callback: () => void): () => void
-}
-
-/** Tudo que o núcleo precisa do motor de streaming. Os planos seguintes trazem as implementações reais. */
-export interface EnginePort extends EngineEvents {
+/** Papel de quem envia a tela (Sunshine). */
+export interface ServerEngine {
   prepare(onStep: (step: PrepStep) => void, settings: Settings): Promise<void>
   /**
    * Interrompe o que o modo enviar deixou em andamento (preparação, espera por conexão
@@ -31,8 +23,21 @@ export interface EnginePort extends EngineEvents {
   approve(request: ApproveRequest): Promise<void>
   deny(pairingId: string): Promise<void>
   stopSending(): Promise<void>
+  applyBitrate(mbps: number): Promise<void>
+  onPairRequest(callback: (request: PairRequest) => void): () => void
+  onPairCancelled(callback: (pairingId: string) => void): () => void
+  onClientConnected(callback: (device: string) => void): () => void
+  onClientDisconnected(callback: () => void): () => void
+}
+
+/** Papel de quem recebe a tela (Moonlight). */
+export interface ClientEngine {
   listHosts(): Promise<Host[]>
   connect(host: string, settings: Settings): Promise<void>
   disconnect(): Promise<void>
   applyBitrate(mbps: number): Promise<void>
+  onStreamEnded(callback: () => void): () => void
 }
+
+/** Tudo que o núcleo precisa do motor. */
+export interface EnginePort extends ServerEngine, ClientEngine {}
