@@ -30,11 +30,15 @@ O motor foi validado à mão em 02/10/2026 (Windows, Sunshine 2026.914 e Moonlig
 
 ## Fora do escopo da v1
 
-Wayland automático (o app detecta e orienta), cliente em Linux, macOS, Android ou iOS, assinatura de código do instalador, HDR, vários clientes ao mesmo tempo, áudio dedicado.
+Wayland automático (o app detecta e orienta), cliente em Linux, Android ou iOS, e macOS (servidor e cliente: planejado para uma versão futura, ver Portabilidade), assinatura de código do instalador, HDR, vários clientes ao mesmo tempo, áudio dedicado.
 
 ## Arquitetura
 
-Um app em Tauri 2: núcleo em Rust, interface em web (HTML, CSS e TypeScript). O vídeo roda no motor existente; o app o instala, configura e controla.
+Um app em Electron com TypeScript: processo principal em Node (núcleo) e interface em Svelte (HTML, CSS e TypeScript), empacotados com electron-vite. O vídeo roda no motor existente; o app o instala, configura e controla.
+
+Por que Electron: o Node já está instalado e o projeto inteiro fica numa linguagem só; o Chromium embutido renderiza as telas de forma idêntica no Windows, no Linux e no macOS (o WebKitGTK do Tauri no Linux seria um risco para o visual); o tamanho maior do instalador pesa pouco, porque o app já baixa o motor.
+
+Portabilidade: tudo que depende do sistema fica atrás de interfaces em `src/main/platform/` (`VirtualDisplay`, `EngineInstaller`, `Elevation`, `Autostart`). O macOS entra no futuro como uma implementação a mais de cada uma, sem mexer na máquina de estados nem na interface.
 
 ### Decisão: gerenciador, não fork
 
@@ -64,7 +68,7 @@ O acesso ao motor fica atrás de um adaptador (interface única para configurar,
 
 ### Fluxo de dados
 
-Interface -> comandos Tauri -> núcleo (máquina de estados) -> peça específica (instalador, monitor virtual, encoder, pareamento, descoberta) -> Sunshine (API local HTTPS) ou Moonlight (processo filho). Eventos fazem o caminho inverso e atualizam a tela.
+Interface -> IPC do Electron (ponte `preload`) -> núcleo (máquina de estados) -> peça específica (instalador, monitor virtual, encoder, pareamento, descoberta) -> Sunshine (API local HTTPS) ou Moonlight (processo filho). Eventos fazem o caminho inverso e atualizam a tela.
 
 ## Telas e fluxos
 
@@ -101,6 +105,7 @@ Cada peça devolve um erro tipado com uma mensagem de uma frase e uma ação que
 - A API do Sunshine pode mudar entre versões; mitigação: versão fixa e teste contra o servidor falso.
 - O Moonlight Qt pode não aceitar todos os ajustes por linha de comando; verificar antes do plano.
 - Monitor virtual no Linux Wayland é difícil; adiado.
+- macOS futuro: exige permissão de gravação de tela, uma solução de monitor virtual própria do sistema e conta de desenvolvedor Apple para assinar e notarizar o instalador (sem isso o Gatekeeper bloqueia).
 - Sem assinatura digital o Windows mostra aviso; para código aberto é possível pedir assinatura gratuita depois.
 - Licenças: Sunshine, Moonlight e o driver de tela virtual têm licenças próprias; conferir a compatibilidade ao empacotar.
 
@@ -109,5 +114,6 @@ Cada peça devolve um erro tipado com uma mensagem de uma frase e uma ação que
 - Abordagem: gerenciador sobre o motor existente (sem fork do motor na v1).
 - Um app com dois modos, trocáveis a um clique.
 - Direção visual: "Silêncio", com modos claro e escuro.
-- Stack: Tauri 2.
+- Stack: Electron, TypeScript e Svelte. O Tauri foi considerado e descartado (Rust ausente na máquina, renderização no Linux).
+- Plataformas: v1 em Windows 11 e Ubuntu (Xorg); macOS no futuro, por isso o código de sistema fica atrás de interfaces.
 - Nome: Horizonte.
