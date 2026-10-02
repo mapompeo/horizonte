@@ -7,7 +7,13 @@ import type { SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { createSettingsStore } from './core/settings'
 import { runDevDemo } from './dev-demo'
+import { composeEngine } from './engine/compose'
 import { FakeEngine } from './engine/fake'
+import { SunshineApi } from './engine/sunshine/api'
+import { SunshineEngine } from './engine/sunshine/engine'
+import { readLogTail } from './engine/sunshine/log-file'
+import { createEngineMemory } from './engine/sunshine/memory'
+import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 
 function createWindow(controller: Controller): void {
   const window = new BrowserWindow({
@@ -48,9 +54,29 @@ async function boot(): Promise<void> {
   app.on('browser-window-created', (_event, window) => optimizer.watchWindowShortcuts(window))
 
   const store = createSettingsStore(join(app.getPath('userData'), 'settings.json'))
-  const engine = new FakeEngine(is.dev ? 700 : 0)
+  const fake = new FakeEngine(is.dev ? 700 : 0)
+  const dev = readDevEngineConfig(process.env)
+  const engine = dev
+    ? composeEngine(
+        new SunshineEngine({
+          installer: existingInstaller(),
+          display: existingDisplay(),
+          memory: createEngineMemory(join(app.getPath('userData'), 'engine.json')),
+          credentials: async () => dev.credentials,
+          createApi: (credentials) =>
+            new SunshineApi({
+              port: credentials.port,
+              username: credentials.username,
+              password: credentials.password
+            }),
+          readLog: () => readLogTail(dev.logPath),
+          sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+        }),
+        fake
+      )
+    : fake
   const controller = await createController({ engine, store })
-  if (!app.isPackaged) runDevDemo(controller, engine)
+  if (!dev && !app.isPackaged) runDevDemo(controller, fake)
 
   ipcMain.handle(CHANNELS.snapshot, () => controller.getSnapshot())
   ipcMain.handle(CHANNELS.dispatch, (_event, payload: unknown) => {
