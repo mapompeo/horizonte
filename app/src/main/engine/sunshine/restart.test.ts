@@ -49,6 +49,13 @@ describe('createRestarter', () => {
     await expect(restart()).rejects.toThrow('O Sunshine não voltou depois de reiniciar.')
   })
 
+  it('a mensagem de desistência diz como destravar o Sunshine', async () => {
+    const process = new FakeSunshineProcess()
+    process.restartTicks = 1_000_000
+    const { restart } = setup(process)
+    await expect(restart()).rejects.toThrow('Reinicie o serviço do Sunshine')
+  })
+
   it('devolve texto vazio se a execução foi abandonada no meio', async () => {
     const { restart, process } = setup()
     let alive = true

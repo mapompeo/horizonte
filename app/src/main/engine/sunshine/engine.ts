@@ -1,12 +1,18 @@
 import type { PrepStep, Settings } from '../../../shared/types'
-import { chooseEncoder, GPU_ENCODERS, type ChosenEncoder } from '../../core/encoder'
+import {
+  chooseEncoder,
+  GPU_ENCODERS,
+  type ChosenEncoder,
+  type EncoderCandidate
+} from '../../core/encoder'
 import type { EngineInstaller, SunshineCredentials, VirtualDisplay } from '../../platform/types'
+import { DEFAULT_SETTINGS } from '../../core/settings'
 import { cleanName } from '../../../shared/names'
 import { isValidPin } from '../../../shared/pin'
 import type { ApproveRequest, PairRequest, ServerEngine } from '../port'
 import { SunshineApiError, type SunshineApiPort } from './api'
 import { amdConfig, createLogEncoderProbe } from './encoder-probe'
-import { parseDisplays } from './log'
+import { parseDisplays, parseFoundEncoder } from './log'
 import type { EngineMemory } from './memory'
 import { createPairingWatcher, type PairingWatcher } from './pairing-watcher'
 import { createRestarter } from './restart'
@@ -157,12 +163,25 @@ export class SunshineEngine implements ServerEngine {
       const candidate = GPU_ENCODERS.find((item) => item.id === remembered.encoder)
       return candidate ? { candidate, fellBack: false } : null
     }
+    // Reiniciar o Sunshine é arriscado (já travou na instância real): se o log atual e a configuração
+    // gravada já provam um encoder de hardware, usamos isso em vez de sondar reiniciando.
+    const proven = await this.provenCandidate(api)
+    if (proven !== null) {
+      await this.deps.memory.save({ encoder: proven.id })
+      return { candidate: proven, fellBack: false }
+    }
     const probe = createLogEncoderProbe({ api, restartAndRead: (a) => restartAndRead(a ?? alive) })
     const chosen = await chooseEncoder(probe, settings.encoding, this.timing.probeTimeoutMs)
     if (!alive()) return null
     // Só lembramos de verdade o que foi confirmado; "nenhum" também é lembrado para não reiniciar à toa.
     await this.deps.memory.save({ encoder: chosen.fellBack ? null : chosen.candidate.id })
     return chosen.fellBack ? null : chosen
+  }
+
+  private async provenCandidate(api: SunshineApiPort): Promise<EncoderCandidate | null> {
+    if (parseFoundEncoder(await this.deps.readLog())?.hardware !== true) return null
+    const usage = (await api.getConfig()).amd_usage
+    return GPU_ENCODERS.find((candidate) => candidate.amdUsage === usage) ?? null
   }
 
   private desiredConfig(
@@ -184,7 +203,15 @@ export class SunshineEngine implements ServerEngine {
   ): Promise<boolean> {
     const current = await api.getConfig()
     const diff = Object.fromEntries(
-      Object.entries(desired).filter(([key, value]) => String(current[key] ?? '') !== value)
+      Object.entries(desired).filter(([key, value]) => {
+        if (String(current[key] ?? '') === value) return false
+        // O nome padrão não vale um reinício: o Sunshine já usa o nome da máquina quando a chave falta.
+        return !(
+          key === 'sunshine_name' &&
+          !(key in current) &&
+          value === DEFAULT_SETTINGS.deviceName
+        )
+      })
     )
     if (Object.keys(diff).length === 0) return false
     await api.saveConfig(diff)

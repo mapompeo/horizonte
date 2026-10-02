@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { GPU_ENCODERS } from '../../core/encoder'
 import { DEFAULT_SETTINGS } from '../../core/settings'
+import { amdConfig } from './encoder-probe'
 import type { EngineMemory, EngineMemoryValue } from './memory'
 import type { PrepStep, Settings } from '../../../shared/types'
 import { SunshineApiError } from './api'
@@ -104,6 +106,38 @@ describe('preparar: de novo, sem reiniciar à toa', () => {
     const restartsAfterFirst = t.process.restarts
     await t.prepare()
     expect(t.process.restarts).toBe(restartsAfterFirst)
+  })
+
+  it('com a GPU já funcionando no log e na configuração, lembra sem reiniciar o Sunshine', async () => {
+    const t = setup()
+    t.process.hardwareWorksWith = new Set(['transcoding'])
+    t.process.config = {
+      ...amdConfig(GPU_ENCODERS[1]!),
+      output_name: '{vdd}',
+      sunshine_name: DEFAULT_SETTINGS.deviceName
+    }
+    t.process.rebuildLog()
+    await t.prepare()
+    expect(t.process.restarts).toBe(0)
+    expect(t.mem.box.value).toEqual({ encoder: 'gpu-transcoding' })
+  })
+
+  it('nome padrão que o Sunshine nem tem na configuração não força um reinício', async () => {
+    const t = setup({ remembered: { encoder: 'gpu-transcoding' } })
+    t.process.config = { ...amdConfig(GPU_ENCODERS[1]!), output_name: '{vdd}', encoder: '' }
+    await t.prepare()
+    expect(t.process.restarts).toBe(0)
+    expect(t.process.config.sunshine_name).toBeUndefined()
+  })
+
+  it('log mostrando só o processador não vale como confirmação: sonda de verdade', async () => {
+    const t = setup()
+    t.process.hardwareWorksWith = new Set(['transcoding'])
+    t.process.config = { ...amdConfig(GPU_ENCODERS[0]!) }
+    t.process.rebuildLog()
+    await t.prepare()
+    expect(t.process.restarts).toBeGreaterThan(0)
+    expect(t.process.config.amd_usage).toBe('transcoding')
   })
 
   it('com o resultado da sondagem lembrado, não sonda de novo', async () => {

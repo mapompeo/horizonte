@@ -38,6 +38,8 @@ export function createRestarter(deps: RestarterDeps): (alive?: () => boolean) =>
       }
       return log
     }
-    throw new Error('O Sunshine não voltou depois de reiniciar.')
+    throw new Error(
+      'O Sunshine não voltou depois de reiniciar. Reinicie o serviço do Sunshine (no Windows: Restart-Service SunshineService, como administrador) e tente de novo.'
+    )
   }
 }

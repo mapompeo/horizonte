@@ -34,10 +34,7 @@ Restart-Service SunshineService
 
 ## Próximos passos, em ordem
 
-1. **Evitar reiniciar o Sunshine à toa (bug real, com TDD).** `POST /api/restart` deixou o Sunshine travado na máquina anterior (processo vivo, porta 47990 fechada). Em `app/src/main/engine/sunshine/engine.ts`:
-   - Em `resolveEncoder`, antes de sondar, ler o log atual: se `parseFoundEncoder` já mostra hardware e a configuração tem o `amd_usage` de um candidato, lembrar esse candidato e não reiniciar.
-   - Em `restart.ts`, quando o Sunshine não volta, a mensagem deve dizer para reiniciar o serviço do Sunshine.
-   - Cada mudança com teste que falha antes e mutação provada.
+1. **Evitar reiniciar o Sunshine à toa: FEITO** (commit "fix: evitar reiniciar o Sunshine..."). Antes de sondar o encoder, o motor lê o log e a configuração e reaproveita um encoder de hardware já provado; o nome padrão que o Sunshine nem tem na configuração não força reinício; se o reinício não volta, a mensagem diz para reiniciar o serviço. Falta só confirmar na máquina real que uma preparação nova não dispara `POST /api/restart`.
 2. **Terminar a Tarefa 12 com o Sunshine real:** pareamento por PIN com o Moonlight, sessão (conectar e desconectar), segunda preparação sem reiniciar, cancelar pedido ao trocar para Mostrar. Confirmar também a suposição do `max_bitrate`. Anotar tudo em `...-resultados.md`.
 3. **Revisão final da branch** com um revisor independente (pacote com `review-package`), uma passada de correções, e depois integrar na `main` (merge local ou PR).
 4. **Plano 2B:** instalação de verdade no Windows (MSI do Sunshine, driver do monitor virtual, UAC, senha guardada com `safeStorage`). Depois: Plano 3 (cliente, descoberta na rede, Moonlight), Plano 4 (Linux), Plano 5 (instaladores).

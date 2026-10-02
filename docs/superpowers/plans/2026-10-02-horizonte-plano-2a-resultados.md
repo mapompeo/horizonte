@@ -8,7 +8,7 @@ Estado em 02/10/2026. Tarefas 1 a 11 prontas e testadas (337 testes). Branch: `f
 - `GET /api/pin` e `GET /api/config` respondem 200 em `https://localhost:47990` com Basic auth.
 - `GET /api/config` devolve só as chaves definidas, mais `platform`, `status` e `version`. Esses três são metadados: o `getConfig` agora os ignora (teste com mutação), senão o read-merge-write os gravaria no `sunshine.conf`.
 
-## Problema aberto (importante)
+## Problema do reinício (mitigado, falta confirmar na máquina real)
 
 `POST /api/restart` deixou o Sunshine travado: o processo continuou vivo, mas parou de escutar na 47990, e o log terminou em "Interrupt handler called" e "Unregistered Sunshine mDNS service". A API não voltou sozinha. Só `Restart-Service SunshineService` como administrador resolve.
 
