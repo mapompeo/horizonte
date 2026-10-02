@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { CPU_ENCODER, chooseEncoder, type EncoderCandidate, type Probe } from './encoder'
+import { CPU_ENCODER, chooseEncoder, type Probe } from './encoder'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -38,9 +38,9 @@ describe('chooseEncoder', () => {
   })
 
   it('erro síncrono na sondagem conta como falha', async () => {
-    const probe = ((_candidate: EncoderCandidate) => {
+    const probe = (() => {
       throw new Error('boom')
-    }) as Probe
+    }) as unknown as Probe
     const result = await chooseEncoder(probe)
     expect(result.candidate).toEqual(CPU_ENCODER)
   })

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { BITRATE_MAX, BITRATE_MIN, PROFILES, clampBitrate, profileFor, stepBitrate } from './quality'
+import {
+  BITRATE_MAX,
+  BITRATE_MIN,
+  PROFILES,
+  clampBitrate,
+  profileFor,
+  stepBitrate
+} from './quality'
 
 describe('clampBitrate', () => {
   it('mantém valores válidos', () => {

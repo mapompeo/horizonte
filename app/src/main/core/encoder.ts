@@ -34,7 +34,10 @@ function attempt(probe: Probe, candidate: EncoderCandidate, timeoutMs: number): 
     }
     Promise.resolve()
       .then(() => probe(candidate))
-      .then((ok) => finish(ok === true), () => finish(false))
+      .then(
+        (ok) => finish(ok === true),
+        () => finish(false)
+      )
   })
 }
 

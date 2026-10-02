@@ -1,4 +1,11 @@
-import type { AppEvent, AppState, Host, Settings, SettingsPatch, Snapshot } from '../../shared/types'
+import type {
+  AppEvent,
+  AppState,
+  Host,
+  Settings,
+  SettingsPatch,
+  Snapshot
+} from '../../shared/types'
 import type { EnginePort } from '../engine/port'
 import { reduce } from './machine'
 import { parseSettings, type SettingsStore } from './settings'
@@ -67,7 +74,11 @@ export async function createController({
       answer.catch((cause: unknown) => fail('Não consegui responder ao pedido.', cause))
     }
 
-    if (prev.screen === 'connected' && next.screen !== 'connected' && event.type !== 'CLIENT_DISCONNECTED') {
+    if (
+      prev.screen === 'connected' &&
+      next.screen !== 'connected' &&
+      event.type !== 'CLIENT_DISCONNECTED'
+    ) {
       engine.stopSending().catch((cause: unknown) => fail('Não consegui parar o envio.', cause))
     }
 
@@ -77,7 +88,11 @@ export async function createController({
       })
     }
 
-    if (prev.screen === 'receiving' && next.screen !== 'receiving' && event.type !== 'STREAM_ENDED') {
+    if (
+      prev.screen === 'receiving' &&
+      next.screen !== 'receiving' &&
+      event.type !== 'STREAM_ENDED'
+    ) {
       engine.disconnect().catch((cause: unknown) => fail('Não consegui encerrar a conexão.', cause))
     }
   }

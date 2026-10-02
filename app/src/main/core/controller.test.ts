@@ -15,7 +15,10 @@ function memoryStore(): { store: SettingsStore; saved: Settings[] } {
   return { store, saved }
 }
 
-async function setup(initial: AppState, engine = new FakeEngine(0)) {
+async function setup(
+  initial: AppState,
+  engine = new FakeEngine(0)
+): Promise<{ controller: Controller; engine: FakeEngine; saved: Settings[] }> {
   const { store, saved } = memoryStore()
   const controller = await createController({ engine, store, initial })
   return { controller, engine, saved }
@@ -34,7 +37,11 @@ describe('fluxo de envio', () => {
     await vi.waitFor(() => expect(screen(controller)).toBe('ready'))
 
     engine.simulatePairRequest('Notebook')
-    expect(controller.getSnapshot().state).toEqual({ screen: 'approve', mode: 'send', device: 'Notebook' })
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook'
+    })
 
     controller.dispatch({ type: 'APPROVE' })
     expect(engine.calls).toContain('approve')
@@ -49,14 +56,22 @@ describe('fluxo de envio', () => {
   })
 
   it('recusar avisa o motor', async () => {
-    const { controller, engine } = await setup({ screen: 'approve', mode: 'send', device: 'Notebook' })
+    const { controller, engine } = await setup({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook'
+    })
     controller.dispatch({ type: 'DENY' })
     expect(engine.calls).toContain('deny')
     expect(screen(controller)).toBe('ready')
   })
 
   it('cliente que desconecta volta para pronto sem parar o motor de novo', async () => {
-    const { controller, engine } = await setup({ screen: 'connected', mode: 'send', device: 'Notebook' })
+    const { controller, engine } = await setup({
+      screen: 'connected',
+      mode: 'send',
+      device: 'Notebook'
+    })
     engine.simulateClientDisconnected()
     expect(screen(controller)).toBe('ready')
     expect(engine.calls).not.toContain('stopSending')
@@ -70,7 +85,11 @@ describe('fluxo de recebimento', () => {
     expect(screen(controller)).toBe('discover')
 
     controller.dispatch({ type: 'CONNECT', host: 'Desktop' })
-    expect(controller.getSnapshot().state).toEqual({ screen: 'receiving', mode: 'receive', host: 'Desktop' })
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'receiving',
+      mode: 'receive',
+      host: 'Desktop'
+    })
     expect(engine.calls).toContain('connect:Desktop')
 
     controller.dispatch({ type: 'STOP' })
@@ -111,16 +130,28 @@ describe('erros', () => {
 
 describe('eventos no estado errado', () => {
   it('aprovar duas vezes avisa o motor uma vez só', async () => {
-    const { controller, engine } = await setup({ screen: 'approve', mode: 'send', device: 'Notebook' })
+    const { controller, engine } = await setup({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook'
+    })
     controller.dispatch({ type: 'APPROVE' })
     controller.dispatch({ type: 'APPROVE' })
     expect(engine.calls.filter((call) => call === 'approve')).toHaveLength(1)
   })
 
   it('pedido de pareamento durante uma conexão é ignorado', async () => {
-    const { controller, engine } = await setup({ screen: 'connected', mode: 'send', device: 'Notebook' })
+    const { controller, engine } = await setup({
+      screen: 'connected',
+      mode: 'send',
+      device: 'Notebook'
+    })
     engine.simulatePairRequest('Intruso')
-    expect(controller.getSnapshot().state).toEqual({ screen: 'connected', mode: 'send', device: 'Notebook' })
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'connected',
+      mode: 'send',
+      device: 'Notebook'
+    })
   })
 
   it('eventos do modo enviar no modo mostrar são ignorados', async () => {
@@ -133,14 +164,22 @@ describe('eventos no estado errado', () => {
 
 describe('troca de modo', () => {
   it('sair de conectado para mostrar para o envio', async () => {
-    const { controller, engine } = await setup({ screen: 'connected', mode: 'send', device: 'Notebook' })
+    const { controller, engine } = await setup({
+      screen: 'connected',
+      mode: 'send',
+      device: 'Notebook'
+    })
     controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
     expect(screen(controller)).toBe('discover')
     expect(engine.calls).toContain('stopSending')
   })
 
   it('sair de recebendo para enviar encerra a conexão', async () => {
-    const { controller, engine } = await setup({ screen: 'receiving', mode: 'receive', host: 'Desktop' })
+    const { controller, engine } = await setup({
+      screen: 'receiving',
+      mode: 'receive',
+      host: 'Desktop'
+    })
     controller.dispatch({ type: 'CHOOSE', mode: 'send' })
     expect(screen(controller)).toBe('preparing')
     expect(engine.calls).toContain('disconnect')
@@ -196,7 +235,11 @@ describe('ajustes e assinantes', () => {
   })
 
   it('aplica o bitrate ao vivo quando há conexão', async () => {
-    const { controller, engine } = await setup({ screen: 'connected', mode: 'send', device: 'Notebook' })
+    const { controller, engine } = await setup({
+      screen: 'connected',
+      mode: 'send',
+      device: 'Notebook'
+    })
     await controller.updateSettings({ bitrate: 50 })
     expect(engine.calls).toContain('bitrate:50')
   })

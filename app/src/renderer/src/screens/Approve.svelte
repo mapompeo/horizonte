@@ -12,7 +12,16 @@
 </script>
 
 <div class="badge" aria-hidden="true">
-  <svg width="36" height="36" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+  <svg
+    width="36"
+    height="36"
+    viewBox="0 0 48 48"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2.4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
     <rect x="9" y="10" width="30" height="21" rx="3.5" /><path d="M4 37h40" />
   </svg>
 </div>

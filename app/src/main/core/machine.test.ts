@@ -15,7 +15,12 @@ describe('reduce: caminho feliz', () => {
     ['instalação termina', { screen: 'install' }, { type: 'INSTALL_DONE' }, { screen: 'choose' }],
     ['escolher enviar', { screen: 'choose' }, { type: 'CHOOSE', mode: 'send' }, preparing],
     ['escolher mostrar', { screen: 'choose' }, { type: 'CHOOSE', mode: 'receive' }, discover],
-    ['passo da preparação', preparing, { type: 'PREP_STEP', step: 'display' }, { ...preparing, step: 'display' }],
+    [
+      'passo da preparação',
+      preparing,
+      { type: 'PREP_STEP', step: 'display' },
+      { ...preparing, step: 'display' }
+    ],
     ['preparação termina', preparing, { type: 'PREP_DONE' }, ready],
     ['pedido de pareamento', ready, { type: 'PAIR_REQUEST', device: 'Notebook' }, approve],
     ['aprovar', approve, { type: 'APPROVE' }, ready],
@@ -65,12 +70,24 @@ describe('reduce: troca de modo a um clique', () => {
 
 describe('reduce: erros', () => {
   it('qualquer estado vira erro com o modo atual', () => {
-    expect(reduce(ready, { type: 'FAIL', error: failure })).toEqual({ screen: 'error', mode: 'send', error: failure })
-    expect(reduce(receiving, { type: 'FAIL', error: failure })).toEqual({ screen: 'error', mode: 'receive', error: failure })
+    expect(reduce(ready, { type: 'FAIL', error: failure })).toEqual({
+      screen: 'error',
+      mode: 'send',
+      error: failure
+    })
+    expect(reduce(receiving, { type: 'FAIL', error: failure })).toEqual({
+      screen: 'error',
+      mode: 'receive',
+      error: failure
+    })
   })
 
   it('erro antes de escolher o modo assume enviar', () => {
-    expect(reduce({ screen: 'install' }, { type: 'FAIL', error: failure })).toEqual({ screen: 'error', mode: 'send', error: failure })
+    expect(reduce({ screen: 'install' }, { type: 'FAIL', error: failure })).toEqual({
+      screen: 'error',
+      mode: 'send',
+      error: failure
+    })
   })
 
   it('um novo erro substitui o anterior', () => {
@@ -80,16 +97,32 @@ describe('reduce: erros', () => {
   })
 
   it('tentar de novo volta ao início do modo', () => {
-    expect(reduce({ screen: 'error', mode: 'send', error: failure }, { type: 'RETRY' })).toEqual(preparing)
-    expect(reduce({ screen: 'error', mode: 'receive', error: failure }, { type: 'RETRY' })).toEqual(discover)
+    expect(reduce({ screen: 'error', mode: 'send', error: failure }, { type: 'RETRY' })).toEqual(
+      preparing
+    )
+    expect(reduce({ screen: 'error', mode: 'receive', error: failure }, { type: 'RETRY' })).toEqual(
+      discover
+    )
   })
 })
 
 describe('reduce: eventos no estado errado são ignorados', () => {
   const cases: [string, AppState, AppEvent][] = [
-    ['pedido de pareamento durante uma conexão', connected, { type: 'PAIR_REQUEST', device: 'Intruso' }],
-    ['pedido de pareamento com outro já pendente', approve, { type: 'PAIR_REQUEST', device: 'Outro' }],
-    ['cliente conecta com pedido pendente', approve, { type: 'CLIENT_CONNECTED', device: 'Notebook' }],
+    [
+      'pedido de pareamento durante uma conexão',
+      connected,
+      { type: 'PAIR_REQUEST', device: 'Intruso' }
+    ],
+    [
+      'pedido de pareamento com outro já pendente',
+      approve,
+      { type: 'PAIR_REQUEST', device: 'Outro' }
+    ],
+    [
+      'cliente conecta com pedido pendente',
+      approve,
+      { type: 'CLIENT_CONNECTED', device: 'Notebook' }
+    ],
     ['aprovar sem pedido', ready, { type: 'APPROVE' }],
     ['recusar sem pedido', ready, { type: 'DENY' }],
     ['fim da preparação já pronto', ready, { type: 'PREP_DONE' }],
@@ -99,7 +132,11 @@ describe('reduce: eventos no estado errado são ignorados', () => {
     ['passo antes de escolher', { screen: 'choose' }, { type: 'PREP_STEP', step: 'engine' }],
     ['conectar já recebendo', receiving, { type: 'CONNECT', host: 'Outro' }],
     ['conectar no modo enviar', ready, { type: 'CONNECT', host: 'Desktop' }],
-    ['preparação termina em erro', { screen: 'error', mode: 'send', error: failure }, { type: 'PREP_DONE' }],
+    [
+      'preparação termina em erro',
+      { screen: 'error', mode: 'send', error: failure },
+      { type: 'PREP_DONE' }
+    ],
     ['parar sem conexão', ready, { type: 'STOP' }],
     ['transmissão acaba no modo enviar', ready, { type: 'STREAM_ENDED' }],
     ['tentar de novo sem erro', ready, { type: 'RETRY' }]

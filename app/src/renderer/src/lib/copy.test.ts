@@ -63,7 +63,10 @@ describe('copyFor', () => {
     const copy = copyFor({
       screen: 'error',
       mode: 'send',
-      error: { message: 'Não consegui criar o monitor virtual.', detail: 'A permissão foi recusada.' }
+      error: {
+        message: 'Não consegui criar o monitor virtual.',
+        detail: 'A permissão foi recusada.'
+      }
     })
     expect(copy.title).toBe('Não consegui criar o monitor virtual.')
     expect(copy.subtitle).toBe('A permissão foi recusada.')

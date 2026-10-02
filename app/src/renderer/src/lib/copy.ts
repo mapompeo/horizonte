@@ -8,7 +8,10 @@ export interface ScreenCopy {
 
 /** Nome vindo da rede: sem controles nem caracteres de direção invertida, no máximo 40 caracteres. */
 export function safeName(raw: string): string {
-  const cleaned = raw.replace(/[\p{Cc}\p{Cf}]/gu, '').trim().slice(0, 40)
+  const cleaned = raw
+    .replace(/[\p{Cc}\p{Cf}]/gu, '')
+    .trim()
+    .slice(0, 40)
   return cleaned || 'Outro computador'
 }
 
@@ -32,7 +35,10 @@ export function copyFor(state: AppState): ScreenCopy {
         subtitle: 'Ele quer usar este computador como segunda tela.'
       }
     case 'connected':
-      return { title: 'Tela estendida.', pill: { tone: 'ok', text: `${safeName(state.device)} conectado` } }
+      return {
+        title: 'Tela estendida.',
+        pill: { tone: 'ok', text: `${safeName(state.device)} conectado` }
+      }
     case 'discover':
       return { title: 'Na sua rede' }
     case 'receiving':

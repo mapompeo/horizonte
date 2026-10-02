@@ -11,7 +11,12 @@
 
 <div class="seg seg-wide" role="group" aria-label={label}>
   {#each options as option (option.value)}
-    <button class="seg-item" class:on={option.value === value} aria-pressed={option.value === value} onclick={() => onSelect(option.value)}>
+    <button
+      class="seg-item"
+      class:on={option.value === value}
+      aria-pressed={option.value === value}
+      onclick={() => onSelect(option.value)}
+    >
       {option.text}
     </button>
   {/each}

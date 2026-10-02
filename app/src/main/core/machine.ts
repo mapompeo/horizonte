@@ -32,17 +32,27 @@ export function reduce(state: AppState, event: AppEvent): AppState {
       if (event.type === 'PREP_DONE') return { screen: 'ready', mode: 'send' }
       return state
     case 'ready':
-      if (event.type === 'PAIR_REQUEST') return { screen: 'approve', mode: 'send', device: event.device }
-      if (event.type === 'CLIENT_CONNECTED') return { screen: 'connected', mode: 'send', device: event.device }
+      if (event.type === 'PAIR_REQUEST')
+        return { screen: 'approve', mode: 'send', device: event.device }
+      if (event.type === 'CLIENT_CONNECTED')
+        return { screen: 'connected', mode: 'send', device: event.device }
       return state
     case 'approve':
-      return event.type === 'APPROVE' || event.type === 'DENY' ? { screen: 'ready', mode: 'send' } : state
+      return event.type === 'APPROVE' || event.type === 'DENY'
+        ? { screen: 'ready', mode: 'send' }
+        : state
     case 'connected':
-      return event.type === 'CLIENT_DISCONNECTED' || event.type === 'STOP' ? { screen: 'ready', mode: 'send' } : state
+      return event.type === 'CLIENT_DISCONNECTED' || event.type === 'STOP'
+        ? { screen: 'ready', mode: 'send' }
+        : state
     case 'discover':
-      return event.type === 'CONNECT' ? { screen: 'receiving', mode: 'receive', host: event.host } : state
+      return event.type === 'CONNECT'
+        ? { screen: 'receiving', mode: 'receive', host: event.host }
+        : state
     case 'receiving':
-      return event.type === 'STREAM_ENDED' || event.type === 'STOP' ? { screen: 'discover', mode: 'receive' } : state
+      return event.type === 'STREAM_ENDED' || event.type === 'STOP'
+        ? { screen: 'discover', mode: 'receive' }
+        : state
     case 'error':
       return event.type === 'RETRY' ? startFor(state.mode) : state
   }

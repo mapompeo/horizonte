@@ -57,7 +57,9 @@ async function boot(): Promise<void> {
     if (isUiEvent(payload)) controller.dispatch(payload)
   })
   ipcMain.handle(CHANNELS.updateSettings, (_event, patch: unknown) =>
-    controller.updateSettings((typeof patch === 'object' && patch !== null ? patch : {}) as SettingsPatch)
+    controller.updateSettings(
+      (typeof patch === 'object' && patch !== null ? patch : {}) as SettingsPatch
+    )
   )
   ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
 

@@ -20,14 +20,22 @@ function oneOf<T extends string | number>(value: unknown, allowed: readonly T[],
 
 /** Aceita qualquer entrada e sempre devolve ajustes válidos. */
 export function parseSettings(raw: unknown): Settings {
-  const input = (typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>
-  const bitrate = clampBitrate(typeof input.bitrate === 'number' ? input.bitrate : DEFAULT_SETTINGS.bitrate)
+  const input = (
+    typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? raw : {}
+  ) as Record<string, unknown>
+  const bitrate = clampBitrate(
+    typeof input.bitrate === 'number' ? input.bitrate : DEFAULT_SETTINGS.bitrate
+  )
   const name = typeof input.deviceName === 'string' ? input.deviceName.trim().slice(0, 40) : ''
 
   return {
     bitrate,
     profile: profileFor(bitrate),
-    resolution: oneOf<Resolution>(input.resolution, ['720p', '1080p', '1440p'], DEFAULT_SETTINGS.resolution),
+    resolution: oneOf<Resolution>(
+      input.resolution,
+      ['720p', '1080p', '1440p'],
+      DEFAULT_SETTINGS.resolution
+    ),
     fps: oneOf<Fps>(input.fps, [30, 60, 120], DEFAULT_SETTINGS.fps),
     encoding: oneOf<Encoding>(input.encoding, ['auto', 'gpu', 'cpu'], DEFAULT_SETTINGS.encoding),
     codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
