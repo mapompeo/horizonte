@@ -75,10 +75,10 @@ Protótipo navegável de 10 telas na direção "Silêncio": instalar; primeira a
 Escolhida pelo usuário após comparar três direções e uma rodada de vidro translúcido, que foi descartada por parecer pior. Princípios:
 
 - Fundo claro quase branco (e escuro de verdade), texto grande com espaçamento apertado, tipografia do sistema (SF Pro no macOS, a fonte de sistema equivalente nos outros).
+- Só o necessário: um título, no máximo uma linha de apoio, uma ação. Sem selos, ícones decorativos, legendas ou rodapés.
 - Uma ação principal por tela. Botão primário preto em forma de pílula; ações de parar ou sair são contornadas.
-- Selo de estado acima do título, com cor semântica (verde conectado, âmbar aguardando).
-- Ícones de traço fino, cartões brancos com borda e sombra suaves, controles de 44 px ou mais.
-- Ajustes em página própria com "Voltar": três perfis de qualidade, slider personalizado, interruptor e nome do computador; o resto fica em "Avançado", fechado por padrão, com seletores segmentados.
+- Bordas finas no lugar de sombras; controles de 44 px ou mais.
+- Ajustes em página própria com "Voltar": três perfis de qualidade, interruptor "Abrir com o sistema" e "Avançado" (fechado por padrão). Dentro do Avançado: bitrate manual, resolução, quadros por segundo, codificação, codec, nome do computador e copiar diagnóstico, com seletores segmentados.
 - Grade de 8 px, muito espaço em branco, texto curto em português do Brasil.
 
 O protótipo aprovado (10 telas, mais Ajustes com Avançado aberto e o modo escuro) é a referência visual. Qualquer polimento adicional entra como tarefa do plano.
