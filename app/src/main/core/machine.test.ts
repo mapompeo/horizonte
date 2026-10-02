@@ -1,0 +1,111 @@
+import { describe, expect, it } from 'vitest'
+import { reduce } from './machine'
+import type { AppEvent, AppState } from '../../shared/types'
+
+const preparing: AppState = { screen: 'preparing', mode: 'send', step: 'engine' }
+const ready: AppState = { screen: 'ready', mode: 'send' }
+const approve: AppState = { screen: 'approve', mode: 'send', device: 'Notebook' }
+const connected: AppState = { screen: 'connected', mode: 'send', device: 'Notebook' }
+const discover: AppState = { screen: 'discover', mode: 'receive' }
+const receiving: AppState = { screen: 'receiving', mode: 'receive', host: 'Desktop' }
+const failure = { message: 'Falhou', detail: 'detalhe' }
+
+describe('reduce: caminho feliz', () => {
+  const cases: [string, AppState, AppEvent, AppState][] = [
+    ['instalação termina', { screen: 'install' }, { type: 'INSTALL_DONE' }, { screen: 'choose' }],
+    ['escolher enviar', { screen: 'choose' }, { type: 'CHOOSE', mode: 'send' }, preparing],
+    ['escolher mostrar', { screen: 'choose' }, { type: 'CHOOSE', mode: 'receive' }, discover],
+    ['passo da preparação', preparing, { type: 'PREP_STEP', step: 'display' }, { ...preparing, step: 'display' }],
+    ['preparação termina', preparing, { type: 'PREP_DONE' }, ready],
+    ['pedido de pareamento', ready, { type: 'PAIR_REQUEST', device: 'Notebook' }, approve],
+    ['aprovar', approve, { type: 'APPROVE' }, ready],
+    ['recusar', approve, { type: 'DENY' }, ready],
+    ['cliente conecta', ready, { type: 'CLIENT_CONNECTED', device: 'Notebook' }, connected],
+    ['cliente desconecta', connected, { type: 'CLIENT_DISCONNECTED' }, ready],
+    ['parar o envio', connected, { type: 'STOP' }, ready],
+    ['conectar a um computador', discover, { type: 'CONNECT', host: 'Desktop' }, receiving],
+    ['a transmissão acaba', receiving, { type: 'STREAM_ENDED' }, discover],
+    ['sair', receiving, { type: 'STOP' }, discover]
+  ]
+
+  it.each(cases)('%s', (_name, from, event, to) => {
+    expect(reduce(from, event)).toEqual(to)
+  })
+})
+
+describe('reduce: troca de modo a um clique', () => {
+  it('de enviar para mostrar a partir de qualquer tela do modo enviar', () => {
+    for (const from of [preparing, ready, approve, connected]) {
+      expect(reduce(from, { type: 'CHOOSE', mode: 'receive' })).toEqual(discover)
+    }
+  })
+
+  it('de mostrar para enviar', () => {
+    for (const from of [discover, receiving]) {
+      expect(reduce(from, { type: 'CHOOSE', mode: 'send' })).toEqual(preparing)
+    }
+  })
+
+  it('escolher o mesmo modo não reinicia nada', () => {
+    expect(reduce(ready, { type: 'CHOOSE', mode: 'send' })).toBe(ready)
+    expect(reduce(connected, { type: 'CHOOSE', mode: 'send' })).toBe(connected)
+    expect(reduce(discover, { type: 'CHOOSE', mode: 'receive' })).toBe(discover)
+  })
+
+  it('sai de uma tela de erro ao escolher o outro modo', () => {
+    const error: AppState = { screen: 'error', mode: 'send', error: failure }
+    expect(reduce(error, { type: 'CHOOSE', mode: 'receive' })).toEqual(discover)
+  })
+
+  it('ignora a escolha de modo durante a instalação', () => {
+    const install: AppState = { screen: 'install' }
+    expect(reduce(install, { type: 'CHOOSE', mode: 'send' })).toBe(install)
+  })
+})
+
+describe('reduce: erros', () => {
+  it('qualquer estado vira erro com o modo atual', () => {
+    expect(reduce(ready, { type: 'FAIL', error: failure })).toEqual({ screen: 'error', mode: 'send', error: failure })
+    expect(reduce(receiving, { type: 'FAIL', error: failure })).toEqual({ screen: 'error', mode: 'receive', error: failure })
+  })
+
+  it('erro antes de escolher o modo assume enviar', () => {
+    expect(reduce({ screen: 'install' }, { type: 'FAIL', error: failure })).toEqual({ screen: 'error', mode: 'send', error: failure })
+  })
+
+  it('um novo erro substitui o anterior', () => {
+    const first: AppState = { screen: 'error', mode: 'send', error: failure }
+    const next = reduce(first, { type: 'FAIL', error: { message: 'Outro' } })
+    expect(next).toEqual({ screen: 'error', mode: 'send', error: { message: 'Outro' } })
+  })
+
+  it('tentar de novo volta ao início do modo', () => {
+    expect(reduce({ screen: 'error', mode: 'send', error: failure }, { type: 'RETRY' })).toEqual(preparing)
+    expect(reduce({ screen: 'error', mode: 'receive', error: failure }, { type: 'RETRY' })).toEqual(discover)
+  })
+})
+
+describe('reduce: eventos no estado errado são ignorados', () => {
+  const cases: [string, AppState, AppEvent][] = [
+    ['pedido de pareamento durante uma conexão', connected, { type: 'PAIR_REQUEST', device: 'Intruso' }],
+    ['pedido de pareamento com outro já pendente', approve, { type: 'PAIR_REQUEST', device: 'Outro' }],
+    ['cliente conecta com pedido pendente', approve, { type: 'CLIENT_CONNECTED', device: 'Notebook' }],
+    ['aprovar sem pedido', ready, { type: 'APPROVE' }],
+    ['recusar sem pedido', ready, { type: 'DENY' }],
+    ['fim da preparação já pronto', ready, { type: 'PREP_DONE' }],
+    ['fim da preparação no modo mostrar', discover, { type: 'PREP_DONE' }],
+    ['passo da preparação já pronto', ready, { type: 'PREP_STEP', step: 'display' }],
+    ['aprovar durante a instalação', { screen: 'install' }, { type: 'APPROVE' }],
+    ['passo antes de escolher', { screen: 'choose' }, { type: 'PREP_STEP', step: 'engine' }],
+    ['conectar já recebendo', receiving, { type: 'CONNECT', host: 'Outro' }],
+    ['conectar no modo enviar', ready, { type: 'CONNECT', host: 'Desktop' }],
+    ['preparação termina em erro', { screen: 'error', mode: 'send', error: failure }, { type: 'PREP_DONE' }],
+    ['parar sem conexão', ready, { type: 'STOP' }],
+    ['transmissão acaba no modo enviar', ready, { type: 'STREAM_ENDED' }],
+    ['tentar de novo sem erro', ready, { type: 'RETRY' }]
+  ]
+
+  it.each(cases)('%s', (_name, state, event) => {
+    expect(reduce(state, event)).toBe(state)
+  })
+})
