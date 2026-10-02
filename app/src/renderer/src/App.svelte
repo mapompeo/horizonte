@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { snapshot, startSync } from './lib/store'
+  import { route, snapshot, startSync } from './lib/store'
   import Frame from './components/Frame.svelte'
   import Install from './screens/Install.svelte'
   import Choose from './screens/Choose.svelte'
@@ -11,6 +11,7 @@
   import Discover from './screens/Discover.svelte'
   import Receiving from './screens/Receiving.svelte'
   import ErrorScreen from './screens/ErrorScreen.svelte'
+  import SettingsPage from './screens/SettingsPage.svelte'
 
   onMount(() => {
     let stop: (() => void) | undefined
@@ -29,7 +30,9 @@
 {#if $snapshot}
   {@const state = $snapshot.state}
   {@const settings = $snapshot.settings}
-  {#if state.screen === 'install'}
+  {#if $route === 'settings'}
+    <SettingsPage {settings} />
+  {:else if state.screen === 'install'}
     <Frame><Install /></Frame>
   {:else if state.screen === 'choose'}
     <Frame><Choose /></Frame>
