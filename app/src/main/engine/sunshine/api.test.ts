@@ -78,6 +78,13 @@ describe('configuração', () => {
     expect(await api.getConfig()).toEqual({ output_name: 'abc', sunshine_name: 'Desktop' })
   })
 
+  it('metadados que o Sunshine anexa à leitura não viram configuração', async () => {
+    fake.config = { output_name: 'abc', platform: 'windows', status: true, version: '2026.914' }
+    expect(await api.getConfig()).toEqual({ output_name: 'abc' })
+    await api.saveConfig({ amd_usage: 'transcoding' })
+    expect(fake.config).toEqual({ output_name: 'abc', amd_usage: 'transcoding' })
+  })
+
   it('gravar um trecho nunca apaga o resto da configuração', async () => {
     fake.config = { output_name: 'abc', sunshine_name: 'Desktop', amd_rc: 'cbr' }
     await api.saveConfig({ amd_usage: 'transcoding' })

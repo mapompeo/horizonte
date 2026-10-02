@@ -24,6 +24,8 @@ export interface Pairing {
   address: string
 }
 
+const READ_ONLY_KEYS = ['platform', 'status', 'version'] as const
+
 export interface SunshineApiOptions {
   /** Porta base do Sunshine (47989 por padrão). A API fica em porta + 1. */
   port: number
@@ -97,7 +99,10 @@ export class SunshineApi {
         'O Sunshine mandou uma configuração inesperada.'
       )
     }
-    return data
+    // O Sunshine anexa metadados à leitura (confirmado na instância real); não são configuração.
+    const config = { ...data }
+    for (const key of READ_ONLY_KEYS) delete config[key]
+    return config
   }
 
   /**
