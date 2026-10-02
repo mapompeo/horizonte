@@ -48,7 +48,8 @@
       </div>
       <button
         class="btn btn-primary btn-sm"
-        onclick={() => send({ type: 'CONNECT', host: safeName(host.name) })}>Estender</button
+        onclick={() => send({ type: 'CONNECT', host: host.address, name: safeName(host.name) })}
+        >Estender</button
       >
     </div>
   {/each}

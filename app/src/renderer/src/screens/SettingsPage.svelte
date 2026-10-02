@@ -17,8 +17,13 @@
   const shown = $derived(dragging ?? settings.bitrate)
 
   async function commitBitrate(): Promise<void> {
-    if (dragging !== null) await patchSettings({ bitrate: dragging })
-    dragging = null
+    try {
+      if (dragging !== null) await patchSettings({ bitrate: dragging })
+    } catch {
+      // Se não deu para gravar, o slider volta ao valor salvo em vez de ficar preso no arrastado.
+    } finally {
+      dragging = null
+    }
   }
 
   const tiles = [

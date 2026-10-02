@@ -84,13 +84,14 @@ describe('fluxo de recebimento', () => {
     controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
     expect(screen(controller)).toBe('discover')
 
-    controller.dispatch({ type: 'CONNECT', host: 'Desktop' })
+    controller.dispatch({ type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' })
     expect(controller.getSnapshot().state).toEqual({
       screen: 'receiving',
       mode: 'receive',
-      host: 'Desktop'
+      host: '192.168.1.3',
+      name: 'Desktop'
     })
-    expect(engine.calls).toContain('connect:Desktop')
+    expect(engine.calls).toContain('connect:192.168.1.3')
 
     controller.dispatch({ type: 'STOP' })
     expect(screen(controller)).toBe('discover')
@@ -106,7 +107,7 @@ describe('fluxo de recebimento', () => {
     const engine = new FakeEngine(0)
     engine.failConnect = 'sem rede'
     const { controller } = await setup({ screen: 'discover', mode: 'receive' }, engine)
-    controller.dispatch({ type: 'CONNECT', host: 'Desktop' })
+    controller.dispatch({ type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' })
     await vi.waitFor(() => expect(screen(controller)).toBe('error'))
     const state = controller.getSnapshot().state
     expect(state.screen === 'error' && state.error.detail).toBe('sem rede')
@@ -178,7 +179,8 @@ describe('troca de modo', () => {
     const { controller, engine } = await setup({
       screen: 'receiving',
       mode: 'receive',
-      host: 'Desktop'
+      host: '192.168.1.3',
+      name: 'Desktop'
     })
     controller.dispatch({ type: 'CHOOSE', mode: 'send' })
     expect(screen(controller)).toBe('preparing')
@@ -215,6 +217,108 @@ describe('troca de modo', () => {
   })
 })
 
+describe('falhas tardias e de limpeza', () => {
+  it('a falha tardia de uma conexão abandonada não aparece sobre a conexão nova', async () => {
+    const engine = new FakeEngine(30)
+    engine.failConnect = 'sem rede'
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' }, engine)
+    controller.dispatch({ type: 'CONNECT', host: '10.0.0.1', name: 'A' })
+    controller.dispatch({ type: 'STOP' })
+    controller.dispatch({ type: 'CONNECT', host: '10.0.0.2', name: 'B' })
+    await settle(150)
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'receiving',
+      mode: 'receive',
+      host: '10.0.0.2',
+      name: 'B'
+    })
+  })
+
+  it('a falha tardia de aprovar não derruba uma conexão já estabelecida', async () => {
+    const engine = new FakeEngine(30)
+    engine.failApprove = 'demorou'
+    const { controller } = await setup(
+      { screen: 'approve', mode: 'send', device: 'Notebook' },
+      engine
+    )
+    controller.dispatch({ type: 'APPROVE' })
+    engine.simulateClientConnected('Notebook')
+    await settle(150)
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'connected',
+      mode: 'send',
+      device: 'Notebook'
+    })
+  })
+
+  it('a falha de aprovar, com o usuário ainda na tela, mostra erro', async () => {
+    const engine = new FakeEngine(0)
+    engine.failApprove = 'recusado pelo motor'
+    const { controller } = await setup(
+      { screen: 'approve', mode: 'send', device: 'Notebook' },
+      engine
+    )
+    controller.dispatch({ type: 'APPROVE' })
+    await vi.waitFor(() => expect(screen(controller)).toBe('error'))
+    const state = controller.getSnapshot().state
+    expect(state.screen === 'error' && state.error.detail).toBe('recusado pelo motor')
+  })
+
+  it('se desconectar também falhar, o erro original continua na tela', async () => {
+    const engine = new FakeEngine(0)
+    engine.failConnect = 'sem rede'
+    engine.failDisconnect = 'já tinha caído'
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' }, engine)
+    controller.dispatch({ type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' })
+    await vi.waitFor(() => expect(screen(controller)).toBe('error'))
+    await settle()
+    const state = controller.getSnapshot().state
+    expect(state.screen === 'error' && state.error.message).toBe(
+      'Não consegui conectar a esse computador.'
+    )
+    expect(state.screen === 'error' && state.error.detail).toBe('sem rede')
+  })
+
+  it('falha ao encerrar a conexão, com o usuário na mesma tela, mostra erro', async () => {
+    const engine = new FakeEngine(0)
+    engine.failDisconnect = 'travou'
+    const { controller } = await setup(
+      { screen: 'receiving', mode: 'receive', host: '192.168.1.3', name: 'Desktop' },
+      engine
+    )
+    controller.dispatch({ type: 'STOP' })
+    await vi.waitFor(() => expect(screen(controller)).toBe('error'))
+  })
+})
+
+describe('motor avisado ao abandonar o modo enviar', () => {
+  const idle: [string, AppState][] = [
+    ['preparando', { screen: 'preparing', mode: 'send', step: 'engine' }],
+    ['pronto', { screen: 'ready', mode: 'send' }],
+    ['permitir', { screen: 'approve', mode: 'send', device: 'Notebook' }]
+  ]
+
+  it.each(idle)('sair de %s para mostrar chama abort', async (_name, initial) => {
+    const { controller, engine } = await setup(initial)
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    expect(engine.calls).toContain('abort')
+  })
+
+  it('um erro no meio do envio também avisa o motor', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    controller.dispatch({ type: 'FAIL', error: { message: 'x' } })
+    expect(engine.calls).toContain('abort')
+  })
+
+  it('avançar dentro do modo enviar não chama abort', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    engine.simulatePairRequest('Notebook')
+    controller.dispatch({ type: 'APPROVE' })
+    engine.simulateClientConnected('Notebook')
+    expect(screen(controller)).toBe('connected')
+    expect(engine.calls).not.toContain('abort')
+  })
+})
 describe('ajustes e assinantes', () => {
   it('atualizar o bitrate valida, persiste e avisa os assinantes', async () => {
     const { controller, saved } = await setup({ screen: 'ready', mode: 'send' })

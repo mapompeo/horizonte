@@ -14,7 +14,7 @@ export type AppState =
   | { screen: 'approve'; mode: 'send'; device: string }
   | { screen: 'connected'; mode: 'send'; device: string }
   | { screen: 'discover'; mode: 'receive' }
-  | { screen: 'receiving'; mode: 'receive'; host: string }
+  | { screen: 'receiving'; mode: 'receive'; host: string; name: string }
   | { screen: 'error'; mode: Mode; error: AppError }
 
 export type AppEvent =
@@ -28,7 +28,7 @@ export type AppEvent =
   | { type: 'CLIENT_CONNECTED'; device: string }
   | { type: 'CLIENT_DISCONNECTED' }
   | { type: 'STOP' }
-  | { type: 'CONNECT'; host: string }
+  | { type: 'CONNECT'; host: string; name: string }
   | { type: 'STREAM_ENDED' }
   | { type: 'FAIL'; error: AppError }
   | { type: 'RETRY' }

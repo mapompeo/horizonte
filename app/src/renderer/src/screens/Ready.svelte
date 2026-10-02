@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { copyFor } from '../lib/copy'
+  import { copyFor, safeName } from '../lib/copy'
   import Pill from '../components/Pill.svelte'
 
   interface Props {
@@ -14,4 +14,4 @@
 {#if copy.pill}<Pill tone={copy.pill.tone}>{copy.pill.text}</Pill>{/if}
 <h1 class="title">{copy.title}</h1>
 <p class="subtitle">{copy.subtitle}</p>
-<span class="hint">Nome deste computador: <strong>{deviceName}</strong></span>
+<span class="hint">Nome deste computador: <strong>{safeName(deviceName)}</strong></span>

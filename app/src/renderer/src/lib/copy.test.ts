@@ -54,7 +54,12 @@ describe('copyFor', () => {
   })
 
   it('recebendo mostra o computador de origem', () => {
-    const copy = copyFor({ screen: 'receiving', mode: 'receive', host: 'Desktop' })
+    const copy = copyFor({
+      screen: 'receiving',
+      mode: 'receive',
+      host: '192.168.1.3',
+      name: 'Desktop'
+    })
     expect(copy.title).toBe('Recebendo a tela.')
     expect(copy.pill).toEqual({ tone: 'ok', text: 'Desktop' })
   })

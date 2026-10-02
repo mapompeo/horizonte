@@ -197,6 +197,14 @@ input:focus-visible {
   color: var(--muted);
   font-size: 14px;
   font-weight: 500;
+  position: relative;
+}
+
+/* O visual mede 38 px; a área clicável chega a 44 px sem mudar o desenho. */
+.seg-item::after {
+  content: '';
+  position: absolute;
+  inset: -3px -1px;
 }
 
 .seg-item.on {
@@ -629,14 +637,14 @@ input:focus-visible {
 }
 input[type='range'] {
   width: 100%;
-  height: 28px;
-  margin: 0;
+  height: 44px;
+  margin: -8px 0;
   accent-color: var(--fg);
 }
 
 .text-input {
   width: 180px;
-  height: 36px;
+  height: 44px;
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -687,6 +695,14 @@ input[type='range'] {
   background: var(--line);
   display: flex;
   justify-content: flex-start;
+  position: relative;
+}
+
+/* O interruptor mede 31 px; a área clicável chega a 45 px sem mudar o desenho. */
+.switch::after {
+  content: '';
+  position: absolute;
+  inset: -7px -3px;
 }
 
 .switch.on {

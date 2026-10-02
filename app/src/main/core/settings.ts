@@ -1,5 +1,6 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { cleanName } from '../../shared/names'
 import { clampBitrate, profileFor } from '../../shared/quality'
 import type { Codec, Encoding, Fps, Resolution, Settings } from '../../shared/types'
 
@@ -26,7 +27,7 @@ export function parseSettings(raw: unknown): Settings {
   const bitrate = clampBitrate(
     typeof input.bitrate === 'number' ? input.bitrate : DEFAULT_SETTINGS.bitrate
   )
-  const name = typeof input.deviceName === 'string' ? input.deviceName.trim().slice(0, 40) : ''
+  const name = typeof input.deviceName === 'string' ? cleanName(input.deviceName) : ''
 
   return {
     bitrate,
@@ -50,6 +51,10 @@ export interface SettingsStore {
 }
 
 export function createSettingsStore(file: string): SettingsStore {
+  /** Gravações entram em fila: cada uma espera a anterior, e a última chamada é a que vale. */
+  let queue: Promise<void> = Promise.resolve()
+  let counter = 0
+
   return {
     async load() {
       try {
@@ -58,11 +63,21 @@ export function createSettingsStore(file: string): SettingsStore {
         return { ...DEFAULT_SETTINGS }
       }
     },
-    async save(settings) {
-      await mkdir(dirname(file), { recursive: true })
-      const temporary = `${file}.tmp`
-      await writeFile(temporary, JSON.stringify(settings, null, 2), 'utf8')
-      await rename(temporary, file)
+    save(settings) {
+      const write = async (): Promise<void> => {
+        await mkdir(dirname(file), { recursive: true })
+        const temporary = `${file}.${process.pid}.${counter++}.tmp`
+        try {
+          await writeFile(temporary, JSON.stringify(settings, null, 2), 'utf8')
+          await rename(temporary, file)
+        } catch (cause) {
+          await rm(temporary, { force: true })
+          throw cause
+        }
+      }
+      const run = queue.then(write)
+      queue = run.catch(() => undefined)
+      return run
     }
   }
 }

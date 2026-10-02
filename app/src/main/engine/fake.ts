@@ -26,6 +26,8 @@ export class FakeEngine implements EnginePort {
   calls: string[] = []
   failPrepare: string | null = null
   failConnect: string | null = null
+  failApprove: string | null = null
+  failDisconnect: string | null = null
   hosts: Host[] = [{ name: 'Desktop', address: '192.168.1.3' }]
 
   private pair = emitter<[string]>()
@@ -52,8 +54,18 @@ export class FakeEngine implements EnginePort {
     }
   }
 
+  async abort(): Promise<void> {
+    this.calls.push('abort')
+  }
+
   async approve(): Promise<void> {
     this.calls.push('approve')
+    await this.wait()
+    if (this.failApprove) {
+      const message = this.failApprove
+      this.failApprove = null
+      throw new Error(message)
+    }
   }
 
   async deny(): Promise<void> {
@@ -80,6 +92,11 @@ export class FakeEngine implements EnginePort {
 
   async disconnect(): Promise<void> {
     this.calls.push('disconnect')
+    if (this.failDisconnect) {
+      const message = this.failDisconnect
+      this.failDisconnect = null
+      throw new Error(message)
+    }
   }
 
   async applyBitrate(mbps: number): Promise<void> {

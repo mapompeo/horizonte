@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -46,6 +46,15 @@ describe('parseSettings', () => {
     expect('senha' in result).toBe(false)
   })
 
+  it('o nome do computador não guarda quebras de linha, controles nem direção invertida', () => {
+    const rtl = String.fromCharCode(0x202e)
+    expect(parseSettings({ deviceName: 'Sala\nchave = valor' }).deviceName).toBe(
+      'Salachave = valor'
+    )
+    expect(parseSettings({ deviceName: `No${rtl}te` }).deviceName).toBe('Note')
+    expect(parseSettings({ deviceName: '\r\n\t' }).deviceName).toBe(DEFAULT_SETTINGS.deviceName)
+  })
+
   it('limita o nome do computador a 40 caracteres', () => {
     expect(parseSettings({ deviceName: 'a'.repeat(100) }).deviceName).toHaveLength(40)
   })
@@ -80,6 +89,27 @@ describe('createSettingsStore', () => {
     await store.save(DEFAULT_SETTINGS)
     await writeFile(file, JSON.stringify({ fps: 30 }), 'utf8')
     expect(await store.load()).toEqual({ ...DEFAULT_SETTINGS, fps: 30 })
+  })
+
+  it('gravações simultâneas não se atropelam e a última vence', async () => {
+    const store = createSettingsStore(file)
+    const saves = Array.from({ length: 25 }, (_value, index) =>
+      store.save(parseSettings({ bitrate: 10 + index }))
+    )
+    await Promise.all(saves)
+    expect((await store.load()).bitrate).toBe(34)
+    expect((await readdir(join(dir, 'nested'))).sort()).toEqual(['settings.json'])
+  })
+
+  it('uma gravação que falha não trava as seguintes', async () => {
+    const blocked = join(dir, 'arquivo-no-lugar-da-pasta')
+    await writeFile(blocked, 'x', 'utf8')
+    const broken = createSettingsStore(join(blocked, 'settings.json'))
+    await expect(broken.save(DEFAULT_SETTINGS)).rejects.toThrow()
+    await expect(broken.save(DEFAULT_SETTINGS)).rejects.toThrow()
+    const store = createSettingsStore(file)
+    await store.save(parseSettings({ bitrate: 12 }))
+    expect((await store.load()).bitrate).toBe(12)
   })
 
   it('grava e lê de volta, criando as pastas', async () => {

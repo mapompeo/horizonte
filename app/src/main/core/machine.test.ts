@@ -7,7 +7,12 @@ const ready: AppState = { screen: 'ready', mode: 'send' }
 const approve: AppState = { screen: 'approve', mode: 'send', device: 'Notebook' }
 const connected: AppState = { screen: 'connected', mode: 'send', device: 'Notebook' }
 const discover: AppState = { screen: 'discover', mode: 'receive' }
-const receiving: AppState = { screen: 'receiving', mode: 'receive', host: 'Desktop' }
+const receiving: AppState = {
+  screen: 'receiving',
+  mode: 'receive',
+  host: '192.168.1.3',
+  name: 'Desktop'
+}
 const failure = { message: 'Falhou', detail: 'detalhe' }
 
 describe('reduce: caminho feliz', () => {
@@ -28,7 +33,12 @@ describe('reduce: caminho feliz', () => {
     ['cliente conecta', ready, { type: 'CLIENT_CONNECTED', device: 'Notebook' }, connected],
     ['cliente desconecta', connected, { type: 'CLIENT_DISCONNECTED' }, ready],
     ['parar o envio', connected, { type: 'STOP' }, ready],
-    ['conectar a um computador', discover, { type: 'CONNECT', host: 'Desktop' }, receiving],
+    [
+      'conectar a um computador',
+      discover,
+      { type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' },
+      receiving
+    ],
     ['a transmissão acaba', receiving, { type: 'STREAM_ENDED' }, discover],
     ['sair', receiving, { type: 'STOP' }, discover]
   ]
@@ -130,8 +140,8 @@ describe('reduce: eventos no estado errado são ignorados', () => {
     ['passo da preparação já pronto', ready, { type: 'PREP_STEP', step: 'display' }],
     ['aprovar durante a instalação', { screen: 'install' }, { type: 'APPROVE' }],
     ['passo antes de escolher', { screen: 'choose' }, { type: 'PREP_STEP', step: 'engine' }],
-    ['conectar já recebendo', receiving, { type: 'CONNECT', host: 'Outro' }],
-    ['conectar no modo enviar', ready, { type: 'CONNECT', host: 'Desktop' }],
+    ['conectar já recebendo', receiving, { type: 'CONNECT', host: '10.0.0.9', name: 'Outro' }],
+    ['conectar no modo enviar', ready, { type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' }],
     [
       'preparação termina em erro',
       { screen: 'error', mode: 'send', error: failure },

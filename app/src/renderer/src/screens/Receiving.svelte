@@ -6,12 +6,13 @@
 
   interface Props {
     host: string
+    name: string
     bitrate: number
   }
 
-  let { host, bitrate }: Props = $props()
+  let { host, name, bitrate }: Props = $props()
 
-  const copy = $derived(copyFor({ screen: 'receiving', mode: 'receive', host }))
+  const copy = $derived(copyFor({ screen: 'receiving', mode: 'receive', host, name }))
 </script>
 
 <div class="stack gap-sm">

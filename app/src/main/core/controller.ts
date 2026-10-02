@@ -24,6 +24,12 @@ export interface Controller {
   subscribe(listener: (snapshot: Snapshot) => void): () => void
 }
 
+/** Telas do modo enviar em que o motor está preparando ou esperando, sem conexão ainda. */
+const isSendIdle = (state: AppState): boolean =>
+  state.screen === 'preparing' || state.screen === 'ready' || state.screen === 'approve'
+
+const isSendLive = (state: AppState): boolean => isSendIdle(state) || state.screen === 'connected'
+
 function describeError(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause)
 }
@@ -47,7 +53,16 @@ export async function createController({
   }
 
   function fail(message: string, cause: unknown): void {
+    // Um erro novo não apaga o que já está na tela: o primeiro costuma ser a causa.
+    if (state.screen === 'error') return
     dispatch({ type: 'FAIL', error: { message, detail: describeError(cause) } })
+  }
+
+  /** A falha de uma operação só importa se o usuário ainda está na tela a que ela levou. */
+  function failIfStill(target: AppState, message: string): (cause: unknown) => void {
+    return (cause) => {
+      if (state === target && target.screen !== 'error') fail(message, cause)
+    }
   }
 
   function runEffects(prev: AppState, next: AppState, event: AppEvent): void {
@@ -69,9 +84,14 @@ export async function createController({
         })
     }
 
+    // Saiu do modo enviar sem ter conectado: o motor precisa parar de preparar ou de esperar.
+    if (isSendIdle(prev) && !isSendLive(next)) {
+      engine.abort().catch(() => undefined) // melhor esforço, o usuário já saiu daquela tela
+    }
+
     if (prev.screen === 'approve' && next.screen === 'ready') {
       const answer = event.type === 'APPROVE' ? engine.approve() : engine.deny()
-      answer.catch((cause: unknown) => fail('Não consegui responder ao pedido.', cause))
+      answer.catch(failIfStill(next, 'Não consegui responder ao pedido.'))
     }
 
     if (
@@ -79,13 +99,13 @@ export async function createController({
       next.screen !== 'connected' &&
       event.type !== 'CLIENT_DISCONNECTED'
     ) {
-      engine.stopSending().catch((cause: unknown) => fail('Não consegui parar o envio.', cause))
+      engine.stopSending().catch(failIfStill(next, 'Não consegui parar o envio.'))
     }
 
     if (next.screen === 'receiving' && prev.screen !== 'receiving') {
-      engine.connect(next.host, settings).catch((cause: unknown) => {
-        if (state.screen === 'receiving') fail('Não consegui conectar a esse computador.', cause)
-      })
+      engine
+        .connect(next.host, settings)
+        .catch(failIfStill(next, 'Não consegui conectar a esse computador.'))
     }
 
     if (
@@ -93,7 +113,7 @@ export async function createController({
       next.screen !== 'receiving' &&
       event.type !== 'STREAM_ENDED'
     ) {
-      engine.disconnect().catch((cause: unknown) => fail('Não consegui encerrar a conexão.', cause))
+      engine.disconnect().catch(failIfStill(next, 'Não consegui encerrar a conexão.'))
     }
   }
 

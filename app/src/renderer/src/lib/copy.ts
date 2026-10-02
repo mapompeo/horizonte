@@ -1,3 +1,4 @@
+import { cleanName } from '../../../shared/names'
 import type { AppState, PrepStep } from '../../../shared/types'
 
 export interface ScreenCopy {
@@ -8,11 +9,7 @@ export interface ScreenCopy {
 
 /** Nome vindo da rede: sem controles nem caracteres de direção invertida, no máximo 40 caracteres. */
 export function safeName(raw: string): string {
-  const cleaned = raw
-    .replace(/[\p{Cc}\p{Cf}]/gu, '')
-    .trim()
-    .slice(0, 40)
-  return cleaned || 'Outro computador'
+  return cleanName(raw) || 'Outro computador'
 }
 
 export function copyFor(state: AppState): ScreenCopy {
@@ -42,7 +39,7 @@ export function copyFor(state: AppState): ScreenCopy {
     case 'discover':
       return { title: 'Na sua rede' }
     case 'receiving':
-      return { title: 'Recebendo a tela.', pill: { tone: 'ok', text: safeName(state.host) } }
+      return { title: 'Recebendo a tela.', pill: { tone: 'ok', text: safeName(state.name) } }
     case 'error':
       return { title: state.error.message, subtitle: state.error.detail }
   }

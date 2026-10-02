@@ -47,7 +47,9 @@
   {:else if state.screen === 'discover'}
     <Frame mode="receive"><Discover /></Frame>
   {:else if state.screen === 'receiving'}
-    <Frame mode="receive" split><Receiving host={state.host} bitrate={settings.bitrate} /></Frame>
+    <Frame mode="receive" split
+      ><Receiving host={state.host} name={state.name} bitrate={settings.bitrate} /></Frame
+    >
   {:else if state.screen === 'error'}
     <Frame mode={state.mode}><ErrorScreen error={state.error} /></Frame>
   {/if}

@@ -47,7 +47,7 @@ export function reduce(state: AppState, event: AppEvent): AppState {
         : state
     case 'discover':
       return event.type === 'CONNECT'
-        ? { screen: 'receiving', mode: 'receive', host: event.host }
+        ? { screen: 'receiving', mode: 'receive', host: event.host, name: event.name }
         : state
     case 'receiving':
       return event.type === 'STREAM_ENDED' || event.type === 'STOP'
