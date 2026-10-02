@@ -1,6 +1,6 @@
-# Tela Extra: design
+# Horizonte: design
 
-Nome provisório. Data: 2026-10-02. Licença planejada: GPL-3.0 (código aberto).
+Data: 2026-10-02. Licença planejada: GPL-3.0 (código aberto). O nome vem da ideia de estender a tela além da borda do monitor.
 
 ## Objetivo
 
@@ -36,6 +36,12 @@ Wayland automático (o app detecta e orienta), cliente em Linux, macOS, Android 
 
 Um app em Tauri 2: núcleo em Rust, interface em web (HTML, CSS e TypeScript). O vídeo roda no motor existente; o app o instala, configura e controla.
 
+### Decisão: gerenciador, não fork
+
+O Horizonte é um gerenciador que baixa e coordena o Sunshine e o Moonlight, e não um fork deles. A pessoa instala só o Horizonte; na primeira abertura ele baixa o motor numa versão fixa, confere o hash e instala. Motivos: custo de manutenção baixo, as melhorias do motor chegam trocando a versão fixa, e o valor do projeto está na experiência de instalação e uso.
+
+O acesso ao motor fica atrás de um adaptador (interface única para configurar, parear e iniciar o stream). Se um dia for preciso mudar o motor (por exemplo, monitor virtual no Linux), só o adaptador passa a apontar para um fork, e a mudança deve ser proposta primeiro ao projeto original.
+
 ### Núcleo
 
 - **Máquina de estados** única que decide a tela: `Instalando`, `Preparando`, `Pronto`, `Conectado`, `Erro`. Cada modo usa o seu subconjunto. Alternar o modo reinicia a máquina no estado inicial do outro modo.
@@ -64,19 +70,18 @@ Interface -> comandos Tauri -> núcleo (máquina de estados) -> peça específic
 
 Protótipo navegável de 10 telas na direção "Silêncio": instalar; primeira abertura (enviar ou mostrar); enviar preparando; enviar pronto; permitir conexão; mostrar escolher computador; enviar em uso; mostrar em uso; ajustes; erro. O seletor Enviar | Mostrar fica no topo de toda tela principal. Regra: uma ação principal por tela; tudo técnico fica em Ajustes, numa folha lateral, sem abas.
 
-## Linguagem visual (estilo Apple)
+## Linguagem visual: Silêncio
 
-Requisito do usuário: parecer de fato um produto da Apple, não apenas minimalista. Princípios:
+Escolhida pelo usuário após comparar três direções e uma rodada de vidro translúcido, que foi descartada por parecer pior. Princípios:
 
-- Tipografia do sistema (SF Pro no macOS, a fonte de sistema equivalente no Windows e no Linux), títulos grandes com tracking negativo, poucos pesos.
-- Materiais translúcidos com desfoque de fundo nas barras e folhas; profundidade sutil em camadas, sombras suaves e longas.
-- Cantos contínuos (squircle), raios generosos e consistentes; controles de 44 px ou mais.
-- Ícones de traço fino no estilo SF Symbols; ícone do app em quadrado arredondado com profundidade.
-- Cores semânticas (acento do sistema, verde de sucesso, vermelho de erro), com modo claro e escuro de verdade.
-- Movimento com mola, transições curtas entre telas, sem efeitos gratuitos.
-- Grade de 8 px, muito espaço em branco, texto curto, em português do Brasil.
+- Fundo claro quase branco (e escuro de verdade), texto grande com espaçamento apertado, tipografia do sistema (SF Pro no macOS, a fonte de sistema equivalente nos outros).
+- Uma ação principal por tela. Botão primário preto em forma de pílula; ações de parar ou sair são contornadas.
+- Selo de estado acima do título, com cor semântica (verde conectado, âmbar aguardando).
+- Ícones de traço fino, cartões brancos com borda e sombra suaves, controles de 44 px ou mais.
+- Ajustes em página própria com "Voltar": três perfis de qualidade, slider personalizado, interruptor e nome do computador; o resto fica em "Avançado", fechado por padrão, com seletores segmentados.
+- Grade de 8 px, muito espaço em branco, texto curto em português do Brasil.
 
-A fidelidade alta dessas telas é a primeira tarefa do plano de implementação.
+O protótipo aprovado (10 telas, mais Ajustes com Avançado aberto e o modo escuro) é a referência visual. Qualquer polimento adicional entra como tarefa do plano.
 
 ## Tratamento de erros
 
@@ -95,12 +100,12 @@ Cada peça devolve um erro tipado com uma mensagem de uma frase e uma ação que
 - O Moonlight Qt pode não aceitar todos os ajustes por linha de comando; verificar antes do plano.
 - Monitor virtual no Linux Wayland é difícil; adiado.
 - Sem assinatura digital o Windows mostra aviso; para código aberto é possível pedir assinatura gratuita depois.
-- Nome definitivo do produto ainda não escolhido.
 - Licenças: Sunshine, Moonlight e o driver de tela virtual têm licenças próprias; conferir a compatibilidade ao empacotar.
 
 ## Decisões tomadas
 
-- Abordagem: interfaces finas sobre o motor existente (sem fork do motor na v1).
+- Abordagem: gerenciador sobre o motor existente (sem fork do motor na v1).
 - Um app com dois modos, trocáveis a um clique.
-- Direção visual: "Silêncio", com modos claro e escuro, evoluída para fidelidade Apple.
+- Direção visual: "Silêncio", com modos claro e escuro.
 - Stack: Tauri 2.
+- Nome: Horizonte.
