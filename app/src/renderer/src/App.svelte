@@ -1,26 +1,51 @@
 <script lang="ts">
-  import Versions from './components/Versions.svelte'
-  import electronLogo from './assets/electron.svg'
+  import { onMount } from 'svelte'
+  import { snapshot, startSync } from './lib/store'
+  import Frame from './components/Frame.svelte'
+  import Install from './screens/Install.svelte'
+  import Choose from './screens/Choose.svelte'
+  import Preparing from './screens/Preparing.svelte'
+  import Ready from './screens/Ready.svelte'
+  import Approve from './screens/Approve.svelte'
+  import Connected from './screens/Connected.svelte'
+  import Discover from './screens/Discover.svelte'
+  import Receiving from './screens/Receiving.svelte'
+  import ErrorScreen from './screens/ErrorScreen.svelte'
 
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
+  onMount(() => {
+    let stop: (() => void) | undefined
+    let disposed = false
+    void startSync().then((unsubscribe) => {
+      if (disposed) unsubscribe()
+      else stop = unsubscribe
+    })
+    return () => {
+      disposed = true
+      stop?.()
+    }
+  })
 </script>
 
-<img alt="logo" class="logo" src={electronLogo} />
-<div class="creator">Powered by electron-vite</div>
-<div class="text">
-  Build an Electron app with
-  <span class="svelte">Svelte</span>
-  and
-  <span class="ts">TypeScript</span>
-</div>
-<p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
-<div class="actions">
-  <div class="action">
-    <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">Documentation</a>
-  </div>
-  <div class="action">
-    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-missing-attribute-->
-    <a target="_blank" rel="noreferrer" on:click={ipcHandle}>Send IPC</a>
-  </div>
-</div>
-<Versions />
+{#if $snapshot}
+  {@const state = $snapshot.state}
+  {@const settings = $snapshot.settings}
+  {#if state.screen === 'install'}
+    <Frame><Install /></Frame>
+  {:else if state.screen === 'choose'}
+    <Frame><Choose /></Frame>
+  {:else if state.screen === 'preparing'}
+    <Frame mode="send"><Preparing step={state.step} /></Frame>
+  {:else if state.screen === 'ready'}
+    <Frame mode="send"><Ready deviceName={settings.deviceName} /></Frame>
+  {:else if state.screen === 'approve'}
+    <Frame><Approve device={state.device} /></Frame>
+  {:else if state.screen === 'connected'}
+    <Frame mode="send" split><Connected device={state.device} bitrate={settings.bitrate} /></Frame>
+  {:else if state.screen === 'discover'}
+    <Frame mode="receive"><Discover /></Frame>
+  {:else if state.screen === 'receiving'}
+    <Frame mode="receive" split><Receiving host={state.host} bitrate={settings.bitrate} /></Frame>
+  {:else if state.screen === 'error'}
+    <Frame mode={state.mode}><ErrorScreen error={state.error} /></Frame>
+  {/if}
+{/if}
