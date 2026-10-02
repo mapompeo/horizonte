@@ -1,14 +1,24 @@
 <script lang="ts">
+  import { isValidPin } from '../../../shared/pin'
   import { copyFor, safeName } from '../lib/copy'
   import { send } from '../lib/actions'
 
   interface Props {
     device: string
+    pin: string | null
   }
 
-  let { device }: Props = $props()
+  let { device, pin }: Props = $props()
 
-  const copy = $derived(copyFor({ screen: 'approve', mode: 'send', device }))
+  let typed = $state('')
+
+  const copy = $derived(copyFor({ screen: 'approve', mode: 'send', device, pairingId: '', pin }))
+  const ready = $derived(isValidPin(pin ?? typed))
+
+  function approve(): void {
+    if (!ready) return
+    void send(pin === null ? { type: 'APPROVE', pin: typed } : { type: 'APPROVE' })
+  }
 </script>
 
 <div class="badge" aria-hidden="true">
@@ -29,8 +39,28 @@
   <h1 class="title title-md">{copy.title}</h1>
   <p class="subtitle">{copy.subtitle}</p>
 </div>
+{#if pin === null}
+  <div class="stack gap-xs">
+    <label class="hint" for="pin">Digite o PIN que aparece no outro computador</label>
+    <input
+      id="pin"
+      class="pin-input"
+      inputmode="numeric"
+      autocomplete="off"
+      maxlength="4"
+      value={typed}
+      oninput={(event) => {
+        // Regrava o campo: se o texto limpo for igual ao anterior, o Svelte não atualizaria a tela.
+        const clean = event.currentTarget.value.replace(/\D/g, '').slice(0, 4)
+        event.currentTarget.value = clean
+        typed = clean
+      }}
+      onkeydown={(event) => event.key === 'Enter' && approve()}
+    />
+  </div>
+{/if}
 <div class="stack gap-xs">
-  <button class="btn btn-primary" onclick={() => send({ type: 'APPROVE' })}>Permitir</button>
+  <button class="btn btn-primary" disabled={!ready} onclick={approve}>Permitir</button>
   <button class="btn btn-ghost" onclick={() => send({ type: 'DENY' })}>Recusar</button>
 </div>
 <span class="hint-faint">{safeName(device)} · mesma rede</span>

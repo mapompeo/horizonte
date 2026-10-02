@@ -1,5 +1,5 @@
 import type { Host, PrepStep } from '../../shared/types'
-import type { EnginePort } from './port'
+import type { ApproveRequest, EnginePort, PairRequest } from './port'
 
 type Callback<A extends unknown[]> = (...args: A) => void
 
@@ -30,7 +30,11 @@ export class FakeEngine implements EnginePort {
   failDisconnect: string | null = null
   hosts: Host[] = [{ name: 'Desktop', address: '192.168.1.3' }]
 
-  private pair = emitter<[string]>()
+  lastApprove: ApproveRequest | null = null
+  lastDeny: string | null = null
+
+  private pair = emitter<[PairRequest]>()
+  private pairCancelled = emitter<[string]>()
   private connected = emitter<[string]>()
   private disconnected = emitter<[]>()
   private ended = emitter<[]>()
@@ -58,8 +62,9 @@ export class FakeEngine implements EnginePort {
     this.calls.push('abort')
   }
 
-  async approve(): Promise<void> {
+  async approve(request: ApproveRequest): Promise<void> {
     this.calls.push('approve')
+    this.lastApprove = request
     await this.wait()
     if (this.failApprove) {
       const message = this.failApprove
@@ -68,8 +73,9 @@ export class FakeEngine implements EnginePort {
     }
   }
 
-  async deny(): Promise<void> {
+  async deny(pairingId: string): Promise<void> {
     this.calls.push('deny')
+    this.lastDeny = pairingId
   }
 
   async stopSending(): Promise<void> {
@@ -103,8 +109,12 @@ export class FakeEngine implements EnginePort {
     this.calls.push(`bitrate:${mbps}`)
   }
 
-  onPairRequest(callback: (device: string) => void): () => void {
+  onPairRequest(callback: (request: PairRequest) => void): () => void {
     return this.pair.on(callback)
+  }
+
+  onPairCancelled(callback: (pairingId: string) => void): () => void {
+    return this.pairCancelled.on(callback)
   }
 
   onClientConnected(callback: (device: string) => void): () => void {
@@ -119,8 +129,12 @@ export class FakeEngine implements EnginePort {
     return this.ended.on(callback)
   }
 
-  simulatePairRequest(device: string): void {
-    this.pair.emit(device)
+  simulatePairRequest(device: string, pairingId = 'p1', pin?: string): void {
+    this.pair.emit({ device, pairingId, ...(pin === undefined ? {} : { pin }) })
+  }
+
+  simulatePairCancelled(pairingId: string): void {
+    this.pairCancelled.emit(pairingId)
   }
 
   simulateClientConnected(device: string): void {

@@ -732,3 +732,21 @@ input[type='range'] {
   color: var(--muted);
   font-size: 13px;
 }
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pin-input {
+  width: 160px;
+  height: 56px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--fg);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  text-align: center;
+}

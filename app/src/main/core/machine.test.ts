@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { reduce } from './machine'
+import { approvalPin, reduce } from './machine'
 import type { AppEvent, AppState } from '../../shared/types'
 
 const preparing: AppState = { screen: 'preparing', mode: 'send', step: 'engine' }
 const ready: AppState = { screen: 'ready', mode: 'send' }
-const approve: AppState = { screen: 'approve', mode: 'send', device: 'Notebook' }
+const approve: AppState = {
+  screen: 'approve',
+  mode: 'send',
+  device: 'Notebook',
+  pairingId: 'p1',
+  pin: null
+}
+const approveWithPin: AppState = { ...approve, pin: '4821' }
 const connected: AppState = { screen: 'connected', mode: 'send', device: 'Notebook' }
 const discover: AppState = { screen: 'discover', mode: 'receive' }
 const receiving: AppState = {
@@ -27,9 +34,28 @@ describe('reduce: caminho feliz', () => {
       { ...preparing, step: 'display' }
     ],
     ['preparação termina', preparing, { type: 'PREP_DONE' }, ready],
-    ['pedido de pareamento', ready, { type: 'PAIR_REQUEST', device: 'Notebook' }, approve],
-    ['aprovar', approve, { type: 'APPROVE' }, ready],
+    [
+      'pedido de pareamento',
+      ready,
+      { type: 'PAIR_REQUEST', device: 'Notebook', pairingId: 'p1' },
+      approve
+    ],
+    [
+      'pedido de pareamento já com o PIN',
+      ready,
+      { type: 'PAIR_REQUEST', device: 'Notebook', pairingId: 'p1', pin: '4821' },
+      approveWithPin
+    ],
+    [
+      'pedido com PIN inválido vira digitação manual',
+      ready,
+      { type: 'PAIR_REQUEST', device: 'Notebook', pairingId: 'p1', pin: 'zz' },
+      approve
+    ],
+    ['aprovar digitando o PIN', approve, { type: 'APPROVE', pin: '4821' }, ready],
+    ['aprovar com o PIN já conhecido', approveWithPin, { type: 'APPROVE' }, ready],
     ['recusar', approve, { type: 'DENY' }, ready],
+    ['pedido cancelado pelo motor', approve, { type: 'PAIR_CANCELLED', pairingId: 'p1' }, ready],
     ['cliente conecta', ready, { type: 'CLIENT_CONNECTED', device: 'Notebook' }, connected],
     ['cliente desconecta', connected, { type: 'CLIENT_DISCONNECTED' }, ready],
     ['parar o envio', connected, { type: 'STOP' }, ready],
@@ -121,13 +147,18 @@ describe('reduce: eventos no estado errado são ignorados', () => {
     [
       'pedido de pareamento durante uma conexão',
       connected,
-      { type: 'PAIR_REQUEST', device: 'Intruso' }
+      { type: 'PAIR_REQUEST', device: 'Intruso', pairingId: 'x' }
     ],
     [
       'pedido de pareamento com outro já pendente',
       approve,
-      { type: 'PAIR_REQUEST', device: 'Outro' }
+      { type: 'PAIR_REQUEST', device: 'Outro', pairingId: 'y' }
     ],
+    ['aprovar sem PIN', approve, { type: 'APPROVE' }],
+    ['aprovar com PIN curto', approve, { type: 'APPROVE', pin: '12' }],
+    ['aprovar com PIN que não é número', approve, { type: 'APPROVE', pin: 'abcd' }],
+    ['cancelamento de outro pedido', approve, { type: 'PAIR_CANCELLED', pairingId: 'outro' }],
+    ['cancelamento sem pedido', ready, { type: 'PAIR_CANCELLED', pairingId: 'p1' }],
     [
       'cliente conecta com pedido pendente',
       approve,
@@ -154,5 +185,17 @@ describe('reduce: eventos no estado errado são ignorados', () => {
 
   it.each(cases)('%s', (_name, state, event) => {
     expect(reduce(state, event)).toBe(state)
+  })
+})
+
+describe('approvalPin', () => {
+  it('usa o PIN do evento, depois o do estado, e só se for válido', () => {
+    if (approve.screen !== 'approve' || approveWithPin.screen !== 'approve')
+      throw new Error('estado de teste')
+    expect(approvalPin(approve, { type: 'APPROVE', pin: '4821' })).toBe('4821')
+    expect(approvalPin(approveWithPin, { type: 'APPROVE' })).toBe('4821')
+    expect(approvalPin(approveWithPin, { type: 'APPROVE', pin: '1111' })).toBe('1111')
+    expect(approvalPin(approve, { type: 'APPROVE' })).toBeNull()
+    expect(approvalPin(approve, { type: 'APPROVE', pin: 'xx' })).toBeNull()
   })
 })

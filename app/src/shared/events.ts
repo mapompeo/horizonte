@@ -1,3 +1,4 @@
+import { isValidPin } from './pin'
 import type { AppEvent } from './types'
 
 /** Endereço ou nome de rede: sem espaços nem controles, para nunca virar argumento de linha de comando. */
@@ -12,11 +13,12 @@ export function isUiEvent(value: unknown): value is AppEvent {
   const candidate = value as Record<string, unknown>
   switch (candidate.type) {
     case 'INSTALL_DONE':
-    case 'APPROVE':
     case 'DENY':
     case 'STOP':
     case 'RETRY':
       return true
+    case 'APPROVE':
+      return candidate.pin === undefined || isValidPin(candidate.pin)
     case 'CHOOSE':
       return candidate.mode === 'send' || candidate.mode === 'receive'
     case 'CONNECT':

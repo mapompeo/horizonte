@@ -7,7 +7,7 @@ import type {
   Snapshot
 } from '../../shared/types'
 import type { EnginePort } from '../engine/port'
-import { reduce } from './machine'
+import { approvalPin, reduce } from './machine'
 import { parseSettings, type SettingsStore } from './settings'
 
 export interface ControllerDeps {
@@ -90,8 +90,16 @@ export async function createController({
     }
 
     if (prev.screen === 'approve' && next.screen === 'ready') {
-      const answer = event.type === 'APPROVE' ? engine.approve() : engine.deny()
-      answer.catch(failIfStill(next, 'Não consegui responder ao pedido.'))
+      if (event.type === 'APPROVE') {
+        const pin = approvalPin(prev, event)
+        if (pin !== null) {
+          engine
+            .approve({ pairingId: prev.pairingId, pin, name: prev.device })
+            .catch(failIfStill(next, 'Não consegui responder ao pedido.'))
+        }
+      } else if (event.type === 'DENY') {
+        engine.deny(prev.pairingId).catch(failIfStill(next, 'Não consegui responder ao pedido.'))
+      }
     }
 
     if (
@@ -126,7 +134,8 @@ export async function createController({
     runEffects(prev, next, event)
   }
 
-  engine.onPairRequest((device) => dispatch({ type: 'PAIR_REQUEST', device }))
+  engine.onPairRequest((request) => dispatch({ type: 'PAIR_REQUEST', ...request }))
+  engine.onPairCancelled((pairingId) => dispatch({ type: 'PAIR_CANCELLED', pairingId }))
   engine.onClientConnected((device) => dispatch({ type: 'CLIENT_CONNECTED', device }))
   engine.onClientDisconnected(() => dispatch({ type: 'CLIENT_DISCONNECTED' }))
   engine.onStreamEnded(() => dispatch({ type: 'STREAM_ENDED' }))

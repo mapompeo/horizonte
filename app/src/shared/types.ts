@@ -11,7 +11,7 @@ export type AppState =
   | { screen: 'choose' }
   | { screen: 'preparing'; mode: 'send'; step: PrepStep }
   | { screen: 'ready'; mode: 'send' }
-  | { screen: 'approve'; mode: 'send'; device: string }
+  | { screen: 'approve'; mode: 'send'; device: string; pairingId: string; pin: string | null }
   | { screen: 'connected'; mode: 'send'; device: string }
   | { screen: 'discover'; mode: 'receive' }
   | { screen: 'receiving'; mode: 'receive'; host: string; name: string }
@@ -22,8 +22,9 @@ export type AppEvent =
   | { type: 'CHOOSE'; mode: Mode }
   | { type: 'PREP_STEP'; step: PrepStep }
   | { type: 'PREP_DONE' }
-  | { type: 'PAIR_REQUEST'; device: string }
-  | { type: 'APPROVE' }
+  | { type: 'PAIR_REQUEST'; device: string; pairingId: string; pin?: string }
+  | { type: 'PAIR_CANCELLED'; pairingId: string }
+  | { type: 'APPROVE'; pin?: string }
   | { type: 'DENY' }
   | { type: 'CLIENT_CONNECTED'; device: string }
   | { type: 'CLIENT_DISCONNECTED' }

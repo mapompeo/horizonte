@@ -41,7 +41,7 @@
   {:else if state.screen === 'ready'}
     <Frame mode="send"><Ready deviceName={settings.deviceName} /></Frame>
   {:else if state.screen === 'approve'}
-    <Frame><Approve device={state.device} /></Frame>
+    <Frame><Approve device={state.device} pin={state.pin} /></Frame>
   {:else if state.screen === 'connected'}
     <Frame mode="send" split><Connected device={state.device} bitrate={settings.bitrate} /></Frame>
   {:else if state.screen === 'discover'}

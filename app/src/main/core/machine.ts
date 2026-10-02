@@ -1,4 +1,14 @@
+import { isValidPin } from '../../shared/pin'
 import type { AppEvent, AppState, Mode } from '../../shared/types'
+
+type ApproveState = Extract<AppState, { screen: 'approve' }>
+type ApproveEvent = Extract<AppEvent, { type: 'APPROVE' }>
+
+/** O PIN digitado vale mais que o já conhecido; qualquer um precisa ter 4 dígitos. */
+export function approvalPin(state: ApproveState, event: ApproveEvent): string | null {
+  const pin = event.pin ?? state.pin
+  return pin !== null && isValidPin(pin) ? pin : null
+}
 
 function startFor(mode: Mode): AppState {
   return mode === 'send'
@@ -32,15 +42,28 @@ export function reduce(state: AppState, event: AppEvent): AppState {
       if (event.type === 'PREP_DONE') return { screen: 'ready', mode: 'send' }
       return state
     case 'ready':
-      if (event.type === 'PAIR_REQUEST')
-        return { screen: 'approve', mode: 'send', device: event.device }
+      if (event.type === 'PAIR_REQUEST') {
+        const pin = event.pin !== undefined && isValidPin(event.pin) ? event.pin : null
+        return {
+          screen: 'approve',
+          mode: 'send',
+          device: event.device,
+          pairingId: event.pairingId,
+          pin
+        }
+      }
       if (event.type === 'CLIENT_CONNECTED')
         return { screen: 'connected', mode: 'send', device: event.device }
       return state
     case 'approve':
-      return event.type === 'APPROVE' || event.type === 'DENY'
-        ? { screen: 'ready', mode: 'send' }
-        : state
+      if (event.type === 'APPROVE') {
+        return approvalPin(state, event) === null ? state : { screen: 'ready', mode: 'send' }
+      }
+      if (event.type === 'DENY') return { screen: 'ready', mode: 'send' }
+      if (event.type === 'PAIR_CANCELLED') {
+        return event.pairingId === state.pairingId ? { screen: 'ready', mode: 'send' } : state
+      }
+      return state
     case 'connected':
       return event.type === 'CLIENT_DISCONNECTED' || event.type === 'STOP'
         ? { screen: 'ready', mode: 'send' }

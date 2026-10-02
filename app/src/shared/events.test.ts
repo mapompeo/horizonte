@@ -7,6 +7,7 @@ describe('isUiEvent', () => {
     { type: 'CHOOSE', mode: 'send' },
     { type: 'CHOOSE', mode: 'receive' },
     { type: 'APPROVE' },
+    { type: 'APPROVE', pin: '0042' },
     { type: 'DENY' },
     { type: 'STOP' },
     { type: 'RETRY' },
@@ -18,7 +19,12 @@ describe('isUiEvent', () => {
   })
 
   it.each([
-    { type: 'PAIR_REQUEST', device: 'x' },
+    { type: 'PAIR_REQUEST', device: 'x', pairingId: 'p1' },
+    { type: 'PAIR_CANCELLED', pairingId: 'p1' },
+    { type: 'APPROVE', pin: '12' },
+    { type: 'APPROVE', pin: '12345' },
+    { type: 'APPROVE', pin: 4821 },
+    { type: 'APPROVE', pin: 'abcd' },
     { type: 'CLIENT_CONNECTED', device: 'x' },
     { type: 'CLIENT_DISCONNECTED' },
     { type: 'PREP_DONE' },

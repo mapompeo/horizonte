@@ -41,9 +41,21 @@ describe('copyFor', () => {
   })
 
   it('permitir usa o nome seguro do dispositivo', () => {
-    const copy = copyFor({ screen: 'approve', mode: 'send', device: 'Notebook' })
+    const copy = copyFor({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: null
+    })
     expect(copy.title).toBe('Permitir o Notebook?')
-    const hostile = copyFor({ screen: 'approve', mode: 'send', device: '\u202E' })
+    const hostile = copyFor({
+      screen: 'approve',
+      mode: 'send',
+      device: '\u202E',
+      pairingId: 'p1',
+      pin: null
+    })
     expect(hostile.title).toBe('Permitir o Outro computador?')
   })
 
