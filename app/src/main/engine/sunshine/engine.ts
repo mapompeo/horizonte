@@ -1,12 +1,18 @@
 import type { PrepStep, Settings } from '../../../shared/types'
 import { chooseEncoder, GPU_ENCODERS, type ChosenEncoder } from '../../core/encoder'
 import type { EngineInstaller, SunshineCredentials, VirtualDisplay } from '../../platform/types'
-import type { PairRequest, ServerEngine } from '../port'
+import { cleanName } from '../../../shared/names'
+import { isValidPin } from '../../../shared/pin'
+import type { ApproveRequest, PairRequest, ServerEngine } from '../port'
 import { SunshineApiError, type SunshineApiPort } from './api'
 import { amdConfig, createLogEncoderProbe } from './encoder-probe'
 import { parseDisplays } from './log'
 import type { EngineMemory } from './memory'
+import { createPairingWatcher, type PairingWatcher } from './pairing-watcher'
 import { createRestarter } from './restart'
+import { createSessionWatcher } from './session-watcher'
+
+const GENERIC_DEVICE = 'Outro computador'
 
 export interface SunshineEngineDeps {
   installer: EngineInstaller
@@ -42,6 +48,9 @@ function friendly(cause: unknown): Error {
 export class SunshineEngine implements ServerEngine {
   protected api: SunshineApiPort | null = null
   protected run = 0
+  private pairing: PairingWatcher | null = null
+  private session: { start(): void; stop(): void } | null = null
+  private lastApprovedName = GENERIC_DEVICE
   protected readonly pairListeners: Listeners<[PairRequest]> = new Set()
   protected readonly cancelListeners: Listeners<[string]> = new Set()
   protected readonly connectedListeners: Listeners<[string]> = new Set()
@@ -89,7 +98,7 @@ export class SunshineEngine implements ServerEngine {
     if (changed) await restartAndRead(alive)
     if (!alive()) return
 
-    this.startWatchers()
+    this.startWatchers(api)
   }
 
   private restarter(api: SunshineApiPort): (alive?: () => boolean) => Promise<string> {
@@ -182,13 +191,44 @@ export class SunshineEngine implements ServerEngine {
     return true
   }
 
-  // As partes abaixo são da Tarefa 10.
-  protected startWatchers(): void {
-    // implementado na Tarefa 10
+  protected startWatchers(api: SunshineApiPort): void {
+    this.stopWatchers()
+    this.pairing = createPairingWatcher({
+      api,
+      intervalMs: this.timing.pairingIntervalMs,
+      onRequest: (pairing) => {
+        const device = cleanName(pairing.name) || GENERIC_DEVICE
+        for (const listener of [...this.pairListeners]) listener({ device, pairingId: pairing.id })
+      },
+      onCancelled: (pairingId) => {
+        for (const listener of [...this.cancelListeners]) listener(pairingId)
+      }
+    })
+    this.session = createSessionWatcher({
+      readLog: this.deps.readLog,
+      intervalMs: this.timing.sessionIntervalMs,
+      deviceName: () => this.lastApprovedName,
+      onConnected: (device) => {
+        for (const listener of [...this.connectedListeners]) listener(device)
+      },
+      onDisconnected: () => {
+        for (const listener of [...this.disconnectedListeners]) listener()
+      }
+    })
+    this.pairing.start()
+    this.session.start()
   }
 
   protected stopWatchers(): void {
-    // implementado na Tarefa 10
+    this.pairing?.stop()
+    this.session?.stop()
+    this.pairing = null
+    this.session = null
+  }
+
+  private requireApi(): SunshineApiPort {
+    if (this.api === null) throw new Error('O Sunshine não está pronto ainda.')
+    return this.api
   }
 
   async abort(): Promise<void> {
@@ -196,20 +236,46 @@ export class SunshineEngine implements ServerEngine {
     this.stopWatchers()
   }
 
-  async approve(): Promise<void> {
-    throw new Error('Ainda não implementado.')
+  async approve(request: ApproveRequest): Promise<void> {
+    const api = this.requireApi()
+    if (!isValidPin(request.pin)) throw new Error('O PIN precisa ter 4 números.')
+    const name = cleanName(request.name) || GENERIC_DEVICE
+    let accepted: boolean
+    try {
+      accepted = await api.submitPin({ pairingId: request.pairingId, pin: request.pin, name })
+    } catch (cause) {
+      throw friendly(cause)
+    }
+    if (!accepted) {
+      throw new Error('O PIN não confere. Confira o número que aparece no outro computador.')
+    }
+    this.lastApprovedName = name
   }
 
-  async deny(): Promise<void> {
-    throw new Error('Ainda não implementado.')
+  async deny(pairingId: string): Promise<void> {
+    try {
+      await this.requireApi().cancelPairing(pairingId)
+    } catch (cause) {
+      throw friendly(cause)
+    }
   }
 
   async stopSending(): Promise<void> {
-    throw new Error('Ainda não implementado.')
+    try {
+      await this.requireApi().closeApp()
+    } catch (cause) {
+      throw friendly(cause)
+    }
   }
 
-  async applyBitrate(): Promise<void> {
-    // implementado na Tarefa 10
+  /** O Sunshine só lê o limite ao iniciar uma sessão; vale na próxima conexão. */
+  async applyBitrate(mbps: number): Promise<void> {
+    if (this.api === null) return
+    try {
+      await this.api.saveConfig({ max_bitrate: String(Math.round(mbps * 1000)) })
+    } catch (cause) {
+      throw friendly(cause)
+    }
   }
 
   onPairRequest(callback: (request: PairRequest) => void): () => void {
