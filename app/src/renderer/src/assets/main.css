@@ -180,24 +180,41 @@ input:focus-visible {
   justify-self: end;
 }
 
+/* Seletor em pílula: o indicador desliza sob o texto escolhido. */
 .seg {
-  display: inline-flex;
-  gap: 2px;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr));
   padding: 3px;
   background: var(--seg);
-  border-radius: 12px;
+  border-radius: 999px;
+}
+
+.seg-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--n, 2));
+  border-radius: 999px;
+  background: var(--fg);
+  transform: translateX(calc(var(--i, 0) * 100%));
+  transition: transform 0.38s var(--ease);
 }
 
 .seg-item {
+  position: relative;
+  z-index: 1;
   height: 38px;
   padding: 0 22px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 999px;
   background: transparent;
   color: var(--muted);
   font-size: 14px;
   font-weight: 500;
-  position: relative;
+  transition: color 0.25s ease;
 }
 
 /* O visual mede 38 px; a área clicável chega a 44 px sem mudar o desenho. */
@@ -208,15 +225,12 @@ input:focus-visible {
 }
 
 .seg-item.on {
-  background: var(--seg-on);
-  color: var(--fg);
+  color: var(--bg);
   font-weight: 600;
-  box-shadow: var(--seg-shadow);
 }
 
 .seg-wide {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .icon-btn {
@@ -370,30 +384,19 @@ input:focus-visible {
   height: 100%;
   border-radius: 2px;
   background: var(--fg);
-  transition: width 0.3s ease;
+  transition: width 0.6s var(--ease-out);
 }
 
-.steps {
+.status {
   margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  text-align: left;
+  min-height: 26px;
   font-size: 17px;
+  color: var(--muted);
 }
 
-.step {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.step-pending {
-  color: var(--faint);
-}
-.step svg {
-  flex: none;
+.status-text {
+  display: inline-block;
+  animation: rise 0.45s var(--ease-out) both;
 }
 
 /* Permitir e erro */
@@ -654,19 +657,6 @@ input[type='range'] {
   text-align: right;
 }
 
-.disclosure {
-  height: 56px;
-  padding: 0 18px;
-  border-radius: 16px;
-  border: 1px solid var(--line-soft);
-  background: var(--card);
-  color: var(--fg);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 16px;
-}
-
 .adv-block {
   padding: 14px 18px;
   display: flex;
@@ -749,4 +739,67 @@ input[type='range'] {
   font-weight: 600;
   letter-spacing: 0.4em;
   text-align: center;
+}
+
+/* Movimento: curvas suaves no estilo da Apple; desligado para quem pede menos movimento. */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.center > * {
+  animation: rise 0.5s var(--ease-out) both;
+}
+
+.center > :nth-child(2) {
+  animation-delay: 0.04s;
+}
+.center > :nth-child(3) {
+  animation-delay: 0.08s;
+}
+.center > :nth-child(4) {
+  animation-delay: 0.12s;
+}
+
+.btn,
+.tile,
+.icon-btn,
+.back {
+  transition:
+    transform 0.2s var(--ease-out),
+    opacity 0.2s ease,
+    background-color 0.25s ease;
+}
+
+.btn:active:not(:disabled),
+.tile:active,
+.icon-btn:active {
+  transform: scale(0.97);
+}
+
+.btn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.copy.copied {
+  color: var(--ok-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

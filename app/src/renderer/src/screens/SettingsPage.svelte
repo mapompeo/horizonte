@@ -2,6 +2,7 @@
   import { PROFILES } from '../../../shared/quality'
   import type { Codec, Encoding, Fps, Resolution, Settings } from '../../../shared/types'
   import { closeSettings, patchSettings } from '../lib/actions'
+  import CopyButton from '../components/CopyButton.svelte'
   import Segmented from '../components/Segmented.svelte'
   import Toggle from '../components/Toggle.svelte'
 
@@ -11,7 +12,6 @@
 
   let { settings }: Props = $props()
 
-  let advanced = $state(false)
   /** Valor do slider enquanto ele é arrastado; some assim que o ajuste é salvo. */
   let dragging = $state<number | null>(null)
   const shown = $derived(dragging ?? settings.bitrate)
@@ -31,10 +31,6 @@
     { id: 'equilibrado', name: 'Equilibrado', mbps: PROFILES.equilibrado },
     { id: 'maximo', name: 'Máximo', mbps: PROFILES.maximo }
   ] as const
-
-  async function copyDiagnostic(): Promise<void> {
-    await navigator.clipboard.writeText(JSON.stringify(settings, null, 2))
-  }
 </script>
 
 <div class="sheet">
@@ -116,88 +112,70 @@
       </div>
     </section>
 
-    <section class="group">
-      <button class="disclosure" aria-expanded={advanced} onclick={() => (advanced = !advanced)}>
-        <span>Avançado</span>
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--faint)"
-          stroke-width="2.2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d={advanced ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} />
-        </svg>
-      </button>
-
-      {#if advanced}
-        <div class="card">
-          <div class="adv-block">
-            <span class="adv-label">Resolução</span>
-            <Segmented
-              label="Resolução"
-              value={settings.resolution}
-              options={[
-                { value: '720p', text: '720p' },
-                { value: '1080p', text: '1080p' },
-                { value: '1440p', text: '1440p' }
-              ]}
-              onSelect={(value) => patchSettings({ resolution: value as Resolution })}
-            />
-          </div>
-          <div class="adv-block">
-            <span class="adv-label">Quadros por segundo</span>
-            <Segmented
-              label="Quadros por segundo"
-              value={settings.fps}
-              options={[
-                { value: 30, text: '30' },
-                { value: 60, text: '60' },
-                { value: 120, text: '120' }
-              ]}
-              onSelect={(value) => patchSettings({ fps: value as Fps })}
-            />
-          </div>
-          <div class="adv-block">
-            <span class="adv-label">Codificação</span>
-            <Segmented
-              label="Codificação"
-              value={settings.encoding}
-              options={[
-                { value: 'auto', text: 'Automática' },
-                { value: 'gpu', text: 'Placa de vídeo' },
-                { value: 'cpu', text: 'Processador' }
-              ]}
-              onSelect={(value) => patchSettings({ encoding: value as Encoding })}
-            />
-            <p class="adv-note">
-              Automática usa a placa de vídeo e cai para o processador se ela falhar.
-            </p>
-          </div>
-          <div class="adv-block">
-            <span class="adv-label">Codec</span>
-            <Segmented
-              label="Codec"
-              value={settings.codec}
-              options={[
-                { value: 'h264', text: 'H.264' },
-                { value: 'hevc', text: 'HEVC' },
-                { value: 'av1', text: 'AV1' }
-              ]}
-              onSelect={(value) => patchSettings({ codec: value as Codec })}
-            />
-          </div>
+    <section class="group" aria-labelledby="g-advanced">
+      <h2 class="group-label" id="g-advanced">Avançado</h2>
+      <div class="card">
+        <div class="adv-block">
+          <span class="adv-label">Resolução</span>
+          <Segmented
+            label="Resolução"
+            value={settings.resolution}
+            options={[
+              { value: '720p', text: '720p' },
+              { value: '1080p', text: '1080p' },
+              { value: '1440p', text: '1440p' }
+            ]}
+            onSelect={(value) => patchSettings({ resolution: value as Resolution })}
+          />
         </div>
-      {/if}
+        <div class="adv-block">
+          <span class="adv-label">Quadros por segundo</span>
+          <Segmented
+            label="Quadros por segundo"
+            value={settings.fps}
+            options={[
+              { value: 30, text: '30' },
+              { value: 60, text: '60' },
+              { value: 120, text: '120' }
+            ]}
+            onSelect={(value) => patchSettings({ fps: value as Fps })}
+          />
+        </div>
+        <div class="adv-block">
+          <span class="adv-label">Codificação</span>
+          <Segmented
+            label="Codificação"
+            value={settings.encoding}
+            options={[
+              { value: 'auto', text: 'Automática' },
+              { value: 'gpu', text: 'Placa de vídeo' },
+              { value: 'cpu', text: 'Processador' }
+            ]}
+            onSelect={(value) => patchSettings({ encoding: value as Encoding })}
+          />
+          <p class="adv-note">
+            Automática usa a placa de vídeo e cai para o processador se ela falhar.
+          </p>
+        </div>
+        <div class="adv-block">
+          <span class="adv-label">Codec</span>
+          <Segmented
+            label="Codec"
+            value={settings.codec}
+            options={[
+              { value: 'h264', text: 'H.264' },
+              { value: 'hevc', text: 'HEVC' },
+              { value: 'av1', text: 'AV1' }
+            ]}
+            onSelect={(value) => patchSettings({ codec: value as Codec })}
+          />
+        </div>
+      </div>
     </section>
 
     <div class="sheet-foot">
       <span>Horizonte 0.1.0</span>
-      <button onclick={copyDiagnostic}>Copiar diagnóstico</button>
+      <CopyButton text={() => JSON.stringify(settings, null, 2)} />
     </div>
   </div>
 </div>

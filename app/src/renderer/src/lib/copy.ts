@@ -47,26 +47,13 @@ export function copyFor(state: AppState): ScreenCopy {
 
 export const PREP_STEPS: readonly PrepStep[] = ['engine', 'display', 'encoder']
 
-const LABELS: Record<PrepStep, { done: string; active: string }> = {
-  engine: { done: 'Motor instalado', active: 'Instalando o motor' },
-  display: { done: 'Monitor virtual criado', active: 'Criando o monitor virtual' },
-  encoder: { done: 'Placa de vídeo testada', active: 'Testando a placa de vídeo' }
+const STEP_LABELS: Record<PrepStep, string> = {
+  engine: 'Preparando o motor',
+  display: 'Procurando o monitor virtual',
+  encoder: 'Testando a placa de vídeo'
 }
 
-export interface StepRow {
-  label: string
-  status: 'done' | 'active' | 'pending'
-}
-
-export function stepRows(current: PrepStep): StepRow[] {
-  const at = PREP_STEPS.indexOf(current)
-  const rows = PREP_STEPS.map<StepRow>((step, index) => {
-    if (index < at) return { label: LABELS[step].done, status: 'done' }
-    if (index === at) return { label: LABELS[step].active, status: 'active' }
-    return { label: LABELS[step].active, status: 'pending' }
-  })
-  return [...rows, { label: 'Pronto', status: 'pending' }]
-}
+export const stepLabel = (step: PrepStep): string => STEP_LABELS[step]
 
 export function progress(current: PrepStep): number {
   return Math.round((PREP_STEPS.indexOf(current) / PREP_STEPS.length) * 100)

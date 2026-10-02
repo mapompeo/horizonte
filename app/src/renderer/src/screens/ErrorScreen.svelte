@@ -1,16 +1,13 @@
 <script lang="ts">
   import type { AppError } from '../../../shared/types'
   import { send } from '../lib/actions'
+  import CopyButton from '../components/CopyButton.svelte'
 
   interface Props {
     error: AppError
   }
 
   let { error }: Props = $props()
-
-  async function copyDiagnostic(): Promise<void> {
-    await navigator.clipboard.writeText([error.message, error.detail ?? ''].join('\n').trim())
-  }
 </script>
 
 <div class="badge badge-danger" aria-hidden="true">
@@ -35,5 +32,8 @@
 </div>
 <div class="stack gap-xs">
   <button class="btn btn-primary" onclick={() => send({ type: 'RETRY' })}>Tentar de novo</button>
-  <button class="btn btn-ghost" onclick={copyDiagnostic}>Copiar diagnóstico</button>
+  <CopyButton
+    class="btn btn-ghost"
+    text={() => [error.message, error.detail ?? ''].join('\n').trim()}
+  />
 </div>
