@@ -8,8 +8,10 @@ import { psQuote, type ElevatedStep, type Elevation } from './elevation'
 import { SUNSHINE, VIRTUAL_DISPLAY_DRIVER, type PinnedArtifact } from './versions'
 
 import { PIN_CHANNEL_PORT } from '../../engine/pin-channel'
+import { GATEWAY_PORT, WEBRTC_PORTS } from '../../web/gateway'
 
-export const FIREWALL_RULE = 'Horizonte (pareamento)'
+/** Mesmo nome para as regras de pareamento e do navegador (TCP e UDP). */
+export const FIREWALL_RULE = 'Horizonte (rede local) v2'
 
 export interface InstallProbe {
   sunshineRunning(): Promise<boolean>
@@ -163,8 +165,12 @@ export function createWindowsSetup(deps: SetupDeps): {
     }
     if (needFirewall) {
       steps.push({
-        description: 'Liberar o pareamento na rede local',
-        script: `New-NetFirewallRule -DisplayName ${psQuote(FIREWALL_RULE)} -Direction Inbound -Protocol TCP -LocalPort ${PIN_CHANNEL_PORT} -Profile Private -Action Allow | Out-Null`
+        description: 'Liberar o pareamento e o navegador na rede local',
+        script: [
+          `Get-NetFirewallRule -DisplayName ${psQuote(FIREWALL_RULE)} -ErrorAction SilentlyContinue | Remove-NetFirewallRule`,
+          `New-NetFirewallRule -DisplayName ${psQuote(FIREWALL_RULE)} -Direction Inbound -Protocol TCP -LocalPort ${PIN_CHANNEL_PORT},${GATEWAY_PORT} -Profile Private -Action Allow | Out-Null`,
+          `New-NetFirewallRule -DisplayName ${psQuote(FIREWALL_RULE)} -Direction Inbound -Protocol UDP -LocalPort ${WEBRTC_PORTS.min}-${WEBRTC_PORTS.max} -Profile Private -Action Allow | Out-Null`
+        ].join('\n')
       })
     }
     if (needCredentials) {

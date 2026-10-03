@@ -130,7 +130,8 @@ describe('createWindowsSetup', () => {
     await createWindowsSetup(h.deps).installer.ensureInstalled()
 
     expect(all(h)).toContain('New-NetFirewallRule')
-    expect(all(h)).toContain('47900')
+    expect(all(h)).toContain('47900,8080')
+    expect(all(h)).toContain('40000-40010')
     expect(all(h)).not.toContain('msiexec')
     expect(h.downloads).toEqual([])
   })

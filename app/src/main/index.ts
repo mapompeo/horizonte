@@ -31,6 +31,7 @@ import { psQuote } from './platform/windows/elevation'
 import { runPowerShell } from './platform/windows/probes'
 import { MOONLIGHT } from './platform/windows/versions'
 import { createLinuxPlatform, SUNSHINE_LOG as LINUX_SUNSHINE_LOG } from './platform/linux/wire'
+import { createRealGateway } from './web/wire'
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
 
@@ -244,6 +245,17 @@ async function boot(): Promise<void> {
     )
   )
   ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
+  const gateway = createRealGateway({
+    userData: app.getPath('userData'),
+    cipher: toCipher(safeStorage),
+    sleep,
+    deviceName: () => controller.getSnapshot().settings.deviceName
+  })
+  ipcMain.handle(CHANNELS.webAccess, () => gateway.status())
+  ipcMain.handle(CHANNELS.setWebAccess, (_event, on: unknown) =>
+    on === true ? gateway.start() : gateway.stop().then(() => gateway.status())
+  )
+  app.on('before-quit', () => void gateway.stop())
 
   createWindow(controller)
   app.on('activate', () => {
