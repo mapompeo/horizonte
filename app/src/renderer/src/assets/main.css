@@ -178,6 +178,8 @@ input:focus-visible {
 
 .topbar-right {
   justify-self: end;
+  display: flex;
+  align-items: center;
 }
 
 /* Seletor em pílula: o indicador desliza sob o texto escolhido. */
