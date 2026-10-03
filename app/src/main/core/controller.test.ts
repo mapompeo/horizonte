@@ -27,6 +27,56 @@ async function setup(
 const screen = (controller: Controller): string => controller.getSnapshot().state.screen
 const settle = (ms = 40): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
+describe('pedidos de pareamento em sequência', () => {
+  const ready: AppState = { screen: 'ready', mode: 'send' }
+
+  it('um segundo pedido durante a tela Permitir aparece depois que o primeiro é respondido', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulatePairRequest('Notebook', 'p1')
+    engine.simulatePairRequest('Tablet', 'p2')
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'approve', pairingId: 'p1' })
+
+    controller.dispatch({ type: 'DENY' })
+    expect(controller.getSnapshot().state).toMatchObject({
+      screen: 'approve',
+      device: 'Tablet',
+      pairingId: 'p2'
+    })
+  })
+
+  it('um pedido que chega durante a conexão aparece quando ela termina', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulateClientConnected('Notebook')
+    engine.simulatePairRequest('Tablet', 'p2')
+    expect(screen(controller)).toBe('connected')
+
+    engine.simulateClientDisconnected()
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'approve', pairingId: 'p2' })
+  })
+
+  it('o pedido cancelado enquanto esperava na fila não aparece', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulatePairRequest('Notebook', 'p1')
+    engine.simulatePairRequest('Tablet', 'p2')
+    engine.simulatePairCancelled('p2')
+
+    controller.dispatch({ type: 'DENY' })
+    expect(screen(controller)).toBe('ready')
+  })
+
+  it('o mesmo pedido repetido não entra duas vezes na fila', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulatePairRequest('Notebook', 'p1')
+    engine.simulatePairRequest('Tablet', 'p2')
+    engine.simulatePairRequest('Tablet', 'p2')
+    engine.simulatePairRequest('Notebook', 'p1')
+
+    controller.dispatch({ type: 'DENY' })
+    controller.dispatch({ type: 'DENY' })
+    expect(screen(controller)).toBe('ready')
+  })
+})
+
 describe('fluxo de envio', () => {
   it('instala, escolhe enviar, prepara, aprova e conecta', async () => {
     const { controller, engine } = await setup({ screen: 'install' })

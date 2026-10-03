@@ -43,6 +43,8 @@ export async function createController({
   let settings = await store.load()
   /** Cada preparação recebe um número; só a mais recente pode mexer no estado. */
   let prepareRun = 0
+  /** Pedidos de pareamento que chegaram com a tela ocupada (outro pedido ou uma conexão). */
+  let queuedPairs: Extract<AppEvent, { type: 'PAIR_REQUEST' }>[] = []
   const listeners = new Set<(snapshot: Snapshot) => void>()
 
   const snapshot = (): Snapshot => ({ state, settings })
@@ -132,10 +134,28 @@ export async function createController({
     state = next
     notify()
     runEffects(prev, next, event)
+    if (!isSendLive(next)) queuedPairs = []
+    else if (next.screen === 'ready') {
+      const queued = queuedPairs.shift()
+      if (queued !== undefined) dispatch(queued)
+    }
   }
 
-  engine.onPairRequest((request) => dispatch({ type: 'PAIR_REQUEST', ...request }))
-  engine.onPairCancelled((pairingId) => dispatch({ type: 'PAIR_CANCELLED', pairingId }))
+  function onPairRequest(request: { device: string; pairingId: string; pin?: string }): void {
+    const event = { type: 'PAIR_REQUEST', ...request } as const
+    if (state.screen !== 'approve' && state.screen !== 'connected') return dispatch(event)
+    // O vigia já marcou este pedido como conhecido e não o anuncia de novo: guardamos para a vez dele.
+    const shown = state.screen === 'approve' && state.pairingId === request.pairingId
+    if (!shown && !queuedPairs.some((queued) => queued.pairingId === request.pairingId)) {
+      queuedPairs.push(event)
+    }
+  }
+
+  engine.onPairRequest(onPairRequest)
+  engine.onPairCancelled((pairingId) => {
+    queuedPairs = queuedPairs.filter((queued) => queued.pairingId !== pairingId)
+    dispatch({ type: 'PAIR_CANCELLED', pairingId })
+  })
   engine.onClientConnected((device) => dispatch({ type: 'CLIENT_CONNECTED', device }))
   engine.onClientDisconnected(() => dispatch({ type: 'CLIENT_DISCONNECTED' }))
   engine.onStreamEnded(() => dispatch({ type: 'STREAM_ENDED' }))
