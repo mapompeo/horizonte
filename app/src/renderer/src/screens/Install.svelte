@@ -3,9 +3,6 @@
   import { send } from '../lib/actions'
 
   const copy = copyFor({ screen: 'install' })
-
-  // Depois de Instalar, uma tela avisa que o Windows vai pedir permissão, antes de o aviso aparecer.
-  let explaining = $state(false)
 </script>
 
 <div class="stack gap-sm">
@@ -31,25 +28,10 @@
   </div>
   <span class="wordmark">Horizonte</span>
 </div>
-{#if explaining}
-  <div class="stack gap-sm">
-    <h1 class="title title-lg">O Windows vai pedir permissão.</h1>
-    <p class="subtitle">
-      Quando aparecer o aviso, clique em Sim. É só dessa vez, para instalar o motor de transmissão e
-      o monitor virtual.
-    </p>
-  </div>
-  <div class="stack gap-sm">
-    <button class="btn btn-primary" onclick={() => send({ type: 'INSTALL_DONE' })}>
-      Entendi, continuar
-    </button>
-  </div>
-{:else}
-  <div class="stack gap-sm">
-    <h1 class="title title-lg">{copy.title}</h1>
-    <p class="subtitle">{copy.subtitle}</p>
-  </div>
-  <div class="stack gap-sm">
-    <button class="btn btn-primary" onclick={() => (explaining = true)}>Instalar</button>
-  </div>
-{/if}
+<div class="stack gap-sm">
+  <h1 class="title title-lg">{copy.title}</h1>
+  <p class="subtitle">{copy.subtitle}</p>
+</div>
+<div class="stack gap-sm">
+  <button class="btn btn-primary" onclick={() => send({ type: 'INSTALL_DONE' })}>Instalar</button>
+</div>

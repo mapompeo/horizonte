@@ -5,6 +5,8 @@ export type PrepStep = 'engine' | 'display' | 'encoder'
 export interface PrepProgress {
   note: string
   fraction: number
+  /** O Windows está pedindo (ou vai pedir em instantes) a permissão de administrador. */
+  permission?: boolean
 }
 
 export interface AppError {

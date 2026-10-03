@@ -191,7 +191,8 @@ export function createWindowsSetup(deps: SetupDeps): {
         : needDriver
           ? 'Instalando o monitor virtual (confirme o aviso do Windows)'
           : 'Ajustando o motor (confirme o aviso do Windows)',
-      fraction: DOWNLOAD_SHARE
+      fraction: DOWNLOAD_SHARE,
+      permission: true
     })
     await deps.elevation.runElevated(steps)
     if (needCredentials) await deps.vault.save(credentials)

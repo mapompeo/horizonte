@@ -41,7 +41,13 @@
   const percent = $derived(Math.round(shown * 1000) / 10)
 </script>
 
-{#if visible}
+{#if progress?.permission}
+  <h1 class="title">O Windows vai pedir permissão.</h1>
+  <p class="subtitle">
+    Quando o aviso aparecer, clique em Sim. É só dessa vez, para instalar o motor de transmissão e o
+    monitor virtual.
+  </p>
+{:else if visible}
   <h1 class="title">{copy.title}</h1>
   <div
     class="bar"

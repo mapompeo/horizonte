@@ -119,7 +119,7 @@ export class SunshineEngine implements ServerEngine {
     const report = (note: string, fraction: number): void => onProgress?.({ note, fraction })
     onStep('engine')
     await this.deps.installer.ensureInstalled((p) =>
-      report(p.note, p.fraction * PROGRESS_AFTER_INSTALL)
+      onProgress?.({ ...p, fraction: p.fraction * PROGRESS_AFTER_INSTALL })
     )
     if (!alive()) return
     report('Conectando ao motor de transmissão', PROGRESS_AFTER_INSTALL)

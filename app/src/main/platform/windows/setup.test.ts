@@ -257,6 +257,17 @@ describe('createWindowsSetup', () => {
     expect(seen.at(-1)?.fraction).toBe(1)
   })
 
+  it('avisa que o Windows vai pedir permissão só durante a instalação', async () => {
+    const h = harness()
+    const seen: { note: string; fraction: number; permission?: boolean }[] = []
+    await createWindowsSetup(h.deps).installer.ensureInstalled((p) => seen.push(p))
+
+    const asking = seen.filter((p) => p.permission)
+    expect(asking.length).toBeGreaterThan(0)
+    expect(asking.every((p) => /Instalando/.test(p.note))).toBe(true)
+    expect(seen.at(-1)?.permission).toBeUndefined()
+  })
+
   it('dá à pessoa comum o direito de reiniciar o serviço, para não pedir administrador nas próximas vezes', async () => {
     const h = harness({ sunshineRunning: true, driverPresent: true, stored, controllable: false })
     await createWindowsSetup(h.deps).installer.ensureInstalled()
