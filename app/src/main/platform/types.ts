@@ -1,3 +1,4 @@
+import type { PrepProgress } from '../../shared/types'
 import type { SunshineDisplay } from '../engine/sunshine/log'
 
 export interface SunshineCredentials {
@@ -9,7 +10,7 @@ export interface SunshineCredentials {
 
 /** Garante que o Sunshine está instalado e rodando. A implementação real (com administrador) é do Plano 2B. */
 export interface EngineInstaller {
-  ensureInstalled(): Promise<void>
+  ensureInstalled(report?: (progress: PrepProgress) => void): Promise<void>
 }
 
 /** Garante que existe um monitor virtual e sabe reconhecê-lo na lista do Sunshine. */

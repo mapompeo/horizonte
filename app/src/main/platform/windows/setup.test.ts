@@ -20,12 +20,17 @@ function harness(
     elevation?: Elevation
     download?: SetupDeps['download']
     saveFails?: boolean
+    consent?: boolean
+    responding?: boolean
+    controllable?: boolean
   } = {}
 ): Harness {
   const h: Harness = { deps: undefined as never, downloads: [], elevated: [], saved: [], waited: 0 }
   h.deps = {
     probe: {
       sunshineRunning: async () => options.sunshineRunning ?? false,
+      serviceControllable: async () => options.controllable ?? true,
+      sunshineResponding: async () => options.responding ?? options.sunshineRunning ?? false,
       driverPresent: async () => options.driverPresent ?? false
     },
     vault: {
@@ -45,6 +50,7 @@ function harness(
         h.elevated.push(steps)
       }
     },
+    confirmDriverTrust: async () => options.consent ?? true,
     waitForApi: async () => {
       h.waited += 1
     },
@@ -87,7 +93,7 @@ describe('createWindowsSetup', () => {
     expect(h.saved).toEqual([{ username: 'horizonte', password: 'senha-gerada', port: 47989 }])
   })
 
-  it('só o Sunshine falta: não mexe no driver', async () => {
+  it('só o motor de transmissão falta: não mexe no driver', async () => {
     const h = harness({ driverPresent: true })
     await createWindowsSetup(h.deps).installer.ensureInstalled()
 
@@ -105,7 +111,17 @@ describe('createWindowsSetup', () => {
     expect(script).toContain('Horizonte\\stage')
   })
 
-  it('só o driver falta: não reinstala o Sunshine nem troca a senha', async () => {
+  it('serviço rodando mas sem atender: só reinicia o serviço, sem baixar nada', async () => {
+    const h = harness({ sunshineRunning: true, responding: false, driverPresent: true, stored })
+    await createWindowsSetup(h.deps).installer.ensureInstalled()
+
+    expect(all(h)).toContain('Restart-Service')
+    expect(all(h)).not.toContain('msiexec')
+    expect(h.downloads).toEqual([])
+    expect(h.waited).toBe(1)
+  })
+
+  it('só o driver falta: não reinstala o motor de transmissão nem troca a senha', async () => {
     const h = harness({ sunshineRunning: true, stored })
     await createWindowsSetup(h.deps).display.ensureVirtualDisplay()
 
@@ -133,12 +149,40 @@ describe('createWindowsSetup', () => {
     expect(all(h)).toContain('1d7fed8beecd5889dc7ff14cf9f42d6d38f37c3066c13c6c2a5f4e91847e0ccf')
   })
 
-  it('o certificado do driver só entra em TrustedPublisher, nunca como autoridade raiz', async () => {
+  it('a raiz de confiança do driver só existe durante a instalação e sai mesmo se ela falhar', async () => {
     const h = harness({ sunshineRunning: true, stored })
     await createWindowsSetup(h.deps).display.ensureVirtualDisplay()
+    const script = all(h)
 
-    expect(all(h)).toContain('TrustedPublisher')
-    expect(all(h)).not.toMatch(/LocalMachine\\Root|\\root\b|-s -r|certutil/i)
+    expect(script).toContain('TrustedPublisher')
+    expect(script).toMatch(/finally\s*\{[^}]*Remove-Item -Path \$rootPath/)
+    expect(script).not.toMatch(/certutil|installCert/i)
+  })
+
+  it('sem o consentimento da pessoa o driver não é baixado nem instalado', async () => {
+    const h = harness({ sunshineRunning: true, stored, consent: false })
+    await expect(createWindowsSetup(h.deps).display.ensureVirtualDisplay()).rejects.toThrow(
+      /autoriza/
+    )
+    expect(h.downloads).toEqual([])
+    expect(h.elevated).toEqual([])
+  })
+
+  it('o consentimento só é pedido quando o driver realmente falta', async () => {
+    let asked = 0
+    const h = harness({ sunshineRunning: true, driverPresent: true, stored })
+    h.deps.confirmDriverTrust = async () => {
+      asked += 1
+      return true
+    }
+    await createWindowsSetup(h.deps).display.ensureVirtualDisplay()
+    expect(asked).toBe(0)
+  })
+
+  it('cria o dispositivo do monitor, não só o pacote', async () => {
+    const h = harness({ sunshineRunning: true, stored })
+    await createWindowsSetup(h.deps).display.ensureVirtualDisplay()
+    expect(all(h)).toContain('UpdateDriverForPlugAndPlayDevicesW')
   })
 
   it('a senha vai para o cofre depois da instalação e não aparece no erro', async () => {
@@ -192,16 +236,50 @@ describe('createWindowsSetup', () => {
     expect(h.elevated).toEqual([])
   })
 
-  it('progresso do download chega ao ouvinte', async () => {
+  it('o progresso diz o que está acontecendo de verdade e só anda para frente', async () => {
     const h = harness({
       download: async (_a, _d, onProgress) => {
         onProgress?.(0.5)
       }
     })
-    const seen: number[] = []
-    const { installer } = createWindowsSetup({ ...h.deps, onProgress: (f) => seen.push(f) })
-    await installer.ensureInstalled()
-    expect(seen.length).toBeGreaterThan(0)
-    expect(seen.every((f) => f >= 0 && f <= 1)).toBe(true)
+    const seen: { note: string; fraction: number }[] = []
+    await createWindowsSetup(h.deps).installer.ensureInstalled((p) => seen.push(p))
+
+    const notes = seen.map((p) => p.note)
+    expect(notes.some((n) => /Baixando o motor/.test(n))).toBe(true)
+    expect(notes.some((n) => /Baixando o monitor/.test(n))).toBe(true)
+    expect(notes.some((n) => /Instalando o motor/.test(n))).toBe(true)
+    expect(notes.some((n) => /Esperando o motor ligar/.test(n))).toBe(true)
+    expect(seen.every((p) => p.fraction >= 0 && p.fraction <= 1)).toBe(true)
+    expect(seen.map((p) => p.fraction)).toEqual(
+      [...seen.map((p) => p.fraction)].sort((a, b) => a - b)
+    )
+    expect(seen.at(-1)?.fraction).toBe(1)
+  })
+
+  it('avisa que o Windows vai pedir permissão só durante a instalação', async () => {
+    const h = harness()
+    const seen: { note: string; fraction: number; permission?: boolean }[] = []
+    await createWindowsSetup(h.deps).installer.ensureInstalled((p) => seen.push(p))
+
+    const asking = seen.filter((p) => p.permission)
+    expect(asking.length).toBeGreaterThan(0)
+    expect(asking.every((p) => /Instalando/.test(p.note))).toBe(true)
+    expect(seen.at(-1)?.permission).toBeUndefined()
+  })
+
+  it('dá à pessoa comum o direito de reiniciar o serviço, para não pedir administrador nas próximas vezes', async () => {
+    const h = harness({ sunshineRunning: true, driverPresent: true, stored, controllable: false })
+    await createWindowsSetup(h.deps).installer.ensureInstalled()
+
+    expect(all(h)).toContain('sdset SunshineService')
+    expect(all(h)).not.toContain('msiexec')
+    expect(h.downloads).toEqual([])
+  })
+
+  it('com a permissão já dada não mexe no serviço', async () => {
+    const h = harness({ sunshineRunning: true, driverPresent: true, stored, controllable: true })
+    await createWindowsSetup(h.deps).installer.ensureInstalled()
+    expect(h.elevated).toEqual([])
   })
 })

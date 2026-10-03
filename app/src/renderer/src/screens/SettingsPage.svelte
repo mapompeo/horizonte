@@ -89,7 +89,7 @@
     </section>
 
     <section class="group" aria-labelledby="g-computer">
-      <h2 class="group-label" id="g-computer">Este computador</h2>
+      <h2 class="group-label" id="g-computer">Este dispositivo</h2>
       <div class="card">
         <div class="row">
           <span>Abrir com o sistema</span>

@@ -33,6 +33,5 @@
   <p class="subtitle">{copy.subtitle}</p>
 </div>
 <div class="stack gap-sm">
-  <button class="btn btn-primary" onclick={() => send({ type: 'INSTALL_DONE' })}>Instalar</button>
-  <span class="hint">Pede permissão de administrador uma vez.</span>
+  <button class="btn btn-primary" onclick={() => send({ type: 'INSTALL_DONE' })}>Começar</button>
 </div>

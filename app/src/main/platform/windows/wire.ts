@@ -32,7 +32,9 @@ export async function waitForApi(
       await sleep(1500)
     }
   }
-  throw new Error('O Sunshine não respondeu depois de instalado. Tente de novo em instantes.')
+  throw new Error(
+    'O motor de transmissão não respondeu depois de instalado. Tente de novo em instantes.'
+  )
 }
 
 /** O `safeStorage` do Electron tem outros nomes de método; este adaptador o encaixa no cofre. */
@@ -47,6 +49,7 @@ export const toCipher = (storage: {
 })
 
 type WindowsPlatform = ReturnType<typeof createWindowsSetup> & {
+  restart(): Promise<void>
   createApi(credentials: SunshineCredentials): SunshineApi
   credentials(): Promise<SunshineCredentials>
 }
@@ -55,7 +58,7 @@ export function createWindowsPlatform(deps: {
   userData: string
   cipher: Cipher
   sleep: (ms: number) => Promise<void>
-  onProgress?: (fraction: number) => void
+  confirmDriverTrust: () => Promise<boolean>
 }): WindowsPlatform {
   const vault = createCredentialVault({
     file: join(deps.userData, 'sunshine.bin'),
@@ -69,24 +72,31 @@ export function createWindowsPlatform(deps: {
     vault,
     download: downloadVerified,
     elevation: createElevation({ run: runWithUac, tmpDir: tmpdir() }),
+    confirmDriverTrust: deps.confirmDriverTrust,
     waitForApi: async () => {
       const credentials = await vault.load()
-      if (!credentials) throw new Error('A senha do Sunshine não foi guardada.')
+      if (!credentials) throw new Error('A senha do motor de transmissão não foi guardada.')
       await waitForApi(() => createApi(credentials).getConfig(), deps.sleep)
     },
     generatePassword,
     workDir: tmpdir(),
     sunshineDir: SUNSHINE_DIR,
-    port: PORT,
-    onProgress: deps.onProgress
+    port: PORT
   })
+
+  /** Reinicia o serviço sem administrador (a permissão é dada na instalação). Mais seguro que `POST /api/restart`, que deixa o processo preso. */
+  const restart = async (): Promise<void> => {
+    await runPowerShell('Restart-Service -Name SunshineService -ErrorAction Stop', 90_000)
+  }
 
   return {
     ...setup,
+    restart,
     createApi,
     credentials: async (): Promise<SunshineCredentials> => {
       const stored = await vault.load()
-      if (!stored) throw new Error('O Sunshine ainda não foi configurado pelo Horizonte.')
+      if (!stored)
+        throw new Error('O motor de transmissão ainda não foi configurado pelo Horizonte.')
       return stored
     }
   }

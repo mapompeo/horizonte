@@ -13,6 +13,26 @@ describe('createProbe', () => {
     expect(await createProbe(returning('')).sunshineRunning()).toBe(false)
   })
 
+  it('Sunshine atendendo quando a porta do painel está escutando', async () => {
+    expect(await createProbe(returning('True')).sunshineResponding()).toBe(true)
+    expect(await createProbe(returning('False')).sunshineResponding()).toBe(false)
+  })
+
+  it('serviço controlável quando a permissão da pessoa comum já está no serviço', async () => {
+    expect(
+      await createProbe(returning('D:(A;;RPWPLCLORC;;;IU)(A;;GA;;;SY)')).serviceControllable()
+    ).toBe(true)
+    expect(await createProbe(returning('D:(A;;GA;;;SY)(A;;GA;;;BA)')).serviceControllable()).toBe(
+      false
+    )
+  })
+
+  it('a regra padrão do Windows (IU só lê) não conta como permissão de reiniciar', async () => {
+    const windowsDefault =
+      'D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCLCSWLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)'
+    expect(await createProbe(returning(windowsDefault)).serviceControllable()).toBe(false)
+  })
+
   it('driver presente quando o PowerShell encontra o dispositivo', async () => {
     expect(await createProbe(returning('True')).driverPresent()).toBe(true)
     expect(await createProbe(returning('False')).driverPresent()).toBe(false)
@@ -32,5 +52,7 @@ describe.runIf(process.platform === 'win32')('no PowerShell de verdade, sem admi
     const probe = createProbe(runPowerShell)
     expect(typeof (await probe.sunshineRunning())).toBe('boolean')
     expect(typeof (await probe.driverPresent())).toBe('boolean')
-  })
+    expect(typeof (await probe.sunshineResponding())).toBe('boolean')
+    expect(typeof (await probe.serviceControllable())).toBe('boolean')
+  }, 30_000)
 })

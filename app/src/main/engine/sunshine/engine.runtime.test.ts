@@ -60,7 +60,7 @@ async function ready(): Promise<Ready> {
 }
 
 describe('pareamento', () => {
-  it('um pedido novo no Sunshine vira um pedido para a interface', async () => {
+  it('um pedido novo no motor de transmissão vira um pedido para a interface', async () => {
     const t = await ready()
     t.process.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
     await vi.advanceTimersByTimeAsync(250)
@@ -81,7 +81,7 @@ describe('pareamento', () => {
     expect(t.requests[0]?.device).toBe('ABC')
   })
 
-  it('aprovar com o PIN certo manda o PIN ao Sunshine', async () => {
+  it('aprovar com o PIN certo manda o PIN ao motor de transmissão', async () => {
     const t = await ready()
     t.process.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
     await vi.advanceTimersByTimeAsync(250)
@@ -98,13 +98,13 @@ describe('pareamento', () => {
     ).rejects.toThrow('O PIN não confere')
   })
 
-  it('PIN fora do formato nem chega ao Sunshine', async () => {
+  it('PIN fora do formato nem chega ao motor de transmissão', async () => {
     const t = await ready()
     await expect(t.engine.approve({ pairingId: 'p1', pin: '12', name: 'x' })).rejects.toThrow('PIN')
     expect(t.process.calls.some((call) => call.startsWith('submitPin'))).toBe(false)
   })
 
-  it('recusar cancela o pedido no Sunshine', async () => {
+  it('recusar cancela o pedido no motor de transmissão', async () => {
     const t = await ready()
     t.process.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
     await vi.advanceTimersByTimeAsync(250)
@@ -112,7 +112,7 @@ describe('pareamento', () => {
     expect(t.process.calls).toContain('cancelPairing:p1')
   })
 
-  it('o pedido que some do Sunshine avisa o cancelamento', async () => {
+  it('o pedido que some do motor de transmissão avisa o cancelamento', async () => {
     const t = await ready()
     t.process.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
     await vi.advanceTimersByTimeAsync(250)
@@ -131,7 +131,7 @@ describe('pareamento', () => {
     expect(t.requests).toHaveLength(1)
   })
 
-  it('sem ter preparado, aprovar diz que o Sunshine não está pronto', async () => {
+  it('sem ter preparado, aprovar diz que o motor de transmissão não está pronto', async () => {
     const engine = new SunshineEngine({
       installer: { ensureInstalled: async () => undefined },
       display: { ensureVirtualDisplay: async () => undefined, isVirtual: () => true },

@@ -1,4 +1,4 @@
-import type { PrepStep, Settings } from '../../../shared/types'
+import type { PrepProgress, PrepStep, Settings } from '../../../shared/types'
 import {
   chooseEncoder,
   GPU_ENCODERS,
@@ -20,6 +20,9 @@ import { createSessionWatcher } from './session-watcher'
 
 const GENERIC_DEVICE = 'Outro computador'
 
+/** Quanto do caminho da preparação já passou quando o motor termina de ser instalado. */
+const PROGRESS_AFTER_INSTALL = 0.55
+
 export interface SunshineEngineDeps {
   installer: EngineInstaller
   display: VirtualDisplay
@@ -28,6 +31,11 @@ export interface SunshineEngineDeps {
   createApi(credentials: SunshineCredentials): SunshineApiPort
   readLog(): Promise<string>
   sleep(ms: number): Promise<void>
+  /**
+   * Como reiniciar o motor. Por padrão pede pela API, mas no Windows essa chamada pode deixar o
+   * processo preso; lá o reinício é feito pelo serviço do sistema.
+   */
+  restart?(): Promise<void>
   timing?: {
     reachableTimeoutMs?: number
     pollMs?: number
@@ -43,7 +51,9 @@ type Listeners<A extends unknown[]> = Set<(...args: A) => void>
 function friendly(cause: unknown): Error {
   if (cause instanceof SunshineApiError) {
     if (cause.kind === 'unauthorized') {
-      return new Error('O Sunshine recusou o usuário ou a senha. Confira as credenciais.')
+      return new Error(
+        'O motor de transmissão recusou o usuário ou a senha. Confira as credenciais.'
+      )
     }
     return new Error(cause.message)
   }
@@ -76,20 +86,50 @@ export class SunshineEngine implements ServerEngine {
     }
   }
 
-  async prepare(onStep: (step: PrepStep) => void, settings: Settings): Promise<void> {
+  async prepare(
+    onStep: (step: PrepStep) => void,
+    settings: Settings,
+    onProgress?: (progress: PrepProgress) => void
+  ): Promise<void> {
     const run = ++this.run
     const alive = (): boolean => run === this.run
     this.stopWatchers()
 
+    // Já preparado nesta sessão: só confere que o motor continua respondendo e que a configuração
+    // não mudou. Nada de instalar, procurar monitor ou testar placa de novo.
+    const known = this.known
+    if (known !== null && this.api !== null && known.encoding === settings.encoding) {
+      const api = this.api
+      try {
+        await api.getConfig()
+        const changed = await this.ensureConfig(
+          api,
+          this.desiredConfig(settings, known.displayId, known.chosen)
+        )
+        if (changed) await this.restarter(api)(alive)
+        if (!alive()) return
+        this.startWatchers(api)
+        return
+      } catch {
+        this.known = null // algo mudou por baixo: volta para a preparação completa
+      }
+    }
+
+    // O caminho todo vai de 0 a 1: instalar o motor ocupa o começo, depois vêm o monitor e a placa.
+    const report = (note: string, fraction: number): void => onProgress?.({ note, fraction })
     onStep('engine')
-    await this.deps.installer.ensureInstalled()
+    await this.deps.installer.ensureInstalled((p) =>
+      onProgress?.({ ...p, fraction: p.fraction * PROGRESS_AFTER_INSTALL })
+    )
     if (!alive()) return
+    report('Conectando ao motor de transmissão', PROGRESS_AFTER_INSTALL)
     const api = this.deps.createApi(await this.deps.credentials())
     this.api = api
     await this.waitUntilReachable(api, alive)
     if (!alive()) return
 
     onStep('display')
+    report('Procurando o monitor virtual', PROGRESS_AFTER_INSTALL)
     await this.deps.display.ensureVirtualDisplay()
     if (!alive()) return
     const restartAndRead = this.restarter(api)
@@ -104,12 +144,21 @@ export class SunshineEngine implements ServerEngine {
     if (changed) await restartAndRead(alive)
     if (!alive()) return
 
+    this.known = { displayId, chosen, encoding: settings.encoding }
     this.startWatchers(api)
   }
+
+  /** O que a última preparação completa descobriu; permite as próximas serem quase instantâneas. */
+  private known: {
+    displayId: string
+    chosen: ChosenEncoder | null
+    encoding: Settings['encoding']
+  } | null = null
 
   private restarter(api: SunshineApiPort): (alive?: () => boolean) => Promise<string> {
     return createRestarter({
       api,
+      restart: this.deps.restart,
       readLog: this.deps.readLog,
       sleep: this.deps.sleep,
       timeoutMs: this.timing.restartTimeoutMs,
@@ -130,7 +179,7 @@ export class SunshineEngine implements ServerEngine {
         if (!alive()) return
       }
     }
-    throw new Error('O Sunshine não respondeu. Confira se ele está instalado e aberto.')
+    throw new Error('O motor de transmissão não respondeu. Confira se ele está instalado e aberto.')
   }
 
   private async findVirtualDisplay(
@@ -147,7 +196,7 @@ export class SunshineEngine implements ServerEngine {
       if (!alive()) return ''
       id = find(log)
     }
-    if (id === null) throw new Error('Não achei o monitor virtual no Sunshine.')
+    if (id === null) throw new Error('Não achei o monitor virtual no motor de transmissão.')
     return id
   }
 
@@ -260,7 +309,7 @@ export class SunshineEngine implements ServerEngine {
   }
 
   private requireApi(): SunshineApiPort {
-    if (this.api === null) throw new Error('O Sunshine não está pronto ainda.')
+    if (this.api === null) throw new Error('O motor de transmissão não está pronto ainda.')
     return this.api
   }
 

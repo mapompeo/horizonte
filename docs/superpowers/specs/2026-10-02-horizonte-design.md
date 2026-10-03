@@ -117,3 +117,12 @@ Cada peça devolve um erro tipado com uma mensagem de uma frase e uma ação que
 - Stack: Electron, TypeScript e Svelte. O Tauri foi considerado e descartado (Rust ausente na máquina, renderização no Linux).
 - Plataformas: v1 em Windows 11 e Ubuntu (Xorg); macOS no futuro, por isso o código de sistema fica atrás de interfaces.
 - Nome: Horizonte.
+
+## Versão futura: navegador e multiplataforma (enviar e receber)
+
+Meta da última versão do roteiro: o Horizonte funciona em qualquer aparelho, tanto para **enviar** quanto para **receber** a tela, e quem não quiser instalar nada pode **receber pelo navegador**.
+
+- **Receber pelo navegador:** a pessoa abre um endereço no celular, tablet ou computador, aprova o pareamento e a segunda tela aparece, sem instalar app. Exige um cliente web de streaming (WebRTC) falando com o motor, um endereço local seguro (HTTPS com certificado, ou o pareamento por PIN já existente) e a mesma confirmação de quem envia. Prós: zero instalação, serve para iOS e Android sem loja. Contras: mais latência e menos controle de codec que o Moonlight nativo, e a segurança do endereço precisa ser desenhada com cuidado (só rede local, pareamento obrigatório, nada exposto à internet).
+- **Multiplataforma:** Windows (v1), Linux (plano 4), macOS (permissão de gravação de tela, monitor virtual próprio e notarização), e depois Android e iOS como clientes. Enviar e receber valem para cada plataforma onde o sistema permitir.
+- **Uma instalação por aparelho:** só o Horizonte. Ele baixa o que faltar e se atualiza sozinho (o auto-atualizador do próprio app entra com os instaladores, plano 5).
+- **Ordem sugerida:** Windows enviar e receber (planos 2B e 3), Linux (4), instaladores e atualização (5), navegador como receptor (6), macOS, Android e iOS (7).

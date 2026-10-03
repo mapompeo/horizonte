@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { copyFor, PREP_STEPS, progress, safeName, stepLabel } from './copy'
+import { copyFor, PREP_STEPS, safeName, patientNote, stepEnd, stepLabel, stepStart } from './copy'
 
 describe('safeName', () => {
   it('mantém nomes normais', () => {
@@ -105,9 +105,23 @@ describe('stepLabel e progress', () => {
     ])
   })
 
-  it('progresso em porcentagem', () => {
-    expect(progress('engine')).toBe(0)
-    expect(progress('display')).toBe(33)
-    expect(progress('encoder')).toBe(67)
+  it('cada etapa começa onde a anterior termina', () => {
+    expect(stepStart('engine')).toBe(0)
+    expect(stepEnd('engine')).toBe(stepStart('display'))
+    expect(stepEnd('display')).toBe(stepStart('encoder'))
+    expect(stepEnd('encoder')).toBe(1)
+  })
+})
+
+describe('patientNote', () => {
+  it('no começo mostra só a frase', () => {
+    expect(patientNote('Esperando o motor ligar', 3)).toBe('Esperando o motor ligar')
+  })
+
+  it('depois de um tempo acrescenta variações do mesmo assunto, em ciclo', () => {
+    const seen = [8, 14, 20, 26].map((s) => patientNote('Esperando o motor ligar', s))
+    expect(new Set(seen.slice(0, 3)).size).toBe(3)
+    expect(seen.every((text) => text.startsWith('Esperando o motor ligar · '))).toBe(true)
+    expect(seen[3]).toBe(seen[0])
   })
 })

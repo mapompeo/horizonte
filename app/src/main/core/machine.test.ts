@@ -199,3 +199,36 @@ describe('approvalPin', () => {
     expect(approvalPin(approve, { type: 'APPROVE', pin: 'xx' })).toBeNull()
   })
 })
+
+describe('reduce: progresso da preparação', () => {
+  const base = { screen: 'preparing', mode: 'send', step: 'engine' } as const
+
+  it('guarda o texto e a fração do progresso', () => {
+    const next = reduce(base, {
+      type: 'PREP_PROGRESS',
+      progress: { note: 'Baixando', fraction: 0.2 }
+    })
+    expect(next).toEqual({ ...base, progress: { note: 'Baixando', fraction: 0.2 } })
+  })
+
+  it('a barra nunca volta para trás', () => {
+    const a = reduce(base, { type: 'PREP_PROGRESS', progress: { note: 'a', fraction: 0.5 } })
+    const b = reduce(a, { type: 'PREP_PROGRESS', progress: { note: 'b', fraction: 0.3 } })
+    expect(b).toMatchObject({ progress: { note: 'b', fraction: 0.5 } })
+  })
+
+  it('ao mudar de etapa o texto antigo sai, mas a fração continua', () => {
+    const a = reduce(base, { type: 'PREP_PROGRESS', progress: { note: 'a', fraction: 0.5 } })
+    expect(reduce(a, { type: 'PREP_STEP', step: 'display' })).toMatchObject({
+      step: 'display',
+      progress: { note: '', fraction: 0.5 }
+    })
+  })
+
+  it('fora da preparação o progresso é ignorado', () => {
+    const ready = { screen: 'ready', mode: 'send' } as const
+    expect(reduce(ready, { type: 'PREP_PROGRESS', progress: { note: 'x', fraction: 1 } })).toBe(
+      ready
+    )
+  })
+})

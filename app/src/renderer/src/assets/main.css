@@ -382,11 +382,14 @@ input:focus-visible {
   border-radius: 2px;
   background: var(--line-soft);
 }
+.bar {
+  overflow: hidden;
+}
 .bar-fill {
   height: 100%;
   border-radius: 2px;
   background: var(--fg);
-  transition: width 0.6s var(--ease-out);
+  transition: width 0.25s linear;
 }
 
 .status {
@@ -824,7 +827,8 @@ input,
 }
 
 /* O topo fica acima da faixa de arraste, e o lado direito é livre para os botões da janela. */
-.topbar {
+.topbar,
+.sheet-head {
   position: relative;
   z-index: 1;
 }

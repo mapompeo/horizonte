@@ -38,7 +38,19 @@ export function reduce(state: AppState, event: AppEvent): AppState {
     case 'choose':
       return state
     case 'preparing':
-      if (event.type === 'PREP_STEP') return { ...state, step: event.step }
+      if (event.type === 'PREP_STEP') {
+        // O texto da etapa anterior sai, mas a barra não volta.
+        const kept = state.progress ? { note: '', fraction: state.progress.fraction } : undefined
+        return { screen: 'preparing', mode: 'send', step: event.step, progress: kept }
+      }
+      if (event.type === 'PREP_PROGRESS') {
+        // A barra só anda para frente: um aviso atrasado não pode fazê-la voltar.
+        const before = state.progress?.fraction ?? 0
+        return {
+          ...state,
+          progress: { ...event.progress, fraction: Math.max(before, event.progress.fraction) }
+        }
+      }
       if (event.type === 'PREP_DONE') return { screen: 'ready', mode: 'send' }
       return state
     case 'ready':

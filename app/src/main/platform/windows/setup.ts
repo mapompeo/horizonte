@@ -1,12 +1,18 @@
 import { win32 } from 'node:path'
+import type { PrepProgress } from '../../../shared/types'
 import type { EngineInstaller, SunshineCredentials, VirtualDisplay } from '../types'
 import type { SunshineDisplay } from '../../engine/sunshine/log'
 import type { Artifact } from './download'
+import { DRIVER_INSTALL_SCRIPT } from './driver-script'
 import { psQuote, type ElevatedStep, type Elevation } from './elevation'
 import { SUNSHINE, VIRTUAL_DISPLAY_DRIVER, type PinnedArtifact } from './versions'
 
 export interface InstallProbe {
   sunshineRunning(): Promise<boolean>
+  /** O painel do Sunshine (porta 47990) está aceitando conexões. O serviço pode estar rodando e preso. */
+  sunshineResponding(): Promise<boolean>
+  /** A pessoa comum pode reiniciar o serviço sem pedir administrador (permissão dada na instalação). */
+  serviceControllable(): Promise<boolean>
   driverPresent(): Promise<boolean>
 }
 
@@ -22,6 +28,11 @@ export interface SetupDeps {
     onProgress?: (fraction: number) => void
   ): Promise<void>
   elevation: Elevation
+  /**
+   * O driver do monitor virtual tem certificado autoassinado: o Windows só o aceita se ele for confiado
+   * como autoridade raiz durante a instalação. Devolve false se a pessoa não autorizar.
+   */
+  confirmDriverTrust(): Promise<boolean>
   /** Espera a API do Sunshine responder com a senha nova. */
   waitForApi(): Promise<void>
   generatePassword(): string
@@ -29,10 +40,13 @@ export interface SetupDeps {
   workDir: string
   sunshineDir: string
   port: number
-  onProgress?: (fraction: number) => void
 }
 
 const USERNAME = 'horizonte'
+
+/** Parte da etapa gasta baixando; depois vêm a instalação (até INSTALL_SHARE) e a espera do motor ligar. */
+const DOWNLOAD_SHARE = 0.6
+const INSTALL_SHARE = 0.9
 
 /**
  * Os arquivos baixados ficam numa pasta que o usuário comum escreve. Antes de usar como administrador,
@@ -62,16 +76,30 @@ export function createWindowsSetup(deps: SetupDeps): {
   const sunshineExe = win32.join(deps.sunshineDir, 'sunshine.exe')
   const sunshineConf = win32.join(deps.sunshineDir, 'config', 'sunshine.conf')
 
+  let report: (progress: PrepProgress) => void = () => undefined
+
   async function run(): Promise<void> {
-    const [running, driverPresent, stored] = await Promise.all([
+    const [running, responding, controllable, driverPresent, stored] = await Promise.all([
       deps.probe.sunshineRunning(),
+      deps.probe.sunshineResponding(),
+      deps.probe.serviceControllable(),
       deps.probe.driverPresent(),
       deps.vault.load()
     ])
     const needSunshine = !running
     const needCredentials = needSunshine || stored === null
     const needDriver = !driverPresent
-    if (!needSunshine && !needCredentials && !needDriver) return
+    // Serviço "rodando" mas sem atender: preso depois de um reinício. Reiniciar de novo costuma resolver.
+    const needRestart = !needSunshine && !needCredentials && !responding
+    // O Horizonte precisa reiniciar o serviço sozinho nas próximas vezes, sem pedir administrador de novo.
+    const needAccess = needSunshine || !controllable
+    if (!needSunshine && !needCredentials && !needDriver && !needRestart && !needAccess) return
+
+    if (needDriver && !(await deps.confirmDriverTrust())) {
+      throw new Error(
+        'Sem a sua autorização para o certificado do monitor virtual, não consigo instalá-lo.'
+      )
+    }
 
     const downloads: PinnedArtifact[] = []
     if (needSunshine) downloads.push(SUNSHINE)
@@ -81,8 +109,12 @@ export function createWindowsSetup(deps: SetupDeps): {
     for (const [index, artifact] of downloads.entries()) {
       const dest = win32.join(deps.workDir, artifact.fileName)
       paths.set(artifact.fileName, dest)
+      const what = artifact === SUNSHINE ? 'o motor de transmissão' : 'o monitor virtual'
       await deps.download(artifact, dest, (fraction) =>
-        deps.onProgress?.((index + fraction) / downloads.length)
+        report({
+          note: `Baixando ${what}`,
+          fraction: ((index + fraction) / downloads.length) * DOWNLOAD_SHARE
+        })
       )
     }
 
@@ -93,7 +125,7 @@ export function createWindowsSetup(deps: SetupDeps): {
     const steps: ElevatedStep[] = []
     if (needSunshine) {
       steps.push({
-        description: 'Instalar o Sunshine',
+        description: 'Instalar o motor de transmissão',
         script: [
           ...stage(SUNSHINE, paths.get(SUNSHINE.fileName) as string, 'msi'),
           `$p = Start-Process -FilePath msiexec.exe -ArgumentList '/i', $msi, '/qn', '/norestart' -Wait -PassThru`,
@@ -101,14 +133,33 @@ export function createWindowsSetup(deps: SetupDeps): {
         ].join('\n')
       })
     }
+    if (needAccess) {
+      steps.push({
+        description: 'Permitir que o Horizonte reinicie o motor',
+        script: [
+          `$sddl = (sc.exe sdshow SunshineService | Where-Object { $_ -match '^D:' }) -join ''`,
+          `if (-not $sddl) { throw 'Não consegui ler as permissões do serviço.' }`,
+          `if ($sddl -notmatch '[(]A;;[A-Z]*WP[A-Z]*;;;IU[)]') {`,
+          `  sc.exe sdset SunshineService ('D:(A;;RPWPLCLORC;;;IU)' + $sddl.Substring(2)) | Out-Null`,
+          nativeCheck('sc sdset'),
+          '}'
+        ].join('\n')
+      })
+    }
     if (needCredentials) {
       steps.push({
-        description: 'Criar o acesso do Horizonte ao Sunshine',
+        description: 'Criar o acesso do Horizonte ao motor',
         script: [
           `& ${psQuote(sunshineExe)} ${psQuote(sunshineConf)} --creds ${psQuote(credentials.username)} ${psQuote(credentials.password)}`,
           nativeCheck('sunshine --creds'),
           'Restart-Service -Name SunshineService -ErrorAction Stop'
         ].join('\n')
+      })
+    }
+    if (needRestart) {
+      steps.push({
+        description: 'Reiniciar o motor',
+        script: 'Restart-Service -Name SunshineService -ErrorAction Stop'
       })
     }
     if (needDriver) {
@@ -125,10 +176,7 @@ export function createWindowsSetup(deps: SetupDeps): {
           `$inf = Get-ChildItem -LiteralPath $dir -Recurse -Filter 'MttVDD.inf' | Select-Object -First 1`,
           `$cer = Get-ChildItem -LiteralPath $dir -Recurse -Filter 'Virtual_Display_Driver.cer' | Select-Object -First 1`,
           `if (-not $inf -or -not $cer) { throw 'O pacote do driver veio incompleto.' }`,
-          // Só publicador confiável: o certificado não vira autoridade raiz do computador.
-          `Import-Certificate -FilePath $cer.FullName -CertStoreLocation 'Cert:\\LocalMachine\\TrustedPublisher' | Out-Null`,
-          'pnputil.exe /add-driver $inf.FullName /install | Out-Null',
-          nativeCheck('pnputil', '0,3010')
+          DRIVER_INSTALL_SCRIPT
         ].join('\n')
       })
     }
@@ -137,15 +185,28 @@ export function createWindowsSetup(deps: SetupDeps): {
       script: `Remove-Item -Recurse -Force -LiteralPath (Join-Path $env:ProgramData 'Horizonte\\stage') -ErrorAction SilentlyContinue`
     })
 
+    report({
+      note: needSunshine
+        ? 'Instalando o motor de transmissão (confirme o aviso do Windows)'
+        : needDriver
+          ? 'Instalando o monitor virtual (confirme o aviso do Windows)'
+          : 'Ajustando o motor (confirme o aviso do Windows)',
+      fraction: DOWNLOAD_SHARE,
+      permission: true
+    })
     await deps.elevation.runElevated(steps)
     if (needCredentials) await deps.vault.save(credentials)
-    if (needSunshine || needCredentials) await deps.waitForApi()
-    deps.onProgress?.(1)
+    if (needSunshine || needCredentials || needRestart) {
+      report({ note: 'Esperando o motor ligar', fraction: INSTALL_SHARE })
+      await deps.waitForApi()
+    }
+    report({ note: 'Motor pronto', fraction: 1 })
   }
 
   // Duas chamadas ao mesmo tempo (instalador e monitor) compartilham UMA preparação e UM pedido de administrador.
   let inFlight: Promise<void> | null = null
-  const ensure = (): Promise<void> => {
+  const ensure = (onReport?: (progress: PrepProgress) => void): Promise<void> => {
+    if (onReport) report = onReport
     inFlight ??= run().finally(() => {
       inFlight = null
     })
@@ -153,9 +214,9 @@ export function createWindowsSetup(deps: SetupDeps): {
   }
 
   return {
-    installer: { ensureInstalled: ensure },
+    installer: { ensureInstalled: (r) => ensure(r) },
     display: {
-      ensureVirtualDisplay: ensure,
+      ensureVirtualDisplay: () => ensure(),
       isVirtual: (display: SunshineDisplay) => /vdd|virtual/i.test(display.friendlyName)
     }
   }

@@ -120,3 +120,28 @@ describe('createSettingsStore', () => {
     expect(JSON.parse(await readFile(file, 'utf8')).deviceName).toBe('Sala')
   })
 })
+
+describe('nome padrão do dispositivo', () => {
+  it('usa o nome do próprio aparelho enquanto a pessoa não escolheu outro', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'horizonte-name-'))
+    try {
+      const store = createSettingsStore(join(dir, 'settings.json'), 'Tablet da Ana')
+      expect((await store.load()).deviceName).toBe('Tablet da Ana')
+      await store.save({ ...(await store.load()), deviceName: 'Sala' })
+      expect((await store.load()).deviceName).toBe('Sala')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('o nome padrão antigo "Computador", já gravado em disco, vira o nome do aparelho', () => {
+    expect(parseSettings({ deviceName: 'Computador' }, 'Notebook da Ana').deviceName).toBe(
+      'Notebook da Ana'
+    )
+    expect(parseSettings({ deviceName: 'Sala' }, 'Notebook da Ana').deviceName).toBe('Sala')
+  })
+
+  it('sem nome nenhum cai em "Dispositivo", nunca em "Computador"', () => {
+    expect(parseSettings({}).deviceName).toBe('Dispositivo')
+  })
+})
