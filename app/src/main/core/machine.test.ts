@@ -24,7 +24,12 @@ const failure = { message: 'Falhou', detail: 'detalhe' }
 
 describe('reduce: caminho feliz', () => {
   const cases: [string, AppState, AppEvent, AppState][] = [
-    ['instalação termina', { screen: 'install' }, { type: 'INSTALL_DONE' }, { screen: 'choose' }],
+    [
+      'Começar prepara tudo',
+      { screen: 'install' },
+      { type: 'INSTALL_DONE' },
+      { screen: 'preparing', mode: 'send', step: 'engine', firstRun: true }
+    ],
     ['escolher enviar', { screen: 'choose' }, { type: 'CHOOSE', mode: 'send' }, preparing],
     ['escolher mostrar', { screen: 'choose' }, { type: 'CHOOSE', mode: 'receive' }, discover],
     [
@@ -230,5 +235,20 @@ describe('reduce: progresso da preparação', () => {
     expect(reduce(ready, { type: 'PREP_PROGRESS', progress: { note: 'x', fraction: 1 } })).toBe(
       ready
     )
+  })
+})
+
+describe('preparação do Começar', () => {
+  const first = { screen: 'preparing', mode: 'send', step: 'engine', firstRun: true } as const
+
+  it('ao terminar volta para a escolha, não para a espera', () => {
+    expect(reduce(first, { type: 'PREP_DONE' })).toEqual({ screen: 'choose' })
+  })
+
+  it('as etapas não perdem a marca de primeira vez', () => {
+    expect(reduce(first, { type: 'PREP_STEP', step: 'display' })).toMatchObject({
+      step: 'display',
+      firstRun: true
+    })
   })
 })

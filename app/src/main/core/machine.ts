@@ -34,14 +34,23 @@ export function reduce(state: AppState, event: AppEvent): AppState {
 
   switch (state.screen) {
     case 'install':
-      return event.type === 'INSTALL_DONE' ? { screen: 'choose' } : state
+      // Começar já instala tudo: a escolha só aparece com o motor pronto.
+      return event.type === 'INSTALL_DONE'
+        ? { screen: 'preparing', mode: 'send', step: 'engine', firstRun: true }
+        : state
     case 'choose':
       return state
     case 'preparing':
       if (event.type === 'PREP_STEP') {
         // O texto da etapa anterior sai, mas a barra não volta.
         const kept = state.progress ? { note: '', fraction: state.progress.fraction } : undefined
-        return { screen: 'preparing', mode: 'send', step: event.step, progress: kept }
+        return {
+          screen: 'preparing',
+          mode: 'send',
+          step: event.step,
+          progress: kept,
+          ...(state.firstRun ? { firstRun: true as const } : {})
+        }
       }
       if (event.type === 'PREP_PROGRESS') {
         // A barra só anda para frente: um aviso atrasado não pode fazê-la voltar.
@@ -51,7 +60,9 @@ export function reduce(state: AppState, event: AppEvent): AppState {
           progress: { ...event.progress, fraction: Math.max(before, event.progress.fraction) }
         }
       }
-      if (event.type === 'PREP_DONE') return { screen: 'ready', mode: 'send' }
+      if (event.type === 'PREP_DONE') {
+        return state.firstRun ? { screen: 'choose' } : { screen: 'ready', mode: 'send' }
+      }
       return state
     case 'ready':
       if (event.type === 'PAIR_REQUEST') {
