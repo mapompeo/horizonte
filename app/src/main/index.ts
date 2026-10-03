@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
+import { app, BrowserWindow, ipcMain, nativeTheme, safeStorage } from 'electron'
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -10,11 +10,13 @@ import { createSettingsStore } from './core/settings'
 import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
 import { FakeEngine } from './engine/fake'
+import type { EnginePort } from './engine/port'
 import { SunshineApi } from './engine/sunshine/api'
 import { SunshineEngine } from './engine/sunshine/engine'
 import { readLogTail } from './engine/sunshine/log-file'
 import { createEngineMemory } from './engine/sunshine/memory'
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
+import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
 
 /** Os botões de janela ficam por cima da interface, na cor do fundo e discretos. */
 function overlayFor(): { color: string; symbolColor: string; height: number } {
@@ -75,27 +77,52 @@ async function boot(): Promise<void> {
   const store = createSettingsStore(join(app.getPath('userData'), 'settings.json'))
   const fake = new FakeEngine(is.dev ? 700 : 0)
   const dev = readDevEngineConfig(process.env)
-  const engine = dev
-    ? composeEngine(
-        new SunshineEngine({
-          installer: existingInstaller(),
-          display: existingDisplay(),
-          memory: createEngineMemory(join(app.getPath('userData'), 'engine.json')),
-          credentials: async () => dev.credentials,
-          createApi: (credentials) =>
-            new SunshineApi({
-              port: credentials.port,
-              username: credentials.username,
-              password: credentials.password
-            }),
-          readLog: () => readLogTail(dev.logPath),
-          sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-        }),
-        fake
-      )
-    : fake
+  const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+  const memory = createEngineMemory(join(app.getPath('userData'), 'engine.json'))
+  // Instalação de verdade (baixa e pede administrador): só no app empacotado ou pedindo com HORIZONTE_ENGINE=install.
+  const real =
+    process.platform === 'win32' &&
+    (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
+  let engine: EnginePort = fake
+  if (dev) {
+    engine = composeEngine(
+      new SunshineEngine({
+        installer: existingInstaller(),
+        display: existingDisplay(),
+        memory,
+        credentials: async () => dev.credentials,
+        createApi: (credentials) =>
+          new SunshineApi({
+            port: credentials.port,
+            username: credentials.username,
+            password: credentials.password
+          }),
+        readLog: () => readLogTail(dev.logPath),
+        sleep
+      }),
+      fake
+    )
+  } else if (real) {
+    const platform = createWindowsPlatform({
+      userData: app.getPath('userData'),
+      cipher: toCipher(safeStorage),
+      sleep
+    })
+    engine = composeEngine(
+      new SunshineEngine({
+        installer: platform.installer,
+        display: platform.display,
+        memory,
+        credentials: platform.credentials,
+        createApi: platform.createApi,
+        readLog: () => readLogTail(SUNSHINE_LOG),
+        sleep
+      }),
+      fake
+    )
+  }
   const controller = await createController({ engine, store })
-  if (!dev && !app.isPackaged) runDevDemo(controller, fake)
+  if (!dev && !real && !app.isPackaged) runDevDemo(controller, fake)
 
   ipcMain.handle(CHANNELS.snapshot, () => controller.getSnapshot())
   ipcMain.handle(CHANNELS.dispatch, (_event, payload: unknown) => {
