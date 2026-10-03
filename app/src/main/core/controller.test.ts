@@ -82,6 +82,8 @@ describe('fluxo de envio', () => {
     const { controller, engine } = await setup({ screen: 'install' })
 
     controller.dispatch({ type: 'INSTALL_DONE' })
+    expect(screen(controller)).toBe('preparing') // Começar já prepara o motor
+    await vi.waitFor(() => expect(screen(controller)).toBe('choose'))
     controller.dispatch({ type: 'CHOOSE', mode: 'send' })
     expect(screen(controller)).toBe('preparing')
     await vi.waitFor(() => expect(screen(controller)).toBe('ready'))

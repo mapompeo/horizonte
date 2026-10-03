@@ -17,7 +17,14 @@ export interface AppError {
 export type AppState =
   | { screen: 'install' }
   | { screen: 'choose' }
-  | { screen: 'preparing'; mode: 'send'; step: PrepStep; progress?: PrepProgress }
+  | {
+      screen: 'preparing'
+      mode: 'send'
+      step: PrepStep
+      progress?: PrepProgress
+      /** Preparação do botão Começar: ao terminar volta para a escolha, não para a espera. */
+      firstRun?: true
+    }
   | { screen: 'ready'; mode: 'send' }
   | { screen: 'approve'; mode: 'send'; device: string; pairingId: string; pin: string | null }
   | { screen: 'connected'; mode: 'send'; device: string }
