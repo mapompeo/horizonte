@@ -95,6 +95,26 @@ export class SunshineEngine implements ServerEngine {
     const alive = (): boolean => run === this.run
     this.stopWatchers()
 
+    // Já preparado nesta sessão: só confere que o motor continua respondendo e que a configuração
+    // não mudou. Nada de instalar, procurar monitor ou testar placa de novo.
+    const known = this.known
+    if (known !== null && this.api !== null && known.encoding === settings.encoding) {
+      const api = this.api
+      try {
+        await api.getConfig()
+        const changed = await this.ensureConfig(
+          api,
+          this.desiredConfig(settings, known.displayId, known.chosen)
+        )
+        if (changed) await this.restarter(api)(alive)
+        if (!alive()) return
+        this.startWatchers(api)
+        return
+      } catch {
+        this.known = null // algo mudou por baixo: volta para a preparação completa
+      }
+    }
+
     // O caminho todo vai de 0 a 1: instalar o motor ocupa o começo, depois vêm o monitor e a placa.
     const report = (note: string, fraction: number): void => onProgress?.({ note, fraction })
     onStep('engine')
@@ -124,8 +144,16 @@ export class SunshineEngine implements ServerEngine {
     if (changed) await restartAndRead(alive)
     if (!alive()) return
 
+    this.known = { displayId, chosen, encoding: settings.encoding }
     this.startWatchers(api)
   }
+
+  /** O que a última preparação completa descobriu; permite as próximas serem quase instantâneas. */
+  private known: {
+    displayId: string
+    chosen: ChosenEncoder | null
+    encoding: Settings['encoding']
+  } | null = null
 
   private restarter(api: SunshineApiPort): (alive?: () => boolean) => Promise<string> {
     return createRestarter({

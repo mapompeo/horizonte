@@ -1,15 +1,18 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage } from 'electron'
+import { hostname } from 'node:os'
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { CHANNELS } from '../shared/api'
 import { isUiEvent } from '../shared/events'
+import { cleanName } from '../shared/names'
 import type { SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { createSettingsStore } from './core/settings'
 import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
 import { FakeEngine } from './engine/fake'
+import { noClientEngine } from './engine/no-client'
 import type { EnginePort } from './engine/port'
 import { SunshineApi } from './engine/sunshine/api'
 import { SunshineEngine } from './engine/sunshine/engine'
@@ -74,7 +77,10 @@ async function boot(): Promise<void> {
   electronApp.setAppUserModelId('com.horizonte.app')
   app.on('browser-window-created', (_event, window) => optimizer.watchWindowShortcuts(window))
 
-  const store = createSettingsStore(join(app.getPath('userData'), 'settings.json'))
+  const store = createSettingsStore(
+    join(app.getPath('userData'), 'settings.json'),
+    cleanName(hostname()) || undefined
+  )
   const fake = new FakeEngine(is.dev ? 700 : 0)
   const dev = readDevEngineConfig(process.env)
   const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -100,7 +106,7 @@ async function boot(): Promise<void> {
         readLog: () => readLogTail(dev.logPath),
         sleep
       }),
-      fake
+      noClientEngine()
     )
   } else if (real) {
     const platform = createWindowsPlatform({
@@ -135,7 +141,7 @@ async function boot(): Promise<void> {
         // Na primeira partida o motor testa todos os codificadores e leva mais de 30 segundos.
         timing: { restartTimeoutMs: 120_000 }
       }),
-      fake
+      noClientEngine()
     )
   }
   const controller = await createController({ engine, store })

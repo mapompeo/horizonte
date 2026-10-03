@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: Settings = {
   encoding: 'auto',
   codec: 'h264',
   autostart: true,
-  deviceName: 'Computador'
+  deviceName: 'Dispositivo'
 }
 
 function oneOf<T extends string | number>(value: unknown, allowed: readonly T[], fallback: T): T {
@@ -20,7 +20,7 @@ function oneOf<T extends string | number>(value: unknown, allowed: readonly T[],
 }
 
 /** Aceita qualquer entrada e sempre devolve ajustes válidos. */
-export function parseSettings(raw: unknown): Settings {
+export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.deviceName): Settings {
   const input = (
     typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? raw : {}
   ) as Record<string, unknown>
@@ -41,7 +41,7 @@ export function parseSettings(raw: unknown): Settings {
     encoding: oneOf<Encoding>(input.encoding, ['auto', 'gpu', 'cpu'], DEFAULT_SETTINGS.encoding),
     codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
     autostart: typeof input.autostart === 'boolean' ? input.autostart : DEFAULT_SETTINGS.autostart,
-    deviceName: name || DEFAULT_SETTINGS.deviceName
+    deviceName: name || defaultName
   }
 }
 
@@ -50,7 +50,11 @@ export interface SettingsStore {
   save(settings: Settings): Promise<void>
 }
 
-export function createSettingsStore(file: string): SettingsStore {
+/** `defaultName` é o nome do próprio aparelho (ex.: o nome do computador no Windows), usado até a pessoa escolher outro. */
+export function createSettingsStore(
+  file: string,
+  defaultName = DEFAULT_SETTINGS.deviceName
+): SettingsStore {
   /** Gravações entram em fila: cada uma espera a anterior, e a última chamada é a que vale. */
   let queue: Promise<void> = Promise.resolve()
   let counter = 0
@@ -58,9 +62,9 @@ export function createSettingsStore(file: string): SettingsStore {
   return {
     async load() {
       try {
-        return parseSettings(JSON.parse(await readFile(file, 'utf8')))
+        return parseSettings(JSON.parse(await readFile(file, 'utf8')), defaultName)
       } catch {
-        return { ...DEFAULT_SETTINGS }
+        return { ...DEFAULT_SETTINGS, deviceName: defaultName }
       }
     },
     save(settings) {

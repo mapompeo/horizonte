@@ -251,3 +251,28 @@ describe('preparar: abandonar no meio', () => {
     expect(t.process.config.sunshine_name).toBe('Segunda')
   })
 })
+
+describe('preparar de novo na mesma sessão', () => {
+  it('a segunda preparação não instala, não procura monitor nem reinicia', async () => {
+    const h = setup()
+    await h.prepare()
+    const restartsBefore = h.process.restarts
+    h.calls.length = 0
+    h.steps.length = 0
+
+    await h.prepare()
+
+    expect(h.calls).toEqual([])
+    expect(h.steps).toEqual([])
+    expect(h.process.restarts).toBe(restartsBefore)
+  })
+
+  it('se o motor parou de responder, volta para a preparação completa', async () => {
+    const h = setup()
+    await h.prepare()
+    h.calls.length = 0
+    h.process.reachable = false
+    await expect(h.prepare()).rejects.toThrow(/não respondeu/)
+    expect(h.calls).toContain('install')
+  })
+})
