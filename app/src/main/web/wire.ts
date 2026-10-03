@@ -8,7 +8,11 @@ import { psQuote } from '../platform/windows/elevation'
 import { runPowerShell } from '../platform/windows/probes'
 import { createCredentialVault, type Cipher } from '../platform/windows/secrets'
 import { generatePassword } from '../platform/windows/wire'
-import { MOONLIGHT_WEB } from '../platform/windows/versions'
+import {
+  MOONLIGHT_WEB,
+  MOONLIGHT_WEB_LINUX,
+  type PinnedArtifact
+} from '../platform/windows/versions'
 import { createGateway, type Gateway } from './gateway'
 
 /** Primeiro endereço de rede local (privado) que não seja de máquina virtual. */
@@ -22,6 +26,37 @@ export function lanAddress(
       (a) => /^(192\.168|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a) && !a.startsWith('192.168.56.')
     )
   return candidates[0]
+}
+
+/** Por sistema: o pacote fixado, o nome do executável e como extrair. */
+const TARGETS: Partial<
+  Record<
+    string,
+    {
+      artifact: PinnedArtifact
+      exe: string
+      extract: (file: string, into: string) => Promise<void>
+    }
+  >
+> = {
+  win32: {
+    artifact: MOONLIGHT_WEB,
+    exe: 'web-server.exe',
+    extract: async (zip, into) => {
+      await runPowerShell(
+        `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(into)} -Force`,
+        120_000
+      )
+    }
+  },
+  linux: {
+    artifact: MOONLIGHT_WEB_LINUX,
+    exe: 'web-server',
+    extract: (tgz, into) =>
+      new Promise((resolve, reject) => {
+        execFile('tar', ['-xzf', tgz, '-C', into], (error) => (error ? reject(error) : resolve()))
+      })
+  }
 }
 
 const unavailable: Gateway = {
@@ -39,7 +74,8 @@ export function createRealGateway(deps: {
   sleep: (ms: number) => Promise<void>
   deviceName: () => string
 }): Gateway {
-  if (process.platform !== 'win32') return unavailable
+  const target = TARGETS[process.platform]
+  if (!target || process.arch !== 'x64') return unavailable
   const dir = join(deps.userData, 'web')
   const packageDir = join(dir, 'package')
 
@@ -51,20 +87,17 @@ export function createRealGateway(deps: {
     lanAddress: () => lanAddress(),
     vault: createCredentialVault({ file: join(deps.userData, 'web.bin'), cipher: deps.cipher }),
     ensureFiles: async () => {
-      if (!existsSync(join(packageDir, 'web-server.exe'))) {
-        const zip = join(tmpdir(), MOONLIGHT_WEB.fileName)
-        await downloadVerified(MOONLIGHT_WEB, zip)
+      if (!existsSync(join(packageDir, target.exe))) {
+        const file = join(tmpdir(), target.artifact.fileName)
+        await downloadVerified(target.artifact, file)
         await mkdir(dir, { recursive: true })
-        await runPowerShell(
-          `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(dir)} -Force`,
-          120_000
-        )
+        await target.extract(file, dir)
       }
       return packageDir
     },
     defaultConfig: (pkg) =>
       new Promise((resolve, reject) => {
-        execFile(join(pkg, 'web-server.exe'), ['print-config'], { cwd: pkg }, (error, out) =>
+        execFile(join(pkg, target.exe), ['print-config'], { cwd: pkg }, (error, out) =>
           error ? reject(error) : resolve(JSON.parse(out) as Record<string, unknown>)
         )
       }),
@@ -73,7 +106,7 @@ export function createRealGateway(deps: {
       await writeFile(path, JSON.stringify(config, null, 2), 'utf8')
     },
     spawn: (pkg, configPath) => {
-      const child = spawn(join(pkg, 'web-server.exe'), ['--config-path', configPath], {
+      const child = spawn(join(pkg, target.exe), ['--config-path', configPath], {
         cwd: pkg,
         stdio: 'ignore',
         windowsHide: true
