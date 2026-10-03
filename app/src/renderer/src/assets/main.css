@@ -88,7 +88,7 @@ input:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 24px 40px;
+  padding: 0 24px 40px;
   text-align: center;
 }
 
@@ -802,4 +802,29 @@ input[type='range'] {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Barra de título própria: o arraste fica na faixa do topo, e o resto da interface não arrasta. */
+.drag-strip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  -webkit-app-region: drag;
+  z-index: 0;
+}
+
+button,
+input,
+.seg {
+  -webkit-app-region: no-drag;
+}
+
+/* Deixa os botões da janela livres: o conteúdo do topo para antes deles. */
+.topbar,
+.sheet-head {
+  position: relative;
+  z-index: 1;
+  padding-right: calc(100vw - env(titlebar-area-width, 100vw));
 }

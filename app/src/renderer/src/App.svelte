@@ -45,6 +45,7 @@
   })
 </script>
 
+<div class="drag-strip" aria-hidden="true"></div>
 {#if $snapshot}
   {@const state = $snapshot.state}
   {@const settings = $snapshot.settings}

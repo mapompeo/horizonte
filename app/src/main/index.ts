@@ -15,6 +15,16 @@ import { readLogTail } from './engine/sunshine/log-file'
 import { createEngineMemory } from './engine/sunshine/memory'
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 
+/** Os botões de janela ficam por cima da interface, na cor do fundo e discretos. */
+function overlayFor(): { color: string; symbolColor: string; height: number } {
+  const dark = nativeTheme.shouldUseDarkColors
+  return {
+    color: dark ? '#101012' : '#FBFBFD',
+    symbolColor: dark ? '#9A9AA2' : '#6E6E73',
+    height: 56
+  }
+}
+
 function createWindow(controller: Controller): void {
   const window = new BrowserWindow({
     title: 'Horizonte',
@@ -24,6 +34,8 @@ function createWindow(controller: Controller): void {
     minHeight: 480,
     show: false,
     autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: overlayFor(),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#101012' : '#FBFBFD',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -34,6 +46,11 @@ function createWindow(controller: Controller): void {
   })
 
   window.once('ready-to-show', () => window.show())
+  const refreshOverlay = (): void => {
+    if (!window.isDestroyed()) window.setTitleBarOverlay(overlayFor())
+  }
+  nativeTheme.on('updated', refreshOverlay)
+  window.on('closed', () => nativeTheme.off('updated', refreshOverlay))
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 
   const unsubscribe = controller.subscribe((snapshot) => {
