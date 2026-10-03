@@ -17,26 +17,38 @@ export const GPU_ENCODERS: readonly EncoderCandidate[] = [
 
 export const CPU_ENCODER: EncoderCandidate = { id: 'cpu', kind: 'cpu' }
 
-export type Probe = (candidate: EncoderCandidate) => Promise<boolean>
+/** O `signal` é abortado quando o tempo acaba: a sondagem deve parar de mexer no Sunshine. */
+export type Probe = (candidate: EncoderCandidate, signal?: AbortSignal) => Promise<boolean>
 
 export interface ChosenEncoder {
   candidate: EncoderCandidate
   /** Verdadeiro quando o processador foi usado sem que o usuário o tivesse pedido. */
   fellBack: boolean
+  /**
+   * Verdadeiro quando alguma sondagem falhou ou estourou o tempo em vez de responder "não".
+   * Não prova que falta GPU, então ninguém deve lembrar disso como definitivo.
+   */
+  inconclusive: boolean
 }
 
-function attempt(probe: Probe, candidate: EncoderCandidate, timeoutMs: number): Promise<boolean> {
+type Verdict = 'yes' | 'no' | 'unknown'
+
+function attempt(probe: Probe, candidate: EncoderCandidate, timeoutMs: number): Promise<Verdict> {
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(false), timeoutMs)
-    const finish = (ok: boolean): void => {
+    const abort = new AbortController()
+    const timer = setTimeout(() => {
+      abort.abort()
+      resolve('unknown')
+    }, timeoutMs)
+    const finish = (verdict: Verdict): void => {
       clearTimeout(timer)
-      resolve(ok)
+      resolve(verdict)
     }
     Promise.resolve()
-      .then(() => probe(candidate))
+      .then(() => probe(candidate, abort.signal))
       .then(
-        (ok) => finish(ok === true),
-        () => finish(false)
+        (ok) => finish(ok === true ? 'yes' : 'no'),
+        () => finish('unknown')
       )
   })
 }
@@ -46,10 +58,13 @@ export async function chooseEncoder(
   preference: Encoding = 'auto',
   timeoutMs = 8000
 ): Promise<ChosenEncoder> {
-  if (preference === 'cpu') return { candidate: CPU_ENCODER, fellBack: false }
+  if (preference === 'cpu') return { candidate: CPU_ENCODER, fellBack: false, inconclusive: false }
 
+  let inconclusive = false
   for (const candidate of GPU_ENCODERS) {
-    if (await attempt(probe, candidate, timeoutMs)) return { candidate, fellBack: false }
+    const verdict = await attempt(probe, candidate, timeoutMs)
+    if (verdict === 'yes') return { candidate, fellBack: false, inconclusive: false }
+    if (verdict === 'unknown') inconclusive = true
   }
-  return { candidate: CPU_ENCODER, fellBack: true }
+  return { candidate: CPU_ENCODER, fellBack: true, inconclusive }
 }

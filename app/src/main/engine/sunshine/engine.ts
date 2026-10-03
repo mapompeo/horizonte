@@ -161,20 +161,26 @@ export class SunshineEngine implements ServerEngine {
     const remembered = await this.deps.memory.load()
     if (remembered !== null) {
       const candidate = GPU_ENCODERS.find((item) => item.id === remembered.encoder)
-      return candidate ? { candidate, fellBack: false } : null
+      return candidate ? { candidate, fellBack: false, inconclusive: false } : null
     }
     // Reiniciar o Sunshine é arriscado (já travou na instância real): se o log atual e a configuração
     // gravada já provam um encoder de hardware, usamos isso em vez de sondar reiniciando.
     const proven = await this.provenCandidate(api)
     if (proven !== null) {
       await this.deps.memory.save({ encoder: proven.id })
-      return { candidate: proven, fellBack: false }
+      return { candidate: proven, fellBack: false, inconclusive: false }
     }
-    const probe = createLogEncoderProbe({ api, restartAndRead: (a) => restartAndRead(a ?? alive) })
+    const probe = createLogEncoderProbe({
+      api,
+      restartAndRead: (stillWanted) => restartAndRead(() => alive() && (stillWanted?.() ?? true))
+    })
     const chosen = await chooseEncoder(probe, settings.encoding, this.timing.probeTimeoutMs)
     if (!alive()) return null
-    // Só lembramos de verdade o que foi confirmado; "nenhum" também é lembrado para não reiniciar à toa.
-    await this.deps.memory.save({ encoder: chosen.fellBack ? null : chosen.candidate.id })
+    // "Nenhum" só é lembrado quando as sondagens responderam não; falha ou tempo esgotado não prova nada,
+    // e gravar isso faria o app nunca mais tentar a GPU.
+    if (!chosen.fellBack || !chosen.inconclusive) {
+      await this.deps.memory.save({ encoder: chosen.fellBack ? null : chosen.candidate.id })
+    }
     return chosen.fellBack ? null : chosen
   }
 

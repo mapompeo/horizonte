@@ -91,6 +91,15 @@ describe('preparar: caminho feliz', () => {
     expect(t.mem.box.value).toEqual({ encoder: null })
   })
 
+  it('sondagem que falha (Sunshine não voltou) não grava "sem GPU" para sempre', async () => {
+    const t = setup()
+    t.process.restart = async () => {
+      throw new Error('Sunshine fora do ar')
+    }
+    await t.prepare().catch(() => undefined)
+    expect(t.mem.box.value).toBeNull()
+  })
+
   it('o usuário escolheu o processador: força o software sem sondar', async () => {
     const t = setup()
     await t.prepare({ ...DEFAULT_SETTINGS, encoding: 'cpu' })
