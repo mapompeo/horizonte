@@ -37,9 +37,19 @@ describe('buildStreamArgs', () => {
 })
 
 describe('createMoonlightClient', () => {
+  const pairing = {
+    run: vi.fn(async (_args: string[]) => 0 as number | null),
+    sendPin: vi.fn(async () => undefined),
+    deviceName: () => 'Notebook',
+    randomPin: () => '4821'
+  }
   const make = (proc = fakeProcess()) => {
     const spawn = vi.fn(async () => proc)
-    return { proc, spawn, client: createMoonlightClient({ spawn, listHosts: async () => [] }) }
+    return {
+      proc,
+      spawn,
+      client: createMoonlightClient({ spawn, listHosts: async () => [], ...pairing })
+    }
   }
 
   it('conecta abrindo o Moonlight e avisa quando a transmissão acaba sozinha', async () => {
@@ -71,5 +81,27 @@ describe('createMoonlightClient', () => {
     const { client } = make()
     await client.connect('192.168.1.3', DEFAULT_SETTINGS)
     await expect(client.connect('192.168.1.4', DEFAULT_SETTINGS)).rejects.toThrow(/já existe/i)
+  })
+
+  it('na primeira conexão manda o PIN pelo canal, pareia com ele e só então transmite', async () => {
+    pairing.run.mockClear()
+    pairing.sendPin.mockClear()
+    const { spawn, client } = make()
+
+    await client.connect('192.168.1.3', DEFAULT_SETTINGS)
+    await client.disconnect()
+    await client.connect('192.168.1.3', DEFAULT_SETTINGS)
+
+    expect(pairing.sendPin).toHaveBeenCalledTimes(1)
+    expect(pairing.sendPin).toHaveBeenCalledWith('192.168.1.3', 'Notebook', '4821')
+    expect(pairing.run).toHaveBeenCalledWith(['pair', '192.168.1.3', '--pin', '4821'])
+    expect(spawn).toHaveBeenCalledTimes(2) // pareou só uma vez
+  })
+
+  it('pareamento recusado explica e não abre a transmissão', async () => {
+    pairing.run.mockResolvedValueOnce(1)
+    const { spawn, client } = make()
+    await expect(client.connect('192.168.1.9', DEFAULT_SETTINGS)).rejects.toThrow(/pareamento/i)
+    expect(spawn).not.toHaveBeenCalled()
   })
 })

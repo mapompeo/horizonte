@@ -23,6 +23,7 @@ function harness(
     consent?: boolean
     responding?: boolean
     controllable?: boolean
+    portOpen?: boolean
   } = {}
 ): Harness {
   const h: Harness = { deps: undefined as never, downloads: [], elevated: [], saved: [], waited: 0 }
@@ -31,7 +32,8 @@ function harness(
       sunshineRunning: async () => options.sunshineRunning ?? false,
       serviceControllable: async () => options.controllable ?? true,
       sunshineResponding: async () => options.responding ?? options.sunshineRunning ?? false,
-      driverPresent: async () => options.driverPresent ?? false
+      driverPresent: async () => options.driverPresent ?? false,
+      pairingPortOpen: async () => options.portOpen ?? true
     },
     vault: {
       load: async () => options.stored ?? null,
@@ -119,6 +121,16 @@ describe('createWindowsSetup', () => {
     expect(all(h)).not.toContain('msiexec')
     expect(h.downloads).toEqual([])
     expect(h.waited).toBe(1)
+  })
+
+  it('tudo pronto menos a regra do firewall: só cria a regra, sem baixar nada', async () => {
+    const h = harness({ sunshineRunning: true, driverPresent: true, stored, portOpen: false })
+    await createWindowsSetup(h.deps).installer.ensureInstalled()
+
+    expect(all(h)).toContain('New-NetFirewallRule')
+    expect(all(h)).toContain('47900')
+    expect(all(h)).not.toContain('msiexec')
+    expect(h.downloads).toEqual([])
   })
 
   it('só o driver falta: não reinstala o motor de transmissão nem troca a senha', async () => {
