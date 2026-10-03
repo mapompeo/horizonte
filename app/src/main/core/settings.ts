@@ -15,6 +15,8 @@ export const DEFAULT_SETTINGS: Settings = {
   deviceName: 'Dispositivo'
 }
 
+const LEGACY_DEFAULT_NAMES = ['Computador']
+
 function oneOf<T extends string | number>(value: unknown, allowed: readonly T[], fallback: T): T {
   return allowed.includes(value as T) ? (value as T) : fallback
 }
@@ -27,7 +29,9 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
   const bitrate = clampBitrate(
     typeof input.bitrate === 'number' ? input.bitrate : DEFAULT_SETTINGS.bitrate
   )
-  const name = typeof input.deviceName === 'string' ? cleanName(input.deviceName) : ''
+  const saved = typeof input.deviceName === 'string' ? cleanName(input.deviceName) : ''
+  // "Computador" era o nome padrão antigo, gravado sem a pessoa escolher: vale o nome do aparelho.
+  const name = LEGACY_DEFAULT_NAMES.includes(saved) ? '' : saved
 
   return {
     bitrate,

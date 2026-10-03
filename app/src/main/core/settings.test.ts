@@ -134,6 +134,13 @@ describe('nome padrão do dispositivo', () => {
     }
   })
 
+  it('o nome padrão antigo "Computador", já gravado em disco, vira o nome do aparelho', () => {
+    expect(parseSettings({ deviceName: 'Computador' }, 'Notebook da Ana').deviceName).toBe(
+      'Notebook da Ana'
+    )
+    expect(parseSettings({ deviceName: 'Sala' }, 'Notebook da Ana').deviceName).toBe('Sala')
+  })
+
   it('sem nome nenhum cai em "Dispositivo", nunca em "Computador"', () => {
     expect(parseSettings({}).deviceName).toBe('Dispositivo')
   })
