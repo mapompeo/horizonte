@@ -1,6 +1,6 @@
 # Horizonte, Plano 2B: instalação de verdade no Windows (rascunho)
 
-Data: 02/10/2026. Base: branch `feat/plano-2a-motor-sunshine` (PR #1). Status: **rascunho para decisão**, nenhuma linha de código escrita.
+Data: 02/10/2026. Base: branch `feat/plano-2a-motor-sunshine` (PR #1). Status: em execução. Tarefas 1 e 2 prontas (versões fixas, download com hash, elevação); 3 a 8 dependem da instalação real.
 
 ## Objetivo
 
@@ -21,12 +21,23 @@ As interfaces já existem em `app/src/main/platform/types.ts` (`EngineInstaller`
 3. **Onde fica a senha.** `safeStorage` do Electron (DPAPI no Windows) num arquivo em `userData`, como já previsto no spec.
 4. **Desinstalar.** Entra na v1 (botão em Ajustes) ou fica para depois? Recomendo depois, mas deixando os passos reversíveis.
 
-## Itens a verificar antes de codar (não confirmei)
+## Verificado em 02/10/2026 (lendo o MSI e o zip, sem instalar nada)
 
-- Flags silenciosas do MSI do Sunshine (`msiexec /i ... /qn /norestart` e se ele cria e inicia o `SunshineService` sozinho).
-- Como o VDD é instalado por linha de comando (`pnputil /add-driver` com o `.inf`) e se precisa instalar o certificado dele antes. Onde ele guarda a resolução (`vdd_settings.xml`?).
-- Chave do registro que informa o estado do Smart App Control (`VerifiedAndReputablePolicyState`?). Se não bater, a detecção cai para "o `sunshine.exe` não subiu" e a mensagem explica o bloqueio.
-- Que a credencial pode ser criada com `sunshine.exe <conf> --creds <usuário> <senha>` (já usado à mão) dentro do processo elevado.
+- **MSI do Sunshine:** o hash baixado bate com o fixado. O MSI **não declara o serviço do Windows**: ele roda uma ação customizada (`CA_SunshineInstallSilent`) que chama `scripts\sunshine-setup.ps1 -Action install -Silent`. Esse script cria o `SunshineService` (`sc create`, `binPath` em `tools\sunshinesvc.exe`), adiciona as regras de firewall, liga a partida automática (`sc config SunshineService start= auto`) e inicia o serviço. A variante silenciosa não abre a documentação no navegador. Não há instalação de driver de gamepad nesse script.
+- **Instalação silenciosa:** `msiexec /i <msi> /qn /norestart` deve acionar a variante silenciosa, mas **a condição que escolhe a variante não consegui ler**: confirmar na primeira instalação real.
+- **Driver virtual (zip 24.10.27, x64):** contém `MttVDD.inf`, `MttVDD.dll`, `mttvdd.cat`, `Virtual_Display_Driver.cer`, `installCert.bat` e `vdd_settings.xml`. O `installCert.bat` instala o certificado nas lojas **`root` e `TrustedPublisher`**. A resolução e a taxa vêm do `vdd_settings.xml` (1920x1080 já existe nas opções, com 30 a 165 Hz; `monitors/count` é 1).
+- Este computador não tem o `SunshineService`: serve como máquina limpa para a prova do 2B (ver a decisão 5).
+
+## Decisão de segurança (nova)
+
+5. **Certificado do driver.** O `installCert.bat` do VDD põe um certificado **autoassinado** como autoridade raiz confiável do computador, e não só como publicador confiável. Isso é um poder grande para um app de segunda tela. Recomendo instalar o certificado **apenas em `TrustedPublisher`** e testar se o `pnputil /add-driver` funciona assim; se o Windows exigir a raiz, o app deve **explicar e pedir consentimento** antes, e nunca fazer isso em silêncio. Preciso do seu aval para esse critério.
+
+## Itens que ainda faltam verificar (só na instalação real)
+
+- Qual variante do script o `/qn` aciona (acima).
+- `pnputil /add-driver MttVDD.inf /install` com só o `TrustedPublisher`, e como o monitor virtual aparece para o Sunshine (`friendly_name` "VDD by MTT" já visto à mão).
+- Chave do registro do estado do Smart App Control (`VerifiedAndReputablePolicyState`?); se não bater, a detecção cai para "o `sunshine.exe` não subiu".
+- A credencial: `sunshine.exe <conf> --creds <usuário> <senha>` dentro do processo elevado, e o reinício do serviço (`Restart-Service SunshineService`).
 
 ## Estrutura de arquivos (proposta)
 
