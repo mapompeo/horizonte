@@ -1,5 +1,7 @@
 import { execFile } from 'node:child_process'
 import { FIREWALL_RULE, type InstallProbe } from './setup'
+import { isOlder } from './version-compare'
+import { SUNSHINE } from './versions'
 
 /** Roda um trecho de PowerShell sem privilégios e devolve o que ele escreveu. */
 export type PowerShellRunner = (script: string, timeoutMs?: number) => Promise<string>
@@ -38,6 +40,12 @@ export function createProbe(run: PowerShellRunner): InstallProbe {
       (await ask(
         `[bool](Get-NetFirewallRule -DisplayName '${FIREWALL_RULE}' -ErrorAction SilentlyContinue)`
       )) === 'True',
+    sunshineOutdated: async () => {
+      const installed = await ask(
+        "(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*' -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq 'Sunshine' } | Select-Object -First 1).DisplayVersion"
+      )
+      return isOlder(installed.trim(), SUNSHINE.version)
+    },
     driverPresent: async () =>
       (await ask(
         "[bool](Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.HardwareID -contains 'Root\\MttVDD' -or $_.FriendlyName -match 'Virtual Display Driver|VDD by MTT' })"

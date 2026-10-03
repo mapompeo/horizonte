@@ -20,6 +20,8 @@ export interface InstallProbe {
   driverPresent(): Promise<boolean>
   /** A regra do firewall para o canal de PIN do Horizonte (rede local) já existe. */
   pairingPortOpen?(): Promise<boolean>
+  /** O motor instalado é mais antigo que a versão fixada do Horizonte (atualização). */
+  sunshineOutdated?(): Promise<boolean>
 }
 
 export interface SetupDeps {
@@ -85,23 +87,28 @@ export function createWindowsSetup(deps: SetupDeps): {
   let report: (progress: PrepProgress) => void = () => undefined
 
   async function run(): Promise<void> {
-    const [running, responding, controllable, driverPresent, stored, portOpen] = await Promise.all([
-      deps.probe.sunshineRunning(),
-      deps.probe.sunshineResponding(),
-      deps.probe.serviceControllable(),
-      deps.probe.driverPresent(),
-      deps.vault.load(),
-      deps.probe.pairingPortOpen?.() ?? Promise.resolve(true)
-    ])
+    const [running, responding, controllable, driverPresent, stored, portOpen, outdated] =
+      await Promise.all([
+        deps.probe.sunshineRunning(),
+        deps.probe.sunshineResponding(),
+        deps.probe.serviceControllable(),
+        deps.probe.driverPresent(),
+        deps.vault.load(),
+        deps.probe.pairingPortOpen?.() ?? Promise.resolve(true),
+        deps.probe.sunshineOutdated?.() ?? Promise.resolve(false)
+      ])
     const needSunshine = !running
+    // Instalar por cima mantém a configuração e as senhas; só troca o programa.
+    const needMsi = needSunshine || outdated
     const needCredentials = needSunshine || stored === null
     const needDriver = !driverPresent
     // Serviço "rodando" mas sem atender: preso depois de um reinício. Reiniciar de novo costuma resolver.
     const needRestart = !needSunshine && !needCredentials && !responding
     // O Horizonte precisa reiniciar o serviço sozinho nas próximas vezes, sem pedir administrador de novo.
-    const needAccess = needSunshine || !controllable
+    const needAccess = needMsi || !controllable
     const needFirewall = !portOpen
-    if (!needSunshine && !needCredentials && !needDriver && !needRestart && !needAccess && !needFirewall) return
+    if (!needMsi && !needCredentials && !needDriver && !needRestart && !needAccess && !needFirewall)
+      return
 
     if (needDriver && !(await deps.confirmDriverTrust())) {
       throw new Error(
@@ -110,7 +117,7 @@ export function createWindowsSetup(deps: SetupDeps): {
     }
 
     const downloads: PinnedArtifact[] = []
-    if (needSunshine) downloads.push(SUNSHINE)
+    if (needMsi) downloads.push(SUNSHINE)
     if (needDriver) downloads.push(VIRTUAL_DISPLAY_DRIVER)
 
     const paths = new Map<string, string>()
@@ -131,7 +138,7 @@ export function createWindowsSetup(deps: SetupDeps): {
       : (stored as SunshineCredentials)
 
     const steps: ElevatedStep[] = []
-    if (needSunshine) {
+    if (needMsi) {
       steps.push({
         description: 'Instalar o motor de transmissão',
         script: [
@@ -200,7 +207,7 @@ export function createWindowsSetup(deps: SetupDeps): {
     })
 
     report({
-      note: needSunshine
+      note: needMsi
         ? 'Instalando o motor de transmissão (confirme o aviso do Windows)'
         : needDriver
           ? 'Instalando o monitor virtual (confirme o aviso do Windows)'
@@ -210,7 +217,7 @@ export function createWindowsSetup(deps: SetupDeps): {
     })
     await deps.elevation.runElevated(steps)
     if (needCredentials) await deps.vault.save(credentials)
-    if (needSunshine || needCredentials || needRestart) {
+    if (needMsi || needCredentials || needRestart) {
       report({ note: 'Esperando o motor ligar', fraction: INSTALL_SHARE })
       await deps.waitForApi()
     }
