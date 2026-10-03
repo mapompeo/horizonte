@@ -7,6 +7,10 @@ import { DRIVER_INSTALL_SCRIPT } from './driver-script'
 import { psQuote, type ElevatedStep, type Elevation } from './elevation'
 import { SUNSHINE, VIRTUAL_DISPLAY_DRIVER, type PinnedArtifact } from './versions'
 
+import { PIN_CHANNEL_PORT } from '../../engine/pin-channel'
+
+export const FIREWALL_RULE = 'Horizonte (pareamento)'
+
 export interface InstallProbe {
   sunshineRunning(): Promise<boolean>
   /** O painel do Sunshine (porta 47990) está aceitando conexões. O serviço pode estar rodando e preso. */
@@ -14,6 +18,8 @@ export interface InstallProbe {
   /** A pessoa comum pode reiniciar o serviço sem pedir administrador (permissão dada na instalação). */
   serviceControllable(): Promise<boolean>
   driverPresent(): Promise<boolean>
+  /** A regra do firewall para o canal de PIN do Horizonte (rede local) já existe. */
+  pairingPortOpen?(): Promise<boolean>
 }
 
 export interface SetupDeps {
@@ -79,12 +85,13 @@ export function createWindowsSetup(deps: SetupDeps): {
   let report: (progress: PrepProgress) => void = () => undefined
 
   async function run(): Promise<void> {
-    const [running, responding, controllable, driverPresent, stored] = await Promise.all([
+    const [running, responding, controllable, driverPresent, stored, portOpen] = await Promise.all([
       deps.probe.sunshineRunning(),
       deps.probe.sunshineResponding(),
       deps.probe.serviceControllable(),
       deps.probe.driverPresent(),
-      deps.vault.load()
+      deps.vault.load(),
+      deps.probe.pairingPortOpen?.() ?? Promise.resolve(true)
     ])
     const needSunshine = !running
     const needCredentials = needSunshine || stored === null
@@ -93,7 +100,8 @@ export function createWindowsSetup(deps: SetupDeps): {
     const needRestart = !needSunshine && !needCredentials && !responding
     // O Horizonte precisa reiniciar o serviço sozinho nas próximas vezes, sem pedir administrador de novo.
     const needAccess = needSunshine || !controllable
-    if (!needSunshine && !needCredentials && !needDriver && !needRestart && !needAccess) return
+    const needFirewall = !portOpen
+    if (!needSunshine && !needCredentials && !needDriver && !needRestart && !needAccess && !needFirewall) return
 
     if (needDriver && !(await deps.confirmDriverTrust())) {
       throw new Error(
@@ -144,6 +152,12 @@ export function createWindowsSetup(deps: SetupDeps): {
           nativeCheck('sc sdset'),
           '}'
         ].join('\n')
+      })
+    }
+    if (needFirewall) {
+      steps.push({
+        description: 'Liberar o pareamento na rede local',
+        script: `New-NetFirewallRule -DisplayName ${psQuote(FIREWALL_RULE)} -Direction Inbound -Protocol TCP -LocalPort ${PIN_CHANNEL_PORT} -Profile Private -Action Allow | Out-Null`
       })
     }
     if (needCredentials) {

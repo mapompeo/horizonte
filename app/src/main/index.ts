@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage } from 'electron'
 import { spawn } from 'node:child_process'
+import { randomInt } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { hostname, networkInterfaces } from 'node:os'
 import { join } from 'node:path'
@@ -15,6 +16,7 @@ import { createSettingsStore } from './core/settings'
 import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
+import { createPinChannel, sendPin } from './engine/pin-channel'
 import { FakeEngine } from './engine/fake'
 import { createMoonlightClient } from './engine/moonlight/client'
 import { ensureMoonlight } from './engine/moonlight/install'
@@ -108,27 +110,39 @@ async function boot(): Promise<void> {
   })
   // O Moonlight portátil é baixado na primeira vez que a pessoa conecta (versão fixa, hash conferido).
   const moonlightDir = join(app.getPath('userData'), 'moonlight')
+  const moonlightExe = (): Promise<string> =>
+    ensureMoonlight({
+      dir: moonlightDir,
+      exists: async (path) => existsSync(path),
+      download: async (onProgress) => {
+        const zip = join(app.getPath('temp'), MOONLIGHT.fileName)
+        await downloadVerified(MOONLIGHT, zip, onProgress)
+        return zip
+      },
+      extract: async (zip, into) => {
+        await runPowerShell(
+          `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(into)} -Force`,
+          120_000
+        )
+      }
+    })
   const receiver =
     process.platform === 'win32'
       ? createMoonlightClient({
           listHosts: discovery.listHosts,
-          spawn: async (args) => {
-            const exe = await ensureMoonlight({
-              dir: moonlightDir,
-              exists: async (path) => existsSync(path),
-              download: async (onProgress) => {
-                const zip = join(app.getPath('temp'), MOONLIGHT.fileName)
-                await downloadVerified(MOONLIGHT, zip, onProgress)
-                return zip
-              },
-              extract: async (zip, into) => {
-                await runPowerShell(
-                  `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(into)} -Force`,
-                  120_000
-                )
-              }
+          sendPin,
+          // O Moonlight se apresenta ao outro lado com o nome do computador.
+          deviceName: () => cleanName(hostname()) || 'Dispositivo',
+          randomPin: () => String(randomInt(10_000)).padStart(4, '0'),
+          run: async (args) => {
+            const child = spawn(await moonlightExe(), args, { stdio: 'ignore' })
+            return new Promise((resolve) => {
+              child.once('exit', resolve)
+              child.once('error', () => resolve(null))
             })
-            const child = spawn(exe, args, { stdio: 'ignore' })
+          },
+          spawn: async (args) => {
+            const child = spawn(await moonlightExe(), args, { stdio: 'ignore' })
             return {
               kill: () => void child.kill(),
               onExit: (listener) => void child.once('exit', listener)
@@ -184,6 +198,7 @@ async function boot(): Promise<void> {
         createApi: platform.createApi,
         readLog: () => readLogTail(SUNSHINE_LOG),
         sleep,
+        pins: createPinChannel(),
         restart: platform.restart,
         // Na primeira partida o motor testa todos os codificadores e leva mais de 30 segundos.
         timing: { restartTimeoutMs: 120_000 }

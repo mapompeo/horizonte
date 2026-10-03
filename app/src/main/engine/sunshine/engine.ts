@@ -1,3 +1,4 @@
+import type { PinChannel } from '../pin-channel'
 import type { PrepProgress, PrepStep, Settings } from '../../../shared/types'
 import {
   chooseEncoder,
@@ -31,6 +32,8 @@ export interface SunshineEngineDeps {
   createApi(credentials: SunshineCredentials): SunshineApiPort
   readLog(): Promise<string>
   sleep(ms: number): Promise<void>
+  /** Canal por onde o outro dispositivo manda o PIN do pareamento. Opcional. */
+  pins?: PinChannel
   /**
    * Como reiniciar o motor. Por padrão pede pela API, mas no Windows essa chamada pode deixar o
    * processo preso; lá o reinício é feito pelo serviço do sistema.
@@ -280,7 +283,8 @@ export class SunshineEngine implements ServerEngine {
       intervalMs: this.timing.pairingIntervalMs,
       onRequest: (pairing) => {
         const device = cleanName(pairing.name) || GENERIC_DEVICE
-        for (const listener of [...this.pairListeners]) listener({ device, pairingId: pairing.id })
+        for (const listener of [...this.pairListeners])
+          listener({ device, pairingId: pairing.id, pin: this.deps.pins?.take(device) })
       },
       onCancelled: (pairingId) => {
         for (const listener of [...this.cancelListeners]) listener(pairingId)
@@ -297,11 +301,13 @@ export class SunshineEngine implements ServerEngine {
         for (const listener of [...this.disconnectedListeners]) listener()
       }
     })
+    void this.deps.pins?.start().catch(() => undefined) // porta ocupada: cai para o PIN manual
     this.pairing.start()
     this.session.start()
   }
 
   protected stopWatchers(): void {
+    void this.deps.pins?.stop()
     this.pairing?.stop()
     this.session?.stop()
     this.pairing = null

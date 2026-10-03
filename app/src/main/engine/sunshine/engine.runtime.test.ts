@@ -4,6 +4,7 @@ import type { EngineMemory } from './memory'
 import { SunshineEngine } from './engine'
 import { FakeSunshineProcess } from './testing/fake-process'
 import type { PairRequest } from '../port'
+import type { PinChannel } from '../pin-channel'
 
 const PASSWORD = 'segredo-123'
 
@@ -24,7 +25,7 @@ interface Ready {
   disconnected(): number
 }
 
-async function ready(): Promise<Ready> {
+async function ready(pins?: PinChannel): Promise<Ready> {
   const process = new FakeSunshineProcess()
   process.displays.push({ deviceId: '{vdd}', friendlyName: 'VDD by MTT', originX: 1920 })
   process.rebuildLog()
@@ -43,6 +44,7 @@ async function ready(): Promise<Ready> {
     createApi: () => process,
     readLog: () => process.readLog(),
     sleep: async () => process.tick(),
+    pins,
     timing: { pairingIntervalMs: 100, sessionIntervalMs: 100, pollMs: 100 }
   })
   const requests: PairRequest[] = []
@@ -65,6 +67,22 @@ describe('pareamento', () => {
     t.process.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
     await vi.advanceTimersByTimeAsync(250)
     expect(t.requests).toEqual([{ device: 'Notebook', pairingId: 'p1' }])
+  })
+
+  it('o PIN que o outro dispositivo mandou pelo canal vem junto do pedido, e o canal só abre ao esperar', async () => {
+    const calls: string[] = []
+    const pins: PinChannel = {
+      start: async () => void calls.push('start'),
+      stop: async () => void calls.push('stop'),
+      take: (device) => (device === 'Notebook' ? '4321' : undefined)
+    }
+    const t = await ready(pins)
+    t.process.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
+    await vi.advanceTimersByTimeAsync(250)
+    expect(t.requests[0]?.pin).toBe('4321')
+    expect(calls).toContain('start')
+    await t.engine.abort()
+    expect(calls).toContain('stop')
   })
 
   it('dispositivo sem nome ganha um nome genérico', async () => {

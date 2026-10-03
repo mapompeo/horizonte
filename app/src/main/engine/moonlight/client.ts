@@ -38,16 +38,39 @@ export interface MoonlightProcess {
 export interface MoonlightClientDeps {
   spawn(args: string[]): Promise<MoonlightProcess>
   listHosts(): Promise<Host[]>
+  /** Roda o Moonlight até ele terminar e devolve o código de saída (usado no pareamento). */
+  run(args: string[]): Promise<number | null>
+  /** Manda o PIN ao dispositivo que envia, pelo canal do Horizonte. */
+  sendPin(host: string, device: string, pin: string): Promise<void>
+  /** Nome que este aparelho usa ao parear: é o que o outro lado mostra em "Permitir...?". */
+  deviceName(): string
+  randomPin(): string
 }
 
 export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
   let current: MoonlightProcess | null = null
   const ended = new Set<() => void>()
+  const paired = new Set<string>()
 
   return {
     listHosts: () => deps.listHosts(),
     async connect(host, settings) {
       if (current) throw new Error('Já existe uma transmissão sendo recebida.')
+      if (!paired.has(host)) {
+        // Sem PIN digitado: este aparelho gera o PIN, manda pelo canal e o outro só precisa aprovar.
+        const pin = deps.randomPin()
+        await deps.sendPin(host, deps.deviceName(), pin).catch(() => {
+          throw new Error(
+            'Não consegui falar com o outro dispositivo. Confira se o Horizonte está aberto em Enviar lá.'
+          )
+        })
+        if ((await deps.run(['pair', host, '--pin', pin])) !== 0) {
+          throw new Error(
+            'O pareamento não foi concluído. Aprove o pedido no outro dispositivo e tente de novo.'
+          )
+        }
+        paired.add(host)
+      }
       const child = await deps.spawn(buildStreamArgs(host, settings))
       current = child
       child.onExit(() => {

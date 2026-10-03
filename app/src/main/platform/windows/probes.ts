@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import type { InstallProbe } from './setup'
+import { FIREWALL_RULE, type InstallProbe } from './setup'
 
 /** Roda um trecho de PowerShell sem privilégios e devolve o que ele escreveu. */
 export type PowerShellRunner = (script: string, timeoutMs?: number) => Promise<string>
@@ -34,6 +34,10 @@ export function createProbe(run: PowerShellRunner): InstallProbe {
     serviceControllable: async () =>
       // O padrão do Windows já traz uma regra para IU (só leitura); o que importa é ela poder parar (WP).
       /[(]A;;[A-Z]*WP[A-Z]*;;;IU[)]/.test(await ask('(sc.exe sdshow SunshineService) -join " "')),
+    pairingPortOpen: async () =>
+      (await ask(
+        `[bool](Get-NetFirewallRule -DisplayName '${FIREWALL_RULE}' -ErrorAction SilentlyContinue)`
+      )) === 'True',
     driverPresent: async () =>
       (await ask(
         "[bool](Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.HardwareID -contains 'Root\\MttVDD' -or $_.FriendlyName -match 'Virtual Display Driver|VDD by MTT' })"

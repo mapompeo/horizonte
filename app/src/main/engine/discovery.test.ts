@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { createDiscovery, type ServiceBrowser, type ServiceFound } from './discovery'
 
-function fakeBrowser(services: ServiceFound[]): { browser: ServiceBrowser; stopped: () => boolean } {
+function fakeBrowser(services: ServiceFound[]): {
+  browser: ServiceBrowser
+  stopped: () => boolean
+} {
   let stopped = false
   return {
     stopped: () => stopped,

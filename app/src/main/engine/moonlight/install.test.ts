@@ -8,7 +8,12 @@ const exe = join(dir, 'Moonlight.exe')
 describe('ensureMoonlight', () => {
   it('já instalado: não baixa nada', async () => {
     const download = vi.fn()
-    const path = await ensureMoonlight({ dir, exists: async () => true, download, extract: vi.fn() })
+    const path = await ensureMoonlight({
+      dir,
+      exists: async () => true,
+      download,
+      extract: vi.fn()
+    })
     expect(path).toBe(exe)
     expect(download).not.toHaveBeenCalled()
   })
