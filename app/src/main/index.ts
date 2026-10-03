@@ -32,6 +32,7 @@ import { runPowerShell } from './platform/windows/probes'
 import { MOONLIGHT } from './platform/windows/versions'
 import { createLinuxPlatform, SUNSHINE_LOG as LINUX_SUNSHINE_LOG } from './platform/linux/wire'
 import { createRealGateway } from './web/wire'
+import { createMacPlatform, SUNSHINE_LOG as MAC_SUNSHINE_LOG } from './platform/macos/wire'
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
 
@@ -105,6 +106,9 @@ async function boot(): Promise<void> {
     (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
   const realLinux =
     process.platform === 'linux' &&
+    (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
+  const realMac =
+    process.platform === 'darwin' &&
     (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
   const discovery = createDiscovery({
     find: () => new Bonjour().find({ type: 'nvstream' }),
@@ -224,6 +228,27 @@ async function boot(): Promise<void> {
         credentials: platform.credentials,
         createApi: platform.createApi,
         readLog: () => readLogTail(LINUX_SUNSHINE_LOG),
+        sleep,
+        pins: createPinChannel(),
+        restart: platform.restart,
+        timing: { restartTimeoutMs: 120_000 }
+      }),
+      receiver
+    )
+  } else if (realMac) {
+    const platform = createMacPlatform({
+      userData: app.getPath('userData'),
+      cipher: toCipher(safeStorage),
+      sleep
+    })
+    engine = composeEngine(
+      new SunshineEngine({
+        installer: platform.installer,
+        display: platform.display,
+        memory,
+        credentials: platform.credentials,
+        createApi: platform.createApi,
+        readLog: () => readLogTail(MAC_SUNSHINE_LOG),
         sleep,
         pins: createPinChannel(),
         restart: platform.restart,

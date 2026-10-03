@@ -25,6 +25,11 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: true
 mac:
+  target:
+    - dmg
+  category: public.app-category.utilities
+  # Sem conta de desenvolvedor Apple ainda: sem assinatura nem notarização (o Mac avisará "desenvolvedor não identificado").
+  identity: null
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
