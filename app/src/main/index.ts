@@ -30,6 +30,7 @@ import { downloadVerified } from './platform/windows/download'
 import { psQuote } from './platform/windows/elevation'
 import { runPowerShell } from './platform/windows/probes'
 import { MOONLIGHT } from './platform/windows/versions'
+import { createLinuxPlatform, SUNSHINE_LOG as LINUX_SUNSHINE_LOG } from './platform/linux/wire'
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
 
@@ -100,6 +101,9 @@ async function boot(): Promise<void> {
   // Instalação de verdade (baixa e pede administrador): só no app empacotado ou pedindo com HORIZONTE_ENGINE=install.
   const real =
     process.platform === 'win32' &&
+    (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
+  const realLinux =
+    process.platform === 'linux' &&
     (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
   const discovery = createDiscovery({
     find: () => new Bonjour().find({ type: 'nvstream' }),
@@ -201,6 +205,27 @@ async function boot(): Promise<void> {
         pins: createPinChannel(),
         restart: platform.restart,
         // Na primeira partida o motor testa todos os codificadores e leva mais de 30 segundos.
+        timing: { restartTimeoutMs: 120_000 }
+      }),
+      receiver
+    )
+  } else if (realLinux) {
+    const platform = createLinuxPlatform({
+      userData: app.getPath('userData'),
+      cipher: toCipher(safeStorage),
+      sleep
+    })
+    engine = composeEngine(
+      new SunshineEngine({
+        installer: platform.installer,
+        display: platform.display,
+        memory,
+        credentials: platform.credentials,
+        createApi: platform.createApi,
+        readLog: () => readLogTail(LINUX_SUNSHINE_LOG),
+        sleep,
+        pins: createPinChannel(),
+        restart: platform.restart,
         timing: { restartTimeoutMs: 120_000 }
       }),
       receiver
