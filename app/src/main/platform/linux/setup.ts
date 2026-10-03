@@ -1,4 +1,6 @@
-import { join } from 'node:path'
+import { posix } from 'node:path'
+
+const join = posix.join
 import type { PrepProgress } from '../../../shared/types'
 import type { SunshineDisplay } from '../../engine/sunshine/log'
 import type { EngineInstaller, SunshineCredentials, VirtualDisplay } from '../types'
