@@ -38,12 +38,18 @@ describe('buildStreamArgs', () => {
 
 describe('createMoonlightClient', () => {
   const pairing = {
-    run: vi.fn(async (_args: string[]) => 0 as number | null),
+    run: vi.fn<(args: string[]) => Promise<number | null>>(async () => 0),
     sendPin: vi.fn(async () => undefined),
     deviceName: () => 'Notebook',
     randomPin: () => '4821'
   }
-  const make = (proc = fakeProcess()) => {
+  const make = (
+    proc = fakeProcess()
+  ): {
+    proc: ReturnType<typeof fakeProcess>
+    spawn: ReturnType<typeof vi.fn>
+    client: ReturnType<typeof createMoonlightClient>
+  } => {
     const spawn = vi.fn(async () => proc)
     return {
       proc,
