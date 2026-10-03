@@ -115,13 +115,18 @@ describe('stepLabel e progress', () => {
 
 describe('patientNote', () => {
   it('no começo mostra só a frase', () => {
-    expect(patientNote('Esperando o motor ligar', 3)).toBe('Esperando o motor ligar')
+    expect(patientNote('Testando a placa de vídeo', 3)).toBe('Testando a placa de vídeo')
   })
 
-  it('depois de um tempo acrescenta variações do mesmo assunto, em ciclo', () => {
-    const seen = [8, 14, 20, 26].map((s) => patientNote('Esperando o motor ligar', s))
-    expect(new Set(seen.slice(0, 3)).size).toBe(3)
-    expect(seen.every((text) => text.startsWith('Esperando o motor ligar · '))).toBe(true)
-    expect(seen[3]).toBe(seen[0])
+  it('depois de um tempo mostra só "Ainda trabalhando nisso", sem misturar com a frase', () => {
+    const text = patientNote('Testando a placa de vídeo', 9)
+    expect(text).toMatch(/^Ainda trabalhando nisso\.{0,3}$/)
+    expect(text).not.toContain('placa')
+  })
+
+  it('os pontinhos se movem em ciclo para mostrar que não travou', () => {
+    const seen = [8, 9, 10, 11, 12].map((s) => patientNote('x', s))
+    expect(new Set(seen.slice(0, 4)).size).toBe(4)
+    expect(seen[4]).toBe(seen[0])
   })
 })
