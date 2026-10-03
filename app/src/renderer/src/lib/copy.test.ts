@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { copyFor, PREP_STEPS, safeName, patientNote, stepEnd, stepLabel, stepStart } from './copy'
+import {
+  readySubtitle,
+  copyFor,
+  PREP_STEPS,
+  safeName,
+  patientNote,
+  stepEnd,
+  stepLabel,
+  stepStart
+} from './copy'
 
 describe('safeName', () => {
   it('mantém nomes normais', () => {
@@ -32,6 +41,12 @@ describe('copyFor', () => {
     const copy = copyFor({ screen: 'install' })
     expect(copy.title).toBe('Estenda sua tela,\nsem fio.')
     expect(copy.subtitle).toBe('Sem configurar nada.')
+  })
+
+  it('pronto manda selecionar o nome do próprio aparelho', () => {
+    expect(readySubtitle('Notebook')).toBe(
+      'Abra o Horizonte no outro dispositivo e selecione Notebook.'
+    )
   })
 
   it('pronto aguarda conexão', () => {
@@ -90,7 +105,7 @@ describe('copyFor', () => {
   })
 
   it('demais telas', () => {
-    expect(copyFor({ screen: 'choose' }).title).toBe('Este computador vai…')
+    expect(copyFor({ screen: 'choose' }).title).toBe('Este dispositivo vai…')
     expect(copyFor({ screen: 'preparing', mode: 'send', step: 'engine' }).title).toBe('Preparando.')
     expect(copyFor({ screen: 'discover', mode: 'receive' }).title).toBe('Na sua rede')
   })

@@ -88,7 +88,7 @@ export async function createController({
           if (live()) dispatch({ type: 'PREP_DONE' })
         })
         .catch((cause: unknown) => {
-          if (live()) fail('Não consegui preparar este computador.', cause)
+          if (live()) fail('Não consegui preparar este dispositivo.', cause)
         })
     }
 

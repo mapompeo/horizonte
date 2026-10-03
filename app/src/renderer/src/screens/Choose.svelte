@@ -25,7 +25,7 @@
     </svg>
     <span class="stack gap-xs">
       <span class="choice-name">Enviar a tela</span>
-      <span class="choice-sub">É o computador principal.</span>
+      <span class="choice-sub">É o dispositivo principal.</span>
     </span>
   </button>
   <button class="choice" onclick={() => chooseMode('receive')}>
@@ -46,7 +46,7 @@
     </svg>
     <span class="stack gap-xs">
       <span class="choice-name">Mostrar a tela</span>
-      <span class="choice-sub">É o computador que recebe.</span>
+      <span class="choice-sub">É o dispositivo que recebe.</span>
     </span>
   </button>
 </div>

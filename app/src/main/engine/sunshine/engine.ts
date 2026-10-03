@@ -329,7 +329,7 @@ export class SunshineEngine implements ServerEngine {
       throw friendly(cause)
     }
     if (!accepted) {
-      throw new Error('O PIN não confere. Confira o número que aparece no outro computador.')
+      throw new Error('O PIN não confere. Confira o número que aparece no outro dispositivo.')
     }
     this.lastApprovedName = name
   }

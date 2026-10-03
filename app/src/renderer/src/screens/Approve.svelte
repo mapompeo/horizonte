@@ -41,7 +41,7 @@
 </div>
 {#if pin === null}
   <div class="stack gap-xs">
-    <label class="hint" for="pin">Digite o PIN que aparece no outro computador</label>
+    <label class="hint" for="pin">Digite o PIN que aparece no outro dispositivo</label>
     <input
       id="pin"
       class="pin-input"
