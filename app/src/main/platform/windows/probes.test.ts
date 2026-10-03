@@ -27,6 +27,12 @@ describe('createProbe', () => {
     )
   })
 
+  it('a regra padrão do Windows (IU só lê) não conta como permissão de reiniciar', async () => {
+    const windowsDefault =
+      'D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCLCSWLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)'
+    expect(await createProbe(returning(windowsDefault)).serviceControllable()).toBe(false)
+  })
+
   it('driver presente quando o PowerShell encontra o dispositivo', async () => {
     expect(await createProbe(returning('True')).driverPresent()).toBe(true)
     expect(await createProbe(returning('False')).driverPresent()).toBe(false)

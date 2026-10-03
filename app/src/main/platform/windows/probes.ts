@@ -32,7 +32,8 @@ export function createProbe(run: PowerShellRunner): InstallProbe {
         '[bool](Get-NetTCPConnection -LocalPort 47990 -State Listen -ErrorAction SilentlyContinue)'
       )) === 'True',
     serviceControllable: async () =>
-      (await ask('(sc.exe sdshow SunshineService) -join " "')).includes(';;;IU)'),
+      // O padrão do Windows já traz uma regra para IU (só leitura); o que importa é ela poder parar (WP).
+      /[(]A;;[A-Z]*WP[A-Z]*;;;IU[)]/.test(await ask('(sc.exe sdshow SunshineService) -join " "')),
     driverPresent: async () =>
       (await ask(
         "[bool](Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.HardwareID -contains 'Root\\MttVDD' -or $_.FriendlyName -match 'Virtual Display Driver|VDD by MTT' })"

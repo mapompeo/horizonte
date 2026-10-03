@@ -139,7 +139,7 @@ export function createWindowsSetup(deps: SetupDeps): {
         script: [
           `$sddl = (sc.exe sdshow SunshineService | Where-Object { $_ -match '^D:' }) -join ''`,
           `if (-not $sddl) { throw 'Não consegui ler as permissões do serviço.' }`,
-          `if ($sddl -notlike '*;;;IU)*') {`,
+          `if ($sddl -notmatch '[(]A;;[A-Z]*WP[A-Z]*;;;IU[)]') {`,
           `  sc.exe sdset SunshineService ('D:(A;;RPWPLCLORC;;;IU)' + $sddl.Substring(2)) | Out-Null`,
           nativeCheck('sc sdset'),
           '}'
