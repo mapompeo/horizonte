@@ -55,7 +55,7 @@
   {/each}
   <div class="stack gap-xs">
     {#if searching}
-      <span class="searching">Procurando outros computadores…</span>
+      <span class="searching">Procurando outros dispositivos…</span>
     {/if}
     <button class="link">Não aparece? Adicionar pelo IP</button>
   </div>

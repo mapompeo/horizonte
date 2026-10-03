@@ -17,19 +17,18 @@ export function copyFor(state: AppState): ScreenCopy {
     case 'install':
       return { title: 'Estenda sua tela,\nsem fio.', subtitle: 'Sem configurar nada.' }
     case 'choose':
-      return { title: 'Este computador vai…' }
+      return { title: 'Este dispositivo vai…' }
     case 'preparing':
       return { title: 'Preparando.' }
     case 'ready':
       return {
         title: 'Pronto.',
-        subtitle: 'Abra o Horizonte no outro computador e escolha este.',
         pill: { tone: 'wait', text: 'Aguardando conexão' }
       }
     case 'approve':
       return {
         title: `Permitir o ${safeName(state.device)}?`,
-        subtitle: 'Ele quer usar este computador como segunda tela.'
+        subtitle: 'Ele quer usar este dispositivo como segunda tela.'
       }
     case 'connected':
       return {
@@ -44,6 +43,10 @@ export function copyFor(state: AppState): ScreenCopy {
       return { title: state.error.message, subtitle: state.error.detail }
   }
 }
+
+/** Diz ao outro aparelho qual nome procurar na lista. */
+export const readySubtitle = (deviceName: string): string =>
+  `Abra o Horizonte no outro dispositivo e selecione ${safeName(deviceName)}.`
 
 export const PREP_STEPS: readonly PrepStep[] = ['engine', 'display', 'encoder']
 
