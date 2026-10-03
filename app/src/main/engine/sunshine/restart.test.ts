@@ -24,7 +24,7 @@ function setup(process = new FakeSunshineProcess()): {
 }
 
 describe('createRestarter', () => {
-  it('espera o Sunshine voltar e devolve o log novo, não o velho', async () => {
+  it('espera o motor de transmissão voltar e devolve o log novo, não o velho', async () => {
     const { process, restart } = setup()
     const before = process.log
     const log = await restart()
@@ -42,18 +42,20 @@ describe('createRestarter', () => {
     expect(sleeps.length).toBeGreaterThanOrEqual(5)
   })
 
-  it('desiste com uma mensagem clara se o Sunshine nunca volta', async () => {
+  it('desiste com uma mensagem clara se o motor de transmissão nunca volta', async () => {
     const process = new FakeSunshineProcess()
     process.restartTicks = 1_000_000
     const { restart } = setup(process)
-    await expect(restart()).rejects.toThrow('O Sunshine não voltou depois de reiniciar.')
+    await expect(restart()).rejects.toThrow(
+      'O motor de transmissão não voltou depois de reiniciar.'
+    )
   })
 
-  it('a mensagem de desistência diz como destravar o Sunshine', async () => {
+  it('a mensagem de desistência orienta a reabrir o Horizonte', async () => {
     const process = new FakeSunshineProcess()
     process.restartTicks = 1_000_000
     const { restart } = setup(process)
-    await expect(restart()).rejects.toThrow('Reinicie o serviço do Sunshine')
+    await expect(restart()).rejects.toThrow('Feche o Horizonte, abra de novo')
   })
 
   it('devolve texto vazio se a execução foi abandonada no meio', async () => {
@@ -76,6 +78,8 @@ describe('createRestarter', () => {
       timeoutMs: 2000,
       pollMs: 500
     })
-    await expect(restart()).rejects.toThrow('O Sunshine não voltou depois de reiniciar.')
+    await expect(restart()).rejects.toThrow(
+      'O motor de transmissão não voltou depois de reiniciar.'
+    )
   })
 })

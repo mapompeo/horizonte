@@ -75,9 +75,15 @@ export async function createController({
       const run = ++prepareRun
       const live = (): boolean => run === prepareRun
       engine
-        .prepare((step) => {
-          if (live()) dispatch({ type: 'PREP_STEP', step })
-        }, settings)
+        .prepare(
+          (step) => {
+            if (live()) dispatch({ type: 'PREP_STEP', step })
+          },
+          settings,
+          (progress) => {
+            if (live()) dispatch({ type: 'PREP_PROGRESS', progress })
+          }
+        )
         .then(() => {
           if (live()) dispatch({ type: 'PREP_DONE' })
         })

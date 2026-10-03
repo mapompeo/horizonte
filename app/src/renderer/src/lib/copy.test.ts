@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { copyFor, PREP_STEPS, progress, safeName, stepLabel } from './copy'
+import { copyFor, PREP_STEPS, safeName, stepEnd, stepLabel, stepStart } from './copy'
 
 describe('safeName', () => {
   it('mantém nomes normais', () => {
@@ -105,18 +105,10 @@ describe('stepLabel e progress', () => {
     ])
   })
 
-  it('progresso em porcentagem', () => {
-    expect(progress('engine')).toBe(0)
-    expect(progress('display')).toBe(33)
-    expect(progress('encoder')).toBe(67)
-  })
-})
-
-describe('stepPhrase', () => {
-  it('alterna as frases da etapa e volta ao começo', async () => {
-    const { stepPhrase } = await import('./copy')
-    expect(stepPhrase('engine', 0)).toBe('Preparando o motor')
-    expect(stepPhrase('engine', 1)).not.toBe(stepPhrase('engine', 0))
-    expect(stepPhrase('engine', 4)).toBe(stepPhrase('engine', 0))
+  it('cada etapa começa onde a anterior termina', () => {
+    expect(stepStart('engine')).toBe(0)
+    expect(stepEnd('engine')).toBe(stepStart('display'))
+    expect(stepEnd('display')).toBe(stepStart('encoder'))
+    expect(stepEnd('encoder')).toBe(1)
   })
 })

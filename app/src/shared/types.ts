@@ -1,6 +1,12 @@
 export type Mode = 'send' | 'receive'
 export type PrepStep = 'engine' | 'display' | 'encoder'
 
+/** O que a preparação está fazendo agora, em palavras, e quanto do caminho todo já foi (0 a 1). */
+export interface PrepProgress {
+  note: string
+  fraction: number
+}
+
 export interface AppError {
   message: string
   detail?: string
@@ -9,7 +15,7 @@ export interface AppError {
 export type AppState =
   | { screen: 'install' }
   | { screen: 'choose' }
-  | { screen: 'preparing'; mode: 'send'; step: PrepStep }
+  | { screen: 'preparing'; mode: 'send'; step: PrepStep; progress?: PrepProgress }
   | { screen: 'ready'; mode: 'send' }
   | { screen: 'approve'; mode: 'send'; device: string; pairingId: string; pin: string | null }
   | { screen: 'connected'; mode: 'send'; device: string }
@@ -21,6 +27,7 @@ export type AppEvent =
   | { type: 'INSTALL_DONE' }
   | { type: 'CHOOSE'; mode: Mode }
   | { type: 'PREP_STEP'; step: PrepStep }
+  | { type: 'PREP_PROGRESS'; progress: PrepProgress }
   | { type: 'PREP_DONE' }
   | { type: 'PAIR_REQUEST'; device: string; pairingId: string; pin?: string }
   | { type: 'PAIR_CANCELLED'; pairingId: string }

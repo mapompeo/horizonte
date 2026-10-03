@@ -35,7 +35,7 @@ describe('waitForApi', () => {
         async () => undefined,
         4
       )
-    ).rejects.toThrow(/Sunshine não respondeu/)
+    ).rejects.toThrow(/motor de transmissão não respondeu/)
     expect(calls).toBe(4)
   })
 })

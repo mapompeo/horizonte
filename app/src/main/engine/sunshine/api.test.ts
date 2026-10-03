@@ -53,7 +53,7 @@ describe('pareamentos', () => {
     expect((await failureOf(api.listPairings())).kind).toBe('invalid-response')
   })
 
-  it('manda o PIN no formato do Sunshine e devolve verdadeiro quando confere', async () => {
+  it('manda o PIN no formato do motor de transmissão e devolve verdadeiro quando confere', async () => {
     fake.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
     expect(await api.submitPin({ pairingId: 'p1', pin: '4821', name: 'Notebook' })).toBe(true)
     expect(fake.submitted).toEqual([{ pairing_id: 'p1', pin: '4821', name: 'Notebook' }])
@@ -78,7 +78,7 @@ describe('configuração', () => {
     expect(await api.getConfig()).toEqual({ output_name: 'abc', sunshine_name: 'Desktop' })
   })
 
-  it('metadados que o Sunshine anexa à leitura não viram configuração', async () => {
+  it('metadados que o motor de transmissão anexa à leitura não viram configuração', async () => {
     fake.config = { output_name: 'abc', platform: 'windows', status: true, version: '2026.914' }
     expect(await api.getConfig()).toEqual({ output_name: 'abc' })
     await api.saveConfig({ amd_usage: 'transcoding' })

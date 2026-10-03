@@ -65,7 +65,7 @@
           {:else if state.screen === 'choose'}
             <Choose />
           {:else if state.screen === 'preparing'}
-            <Preparing step={state.step} />
+            <Preparing step={state.step} progress={state.progress} />
           {:else if state.screen === 'ready'}
             <Ready deviceName={settings.deviceName} />
           {:else if state.screen === 'approve'}

@@ -18,6 +18,15 @@ describe('createProbe', () => {
     expect(await createProbe(returning('False')).sunshineResponding()).toBe(false)
   })
 
+  it('serviço controlável quando a permissão da pessoa comum já está no serviço', async () => {
+    expect(
+      await createProbe(returning('D:(A;;RPWPLCLORC;;;IU)(A;;GA;;;SY)')).serviceControllable()
+    ).toBe(true)
+    expect(await createProbe(returning('D:(A;;GA;;;SY)(A;;GA;;;BA)')).serviceControllable()).toBe(
+      false
+    )
+  })
+
   it('driver presente quando o PowerShell encontra o dispositivo', async () => {
     expect(await createProbe(returning('True')).driverPresent()).toBe(true)
     expect(await createProbe(returning('False')).driverPresent()).toBe(false)
@@ -38,5 +47,6 @@ describe.runIf(process.platform === 'win32')('no PowerShell de verdade, sem admi
     expect(typeof (await probe.sunshineRunning())).toBe('boolean')
     expect(typeof (await probe.driverPresent())).toBe('boolean')
     expect(typeof (await probe.sunshineResponding())).toBe('boolean')
-  })
+    expect(typeof (await probe.serviceControllable())).toBe('boolean')
+  }, 30_000)
 })

@@ -41,7 +41,7 @@ export function createCredentialVault(deps: { file: string; cipher: Cipher }): C
         await rename(temp, deps.file)
       } catch {
         await rm(temp, { force: true })
-        throw new Error('Não consegui gravar a senha do Sunshine no cofre.')
+        throw new Error('Não consegui gravar a senha do motor de transmissão no cofre.')
       }
     },
 

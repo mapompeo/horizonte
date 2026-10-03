@@ -130,7 +130,10 @@ async function boot(): Promise<void> {
         credentials: platform.credentials,
         createApi: platform.createApi,
         readLog: () => readLogTail(SUNSHINE_LOG),
-        sleep
+        sleep,
+        restart: platform.restart,
+        // Na primeira partida o motor testa todos os codificadores e leva mais de 30 segundos.
+        timing: { restartTimeoutMs: 120_000 }
       }),
       fake
     )

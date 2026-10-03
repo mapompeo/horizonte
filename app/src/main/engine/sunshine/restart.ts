@@ -3,6 +3,8 @@ import { countStartups, isStartupComplete, logSignature } from './log'
 
 export interface RestarterDeps {
   api: Pick<SunshineApiPort, 'restart' | 'getConfig'>
+  /** Substitui `api.restart`, que no Windows pode deixar o processo preso. */
+  restart?(): Promise<void>
   readLog(): Promise<string>
   sleep(ms: number): Promise<void>
   timeoutMs?: number
@@ -22,7 +24,7 @@ export function createRestarter(deps: RestarterDeps): (alive?: () => boolean) =>
     const beforeLog = await deps.readLog()
     const before = { signature: logSignature(beforeLog), startups: countStartups(beforeLog) }
 
-    await deps.api.restart()
+    await (deps.restart ?? (() => deps.api.restart()))()
 
     const polls = Math.max(1, Math.ceil(timeoutMs / pollMs))
     for (let i = 0; i < polls; i++) {
@@ -39,7 +41,7 @@ export function createRestarter(deps: RestarterDeps): (alive?: () => boolean) =>
       return log
     }
     throw new Error(
-      'O Sunshine não voltou depois de reiniciar. Reinicie o serviço do Sunshine (no Windows: Restart-Service SunshineService, como administrador) e tente de novo.'
+      'O motor de transmissão não voltou depois de reiniciar. Feche o Horizonte, abra de novo e tente outra vez.'
     )
   }
 }

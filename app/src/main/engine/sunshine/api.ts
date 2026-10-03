@@ -48,7 +48,7 @@ export class SunshineApi {
   constructor(options: SunshineApiOptions) {
     const host = options.host ?? '127.0.0.1'
     if (!LOOPBACK.has(host)) {
-      throw new Error('A API do Sunshine só pode ser acessada no próprio computador.')
+      throw new Error('A API do motor de transmissão só pode ser acessada no próprio computador.')
     }
     this.host = host
     this.webPort = options.port + 1
@@ -62,7 +62,7 @@ export class SunshineApi {
     if (!isRecord(data) || !Array.isArray(data.pairings)) {
       throw new SunshineApiError(
         'invalid-response',
-        'O Sunshine mandou uma lista de pareamentos inesperada.'
+        'O motor de transmissão mandou uma lista de pareamentos inesperada.'
       )
     }
     return data.pairings.flatMap((item: unknown): Pairing[] => {
@@ -96,7 +96,7 @@ export class SunshineApi {
     if (!isRecord(data)) {
       throw new SunshineApiError(
         'invalid-response',
-        'O Sunshine mandou uma configuração inesperada.'
+        'O motor de transmissão mandou uma configuração inesperada.'
       )
     }
     // O Sunshine anexa metadados à leitura (confirmado na instância real); não são configuração.
@@ -218,7 +218,7 @@ export class SunshineApi {
         reject(
           new SunshineApiError(
             'invalid-response',
-            'O Sunshine mandou uma resposta ilegível.',
+            'O motor de transmissão mandou uma resposta ilegível.',
             status
           )
         )

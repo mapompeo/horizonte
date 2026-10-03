@@ -3,7 +3,7 @@ import type { ClientEngine, EnginePort, ServerEngine } from './port'
 /** Junta um servidor e um cliente numa só porta. O ajuste de bitrate vale para os dois lados. */
 export function composeEngine(server: ServerEngine, client: ClientEngine): EnginePort {
   return {
-    prepare: (onStep, settings) => server.prepare(onStep, settings),
+    prepare: (onStep, settings, onProgress) => server.prepare(onStep, settings, onProgress),
     abort: () => server.abort(),
     approve: (request) => server.approve(request),
     deny: (pairingId) => server.deny(pairingId),

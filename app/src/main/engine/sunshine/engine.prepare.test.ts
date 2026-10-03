@@ -109,7 +109,7 @@ describe('preparar: caminho feliz', () => {
 })
 
 describe('preparar: de novo, sem reiniciar à toa', () => {
-  it('na segunda vez, com tudo já configurado, não reinicia o Sunshine', async () => {
+  it('na segunda vez, com tudo já configurado, não reinicia o motor de transmissão', async () => {
     const t = setup()
     await t.prepare()
     const restartsAfterFirst = t.process.restarts
@@ -117,7 +117,7 @@ describe('preparar: de novo, sem reiniciar à toa', () => {
     expect(t.process.restarts).toBe(restartsAfterFirst)
   })
 
-  it('com a GPU já funcionando no log e na configuração, lembra sem reiniciar o Sunshine', async () => {
+  it('com a GPU já funcionando no log e na configuração, lembra sem reiniciar o motor de transmissão', async () => {
     const t = setup()
     t.process.hardwareWorksWith = new Set(['transcoding'])
     t.process.config = {
@@ -131,7 +131,7 @@ describe('preparar: de novo, sem reiniciar à toa', () => {
     expect(t.mem.box.value).toEqual({ encoder: 'gpu-transcoding' })
   })
 
-  it('nome padrão que o Sunshine nem tem na configuração não força um reinício', async () => {
+  it('nome padrão que o motor de transmissão nem tem na configuração não força um reinício', async () => {
     const t = setup({ remembered: { encoder: 'gpu-transcoding' } })
     t.process.config = { ...amdConfig(GPU_ENCODERS[1]!), output_name: '{vdd}', encoder: '' }
     await t.prepare()
@@ -184,9 +184,11 @@ describe('preparar: de novo, sem reiniciar à toa', () => {
 })
 
 describe('preparar: falhas', () => {
-  it('sem o monitor virtual no Sunshine, diz isso em português', async () => {
+  it('sem o monitor virtual no motor de transmissão, diz isso em português', async () => {
     const t = setup({ withVirtual: false })
-    await expect(t.prepare()).rejects.toThrow('Não achei o monitor virtual no Sunshine.')
+    await expect(t.prepare()).rejects.toThrow(
+      'Não achei o monitor virtual no motor de transmissão.'
+    )
   })
 
   it('senha recusada vira mensagem clara e não vaza a senha', async () => {
@@ -205,7 +207,7 @@ describe('preparar: falhas', () => {
   it('Sunshine que nunca responde vira mensagem clara', async () => {
     const t = setup()
     t.process.reachable = false
-    await expect(t.prepare()).rejects.toThrow('O Sunshine não respondeu')
+    await expect(t.prepare()).rejects.toThrow('O motor de transmissão não respondeu')
   })
 
   it('o instalador falhando para a preparação com a mensagem dele', async () => {

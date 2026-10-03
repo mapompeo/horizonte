@@ -1,4 +1,4 @@
-import type { Host, PrepStep, Settings } from '../../shared/types'
+import type { Host, PrepProgress, PrepStep, Settings } from '../../shared/types'
 
 export interface PairRequest {
   device: string
@@ -14,7 +14,11 @@ export interface ApproveRequest {
 
 /** Papel de quem envia a tela (Sunshine). */
 export interface ServerEngine {
-  prepare(onStep: (step: PrepStep) => void, settings: Settings): Promise<void>
+  prepare(
+    onStep: (step: PrepStep) => void,
+    settings: Settings,
+    onProgress?: (progress: PrepProgress) => void
+  ): Promise<void>
   /**
    * Interrompe o que o modo enviar deixou em andamento (preparação, espera por conexão
    * ou pedido de pareamento pendente). Chamado ao sair desse modo sem ter conectado.

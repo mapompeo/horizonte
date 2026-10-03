@@ -55,23 +55,13 @@ const STEP_LABELS: Record<PrepStep, string> = {
 
 export const stepLabel = (step: PrepStep): string => STEP_LABELS[step]
 
-/** Frases que se alternam enquanto uma etapa demora, para a tela não parecer travada. */
-const STEP_PHRASES: Record<PrepStep, readonly string[]> = {
-  engine: [
-    'Preparando o motor',
-    'Conferindo o que já está instalado',
-    'Instalando o que falta',
-    'Quase lá, isso só acontece uma vez'
-  ],
-  display: ['Procurando o monitor virtual', 'Ligando a segunda tela'],
-  encoder: ['Testando a placa de vídeo', 'Escolhendo a melhor qualidade']
-}
+/** Onde cada etapa começa no caminho todo (0 a 1); o motor usa a mesma divisão ao avisar o progresso. */
+const STEP_START: Record<PrepStep, number> = { engine: 0, display: 0.55, encoder: 0.65 }
 
-export const stepPhrase = (step: PrepStep, tick: number): string => {
-  const phrases = STEP_PHRASES[step]
-  return phrases[tick % phrases.length] ?? STEP_LABELS[step]
-}
+export const stepStart = (step: PrepStep): number => STEP_START[step]
 
-export function progress(current: PrepStep): number {
-  return Math.round((PREP_STEPS.indexOf(current) / PREP_STEPS.length) * 100)
+/** Onde a etapa termina: a barra de uma etapa nunca passa daqui antes de a próxima começar. */
+export const stepEnd = (step: PrepStep): number => {
+  const next = PREP_STEPS[PREP_STEPS.indexOf(step) + 1]
+  return next ? STEP_START[next] : 1
 }
