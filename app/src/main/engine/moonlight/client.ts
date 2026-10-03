@@ -36,7 +36,7 @@ export interface MoonlightProcess {
 }
 
 export interface MoonlightClientDeps {
-  spawn(args: string[]): MoonlightProcess
+  spawn(args: string[]): Promise<MoonlightProcess>
   listHosts(): Promise<Host[]>
 }
 
@@ -48,7 +48,7 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
     listHosts: () => deps.listHosts(),
     async connect(host, settings) {
       if (current) throw new Error('Já existe uma transmissão sendo recebida.')
-      const child = deps.spawn(buildStreamArgs(host, settings))
+      const child = await deps.spawn(buildStreamArgs(host, settings))
       current = child
       child.onExit(() => {
         if (current !== child) return // foi o próprio disconnect
