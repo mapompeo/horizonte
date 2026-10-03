@@ -11,7 +11,8 @@ export function runDevDemo(controller: Controller, engine: FakeEngine): void {
 
     if (!pairRequested) {
       pairRequested = true
-      setTimeout(() => engine.simulatePairRequest('Notebook'), 3000)
+      // O PIN já vem junto, como virá do nosso cliente; assim o roteiro segue com um clique.
+      setTimeout(() => engine.simulatePairRequest('Notebook', 'p1', '4821'), 3000)
       return
     }
 

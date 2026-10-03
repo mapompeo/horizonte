@@ -64,6 +64,35 @@ describe('chooseEncoder', () => {
     expect(result.fellBack).toBe(true)
   })
 
+  it('responder "não" em todas é conclusivo; falhar ou estourar o tempo não é', async () => {
+    const no = await chooseEncoder(async () => false)
+    expect(no.fellBack).toBe(true)
+    expect(no.inconclusive).toBe(false)
+
+    const failed = await chooseEncoder(async () => {
+      throw new Error('API fora do ar')
+    })
+    expect(failed.fellBack).toBe(true)
+    expect(failed.inconclusive).toBe(true)
+  })
+
+  it('o tempo esgotado avisa a sondagem para ela parar de mexer no Sunshine', async () => {
+    vi.useFakeTimers()
+    const signals: AbortSignal[] = []
+    const pending = chooseEncoder(
+      (_candidate, signal) => {
+        if (signal) signals.push(signal)
+        return new Promise<boolean>(() => {})
+      },
+      'auto',
+      1000
+    )
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(signals[0]?.aborted).toBe(true)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect((await pending).inconclusive).toBe(true)
+  })
+
   it('preferência por processador não sonda nada', async () => {
     let calls = 0
     const result = await chooseEncoder(async () => {

@@ -1,0 +1,45 @@
+import type { SunshineApiPort } from './api'
+import { countStartups, isStartupComplete, logSignature } from './log'
+
+export interface RestarterDeps {
+  api: Pick<SunshineApiPort, 'restart' | 'getConfig'>
+  readLog(): Promise<string>
+  sleep(ms: number): Promise<void>
+  timeoutMs?: number
+  pollMs?: number
+}
+
+/**
+ * Reinicia o Sunshine e só devolve o log quando ele é de uma partida NOVA e já terminou de subir.
+ * Ler o log antigo como se fosse o novo é o erro clássico aqui, por isso comparamos a assinatura
+ * (primeira linha) e o número de partidas de antes do reinício.
+ */
+export function createRestarter(deps: RestarterDeps): (alive?: () => boolean) => Promise<string> {
+  const timeoutMs = deps.timeoutMs ?? 45_000
+  const pollMs = deps.pollMs ?? 500
+
+  return async (alive = () => true) => {
+    const beforeLog = await deps.readLog()
+    const before = { signature: logSignature(beforeLog), startups: countStartups(beforeLog) }
+
+    await deps.api.restart()
+
+    const polls = Math.max(1, Math.ceil(timeoutMs / pollMs))
+    for (let i = 0; i < polls; i++) {
+      await deps.sleep(pollMs)
+      if (!alive()) return ''
+      const log = await deps.readLog()
+      const fresh = logSignature(log) !== before.signature || countStartups(log) > before.startups
+      if (!fresh || !isStartupComplete(log)) continue
+      try {
+        await deps.api.getConfig()
+      } catch {
+        continue
+      }
+      return log
+    }
+    throw new Error(
+      'O Sunshine não voltou depois de reiniciar. Reinicie o serviço do Sunshine (no Windows: Restart-Service SunshineService, como administrador) e tente de novo.'
+    )
+  }
+}

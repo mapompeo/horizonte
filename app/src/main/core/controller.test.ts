@@ -27,6 +27,56 @@ async function setup(
 const screen = (controller: Controller): string => controller.getSnapshot().state.screen
 const settle = (ms = 40): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
+describe('pedidos de pareamento em sequência', () => {
+  const ready: AppState = { screen: 'ready', mode: 'send' }
+
+  it('um segundo pedido durante a tela Permitir aparece depois que o primeiro é respondido', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulatePairRequest('Notebook', 'p1')
+    engine.simulatePairRequest('Tablet', 'p2')
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'approve', pairingId: 'p1' })
+
+    controller.dispatch({ type: 'DENY' })
+    expect(controller.getSnapshot().state).toMatchObject({
+      screen: 'approve',
+      device: 'Tablet',
+      pairingId: 'p2'
+    })
+  })
+
+  it('um pedido que chega durante a conexão aparece quando ela termina', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulateClientConnected('Notebook')
+    engine.simulatePairRequest('Tablet', 'p2')
+    expect(screen(controller)).toBe('connected')
+
+    engine.simulateClientDisconnected()
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'approve', pairingId: 'p2' })
+  })
+
+  it('o pedido cancelado enquanto esperava na fila não aparece', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulatePairRequest('Notebook', 'p1')
+    engine.simulatePairRequest('Tablet', 'p2')
+    engine.simulatePairCancelled('p2')
+
+    controller.dispatch({ type: 'DENY' })
+    expect(screen(controller)).toBe('ready')
+  })
+
+  it('o mesmo pedido repetido não entra duas vezes na fila', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulatePairRequest('Notebook', 'p1')
+    engine.simulatePairRequest('Tablet', 'p2')
+    engine.simulatePairRequest('Tablet', 'p2')
+    engine.simulatePairRequest('Notebook', 'p1')
+
+    controller.dispatch({ type: 'DENY' })
+    controller.dispatch({ type: 'DENY' })
+    expect(screen(controller)).toBe('ready')
+  })
+})
+
 describe('fluxo de envio', () => {
   it('instala, escolhe enviar, prepara, aprova e conecta', async () => {
     const { controller, engine } = await setup({ screen: 'install' })
@@ -40,11 +90,13 @@ describe('fluxo de envio', () => {
     expect(controller.getSnapshot().state).toEqual({
       screen: 'approve',
       mode: 'send',
-      device: 'Notebook'
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: null
     })
 
-    controller.dispatch({ type: 'APPROVE' })
-    expect(engine.calls).toContain('approve')
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
+    expect(engine.lastApprove).toEqual({ pairingId: 'p1', pin: '4821', name: 'Notebook' })
     expect(screen(controller)).toBe('ready')
 
     engine.simulateClientConnected('Notebook')
@@ -59,10 +111,13 @@ describe('fluxo de envio', () => {
     const { controller, engine } = await setup({
       screen: 'approve',
       mode: 'send',
-      device: 'Notebook'
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: null
     })
     controller.dispatch({ type: 'DENY' })
     expect(engine.calls).toContain('deny')
+    expect(engine.lastDeny).toBe('p1')
     expect(screen(controller)).toBe('ready')
   })
 
@@ -134,10 +189,12 @@ describe('eventos no estado errado', () => {
     const { controller, engine } = await setup({
       screen: 'approve',
       mode: 'send',
-      device: 'Notebook'
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: null
     })
-    controller.dispatch({ type: 'APPROVE' })
-    controller.dispatch({ type: 'APPROVE' })
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
     expect(engine.calls.filter((call) => call === 'approve')).toHaveLength(1)
   })
 
@@ -238,10 +295,10 @@ describe('falhas tardias e de limpeza', () => {
     const engine = new FakeEngine(30)
     engine.failApprove = 'demorou'
     const { controller } = await setup(
-      { screen: 'approve', mode: 'send', device: 'Notebook' },
+      { screen: 'approve', mode: 'send', device: 'Notebook', pairingId: 'p1', pin: null },
       engine
     )
-    controller.dispatch({ type: 'APPROVE' })
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
     engine.simulateClientConnected('Notebook')
     await settle(150)
     expect(controller.getSnapshot().state).toEqual({
@@ -255,10 +312,10 @@ describe('falhas tardias e de limpeza', () => {
     const engine = new FakeEngine(0)
     engine.failApprove = 'recusado pelo motor'
     const { controller } = await setup(
-      { screen: 'approve', mode: 'send', device: 'Notebook' },
+      { screen: 'approve', mode: 'send', device: 'Notebook', pairingId: 'p1', pin: null },
       engine
     )
-    controller.dispatch({ type: 'APPROVE' })
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
     await vi.waitFor(() => expect(screen(controller)).toBe('error'))
     const state = controller.getSnapshot().state
     expect(state.screen === 'error' && state.error.detail).toBe('recusado pelo motor')
@@ -295,7 +352,10 @@ describe('motor avisado ao abandonar o modo enviar', () => {
   const idle: [string, AppState][] = [
     ['preparando', { screen: 'preparing', mode: 'send', step: 'engine' }],
     ['pronto', { screen: 'ready', mode: 'send' }],
-    ['permitir', { screen: 'approve', mode: 'send', device: 'Notebook' }]
+    [
+      'permitir',
+      { screen: 'approve', mode: 'send', device: 'Notebook', pairingId: 'p1', pin: null }
+    ]
   ]
 
   it.each(idle)('sair de %s para mostrar chama abort', async (_name, initial) => {
@@ -313,12 +373,58 @@ describe('motor avisado ao abandonar o modo enviar', () => {
   it('avançar dentro do modo enviar não chama abort', async () => {
     const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
     engine.simulatePairRequest('Notebook')
-    controller.dispatch({ type: 'APPROVE' })
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
     engine.simulateClientConnected('Notebook')
     expect(screen(controller)).toBe('connected')
     expect(engine.calls).not.toContain('abort')
   })
 })
+
+describe('pareamento com PIN', () => {
+  it('aprovar sem PIN não chama o motor e não sai da tela', async () => {
+    const { controller, engine } = await setup({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: null
+    })
+    controller.dispatch({ type: 'APPROVE' })
+    controller.dispatch({ type: 'APPROVE', pin: '12' })
+    expect(screen(controller)).toBe('approve')
+    expect(engine.calls).not.toContain('approve')
+  })
+
+  it('com o PIN já conhecido aprova sem digitar', async () => {
+    const { controller, engine } = await setup({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: '4821'
+    })
+    controller.dispatch({ type: 'APPROVE' })
+    expect(engine.lastApprove).toEqual({ pairingId: 'p1', pin: '4821', name: 'Notebook' })
+  })
+
+  it('o cancelamento do pedido volta para pronto sem chamar o motor', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    engine.simulatePairRequest('Notebook', 'p9')
+    expect(screen(controller)).toBe('approve')
+    engine.simulatePairCancelled('p9')
+    expect(screen(controller)).toBe('ready')
+    expect(engine.calls).not.toContain('deny')
+    expect(engine.calls).not.toContain('approve')
+  })
+
+  it('o cancelamento de outro pedido é ignorado', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    engine.simulatePairRequest('Notebook', 'p9')
+    engine.simulatePairCancelled('outro')
+    expect(screen(controller)).toBe('approve')
+  })
+})
+
 describe('ajustes e assinantes', () => {
   it('atualizar o bitrate valida, persiste e avisa os assinantes', async () => {
     const { controller, saved } = await setup({ screen: 'ready', mode: 'send' })

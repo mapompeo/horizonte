@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Mode } from '../../../shared/types'
   import { chooseMode, openSettings } from '../lib/actions'
+  import Segmented from './Segmented.svelte'
 
   interface Props {
     mode: Mode
@@ -10,26 +11,7 @@
 </script>
 
 <header class="topbar">
-  <span></span>
-  <div class="seg" role="group" aria-label="Modo">
-    <button
-      class="seg-item"
-      class:on={mode === 'send'}
-      aria-pressed={mode === 'send'}
-      onclick={() => chooseMode('send')}
-    >
-      Enviar
-    </button>
-    <button
-      class="seg-item"
-      class:on={mode === 'receive'}
-      aria-pressed={mode === 'receive'}
-      onclick={() => chooseMode('receive')}
-    >
-      Mostrar
-    </button>
-  </div>
-  <div class="topbar-right">
+  <div class="topbar-left">
     <button class="icon-btn" aria-label="Ajustes" onclick={openSettings}>
       <svg
         width="22"
@@ -50,4 +32,15 @@
       </svg>
     </button>
   </div>
+  <Segmented
+    compact
+    label="Modo"
+    value={mode}
+    options={[
+      { value: 'send', text: 'Enviar' },
+      { value: 'receive', text: 'Mostrar' }
+    ]}
+    onSelect={(value) => chooseMode(value as Mode)}
+  />
+  <span></span>
 </header>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { copyFor, progress, safeName, stepRows } from './copy'
+import { copyFor, PREP_STEPS, progress, safeName, stepLabel } from './copy'
 
 describe('safeName', () => {
   it('mantém nomes normais', () => {
@@ -41,9 +41,21 @@ describe('copyFor', () => {
   })
 
   it('permitir usa o nome seguro do dispositivo', () => {
-    const copy = copyFor({ screen: 'approve', mode: 'send', device: 'Notebook' })
+    const copy = copyFor({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: null
+    })
     expect(copy.title).toBe('Permitir o Notebook?')
-    const hostile = copyFor({ screen: 'approve', mode: 'send', device: '\u202E' })
+    const hostile = copyFor({
+      screen: 'approve',
+      mode: 'send',
+      device: '\u202E',
+      pairingId: 'p1',
+      pin: null
+    })
     expect(hostile.title).toBe('Permitir o Outro computador?')
   })
 
@@ -84,24 +96,13 @@ describe('copyFor', () => {
   })
 })
 
-describe('stepRows e progress', () => {
-  it('no primeiro passo só o primeiro está ativo', () => {
-    const rows = stepRows('engine')
-    expect(rows.map((row) => row.status)).toEqual(['active', 'pending', 'pending', 'pending'])
-    expect(rows[0]?.label).toBe('Instalando o motor')
-  })
-
-  it('no segundo passo o primeiro já está concluído', () => {
-    const rows = stepRows('display')
-    expect(rows.map((row) => row.status)).toEqual(['done', 'active', 'pending', 'pending'])
-    expect(rows[0]?.label).toBe('Motor instalado')
-    expect(rows[1]?.label).toBe('Criando o monitor virtual')
-  })
-
-  it('no último passo faltam só o ativo e o Pronto', () => {
-    const rows = stepRows('encoder')
-    expect(rows.map((row) => row.status)).toEqual(['done', 'done', 'active', 'pending'])
-    expect(rows[3]?.label).toBe('Pronto')
+describe('stepLabel e progress', () => {
+  it('uma frase por etapa, na ordem do fluxo', () => {
+    expect(PREP_STEPS.map(stepLabel)).toEqual([
+      'Preparando o motor',
+      'Procurando o monitor virtual',
+      'Testando a placa de vídeo'
+    ])
   })
 
   it('progresso em porcentagem', () => {
