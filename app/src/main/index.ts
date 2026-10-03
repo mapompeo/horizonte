@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage } from 'electron'
-import { hostname } from 'node:os'
+import { hostname, networkInterfaces } from 'node:os'
 import { join } from 'node:path'
+import { Bonjour } from 'bonjour-service'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { CHANNELS } from '../shared/api'
@@ -11,6 +12,7 @@ import { createController, type Controller } from './core/controller'
 import { createSettingsStore } from './core/settings'
 import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
+import { createDiscovery } from './engine/discovery'
 import { FakeEngine } from './engine/fake'
 import { noClientEngine } from './engine/no-client'
 import type { EnginePort } from './engine/port'
@@ -89,6 +91,13 @@ async function boot(): Promise<void> {
   const real =
     process.platform === 'win32' &&
     (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
+  const discovery = createDiscovery({
+    find: () => new Bonjour().find({ type: 'nvstream' }),
+    ownAddresses: () =>
+      Object.values(networkInterfaces())
+        .flat()
+        .flatMap((i) => (i ? [i.address] : []))
+  })
   let engine: EnginePort = fake
   if (dev) {
     engine = composeEngine(
@@ -106,7 +115,7 @@ async function boot(): Promise<void> {
         readLog: () => readLogTail(dev.logPath),
         sleep
       }),
-      noClientEngine()
+      noClientEngine(discovery.listHosts)
     )
   } else if (real) {
     const platform = createWindowsPlatform({
@@ -141,7 +150,7 @@ async function boot(): Promise<void> {
         // Na primeira partida o motor testa todos os codificadores e leva mais de 30 segundos.
         timing: { restartTimeoutMs: 120_000 }
       }),
-      noClientEngine()
+      noClientEngine(discovery.listHosts)
     )
   }
   const controller = await createController({ engine, store })
