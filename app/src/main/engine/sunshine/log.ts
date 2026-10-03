@@ -72,12 +72,33 @@ export const isStartupComplete = (log: string): boolean => log.includes(STARTUP_
 
 export const countStartups = (log: string): number => log.split(STARTUP_MARKER).length - 1
 
-/** Primeira linha do log: muda a cada execução do Sunshine (traz a hora e a versão). */
-export const logSignature = (log: string): string => (log.split(/\r?\n/, 1)[0] ?? '').slice(0, 160)
+const RUN_MARKER = 'Sunshine version:'
+
+/**
+ * Linha de abertura da execução mais recente (traz a hora e a versão), por isso muda a cada
+ * execução. Não usamos a primeira linha do trecho lido: com o log cortado em 2 MB ela seria um
+ * pedaço arbitrário que muda a cada consulta. Sem a linha de abertura no trecho, devolve ''.
+ */
+export function logSignature(log: string): string {
+  const at = log.lastIndexOf(RUN_MARKER)
+  if (at < 0) return ''
+  const start = log.lastIndexOf('\n', at) + 1
+  return (log.slice(start).split(/\r?\n/, 1)[0] ?? '').slice(0, 160)
+}
+
+export type SessionEvent = 'connected' | 'disconnected'
+
+/** Conexões e desconexões na ordem em que aparecem no log. */
+export function sessionEvents(log: string): SessionEvent[] {
+  const events: SessionEvent[] = []
+  for (const match of log.matchAll(/: CLIENT (CONNECTED|DISCONNECTED)[ \t]*\r?$/gm)) {
+    events.push(match[1] === 'CONNECTED' ? 'connected' : 'disconnected')
+  }
+  return events
+}
 
 export function countSessionEvents(log: string): { connected: number; disconnected: number } {
-  return {
-    connected: (log.match(/: CLIENT CONNECTED[ \t]*\r?$/gm) ?? []).length,
-    disconnected: (log.match(/: CLIENT DISCONNECTED[ \t]*\r?$/gm) ?? []).length
-  }
+  const events = sessionEvents(log)
+  const connected = events.filter((event) => event === 'connected').length
+  return { connected, disconnected: events.length - connected }
 }

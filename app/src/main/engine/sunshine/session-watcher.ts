@@ -1,4 +1,4 @@
-import { countSessionEvents, logSignature } from './log'
+import { logSignature, sessionEvents } from './log'
 
 export interface SessionWatcherOptions {
   readLog(): Promise<string>
@@ -32,38 +32,33 @@ export function createSessionWatcher(options: SessionWatcherOptions): {
 
   async function poll(
     token: number,
-    baseline: { signature: string; connected: number; disconnected: number } | null
+    baseline: { signature: string; seen: number } | null
   ): Promise<void> {
     let next = baseline
     try {
       const log = await options.readLog()
       if (token !== run) return
-      const counts = countSessionEvents(log)
-      const signature = logSignature(log)
+      // Log vazio é arquivo ausente ou travado (o Sunshine está reiniciando): não é um log novo.
+      if (log !== '') {
+        const events = sessionEvents(log)
+        const signature = logSignature(log)
 
-      if (next === null) {
-        next = { signature, ...counts }
-      } else {
-        const restarted =
-          signature !== next.signature ||
-          counts.connected < next.connected ||
-          counts.disconnected < next.disconnected
-        const base = restarted ? { connected: 0, disconnected: 0 } : next
-        const connected = Math.min(counts.connected - base.connected, MAX_EVENTS_PER_POLL)
-        const disconnected = Math.min(counts.disconnected - base.disconnected, MAX_EVENTS_PER_POLL)
-        next = { signature, ...counts }
-        for (let i = 0; i < connected; i++) {
-          try {
-            options.onConnected(options.deviceName())
-          } catch (cause) {
-            report(cause)
-          }
-        }
-        for (let i = 0; i < disconnected; i++) {
-          try {
-            options.onDisconnected()
-          } catch (cause) {
-            report(cause)
+        if (next === null) {
+          next = { signature, seen: events.length }
+        } else {
+          // Só a abertura de outra execução (nas duas pontas) ou menos eventos que antes provam reinício.
+          const restarted =
+            (signature !== '' && next.signature !== '' && signature !== next.signature) ||
+            events.length < next.seen
+          const fresh = events.slice(restarted ? 0 : next.seen).slice(-MAX_EVENTS_PER_POLL)
+          next = { signature: signature || next.signature, seen: events.length }
+          for (const event of fresh) {
+            try {
+              if (event === 'connected') options.onConnected(options.deviceName())
+              else options.onDisconnected()
+            } catch (cause) {
+              report(cause)
+            }
           }
         }
       }

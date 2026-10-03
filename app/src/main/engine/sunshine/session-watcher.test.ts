@@ -92,6 +92,42 @@ describe('createSessionWatcher', () => {
     t.watcher.stop()
   })
 
+  it('um trecho do log que desliza (log grande cortado) não reemite eventos antigos', async () => {
+    const head = run(1, 'CLIENT CONNECTED')
+    const t = setup(head + 'ruído antigo\nmais ruído\n')
+    t.watcher.start()
+    await vi.advanceTimersByTimeAsync(150)
+    // O arquivo passou do limite lido: o começo do trecho muda a cada consulta, a abertura da execução some.
+    t.setLog('mais ruído\n[2026-10-02 18:00:01.600]: Info: CLIENT CONNECTED\n')
+    await vi.advanceTimersByTimeAsync(150)
+    t.setLog('[2026-10-02 18:00:01.600]: Info: CLIENT CONNECTED\nnovo ruído\n')
+    await vi.advanceTimersByTimeAsync(150)
+    expect(t.events).toEqual([])
+    t.watcher.stop()
+  })
+
+  it('leitura que volta vazia (arquivo travado) não vira log novo', async () => {
+    const t = setup(run(1, 'CLIENT CONNECTED'))
+    t.watcher.start()
+    await vi.advanceTimersByTimeAsync(150)
+    t.setLog('')
+    await vi.advanceTimersByTimeAsync(150)
+    t.setLog(run(1, 'CLIENT CONNECTED'))
+    await vi.advanceTimersByTimeAsync(150)
+    expect(t.events).toEqual([])
+    t.watcher.stop()
+  })
+
+  it('desconexão seguida de reconexão na mesma consulta chega nessa ordem', async () => {
+    const t = setup(run(1, 'CLIENT CONNECTED'))
+    t.watcher.start()
+    await vi.advanceTimersByTimeAsync(150)
+    t.setLog(run(1, 'CLIENT CONNECTED', 'CLIENT DISCONNECTED', 'CLIENT CONNECTED'))
+    await vi.advanceTimersByTimeAsync(150)
+    expect(t.events).toEqual(['disconnected', 'connected:Notebook'])
+    t.watcher.stop()
+  })
+
   it('erro ao ler o log não para a vigilância', async () => {
     let fail = true
     const errors: unknown[] = []

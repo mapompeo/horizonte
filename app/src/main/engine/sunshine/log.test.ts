@@ -4,6 +4,7 @@ import {
   countStartups,
   isStartupComplete,
   logSignature,
+  sessionEvents,
   parseDisplays,
   parseFoundEncoder
 } from './log'
@@ -114,6 +115,23 @@ describe('reinício', () => {
     expect(logSignature(STARTUP_SOFTWARE_LOG)).not.toBe(logSignature(STARTUP_AMF_LOG))
     expect(logSignature('')).toBe('')
     expect(logSignature('a'.repeat(1000)).length).toBeLessThanOrEqual(160)
+  })
+
+  it('não depende de onde o trecho começa: só da abertura da execução', () => {
+    const body = STARTUP_SOFTWARE_LOG + 'linha longa de ruído\n'.repeat(5)
+    const cut = body.slice(body.indexOf('\n') + 1)
+    // Sem a abertura no trecho a assinatura é vazia, nunca um pedaço arbitrário.
+    expect(logSignature(cut)).toBe('')
+    expect(logSignature(body)).toBe(logSignature(body + 'mais uma linha\n'))
+  })
+})
+
+describe('sessionEvents', () => {
+  it('mantém a ordem do log', () => {
+    const log = `${STARTUP_AMF_LOG}[2026-10-02 17:30:00.000]: Info: CLIENT DISCONNECTED
+[2026-10-02 17:31:00.000]: Info: CLIENT CONNECTED
+`
+    expect(sessionEvents(log)).toEqual(['connected', 'disconnected', 'connected'])
   })
 })
 
