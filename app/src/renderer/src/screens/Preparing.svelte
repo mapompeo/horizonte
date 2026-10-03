@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PrepStep } from '../../../shared/types'
-  import { copyFor, progress, stepLabel } from '../lib/copy'
+  import { copyFor, progress, stepPhrase } from '../lib/copy'
 
   interface Props {
     step: PrepStep
@@ -10,6 +10,14 @@
 
   const copy = $derived(copyFor({ screen: 'preparing', mode: 'send', step }))
   const percent = $derived(progress(step))
+
+  let tick = $state(0)
+  $effect(() => {
+    void step
+    tick = 0
+    const timer = setInterval(() => (tick += 1), 3500)
+    return () => clearInterval(timer)
+  })
 </script>
 
 <h1 class="title">{copy.title}</h1>
@@ -24,5 +32,5 @@
   <div class="bar-fill" style="width: {percent}%"></div>
 </div>
 <p class="status" aria-live="polite">
-  {#key step}<span class="status-text">{stepLabel(step)}</span>{/key}
+  {#key `${step}-${tick}`}<span class="status-text">{stepPhrase(step, tick)}</span>{/key}
 </p>

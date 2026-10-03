@@ -111,3 +111,12 @@ describe('stepLabel e progress', () => {
     expect(progress('encoder')).toBe(67)
   })
 })
+
+describe('stepPhrase', () => {
+  it('alterna as frases da etapa e volta ao começo', async () => {
+    const { stepPhrase } = await import('./copy')
+    expect(stepPhrase('engine', 0)).toBe('Preparando o motor')
+    expect(stepPhrase('engine', 1)).not.toBe(stepPhrase('engine', 0))
+    expect(stepPhrase('engine', 4)).toBe(stepPhrase('engine', 0))
+  })
+})

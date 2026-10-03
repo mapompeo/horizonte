@@ -21,12 +21,14 @@ function harness(
     download?: SetupDeps['download']
     saveFails?: boolean
     consent?: boolean
+    responding?: boolean
   } = {}
 ): Harness {
   const h: Harness = { deps: undefined as never, downloads: [], elevated: [], saved: [], waited: 0 }
   h.deps = {
     probe: {
       sunshineRunning: async () => options.sunshineRunning ?? false,
+      sunshineResponding: async () => options.responding ?? options.sunshineRunning ?? false,
       driverPresent: async () => options.driverPresent ?? false
     },
     vault: {
@@ -105,6 +107,16 @@ describe('createWindowsSetup', () => {
     expect(script).toContain('C:\\Program Files\\Sunshine\\sunshine.exe')
     expect(script).toContain('C:\\Program Files\\Sunshine\\config\\sunshine.conf')
     expect(script).toContain('Horizonte\\stage')
+  })
+
+  it('serviço rodando mas sem atender: só reinicia o serviço, sem baixar nada', async () => {
+    const h = harness({ sunshineRunning: true, responding: false, driverPresent: true, stored })
+    await createWindowsSetup(h.deps).installer.ensureInstalled()
+
+    expect(all(h)).toContain('Restart-Service')
+    expect(all(h)).not.toContain('msiexec')
+    expect(h.downloads).toEqual([])
+    expect(h.waited).toBe(1)
   })
 
   it('só o driver falta: não reinstala o Sunshine nem troca a senha', async () => {

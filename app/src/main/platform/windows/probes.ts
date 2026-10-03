@@ -27,6 +27,10 @@ export function createProbe(run: PowerShellRunner): InstallProbe {
     sunshineRunning: async () =>
       (await ask('(Get-Service -Name SunshineService -ErrorAction SilentlyContinue).Status')) ===
       'Running',
+    sunshineResponding: async () =>
+      (await ask(
+        '[bool](Get-NetTCPConnection -LocalPort 47990 -State Listen -ErrorAction SilentlyContinue)'
+      )) === 'True',
     driverPresent: async () =>
       (await ask(
         "[bool](Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.HardwareID -contains 'Root\\MttVDD' -or $_.FriendlyName -match 'Virtual Display Driver|VDD by MTT' })"

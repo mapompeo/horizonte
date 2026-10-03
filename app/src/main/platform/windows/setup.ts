@@ -8,6 +8,8 @@ import { SUNSHINE, VIRTUAL_DISPLAY_DRIVER, type PinnedArtifact } from './version
 
 export interface InstallProbe {
   sunshineRunning(): Promise<boolean>
+  /** O painel do Sunshine (porta 47990) está aceitando conexões. O serviço pode estar rodando e preso. */
+  sunshineResponding(): Promise<boolean>
   driverPresent(): Promise<boolean>
 }
 
@@ -69,15 +71,18 @@ export function createWindowsSetup(deps: SetupDeps): {
   const sunshineConf = win32.join(deps.sunshineDir, 'config', 'sunshine.conf')
 
   async function run(): Promise<void> {
-    const [running, driverPresent, stored] = await Promise.all([
+    const [running, responding, driverPresent, stored] = await Promise.all([
       deps.probe.sunshineRunning(),
+      deps.probe.sunshineResponding(),
       deps.probe.driverPresent(),
       deps.vault.load()
     ])
     const needSunshine = !running
     const needCredentials = needSunshine || stored === null
     const needDriver = !driverPresent
-    if (!needSunshine && !needCredentials && !needDriver) return
+    // Serviço "rodando" mas sem atender: preso depois de um reinício. Reiniciar de novo costuma resolver.
+    const needRestart = !needSunshine && !needCredentials && !responding
+    if (!needSunshine && !needCredentials && !needDriver && !needRestart) return
 
     if (needDriver && !(await deps.confirmDriverTrust())) {
       throw new Error(
@@ -123,6 +128,12 @@ export function createWindowsSetup(deps: SetupDeps): {
         ].join('\n')
       })
     }
+    if (needRestart) {
+      steps.push({
+        description: 'Reiniciar o Sunshine',
+        script: 'Restart-Service -Name SunshineService -ErrorAction Stop'
+      })
+    }
     if (needDriver) {
       steps.push({
         description: 'Instalar o monitor virtual',
@@ -148,7 +159,7 @@ export function createWindowsSetup(deps: SetupDeps): {
 
     await deps.elevation.runElevated(steps)
     if (needCredentials) await deps.vault.save(credentials)
-    if (needSunshine || needCredentials) await deps.waitForApi()
+    if (needSunshine || needCredentials || needRestart) await deps.waitForApi()
     deps.onProgress?.(1)
   }
 
