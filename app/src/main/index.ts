@@ -1,4 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage } from 'electron'
+import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { hostname, networkInterfaces } from 'node:os'
 import { join } from 'node:path'
 import { Bonjour } from 'bonjour-service'
@@ -14,6 +16,7 @@ import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
 import { FakeEngine } from './engine/fake'
+import { createMoonlightClient } from './engine/moonlight/client'
 import { noClientEngine } from './engine/no-client'
 import type { EnginePort } from './engine/port'
 import { SunshineApi } from './engine/sunshine/api'
@@ -98,6 +101,20 @@ async function boot(): Promise<void> {
         .flat()
         .flatMap((i) => (i ? [i.address] : []))
   })
+  // Enquanto o Horizonte não instala o Moonlight sozinho, usa o que já estiver no computador.
+  const moonlightExe = join(process.env.ProgramFiles ?? 'C:/Program Files', 'Moonlight Game Streaming', 'Moonlight.exe')
+  const receiver = existsSync(moonlightExe)
+    ? createMoonlightClient({
+        listHosts: discovery.listHosts,
+        spawn: (args) => {
+          const child = spawn(moonlightExe, args, { stdio: 'ignore' })
+          return {
+            kill: () => void child.kill(),
+            onExit: (listener) => void child.once('exit', listener)
+          }
+        }
+      })
+    : noClientEngine(discovery.listHosts)
   let engine: EnginePort = fake
   if (dev) {
     engine = composeEngine(
@@ -115,7 +132,7 @@ async function boot(): Promise<void> {
         readLog: () => readLogTail(dev.logPath),
         sleep
       }),
-      noClientEngine(discovery.listHosts)
+      receiver
     )
   } else if (real) {
     const platform = createWindowsPlatform({
@@ -150,7 +167,7 @@ async function boot(): Promise<void> {
         // Na primeira partida o motor testa todos os codificadores e leva mais de 30 segundos.
         timing: { restartTimeoutMs: 120_000 }
       }),
-      noClientEngine(discovery.listHosts)
+      receiver
     )
   }
   const controller = await createController({ engine, store })
