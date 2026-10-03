@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import icon from '../../resources/icon.png?asset'
 import { CHANNELS } from '../shared/api'
 import { isUiEvent } from '../shared/events'
 import type { SettingsPatch } from '../shared/types'
@@ -21,13 +22,14 @@ function overlayFor(): { color: string; symbolColor: string; height: number } {
   return {
     color: dark ? '#101012' : '#FBFBFD',
     symbolColor: dark ? '#9A9AA2' : '#6E6E73',
-    height: 56
+    height: 64
   }
 }
 
 function createWindow(controller: Controller): void {
   const window = new BrowserWindow({
     title: 'Horizonte',
+    icon,
     width: 760,
     height: 580,
     minWidth: 640,

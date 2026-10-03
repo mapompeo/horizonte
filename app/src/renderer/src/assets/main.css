@@ -170,7 +170,7 @@ input:focus-visible {
 /* Barra do topo */
 .topbar {
   width: 100%;
-  height: 56px;
+  height: 64px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -812,7 +812,7 @@ input[type='range'] {
   top: 0;
   left: 0;
   right: 0;
-  height: 56px;
+  height: 64px;
   -webkit-app-region: drag;
   z-index: 0;
 }
@@ -823,10 +823,12 @@ input,
   -webkit-app-region: no-drag;
 }
 
-/* Deixa os botões da janela livres: o conteúdo do topo para antes deles. */
-.topbar,
-.sheet-head {
+/* Deixa os botões da janela livres sem descentralizar o seletor: só a coluna da direita recua. */
+.topbar {
   position: relative;
   z-index: 1;
+}
+
+.topbar-right {
   padding-right: calc(100vw - env(titlebar-area-width, 100vw));
 }
