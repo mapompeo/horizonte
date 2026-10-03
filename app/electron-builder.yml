@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: app
+appId: com.horizonte.app
+productName: Horizonte
 directories:
   buildResources: build
 files:
@@ -13,12 +13,17 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: app
+  executableName: Horizonte
+  target:
+    - nsis
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
+  # Instala só para a pessoa, sem pedir administrador: o aviso do Windows aparece uma vez, no primeiro uso.
+  oneClick: true
+  perMachine: false
+  artifactName: Horizonte-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
-  createDesktopShortcut: always
+  createDesktopShortcut: true
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
@@ -32,13 +37,12 @@ dmg:
 linux:
   target:
     - AppImage
-    - snap
     - deb
-  maintainer: electronjs.org
+  maintainer: Matheus Pompeo <matheuspompeo13@gmail.com>
   category: Utility
 appImage:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: Horizonte-${version}.${ext}
+deb:
+  artifactName: Horizonte-${version}.${ext}
 npmRebuild: false
-publish:
-  provider: generic
-  url: https://example.com/auto-updates
+publish: null

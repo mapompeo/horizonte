@@ -24,6 +24,7 @@ function harness(
     responding?: boolean
     controllable?: boolean
     portOpen?: boolean
+    outdated?: boolean
   } = {}
 ): Harness {
   const h: Harness = { deps: undefined as never, downloads: [], elevated: [], saved: [], waited: 0 }
@@ -33,7 +34,8 @@ function harness(
       serviceControllable: async () => options.controllable ?? true,
       sunshineResponding: async () => options.responding ?? options.sunshineRunning ?? false,
       driverPresent: async () => options.driverPresent ?? false,
-      pairingPortOpen: async () => options.portOpen ?? true
+      pairingPortOpen: async () => options.portOpen ?? true,
+      sunshineOutdated: async () => options.outdated ?? false
     },
     vault: {
       load: async () => options.stored ?? null,
@@ -131,6 +133,15 @@ describe('createWindowsSetup', () => {
     expect(all(h)).toContain('47900')
     expect(all(h)).not.toContain('msiexec')
     expect(h.downloads).toEqual([])
+  })
+
+  it('motor mais antigo que a versão fixada: baixa e instala por cima, sem trocar a senha', async () => {
+    const h = harness({ sunshineRunning: true, driverPresent: true, stored, outdated: true })
+    await createWindowsSetup(h.deps).installer.ensureInstalled()
+
+    expect(all(h)).toContain('msiexec')
+    expect(h.downloads).toHaveLength(1)
+    expect(h.saved).toEqual([])
   })
 
   it('só o driver falta: não reinstala o motor de transmissão nem troca a senha', async () => {
