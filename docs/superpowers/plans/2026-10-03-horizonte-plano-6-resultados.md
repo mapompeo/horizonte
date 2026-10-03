@@ -15,3 +15,6 @@ O Sunshine não fala WebRTC. Em vez de escrever um cliente, o Horizonte embute o
 ## Não verificado
 - Vídeo no navegador de outro aparelho (pareamento pelo PIN que o gateway mostra, tela de aprovação do Horizonte, latência, HTTPS: gamepad e teclado completo só funcionam em contexto seguro).
 - Linux (o pacote `.tar.gz` existe; falta o wiring) e a ordem "pareamento do gateway com o Sunshine" na primeira conexão.
+
+## Atualização: Linux
+O gateway agora também baixa o pacote Linux x86_64 (`.tar.gz`, hash fixo) e extrai com `tar`. O Windows foi reprovado depois da mudança (sobe, login 200). **Não rodou no Linux.** Falta lá liberar as portas (TCP 8080 e 47900, UDP 40000–40010) se o `ufw` estiver ativo; hoje o Horizonte não mexe no firewall do Linux.
