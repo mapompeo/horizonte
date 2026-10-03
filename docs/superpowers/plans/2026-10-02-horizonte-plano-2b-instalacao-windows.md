@@ -1,6 +1,6 @@
 # Horizonte, Plano 2B: instalação de verdade no Windows (rascunho)
 
-Data: 02/10/2026. Base: branch `feat/plano-2a-motor-sunshine` (PR #1). Status: em execução. Tarefas 1 e 2 prontas (versões fixas, download com hash, elevação); 3 a 8 dependem da instalação real.
+Data: 02/10/2026. Base: branch `feat/plano-2a-motor-sunshine` (PR #1). Status: código das tarefas 1 a 7 pronto e testado com falsos (413 testes); falta a tarefa 8, a prova no Windows limpo, que só se faz instalando de verdade.
 
 ## Objetivo
 
