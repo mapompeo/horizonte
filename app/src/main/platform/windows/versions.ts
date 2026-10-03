@@ -24,3 +24,14 @@ export const VIRTUAL_DISPLAY_DRIVER: PinnedArtifact = {
   url: 'https://github.com/VirtualDrivers/Virtual-Display-Driver/releases/download/24.10.27/VirtualDisplayDriver-x64.zip',
   sha256: 'b7a36f341f2a0ce43cc2afe7894d30dd8fef7b6f60ef9491aab2ef77663a42fd'
 }
+
+/**
+ * Moonlight Qt 6.1.0, versão portátil (zip, sem instalador nem administrador). A API não publica hash;
+ * este foi calculado em 03/10/2026 sobre o arquivo baixado.
+ */
+export const MOONLIGHT: PinnedArtifact = {
+  version: '6.1.0',
+  fileName: 'MoonlightPortable-x64-6.1.0.zip',
+  url: 'https://github.com/moonlight-stream/moonlight-qt/releases/download/v6.1.0/MoonlightPortable-x64-6.1.0.zip',
+  sha256: '95f4d0853a31c7fced4b6d233ddf55ee41720963f2e2620a9cb49a21d112aed1'
+}

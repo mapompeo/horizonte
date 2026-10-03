@@ -17,12 +17,17 @@ import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
 import { FakeEngine } from './engine/fake'
 import { createMoonlightClient } from './engine/moonlight/client'
+import { ensureMoonlight } from './engine/moonlight/install'
 import { noClientEngine } from './engine/no-client'
 import type { EnginePort } from './engine/port'
 import { SunshineApi } from './engine/sunshine/api'
 import { SunshineEngine } from './engine/sunshine/engine'
 import { readLogTail } from './engine/sunshine/log-file'
 import { createEngineMemory } from './engine/sunshine/memory'
+import { downloadVerified } from './platform/windows/download'
+import { psQuote } from './platform/windows/elevation'
+import { runPowerShell } from './platform/windows/probes'
+import { MOONLIGHT } from './platform/windows/versions'
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
 
@@ -101,20 +106,36 @@ async function boot(): Promise<void> {
         .flat()
         .flatMap((i) => (i ? [i.address] : []))
   })
-  // Enquanto o Horizonte não instala o Moonlight sozinho, usa o que já estiver no computador.
-  const moonlightExe = join(process.env.ProgramFiles ?? 'C:/Program Files', 'Moonlight Game Streaming', 'Moonlight.exe')
-  const receiver = existsSync(moonlightExe)
-    ? createMoonlightClient({
-        listHosts: discovery.listHosts,
-        spawn: (args) => {
-          const child = spawn(moonlightExe, args, { stdio: 'ignore' })
-          return {
-            kill: () => void child.kill(),
-            onExit: (listener) => void child.once('exit', listener)
+  // O Moonlight portátil é baixado na primeira vez que a pessoa conecta (versão fixa, hash conferido).
+  const moonlightDir = join(app.getPath('userData'), 'moonlight')
+  const receiver =
+    process.platform === 'win32'
+      ? createMoonlightClient({
+          listHosts: discovery.listHosts,
+          spawn: async (args) => {
+            const exe = await ensureMoonlight({
+              dir: moonlightDir,
+              exists: async (path) => existsSync(path),
+              download: async (onProgress) => {
+                const zip = join(app.getPath('temp'), MOONLIGHT.fileName)
+                await downloadVerified(MOONLIGHT, zip, onProgress)
+                return zip
+              },
+              extract: async (zip, into) => {
+                await runPowerShell(
+                  `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(into)} -Force`,
+                  120_000
+                )
+              }
+            })
+            const child = spawn(exe, args, { stdio: 'ignore' })
+            return {
+              kill: () => void child.kill(),
+              onExit: (listener) => void child.once('exit', listener)
+            }
           }
-        }
-      })
-    : noClientEngine(discovery.listHosts)
+        })
+      : noClientEngine(discovery.listHosts)
   let engine: EnginePort = fake
   if (dev) {
     engine = composeEngine(

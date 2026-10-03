@@ -38,7 +38,7 @@ describe('buildStreamArgs', () => {
 
 describe('createMoonlightClient', () => {
   const make = (proc = fakeProcess()) => {
-    const spawn = vi.fn(() => proc)
+    const spawn = vi.fn(async () => proc)
     return { proc, spawn, client: createMoonlightClient({ spawn, listHosts: async () => [] }) }
   }
 
