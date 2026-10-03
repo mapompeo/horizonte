@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, safeStorage } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage } from 'electron'
 import { join } from 'node:path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -106,7 +106,21 @@ async function boot(): Promise<void> {
     const platform = createWindowsPlatform({
       userData: app.getPath('userData'),
       cipher: toCipher(safeStorage),
-      sleep
+      sleep,
+      confirmDriverTrust: async () => {
+        const answer = await dialog.showMessageBox({
+          type: 'warning',
+          title: 'Autorizar o monitor virtual',
+          message: 'O Horizonte precisa instalar um driver de monitor virtual.',
+          detail:
+            'O driver é de código aberto (Virtual Display Driver) e tem certificado próprio, que o Windows só aceita se for confiado como autoridade raiz. O Horizonte confia nele apenas durante a instalação e o remove em seguida. Só continue se você confia nessa origem.',
+          buttons: ['Autorizar e instalar', 'Cancelar'],
+          defaultId: 1,
+          cancelId: 1,
+          noLink: true
+        })
+        return answer.response === 0
+      }
     })
     engine = composeEngine(
       new SunshineEngine({

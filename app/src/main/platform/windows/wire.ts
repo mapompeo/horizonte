@@ -55,6 +55,7 @@ export function createWindowsPlatform(deps: {
   userData: string
   cipher: Cipher
   sleep: (ms: number) => Promise<void>
+  confirmDriverTrust: () => Promise<boolean>
   onProgress?: (fraction: number) => void
 }): WindowsPlatform {
   const vault = createCredentialVault({
@@ -69,6 +70,7 @@ export function createWindowsPlatform(deps: {
     vault,
     download: downloadVerified,
     elevation: createElevation({ run: runWithUac, tmpDir: tmpdir() }),
+    confirmDriverTrust: deps.confirmDriverTrust,
     waitForApi: async () => {
       const credentials = await vault.load()
       if (!credentials) throw new Error('A senha do Sunshine não foi guardada.')

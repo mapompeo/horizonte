@@ -2,6 +2,7 @@ import { win32 } from 'node:path'
 import type { EngineInstaller, SunshineCredentials, VirtualDisplay } from '../types'
 import type { SunshineDisplay } from '../../engine/sunshine/log'
 import type { Artifact } from './download'
+import { DRIVER_INSTALL_SCRIPT } from './driver-script'
 import { psQuote, type ElevatedStep, type Elevation } from './elevation'
 import { SUNSHINE, VIRTUAL_DISPLAY_DRIVER, type PinnedArtifact } from './versions'
 
@@ -22,6 +23,11 @@ export interface SetupDeps {
     onProgress?: (fraction: number) => void
   ): Promise<void>
   elevation: Elevation
+  /**
+   * O driver do monitor virtual tem certificado autoassinado: o Windows só o aceita se ele for confiado
+   * como autoridade raiz durante a instalação. Devolve false se a pessoa não autorizar.
+   */
+  confirmDriverTrust(): Promise<boolean>
   /** Espera a API do Sunshine responder com a senha nova. */
   waitForApi(): Promise<void>
   generatePassword(): string
@@ -72,6 +78,12 @@ export function createWindowsSetup(deps: SetupDeps): {
     const needCredentials = needSunshine || stored === null
     const needDriver = !driverPresent
     if (!needSunshine && !needCredentials && !needDriver) return
+
+    if (needDriver && !(await deps.confirmDriverTrust())) {
+      throw new Error(
+        'Sem a sua autorização para o certificado do monitor virtual, não consigo instalá-lo.'
+      )
+    }
 
     const downloads: PinnedArtifact[] = []
     if (needSunshine) downloads.push(SUNSHINE)
@@ -125,10 +137,7 @@ export function createWindowsSetup(deps: SetupDeps): {
           `$inf = Get-ChildItem -LiteralPath $dir -Recurse -Filter 'MttVDD.inf' | Select-Object -First 1`,
           `$cer = Get-ChildItem -LiteralPath $dir -Recurse -Filter 'Virtual_Display_Driver.cer' | Select-Object -First 1`,
           `if (-not $inf -or -not $cer) { throw 'O pacote do driver veio incompleto.' }`,
-          // Só publicador confiável: o certificado não vira autoridade raiz do computador.
-          `Import-Certificate -FilePath $cer.FullName -CertStoreLocation 'Cert:\\LocalMachine\\TrustedPublisher' | Out-Null`,
-          'pnputil.exe /add-driver $inf.FullName /install | Out-Null',
-          nativeCheck('pnputil', '0,3010')
+          DRIVER_INSTALL_SCRIPT
         ].join('\n')
       })
     }

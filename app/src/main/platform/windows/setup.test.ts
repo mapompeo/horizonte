@@ -20,6 +20,7 @@ function harness(
     elevation?: Elevation
     download?: SetupDeps['download']
     saveFails?: boolean
+    consent?: boolean
   } = {}
 ): Harness {
   const h: Harness = { deps: undefined as never, downloads: [], elevated: [], saved: [], waited: 0 }
@@ -45,6 +46,7 @@ function harness(
         h.elevated.push(steps)
       }
     },
+    confirmDriverTrust: async () => options.consent ?? true,
     waitForApi: async () => {
       h.waited += 1
     },
@@ -133,12 +135,40 @@ describe('createWindowsSetup', () => {
     expect(all(h)).toContain('1d7fed8beecd5889dc7ff14cf9f42d6d38f37c3066c13c6c2a5f4e91847e0ccf')
   })
 
-  it('o certificado do driver só entra em TrustedPublisher, nunca como autoridade raiz', async () => {
+  it('a raiz de confiança do driver só existe durante a instalação e sai mesmo se ela falhar', async () => {
     const h = harness({ sunshineRunning: true, stored })
     await createWindowsSetup(h.deps).display.ensureVirtualDisplay()
+    const script = all(h)
 
-    expect(all(h)).toContain('TrustedPublisher')
-    expect(all(h)).not.toMatch(/LocalMachine\\Root|\\root\b|-s -r|certutil/i)
+    expect(script).toContain('TrustedPublisher')
+    expect(script).toMatch(/finally\s*\{[^}]*Remove-Item -Path \$rootPath/)
+    expect(script).not.toMatch(/certutil|installCert/i)
+  })
+
+  it('sem o consentimento da pessoa o driver não é baixado nem instalado', async () => {
+    const h = harness({ sunshineRunning: true, stored, consent: false })
+    await expect(createWindowsSetup(h.deps).display.ensureVirtualDisplay()).rejects.toThrow(
+      /autoriza/
+    )
+    expect(h.downloads).toEqual([])
+    expect(h.elevated).toEqual([])
+  })
+
+  it('o consentimento só é pedido quando o driver realmente falta', async () => {
+    let asked = 0
+    const h = harness({ sunshineRunning: true, driverPresent: true, stored })
+    h.deps.confirmDriverTrust = async () => {
+      asked += 1
+      return true
+    }
+    await createWindowsSetup(h.deps).display.ensureVirtualDisplay()
+    expect(asked).toBe(0)
+  })
+
+  it('cria o dispositivo do monitor, não só o pacote', async () => {
+    const h = harness({ sunshineRunning: true, stored })
+    await createWindowsSetup(h.deps).display.ensureVirtualDisplay()
+    expect(all(h)).toContain('UpdateDriverForPlugAndPlayDevicesW')
   })
 
   it('a senha vai para o cofre depois da instalação e não aparece no erro', async () => {

@@ -31,10 +31,9 @@ export interface Elevation {
 export type ElevationRunner = (command: { encoded: string; resultPath: string }) => Promise<void>
 
 /**
- * A linha de comando do Windows aceita ~32 mil caracteres e o roteiro aparece duas vezes nela
- * (no PowerShell comum e no elevado), então o limite do roteiro codificado é bem menor.
+ * A linha de comando do Windows aceita ~32 mil caracteres; o limite deixa margem para o resto do comando.
  */
-const MAX_ENCODED_LENGTH = 12_000
+const MAX_ENCODED_LENGTH = 24_000
 
 /** O PowerShell 5 grava UTF-8 com BOM. */
 const BOM = String.fromCharCode(0xfeff)
