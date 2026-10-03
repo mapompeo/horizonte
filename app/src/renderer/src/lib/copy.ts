@@ -66,13 +66,12 @@ export const stepEnd = (step: PrepStep): number => {
   return next ? STEP_START[next] : 1
 }
 
-/** Depois de um tempo na mesma frase, ela ganha uma variação do mesmo assunto para mostrar que não travou. */
-const PATIENCE = ['ainda trabalhando', 'continua em andamento', 'só está demorando um pouco']
+/** Depois de um tempo parado na mesma frase, ela dá lugar a um aviso de que não travou, com pontinhos que se movem. */
+const PATIENCE_TEXT = 'Ainda trabalhando nisso'
 const PATIENCE_AFTER_SECONDS = 8
-const PATIENCE_EVERY_SECONDS = 6
 
 export function patientNote(note: string, secondsOnIt: number): string {
   if (secondsOnIt < PATIENCE_AFTER_SECONDS) return note
-  const turn = Math.floor((secondsOnIt - PATIENCE_AFTER_SECONDS) / PATIENCE_EVERY_SECONDS)
-  return `${note} · ${PATIENCE[turn % PATIENCE.length]}`
+  const dots = '.'.repeat(Math.floor(secondsOnIt) % 4)
+  return `${PATIENCE_TEXT}${dots}`
 }
