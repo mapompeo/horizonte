@@ -176,8 +176,8 @@ input:focus-visible {
   align-items: center;
 }
 
-.topbar-right {
-  justify-self: end;
+.topbar-left {
+  justify-self: start;
   display: flex;
   align-items: center;
 }
@@ -823,12 +823,8 @@ input,
   -webkit-app-region: no-drag;
 }
 
-/* Deixa os botões da janela livres sem descentralizar o seletor: só a coluna da direita recua. */
+/* O topo fica acima da faixa de arraste, e o lado direito é livre para os botões da janela. */
 .topbar {
   position: relative;
   z-index: 1;
-}
-
-.topbar-right {
-  padding-right: calc(100vw - env(titlebar-area-width, 100vw));
 }

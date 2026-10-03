@@ -11,18 +11,7 @@
 </script>
 
 <header class="topbar">
-  <span></span>
-  <Segmented
-    compact
-    label="Modo"
-    value={mode}
-    options={[
-      { value: 'send', text: 'Enviar' },
-      { value: 'receive', text: 'Mostrar' }
-    ]}
-    onSelect={(value) => chooseMode(value as Mode)}
-  />
-  <div class="topbar-right">
+  <div class="topbar-left">
     <button class="icon-btn" aria-label="Ajustes" onclick={openSettings}>
       <svg
         width="22"
@@ -43,4 +32,15 @@
       </svg>
     </button>
   </div>
+  <Segmented
+    compact
+    label="Modo"
+    value={mode}
+    options={[
+      { value: 'send', text: 'Enviar' },
+      { value: 'receive', text: 'Mostrar' }
+    ]}
+    onSelect={(value) => chooseMode(value as Mode)}
+  />
+  <span></span>
 </header>
