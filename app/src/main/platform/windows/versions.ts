@@ -35,3 +35,14 @@ export const MOONLIGHT: PinnedArtifact = {
   url: 'https://github.com/moonlight-stream/moonlight-qt/releases/download/v6.1.0/MoonlightPortable-x64-6.1.0.zip',
   sha256: '95f4d0853a31c7fced4b6d233ddf55ee41720963f2e2620a9cb49a21d112aed1'
 }
+
+/**
+ * Moonlight Web 2.10.0 (GPL-3.0): recebe a tela no navegador via WebRTC. Hash publicado pela API do
+ * GitHub, conferido em 03/10/2026.
+ */
+export const MOONLIGHT_WEB: PinnedArtifact = {
+  version: '2.10.0',
+  fileName: 'moonlight-web-x86_64-pc-windows-gnu.zip',
+  url: 'https://github.com/MrCreativ3001/moonlight-web-stream/releases/download/v2.10.0/moonlight-web-x86_64-pc-windows-gnu.zip',
+  sha256: '1dc3019952c610fbd7deb76dc84e3c4c6f26458ebb44823ea1f02ad883a36da9'
+}

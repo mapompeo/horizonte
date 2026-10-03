@@ -72,3 +72,12 @@ export interface Snapshot {
   state: AppState
   settings: Settings
 }
+
+/** Receber pelo navegador: onde abrir e com qual acesso. */
+export interface WebAccess {
+  on: boolean
+  url?: string
+  user?: string
+  code?: string
+  error?: string
+}
