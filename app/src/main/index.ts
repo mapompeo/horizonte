@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage, session } from 'electron'
 import { spawn } from 'node:child_process'
 import { randomInt } from 'node:crypto'
 import { existsSync } from 'node:fs'
@@ -74,6 +74,7 @@ function createWindow(controller: Controller): void {
   nativeTheme.on('updated', refreshOverlay)
   window.on('closed', () => nativeTheme.off('updated', refreshOverlay))
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  window.webContents.on('will-navigate', (event) => event.preventDefault())
 
   const unsubscribe = controller.subscribe((snapshot) => {
     if (!window.isDestroyed()) window.webContents.send(CHANNELS.push, snapshot)
@@ -90,6 +91,10 @@ function createWindow(controller: Controller): void {
 async function boot(): Promise<void> {
   await app.whenReady()
   electronApp.setAppUserModelId('com.horizonte.app')
+  // O app não usa câmera, microfone, localização nem nada parecido: nega qualquer pedido.
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) =>
+    callback(false)
+  )
   app.on('browser-window-created', (_event, window) => optimizer.watchWindowShortcuts(window))
 
   const store = createSettingsStore(
