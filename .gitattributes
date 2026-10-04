@@ -1,1 +1,5 @@
+* text=auto eol=lf
 *.pem -text
+*.ico binary
+*.icns binary
+*.png binary
