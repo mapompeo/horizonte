@@ -75,3 +75,8 @@ test('a réplica da história é decorativa para leitor de tela (as legendas con
   assert.match(html, /<div class="appwin" id="app" aria-hidden="true">/)
   assert.match(html, /<div class="devices" id="devices" aria-hidden="true">/)
 })
+
+test('a área de download não traz o aviso de instalador sem assinatura (só a pergunta rápida explica)', () => {
+  assert.doesNotMatch(html, /class="note"/)
+  assert.match(html, /Por que o Windows avisa na instalação\?/)
+})
