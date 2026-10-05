@@ -171,4 +171,44 @@ describe('createSessionWatcher', () => {
     expect(t.events).toEqual(['connected:Notebook'])
     t.watcher.stop()
   })
+
+  it('o nome pode vir de uma consulta assíncrona, e a ordem dos avisos se mantém', async () => {
+    let log = run(1)
+    const events: string[] = []
+    const watcher = createSessionWatcher({
+      readLog: async () => log,
+      intervalMs: 100,
+      deviceName: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        return 'Notebook'
+      },
+      onConnected: (device) => events.push(`connected:${device}`),
+      onDisconnected: () => events.push('disconnected')
+    })
+    watcher.start()
+    await vi.advanceTimersByTimeAsync(150)
+    log = run(1, 'CLIENT CONNECTED', 'CLIENT DISCONNECTED')
+    await vi.advanceTimersByTimeAsync(300)
+    expect(events).toEqual(['connected:Notebook', 'disconnected'])
+    watcher.stop()
+  })
+
+  it('parar com a consulta do nome em andamento descarta o aviso', async () => {
+    let log = run(1)
+    const events: string[] = []
+    const watcher = createSessionWatcher({
+      readLog: async () => log,
+      intervalMs: 100,
+      deviceName: () => new Promise((resolve) => setTimeout(() => resolve('Notebook'), 500)),
+      onConnected: (device) => events.push(device),
+      onDisconnected: () => undefined
+    })
+    watcher.start()
+    await vi.advanceTimersByTimeAsync(150)
+    log = run(1, 'CLIENT CONNECTED')
+    await vi.advanceTimersByTimeAsync(200)
+    watcher.stop()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(events).toEqual([])
+  })
 })

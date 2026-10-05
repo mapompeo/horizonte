@@ -179,6 +179,63 @@ describe('sessão', () => {
     expect(t.disconnected()).toBe(1)
   })
 
+  it('aparelho já pareado antes: usa o nome do único aparelho pareado no Sunshine', async () => {
+    const t = await ready()
+    t.process.clients = ['Notebook']
+    t.process.addLogLine('CLIENT CONNECTED')
+    await vi.advanceTimersByTimeAsync(250)
+    expect(t.connected).toEqual(['Notebook'])
+  })
+
+  it('vários aparelhos pareados e ninguém aprovado agora: não adivinha, usa o nome genérico', async () => {
+    const t = await ready()
+    t.process.clients = ['Notebook', 'Tablet']
+    t.process.addLogLine('CLIENT CONNECTED')
+    await vi.advanceTimersByTimeAsync(250)
+    expect(t.connected).toEqual(['Outro computador'])
+  })
+
+  it('quem foi aprovado agora vale mais que a lista de pareados', async () => {
+    const t = await ready()
+    t.process.pairings.push({ id: 'p1', name: 'Tablet', address: '192.168.1.2' })
+    await vi.advanceTimersByTimeAsync(250)
+    await t.engine.approve({ pairingId: 'p1', pin: '4821', name: 'Tablet' })
+    t.process.clients = ['Notebook']
+    t.process.addLogLine('CLIENT CONNECTED')
+    await vi.advanceTimersByTimeAsync(250)
+    expect(t.connected).toEqual(['Tablet'])
+  })
+
+  it('não conseguir ler os pareados não impede de avisar a conexão', async () => {
+    const t = await ready()
+    t.process.clientsFail = true
+    t.process.addLogLine('CLIENT CONNECTED')
+    await vi.advanceTimersByTimeAsync(250)
+    expect(t.connected).toEqual(['Outro computador'])
+  })
+
+  it('nome hostil no Sunshine é limpo antes de chegar à interface', async () => {
+    const t = await ready()
+    t.process.clients = [
+      `A
+B${String.fromCharCode(0x202e)}C`
+    ]
+    t.process.addLogLine('CLIENT CONNECTED')
+    await vi.advanceTimersByTimeAsync(250)
+    expect(t.connected).toEqual(['ABC'])
+  })
+
+  it('nome que fica vazio depois de limpo não vira um aviso sem nome', async () => {
+    const t = await ready()
+    t.process.clients = [
+      `
+${String.fromCharCode(0x202e)}`
+    ]
+    t.process.addLogLine('CLIENT CONNECTED')
+    await vi.advanceTimersByTimeAsync(250)
+    expect(t.connected).toEqual(['Outro computador'])
+  })
+
   it('sem ninguém aprovado, usa um nome genérico', async () => {
     const t = await ready()
     t.process.addLogLine('CLIENT CONNECTED')

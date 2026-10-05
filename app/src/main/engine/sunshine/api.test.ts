@@ -30,6 +30,29 @@ async function failureOf(promise: Promise<unknown>): Promise<SunshineApiError> {
   throw new Error('esperava uma falha')
 }
 
+describe('aparelhos pareados', () => {
+  it('lista os nomes de quem já foi pareado', async () => {
+    fake.clients.push({ name: 'Notebook', uuid: 'a' }, { name: 'Tablet', uuid: 'b' })
+    expect(await api.listClientNames()).toEqual(['Notebook', 'Tablet'])
+  })
+
+  it('ninguém pareado devolve lista vazia', async () => {
+    expect(await api.listClientNames()).toEqual([])
+  })
+
+  it('ignora itens malformados e nomes vazios', async () => {
+    fake.rawClientsResponse = {
+      named_certs: [{ uuid: 'x' }, 5, null, { name: '' }, { name: 7 }, { name: 'Ok' }]
+    }
+    expect(await api.listClientNames()).toEqual(['Ok'])
+  })
+
+  it('resposta fora do formato vira erro de resposta inválida', async () => {
+    fake.rawClientsResponse = { status: true }
+    expect((await failureOf(api.listClientNames())).kind).toBe('invalid-response')
+  })
+})
+
 describe('pareamentos', () => {
   it('lista os pedidos pendentes', async () => {
     fake.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })

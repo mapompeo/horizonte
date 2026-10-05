@@ -4,7 +4,7 @@ export interface SessionWatcherOptions {
   readLog(): Promise<string>
   intervalMs?: number
   /** Nome a mostrar para o cliente (o log do Sunshine não diz quem conectou). */
-  deviceName(): string
+  deviceName(): string | Promise<string>
   onConnected(device: string): void
   onDisconnected(): void
   onError?(cause: unknown): void
@@ -54,8 +54,11 @@ export function createSessionWatcher(options: SessionWatcherOptions): {
           next = { signature: signature || next.signature, seen: events.length }
           for (const event of fresh) {
             try {
-              if (event === 'connected') options.onConnected(options.deviceName())
-              else options.onDisconnected()
+              if (event === 'connected') {
+                const device = await options.deviceName()
+                if (token !== run) return
+                options.onConnected(device)
+              } else options.onDisconnected()
             } catch (cause) {
               report(cause)
             }

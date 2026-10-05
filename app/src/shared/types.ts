@@ -65,10 +65,12 @@ export interface Settings {
   codec: Codec
   autostart: boolean
   deviceName: string
+  /** Último modo escolhido neste aparelho; null até a pessoa escolher pela primeira vez. */
+  mode: Mode | null
 }
 
 /** O perfil é sempre derivado do bitrate, por isso não pode ser alterado diretamente. */
-export type SettingsPatch = Partial<Omit<Settings, 'profile'>>
+export type SettingsPatch = Partial<Omit<Settings, 'profile' | 'mode'>>
 
 export interface Host {
   name: string

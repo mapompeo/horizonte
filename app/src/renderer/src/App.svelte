@@ -56,10 +56,7 @@
     <div class="screen">
       {#if mode}<TopBar {mode} />{/if}
       {#key state.screen}
-        <main
-          class="center"
-          class:center-split={state.screen === 'connected' || state.screen === 'receiving'}
-        >
+        <main class="center">
           {#if state.screen === 'install'}
             <Install />
           {:else if state.screen === 'choose'}

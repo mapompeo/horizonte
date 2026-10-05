@@ -30,6 +30,12 @@ const isSendIdle = (state: AppState): boolean =>
 
 const isSendLive = (state: AppState): boolean => isSendIdle(state) || state.screen === 'connected'
 
+function startFor(mode: Settings['mode']): AppState {
+  if (mode === 'send') return { screen: 'preparing', mode: 'send', step: 'engine' }
+  if (mode === 'receive') return { screen: 'discover', mode: 'receive' }
+  return { screen: 'install' }
+}
+
 function describeError(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause)
 }
@@ -37,10 +43,11 @@ function describeError(cause: unknown): string {
 export async function createController({
   engine,
   store,
-  initial = { screen: 'install' }
+  initial
 }: ControllerDeps): Promise<Controller> {
-  let state: AppState = initial
   let settings = await store.load()
+  /** Depois da primeira vez o app abre direto no último modo, sem a tela de começar. */
+  let state: AppState = initial ?? startFor(settings.mode)
   /** Cada preparação recebe um número; só a mais recente pode mexer no estado. */
   let prepareRun = 0
   /** Pedidos de pareamento que chegaram com a tela ocupada (outro pedido ou uma conexão). */
@@ -138,6 +145,10 @@ export async function createController({
     const next = reduce(prev, event)
     if (next === prev) return
     state = next
+    if (event.type === 'CHOOSE') {
+      settings = { ...settings, mode: event.mode }
+      store.save(settings).catch(() => undefined) // lembrar o modo é só conveniência
+    }
     notify()
     runEffects(prev, next, event)
     if (!isSendLive(next)) queuedPairs = []
@@ -165,6 +176,10 @@ export async function createController({
   engine.onClientConnected((device) => dispatch({ type: 'CLIENT_CONNECTED', device }))
   engine.onClientDisconnected(() => dispatch({ type: 'CLIENT_DISCONNECTED' }))
   engine.onStreamEnded(() => dispatch({ type: 'STREAM_ENDED' }))
+
+  // Abrindo direto em enviar não há transição para disparar a preparação: começa aqui.
+  if (state.screen === 'preparing')
+    runEffects({ screen: 'choose' }, state, { type: 'CHOOSE', mode: 'send' })
 
   return {
     getSnapshot: snapshot,

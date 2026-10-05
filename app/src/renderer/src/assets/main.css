@@ -102,11 +102,6 @@ input:focus-visible {
   gap: 16px;
 }
 
-.center-split {
-  justify-content: space-between;
-  padding-top: 22px;
-}
-
 .stack {
   display: flex;
   flex-direction: column;
@@ -720,6 +715,19 @@ input[type='range'] {
   color: var(--faint);
 }
 
+.sheet-foot-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.row-value {
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 15px;
+}
 .sheet-foot button {
   height: 44px;
   border: 0;

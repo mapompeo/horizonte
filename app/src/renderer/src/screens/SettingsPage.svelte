@@ -100,14 +100,8 @@
           />
         </div>
         <div class="row">
-          <label for="device-name">Nome</label>
-          <input
-            id="device-name"
-            class="text-input"
-            maxlength="40"
-            value={settings.deviceName}
-            onchange={(event) => patchSettings({ deviceName: event.currentTarget.value })}
-          />
+          <span>Nome deste dispositivo</span>
+          <span class="row-value">{settings.deviceName}</span>
         </div>
       </div>
     </section>
@@ -175,7 +169,10 @@
 
     <div class="sheet-foot">
       <span>Horizonte 0.1.0</span>
-      <CopyButton text={() => JSON.stringify(settings, null, 2)} />
+      <div class="sheet-foot-actions">
+        <button onclick={() => window.horizonte.openRepo()}>GitHub</button>
+        <CopyButton text={() => JSON.stringify(settings, null, 2)} />
+      </div>
     </div>
   </div>
 </div>

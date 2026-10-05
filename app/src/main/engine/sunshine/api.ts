@@ -78,6 +78,20 @@ export class SunshineApi {
     })
   }
 
+  /** Nomes dos aparelhos que já foram pareados com este Sunshine. */
+  async listClientNames(): Promise<string[]> {
+    const data = await this.request('GET', '/api/clients/list')
+    if (!isRecord(data) || !Array.isArray(data.named_certs)) {
+      throw new SunshineApiError(
+        'invalid-response',
+        'O motor de transmissão mandou uma lista de aparelhos pareados inesperada.'
+      )
+    }
+    return data.named_certs.flatMap((item: unknown): string[] =>
+      isRecord(item) && typeof item.name === 'string' && item.name !== '' ? [item.name] : []
+    )
+  }
+
   async submitPin(request: { pairingId: string; pin: string; name: string }): Promise<boolean> {
     const data = await this.request('POST', '/api/pin', {
       pairing_id: request.pairingId,
@@ -230,6 +244,7 @@ export class SunshineApi {
 export type SunshineApiPort = Pick<
   SunshineApi,
   | 'listPairings'
+  | 'listClientNames'
   | 'submitPin'
   | 'cancelPairing'
   | 'getConfig'

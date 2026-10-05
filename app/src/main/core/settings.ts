@@ -12,7 +12,8 @@ export const DEFAULT_SETTINGS: Settings = {
   encoding: 'auto',
   codec: 'h264',
   autostart: true,
-  deviceName: 'Dispositivo'
+  deviceName: 'Dispositivo',
+  mode: null
 }
 
 const LEGACY_DEFAULT_NAMES = ['Computador']
@@ -45,7 +46,8 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
     encoding: oneOf<Encoding>(input.encoding, ['auto', 'gpu', 'cpu'], DEFAULT_SETTINGS.encoding),
     codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
     autostart: typeof input.autostart === 'boolean' ? input.autostart : DEFAULT_SETTINGS.autostart,
-    deviceName: name || defaultName
+    deviceName: name || defaultName,
+    mode: input.mode === 'send' || input.mode === 'receive' ? input.mode : null
   }
 }
 

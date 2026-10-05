@@ -7,8 +7,12 @@ export const CHANNELS = {
   hosts: 'horizonte:hosts',
   webAccess: 'horizonte:web-access',
   setWebAccess: 'horizonte:set-web-access',
+  openRepo: 'horizonte:open-repo',
   push: 'horizonte:push'
 } as const
+
+/** Endereço do projeto: fixo, o processo principal nunca abre um endereço vindo da interface. */
+export const REPO_URL = 'https://github.com/mapompeo/horizonte'
 
 export interface HorizonteApi {
   getSnapshot(): Promise<Snapshot>
@@ -17,6 +21,8 @@ export interface HorizonteApi {
   listHosts(): Promise<Host[]>
   getWebAccess(): Promise<WebAccess>
   setWebAccess(on: boolean): Promise<WebAccess>
+  /** Abre a página do projeto no navegador padrão. */
+  openRepo(): Promise<void>
   onSnapshot(callback: (snapshot: Snapshot) => void): () => void
 }
 
