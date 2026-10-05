@@ -126,3 +126,28 @@ Meta da última versão do roteiro: o Horizonte funciona em qualquer aparelho, t
 - **Multiplataforma:** Windows (v1), Linux (plano 4), macOS (permissão de gravação de tela, monitor virtual próprio e notarização), e depois Android e iOS como clientes. Enviar e receber valem para cada plataforma onde o sistema permitir.
 - **Uma instalação por aparelho:** só o Horizonte. Ele baixa o que faltar e se atualiza sozinho (o auto-atualizador do próprio app entra com os instaladores, plano 5).
 - **Ordem sugerida:** Windows enviar e receber (planos 2B e 3), Linux (4), instaladores e atualização (5), navegador como receptor (6), macOS, Android e iOS (7).
+
+## Versão futura: compartilhar mouse, teclado, área de transferência e arquivos
+
+Ideia registrada em 05/10/2026, depois de olhar o [CursorHop](https://cursorhop.com/). Ainda não é spec de implementação: vira uma quando a v1 estiver fechada (PIN com aparelho novo, mouse e latência medidos, instalação em máquina limpa).
+
+**O que é:** um segundo modo do Horizonte, ao lado de "Estender a tela". No modo **Compartilhar mouse**, cada computador continua com o próprio sistema e as próprias janelas; o mouse e o teclado passam de um para o outro ao chegar na borda da tela, e a área de transferência e os arquivos atravessam junto. "Estender" serve para ganhar uma tela; "Compartilhar mouse" serve para usar dois computadores como se fossem um.
+
+**Por que vale:** o CursorHop faz isso, mas é pago (US$ 10 a 35), de código fechado e não roda em Linux. O Horizonte faria os dois modos no mesmo app, de graça, aberto e com Linux. Números que o CursorHop destaca e que servem de referência para medir o nosso: cerca de 7 ms de atraso do cursor em rede gigabit e cerca de 70 Mbps na cópia de arquivos.
+
+**Motor:** a mesma estratégia do Sunshine e do Moonlight. O Horizonte não reimplementa o protocolo; ele instala, configura e esconde um motor aberto e maduro.
+
+- **[Deskflow](https://github.com/deskflow/deskflow)** (preferido): o projeto oficial que sucedeu o Synergy. Windows, macOS e Linux; mouse, teclado e área de transferência de texto; conexão criptografada. Licença GPL-2.0, versão 1.27.0 de 01/10/2026, cerca de 29 mil estrelas.
+- **[lan-mouse](https://github.com/feschber/lan-mouse)** (alternativa): em Rust, GPL-3.0, mais leve, cerca de 5 mil estrelas.
+- O motor roda como programa separado, chamado pelo Horizonte, do mesmo jeito que o Sunshine. Isso mantém a licença GPL-3.0 do Horizonte compatível com a GPL-2.0 do Deskflow; confirmar a forma exata da licença do Deskflow (só 2.0 ou 2.0 "ou posterior") antes de distribuir junto.
+
+**Ordem sugerida:**
+1. Mouse, teclado e área de transferência de texto, pelo Deskflow, aproveitando a descoberta e o pareamento que o Horizonte já tem.
+2. Área de transferência com imagem e texto formatado, se o motor permitir.
+3. Arquivos arrastados de um computador para o outro. O Deskflow quase não faz isso, então é código do Horizonte, sobre o canal da rede local e com o mesmo pareamento.
+
+**Perguntas em aberto:**
+- Os dois modos convivem (estender a tela e compartilhar o mouse ao mesmo tempo) ou um exclui o outro?
+- Como a pessoa diz onde cada computador está (à esquerda, à direita, em cima) sem uma tela de configuração?
+- Tradução de atalhos entre Windows e macOS (Ctrl e Cmd): o motor resolve ou é nosso?
+- O que medir e mostrar como número na landing: atraso do cursor e velocidade da cópia de arquivos.
