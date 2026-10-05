@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, type Mock } from 'vitest'
 import { DEFAULT_SETTINGS } from '../../core/settings'
 import { buildStreamArgs, createMoonlightClient, type MoonlightProcess } from './client'
 
@@ -109,5 +109,80 @@ describe('createMoonlightClient', () => {
     const { spawn, client } = make()
     await expect(client.connect('192.168.1.9', DEFAULT_SETTINGS)).rejects.toThrow(/pareamento/i)
     expect(spawn).not.toHaveBeenCalled()
+  })
+
+  describe('aparelhos já pareados', () => {
+    const store = (
+      initial: string[] = []
+    ): { load: () => Promise<string[]>; save: Mock<(hosts: string[]) => Promise<void>> } => ({
+      load: async () => initial,
+      save: vi.fn<(hosts: string[]) => Promise<void>>(async () => undefined)
+    })
+    const makeWith = (
+      pairedHosts: ReturnType<typeof store>,
+      now: () => number = () => 0
+    ): {
+      proc: ReturnType<typeof fakeProcess>
+      client: ReturnType<typeof createMoonlightClient>
+    } => {
+      const proc = fakeProcess()
+      return {
+        proc,
+        client: createMoonlightClient({
+          spawn: async () => proc,
+          listHosts: async () => [],
+          ...pairing,
+          pairedHosts,
+          now
+        })
+      }
+    }
+
+    it('aparelho pareado em outra abertura do app não pareia de novo', async () => {
+      pairing.run.mockClear()
+      pairing.sendPin.mockClear()
+      const { client } = makeWith(store(['192.168.1.3']))
+      await client.connect('192.168.1.3', DEFAULT_SETTINGS)
+      expect(pairing.run).not.toHaveBeenCalled()
+      expect(pairing.sendPin).not.toHaveBeenCalled()
+    })
+
+    it('depois de parear, grava o aparelho para as próximas aberturas', async () => {
+      const pairedHosts = store()
+      const { client } = makeWith(pairedHosts)
+      await client.connect('192.168.1.3', DEFAULT_SETTINGS)
+      expect(pairedHosts.save).toHaveBeenCalledWith(['192.168.1.3'])
+    })
+
+    it('transmissão que cai logo com erro esquece o pareamento, para tentar parear de novo', async () => {
+      pairing.run.mockClear()
+      const pairedHosts = store(['192.168.1.3'])
+      let clock = 0
+      const { proc, client } = makeWith(pairedHosts, () => clock)
+      await client.connect('192.168.1.3', DEFAULT_SETTINGS)
+      clock = 2000
+      proc.exit(1)
+      expect(pairedHosts.save).toHaveBeenLastCalledWith([])
+      await client.connect('192.168.1.3', DEFAULT_SETTINGS)
+      expect(pairing.run).toHaveBeenCalledOnce()
+    })
+
+    it('transmissão encerrada normalmente (código 0), mesmo logo, mantém o pareamento', async () => {
+      const pairedHosts = store(['192.168.1.3'])
+      const { proc, client } = makeWith(pairedHosts, () => 0)
+      await client.connect('192.168.1.3', DEFAULT_SETTINGS)
+      proc.exit(0)
+      expect(pairedHosts.save).not.toHaveBeenCalled()
+    })
+
+    it('transmissão que acaba depois de muito tempo, mesmo com erro, mantém o pareamento', async () => {
+      const pairedHosts = store(['192.168.1.3'])
+      let clock = 0
+      const { proc, client } = makeWith(pairedHosts, () => clock)
+      await client.connect('192.168.1.3', DEFAULT_SETTINGS)
+      clock = 120_000
+      proc.exit(1)
+      expect(pairedHosts.save).not.toHaveBeenCalled()
+    })
   })
 })

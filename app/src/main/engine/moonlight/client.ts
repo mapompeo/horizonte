@@ -45,17 +45,34 @@ export interface MoonlightClientDeps {
   /** Nome que este aparelho usa ao parear: é o que o outro lado mostra em "Permitir...?". */
   deviceName(): string
   randomPin(): string
+  /**
+   * Aparelhos já pareados, lembrados entre aberturas do app. Sem isso rodaríamos o `pair` de novo e o
+   * Moonlight abriria o aviso "já se encontra pareado", que trava a transmissão até alguém clicar OK.
+   */
+  pairedHosts?: { load(): Promise<string[]>; save(hosts: string[]): Promise<void> }
+  now?: () => number
 }
+
+/** Transmissão que cai com erro antes disso quase sempre é pareamento perdido, não queda de rede. */
+const EARLY_FAILURE_MS = 15_000
 
 export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
   let current: MoonlightProcess | null = null
   const ended = new Set<() => void>()
   const paired = new Set<string>()
+  const now = deps.now ?? Date.now
+  let loaded: Promise<void> | null = null
+  const remember = (): Promise<void> | undefined => deps.pairedHosts?.save([...paired])
+  const load = (): Promise<void> =>
+    (loaded ??= (async () => {
+      for (const host of (await deps.pairedHosts?.load().catch(() => [])) ?? []) paired.add(host)
+    })())
 
   return {
     listHosts: () => deps.listHosts(),
     async connect(host, settings) {
       if (current) throw new Error('Já existe uma transmissão sendo recebida.')
+      await load()
       if (!paired.has(host)) {
         // Sem PIN digitado: este aparelho gera o PIN, manda pelo canal e o outro só precisa aprovar.
         const pin = deps.randomPin()
@@ -70,11 +87,16 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
           )
         }
         paired.add(host)
+        await remember()
       }
       const child = await deps.spawn(buildStreamArgs(host, settings))
+      const startedAt = now()
       current = child
-      child.onExit(() => {
+      child.onExit((code) => {
         if (current !== child) return // foi o próprio disconnect
+        if (code !== 0 && now() - startedAt < EARLY_FAILURE_MS && paired.delete(host)) {
+          void remember()
+        }
         current = null
         ended.forEach((listener) => listener())
       })
