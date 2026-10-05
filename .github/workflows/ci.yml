@@ -56,6 +56,12 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - run: npm ci
       - run: npm run ${{ matrix.script }}
+      - name: Conferir a assinatura do app do Mac
+        if: matrix.os == 'macos-latest'
+        run: |
+          APP=$(ls -d dist/mac*/Horizonte.app | head -1)
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv "$APP" 2>&1 | grep -E "Signature=adhoc|Identifier|Format"
       - name: Anexar à versão
         uses: softprops/action-gh-release@v2
         with:

@@ -28,8 +28,12 @@ mac:
   target:
     - dmg
   category: public.app-category.utilities
-  # Sem conta de desenvolvedor Apple ainda: sem assinatura nem notarização (o Mac avisará "desenvolvedor não identificado").
-  identity: null
+  # Sem conta de desenvolvedor Apple ainda: assinatura ad hoc ("-"), sem notarização. Sem nenhuma assinatura o macOS
+  # diz que o app "está danificado" e não deixa abrir; com a ad hoc ele avisa "desenvolvedor não identificado" e
+  # abre por Ajustes do Sistema > Privacidade e Segurança > Abrir mesmo assim.
+  identity: "-"
+  # Assinatura ad hoc com hardened runtime exige liberar a validação de bibliotecas; sem notarização ele não é preciso.
+  hardenedRuntime: false
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
