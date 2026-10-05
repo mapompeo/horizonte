@@ -5,6 +5,7 @@
   "main": "./out/main/index.js",
   "author": "Matheus Pompeo",
   "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/mapompeo/horizonte",
   "scripts": {
     "format": "prettier --plugin prettier-plugin-svelte --write .",
     "lint": "eslint --cache .",
