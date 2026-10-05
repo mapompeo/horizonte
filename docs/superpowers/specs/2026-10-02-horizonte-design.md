@@ -147,7 +147,20 @@ Ideia registrada em 05/10/2026, depois de olhar o [CursorHop](https://cursorhop.
 3. Arquivos arrastados de um computador para o outro. O Deskflow quase não faz isso, então é código do Horizonte, sobre o canal da rede local e com o mesmo pareamento.
 
 **Perguntas em aberto:**
-- Os dois modos convivem (estender a tela e compartilhar o mouse ao mesmo tempo) ou um exclui o outro?
+- Os dois modos convivem? Decisão de 05/10/2026: a escolha entre "Estender a tela" e "Compartilhar mouse" vai ser um seletor (slider) no app, no mesmo desenho da pílula Enviar/Mostrar. Se os dois podem rodar juntos fica para quando o modo existir.
 - Como a pessoa diz onde cada computador está (à esquerda, à direita, em cima) sem uma tela de configuração?
 - Tradução de atalhos entre Windows e macOS (Ctrl e Cmd): o motor resolve ou é nosso?
 - O que medir e mostrar como número na landing: atraso do cursor e velocidade da cópia de arquivos.
+
+## Referências abertas para aproveitar (avaliadas em 05/10/2026)
+
+**[Deskreen](https://github.com/pavlobu/deskreen)** (AGPL-3.0, cerca de 21 mil estrelas, versão 3.2.16 de 08/07/2026): Electron que transmite a tela por WebRTC para qualquer navegador, com criptografia de ponta a ponta. É o mesmo terreno do nosso "Receber pelo navegador". O que vale trazer como ideia:
+
+- **Conectar por QR code:** o computador que envia mostra um QR code e o celular ou tablet abre a tela apontando a câmera, sem digitar endereço.
+- **Compartilhar só uma janela**, além da tela inteira ou da tela estendida.
+- **Vários aparelhos vendo ao mesmo tempo** (por exemplo, um tablet e um celular).
+- **Criptografia de ponta a ponta sobre o WebRTC**, independente do certificado do endereço local.
+
+O que ele não resolve: para **estender** a tela (e não só espelhar), o Deskreen também depende de um monitor virtual ou de um plugue HDMI dummy. A licença AGPL-3.0 permite juntar com o nosso GPL-3.0, mas as partes copiadas continuariam AGPL; por isso a preferência é usar como referência de ideias, não copiar código.
+
+**[DeskPad](https://github.com/Stengo/DeskPad)** (MIT, cerca de 8 mil estrelas): cria um monitor virtual no macOS usando a API  do próprio sistema (privada, a mesma que o BetterDisplay usa). Hoje o Horizonte no Mac pede um plugue dummy ou o BetterDisplay para enviar a tela (mensagem "Este Mac só tem uma tela..."). Um pequeno auxiliar nativo do Horizonte, feito do mesmo jeito que o DeskPad e compilado na CI do macOS, criaria o monitor virtual sozinho e tiraria essa exigência. Risco: é API privada, pode mudar numa atualização do macOS.
