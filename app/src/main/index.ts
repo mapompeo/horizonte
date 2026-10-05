@@ -297,4 +297,15 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-void boot()
+// Só uma cópia do app por vez (o instalador já abre uma): abrir de novo traz a janela existente para a frente.
+if (!app.isPackaged || app.requestSingleInstanceLock()) {
+  app.on('second-instance', () => {
+    const [window] = BrowserWindow.getAllWindows()
+    if (!window) return
+    if (window.isMinimized()) window.restore()
+    window.focus()
+  })
+  void boot()
+} else {
+  app.quit()
+}
