@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Horizonte</title>
+    <meta name="description" content="Use o notebook como segunda tela do seu computador, sem fio e sem configurar nada. Gratuito e de código aberto para Windows, Linux e macOS.">
+    <link rel="canonical" href="https://mapompeo.github.io/horizonte/">
+    <link rel="icon" href="./icon.png">
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:title" content="Horizonte: estenda sua tela, sem fio.">
+    <meta property="og:description" content="O notebook do seu lado vira a segunda tela do computador. Sem configurar nada.">
+    <meta property="og:url" content="https://mapompeo.github.io/horizonte/">
+    <meta property="og:image" content="https://mapompeo.github.io/horizonte/og.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+<header class="top" id="topbar">
+  <div class="wrap">
+    <a class="brand" href="#topo"><img src="./icon.png" alt="" />Horizonte</a>
+    <nav class="nav" aria-label="Seções">
+      <a class="hide-sm" href="#como-funciona">Como funciona</a>
+      <a class="hide-sm" href="#baixar">Baixar</a>
+      <a href="https://github.com/mapompeo/horizonte">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="topo">
+  <div class="hero wrap">
+    <p class="eyebrow" data-hero>Horizonte</p>
+    <h1 id="hero-title"><span class="l1">Estenda sua tela.</span><span class="l2">Sem fio.</span></h1>
+    <p class="lede" data-hero>O notebook do seu lado vira a segunda tela do computador. Sem configurar nada.</p>
+    <div class="ctas" data-hero>
+      <a class="pillbtn magnet" href="#baixar">Baixar grátis</a>
+      <a class="linkbtn magnet" href="https://github.com/mapompeo/horizonte">Ver no GitHub</a>
+    </div>
+
+    <div class="showcase" id="showcase">
+      <div class="glow" id="glow"></div>
+      <div class="tilt" id="tilt">
+<div class="appwin" id="hero-app" role="img" aria-label="A janela do Horizonte mostrando Notebook conectado e Tela estendida">
+        <div class="controls"><span>_</span><span>▢</span><span>✕</span></div>
+        <div class="bar">
+          <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></svg>
+          <div class="aseg"><span class="athumb"></span><span class="on">Enviar</span><span>Mostrar</span></div>
+          <span></span>
+        </div>
+        <div class="scr">
+          <span class="apill">Notebook conectado</span>
+          <p class="t">Tela estendida.</p>
+          <div class="stepper">
+            <span class="round">−</span>
+            <span class="sval"><b id="hero-mbps">30 Mbps</b><small>Qualidade</small></span>
+            <span class="round">+</span>
+          </div>
+          <span class="abtn out">Parar</span>
+        </div>
+      </div>
+
+      </div>
+    </div>
+    <p class="spec-line" data-hero>Versão <span data-version>0.1.0 beta 4</span> · Windows, Linux e macOS · código aberto, GPL-3.0</p>
+  </div>
+
+  <div class="statement wrap">
+    <p class="scrub" id="scrub">Você já tem uma segunda tela. É aquele notebook parado do seu lado. O Horizonte só faz os dois conversarem.</p>
+  </div>
+
+  <div id="como-funciona">
+    <div class="wrap story-head">
+      <h2 data-mask><span class="mask"><span>Três cliques.</span></span><span class="mask l2"><span>Nenhuma configuração.</span></span></h2>
+    </div>
+    <div class="story" id="story">
+      <div class="wrap sticky">
+        <div class="stage" id="stage">
+<div class="appwin" id="app">
+            <div class="controls"><span>_</span><span>▢</span><span>✕</span></div>
+            <div class="bar" id="app-bar">
+              <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></svg>
+              <div class="aseg"><span class="athumb" id="app-thumb"></span><span id="m-send" class="on">Enviar</span><span id="m-recv">Mostrar</span></div>
+              <span></span>
+            </div>
+
+            <div class="scr full" data-screen="welcome">
+              <img class="aicon" src="./icon.png" alt="" />
+              <span class="aname">Horizonte</span>
+              <p class="t">Estenda sua tela,<br />sem fio.</p>
+              <p class="sub">Sem configurar nada.</p>
+              <span class="abtn" id="b-start">Começar</span>
+            </div>
+
+            <div class="scr full" data-screen="choose">
+              <p class="t md">Este dispositivo vai…</p>
+              <div class="choices">
+                <div class="choice" id="b-send">
+                  <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="30" height="22" rx="4" /><path d="M14 38h10M19 30v8" /><path d="M30 20h14M38 14l6 6-6 6" /></svg>
+                  <b>Enviar a tela</b><small>É o dispositivo principal.</small>
+                </div>
+                <div class="choice" id="b-recv">
+                  <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="8" width="30" height="22" rx="4" /><path d="M24 38h10M29 30v8" /><path d="M18 20H4M10 14l-6 6 6 6" /></svg>
+                  <b>Mostrar a tela</b><small>É o dispositivo que recebe.</small>
+                </div>
+              </div>
+              <p class="sub">Você troca com um clique, a qualquer momento.</p>
+            </div>
+
+            <div class="scr" data-screen="discover">
+              <p class="t md">Na sua rede</p>
+              <div class="hosts">
+                <div class="hostrow" id="host">
+                  <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="8" width="36" height="24" rx="4" /><path d="M16 40h16M24 32v8" /></svg>
+                  <div><b>Desktop</b><span>192.168.1.5 · pronto</span></div>
+                  <i id="b-extend">Estender</i>
+                </div>
+              </div>
+              <span class="searching" id="searching">Procurando outros dispositivos…</span>
+            </div>
+
+            <div class="scr" data-screen="connected">
+              <span class="apill" id="app-pill">Notebook conectado</span>
+              <p class="t">Tela estendida.</p>
+              <div class="stepper">
+                <span class="round">−</span>
+                <span class="sval"><b id="mbps">30 Mbps</b><small>Qualidade</small></span>
+                <span class="round" id="b-plus">+</span>
+              </div>
+              <span class="abtn out">Parar</span>
+            </div>
+
+            <svg class="cursor" id="app-cur" viewBox="0 0 16 22" aria-hidden="true"><path d="M1 1l13 12.5-6 .6 3.6 7.1-2.6 1.3-3.6-7.2L1 19.6z" fill="#fff" stroke="#000" stroke-width="1.1" /></svg>
+          </div>
+
+
+<div class="devices" id="devices">
+            <div class="line"></div>
+            <div class="dev monitor">
+              <div class="screen" id="screen-a">
+                <div class="win" id="win-a"><div class="win-bar"><span>Notas da reunião</span><span>_ ▢ ✕</span></div><div class="win-body"><b></b><b></b><b></b><b></b></div></div>
+                <svg class="dcur" id="cur-a" viewBox="0 0 16 22" aria-hidden="true"><path d="M1 1l13 12.5-6 .6 3.6 7.1-2.6 1.3-3.6-7.2L1 19.6z" fill="#fff" stroke="#000" stroke-width="1.1" /></svg>
+                <div class="taskbar"><i></i><i></i><i></i><i></i><i></i></div>
+              </div>
+              <div class="neck"></div>
+              <div class="foot"></div>
+              <span class="dev-label">Desktop · envia</span>
+            </div>
+            <div class="dev laptop">
+              <div class="screen" id="screen-b">
+                <div class="win" id="win-b"><div class="win-bar"><span>Notas da reunião</span><span>_ ▢ ✕</span></div><div class="win-body"><b></b><b></b><b></b><b></b></div></div>
+                <svg class="dcur" id="cur-b" viewBox="0 0 16 22" aria-hidden="true"><path d="M1 1l13 12.5-6 .6 3.6 7.1-2.6 1.3-3.6-7.2L1 19.6z" fill="#fff" stroke="#000" stroke-width="1.1" /></svg>
+              </div>
+              <div class="base"></div>
+              <span class="dev-label">Notebook · mostra</span>
+            </div>
+          </div>
+
+        </div>
+        <div class="captions" id="captions">
+          <div class="cap"><h3>Abra o Horizonte.</h3><p>Na primeira vez ele instala o motor de transmissão e o monitor virtual. Você só clica em Começar.</p></div>
+          <div class="cap"><h3>Diga quem envia e quem mostra.</h3><p>O computador principal envia. O notebook mostra. Da próxima vez, cada um já abre no seu papel.</p></div>
+          <div class="cap"><h3>Ele acha o outro sozinho.</h3><p>Os dois se encontram pela rede local. Sem digitar IP, sem PIN, sem conta.</p></div>
+          <div class="cap"><h3>Arraste a janela para o lado.</h3><p>O notebook vira um monitor à direita do principal. É só levar a janela até a borda.</p></div>
+          <div class="cap"><h3>Ajuste a qualidade ao vivo.</h3><p>Mais nitidez ou mais leveza, com um toque. O selo mostra quem está conectado.</p></div>
+        </div>
+        <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap numbers" id="numbers">
+    <div class="num"><b><span data-count="60">60</span><small>fps</small></b><span>quadros por segundo na tela estendida</span></div>
+    <div class="num"><b><span data-count="23">23</span><small>Mbps</small></b><span>no Wi-Fi 5 GHz, com a placa de vídeo codificando</span></div>
+    <div class="num"><b><span data-count="3">3</span><small>cliques</small></b><span>do app aberto até a segunda tela</span></div>
+  </div>
+
+  <div class="wrap values">
+    <h2 data-mask>
+      <span class="mask"><span>Sem conta.</span></span>
+      <span class="mask"><span>Sem nuvem.</span></span>
+      <span class="mask"><span class="grad">Sem configurar.</span></span>
+    </h2>
+    <p data-rise>
+      Os dois computadores conversam direto pela sua rede. Por baixo, projetos abertos e maduros
+      transmitem a imagem; por cima, uma janela que só pede o que importa.
+      <span class="credit">Sunshine · Moonlight · Virtual Display Driver</span>
+    </p>
+  </div>
+
+  <section class="download wrap" id="baixar">
+    <h2 data-mask><span class="mask"><span>Baixe grátis.</span></span></h2>
+    <p class="lede" data-rise>Instale nos dois computadores. A versão mais recente fica sempre no GitHub.</p>
+    <div class="oses">
+      <div class="os" data-os="windows" data-rise>
+        <span class="state ok">Disponível</span>
+        <h3>Windows</h3>
+        <span class="meta" data-dl-meta="windows">Instalador .exe · 110 MB<br />Windows 10 e 11</span>
+        <a class="linkbtn magnet" data-dl="windows" href="https://github.com/mapompeo/horizonte/releases">Baixar</a>
+      </div>
+      <div class="os" data-os="linux" data-rise>
+        <span class="state">Em teste</span>
+        <h3>Linux</h3>
+        <span class="meta" data-dl-meta="linux">.AppImage · 125 MB<br />.deb · 99 MB</span>
+        <a class="linkbtn magnet" data-dl="linux" href="https://github.com/mapompeo/horizonte/releases">Baixar</a>
+      </div>
+      <div class="os" data-os="mac" data-rise>
+        <span class="state">Em teste</span>
+        <h3>macOS</h3>
+        <span class="meta" data-dl-meta="mac">.dmg · 128 MB</span>
+        <a class="linkbtn magnet" data-dl="mac" href="https://github.com/mapompeo/horizonte/releases">Baixar</a>
+      </div>
+    </div>
+    <p class="note" data-rise>
+      O instalador ainda não é assinado. No Windows aparece "O Windows protegeu o computador": clique em
+      Mais informações e depois em Executar assim mesmo. No macOS aparece "desenvolvedor não identificado".
+    </p>
+  </section>
+
+  <section class="faq-wrap wrap" id="perguntas">
+    <h2 data-mask><span class="mask"><span>Perguntas rápidas.</span></span></h2>
+    <div class="faq">
+      <details>
+        <summary>O que eu preciso para funcionar?</summary>
+        <p class="answer">Dois computadores na mesma rede, de preferência Wi-Fi 5 GHz ou cabo. No computador que envia, uma placa de vídeo deixa a imagem leve, mas o app usa o processador se precisar.</p>
+      </details>
+      <details>
+        <summary>Por que o Windows avisa na instalação?</summary>
+        <p class="answer">Porque o instalador ainda não tem assinatura digital, que é paga. O código é aberto e está no GitHub para quem quiser conferir.</p>
+      </details>
+      <details>
+        <summary>É gratuito?</summary>
+        <p class="answer">Sim. O Horizonte é software livre, sob a licença GPL-3.0.</p>
+      </details>
+      <details>
+        <summary>Achei um problema. Onde aviso?</summary>
+        <p class="answer">Abra uma issue no GitHub. No app, o botão Copiar diagnóstico, nos Ajustes, junta as informações que ajudam a resolver.</p>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Horizonte · GPL-3.0 · usa Sunshine, Moonlight e Virtual Display Driver</span>
+    <a href="https://github.com/mapompeo/horizonte">github.com/mapompeo/horizonte</a>
+  </div>
+</footer>
+    <script src="./vendor/motion.min.js"></script>
+    <script type="module" src="./js/main.js"></script>
+  </body>
+</html>
