@@ -3,25 +3,29 @@
   import type { Host } from '../../../shared/types'
   import { copyFor, safeName } from '../lib/copy'
   import { send } from '../lib/actions'
+  import { pollHosts } from '../lib/hosts'
+  import { isHostAddress } from '../../../shared/address'
 
   const copy = copyFor({ screen: 'discover', mode: 'receive' })
   let hosts = $state<Host[]>([])
   let searching = $state(true)
 
-  onMount(() => {
-    let alive = true
-    window.horizonte
-      .listHosts()
-      .then((found) => {
-        if (alive) hosts = found
-      })
-      .finally(() => {
-        if (alive) searching = false
-      })
-    return () => {
-      alive = false
-    }
-  })
+  let manual = $state(false)
+  let address = $state('')
+  const valid = $derived(isHostAddress(address.trim()))
+
+  // Procura de novo a cada poucos segundos: uma busca só deixava a lista vazia para sempre se falhasse.
+  onMount(() =>
+    pollHosts(window.horizonte.listHosts, (found, stillSearching) => {
+      hosts = found
+      searching = stillSearching
+    })
+  )
+
+  function connectByAddress(): void {
+    const host = address.trim()
+    if (isHostAddress(host)) send({ type: 'CONNECT', host, name: host })
+  }
 </script>
 
 <div class="hosts">
@@ -57,6 +61,26 @@
     {#if searching}
       <span class="searching">Procurando outros dispositivos…</span>
     {/if}
-    <button class="link">Não aparece? Adicionar pelo IP</button>
+    {#if manual}
+      <form
+        class="manual"
+        onsubmit={(event) => {
+          event.preventDefault()
+          connectByAddress()
+        }}
+      >
+        <input
+          class="text-input manual-input"
+          aria-label="Endereço do outro dispositivo"
+          placeholder="192.168.1.5"
+          autocomplete="off"
+          spellcheck="false"
+          bind:value={address}
+        />
+        <button class="btn btn-primary btn-sm" type="submit" disabled={!valid}>Conectar</button>
+      </form>
+    {:else}
+      <button class="link" onclick={() => (manual = true)}>Não aparece? Adicionar pelo IP</button>
+    {/if}
   </div>
 </div>
