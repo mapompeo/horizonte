@@ -32,7 +32,7 @@ Sucesso:
 3. **Como funciona** ("Três cliques. Nenhuma configuração."). Uma história em cinco cenas com o app preso na tela enquanto se rola: abrir o Horizonte e clicar em Começar; escolher quem envia e quem mostra; o outro computador aparece sozinho na lista e se clica em Estender; a janela atravessa do computador para o notebook; a qualidade sobe ao vivo. Cada cena tem uma legenda curta e há pontos de progresso.
 4. **Números.** 60 fps, 23 Mbps no Wi-Fi 5 GHz com a placa de vídeo, 3 cliques do app aberto até a segunda tela. São os valores medidos no teste de 05/10/2026 com dois PCs Windows; só entram números vistos funcionando.
 5. **"Sem conta. Sem nuvem. Sem configurar."** com um parágrafo sobre a rede local e os créditos (Sunshine, Moonlight, Virtual Display Driver).
-6. **Baixar.** Uma linha por sistema: Windows (disponível), Linux (`.AppImage` e `.deb`, em teste) e macOS (`.dmg`, em teste). Cada linha aponta para o arquivo da última release. Aviso claro de que o instalador ainda não é assinado, com o que a pessoa vai ver (Windows: "Mais informações" e "Executar assim mesmo"; macOS: "desenvolvedor não identificado").
+6. **Baixar.** Uma linha por sistema: Windows (disponível), Linux (`.AppImage` e `.deb`, em teste) e macOS (`.dmg`, em teste). Cada linha aponta para o arquivo da última release. Sem aviso de instalador não assinado na área de download (decisão da pessoa dona do projeto em 05/10/2026, depois de ver publicado): a explicação fica só na pergunta rápida "Por que o Windows avisa na instalação?".
 7. **Perguntas rápidas.** O que precisa para funcionar (dois computadores na mesma rede; no Windows, uma placa de vídeo compatível); por que o Windows avisa na instalação; se é gratuito (sim, GPL-3.0); como relatar um problema (issues do GitHub).
 8. **Rodapé.** Link do GitHub, licença e créditos aos projetos que o Horizonte usa.
 
@@ -85,6 +85,6 @@ Fluxo do GitHub Pages por Actions, disparado quando algo em `site/` muda na `mai
 ## Riscos
 
 - **Releases como pré-lançamento.** Se o código que lê a última release assumir que existe uma versão "latest", o botão de download quebra. Por isso a leitura trata a lista inteira e tem o fallback para a página de releases.
-- **Instalador sem assinatura.** O aviso de segurança do Windows e do macOS pode assustar quem visita. A página explica o motivo e o que fazer, em vez de esconder o aviso.
+- **Instalador sem assinatura.** O aviso de segurança do Windows e do macOS pode assustar quem visita. A página não destaca isso na área de download; a explicação fica na pergunta rápida, para quem procurar.
 - **Movimento demais.** Animação pesada pode travar a rolagem em computador fraco e cansar quem visita. Cada efeito precisa ser leve (só transform e opacidade) e tudo para com `prefers-reduced-motion`.
 - **Promessa que o app ainda não cumpre.** Linux e macOS só passaram nos testes automáticos, e o pareamento com um aparelho novo ainda não foi testado em hardware. A página marca o Linux e o macOS como "em teste" e não promete nada além do que foi visto funcionando.

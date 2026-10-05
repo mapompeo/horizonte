@@ -937,12 +937,6 @@ h2 .l2 {
   font-weight: 600;
   color: var(--accent);
 }
-.note {
-  margin: 36px auto 0;
-  max-width: 62ch;
-  font-size: 13px;
-  color: var(--faint);
-}
 
 /* ---------- Perguntas ---------- */
 .faq-wrap {
