@@ -114,9 +114,11 @@ body {
 img {
   max-width: 100%;
 }
-/* O brilho atrás do app e a linha do horizonte passam da largura de propósito: cortados aqui, nunca empurram a página. */
+/* O brilho atrás do app, a linha do horizonte e o app girando na história passam da largura de propósito.
+   O corte fica na seção inteira (largura da tela), nunca no palco, para não cortar a borda do app. overflow clip
+   não cria área de rolagem, então a história continua presa na tela. */
 .showcase,
-.stage {
+.story {
   overflow-x: clip;
 }
 body {
