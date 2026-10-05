@@ -12,6 +12,8 @@
   --seg: #ededf0;
   --seg-on: #ffffff;
   --accent: #0071e3;
+  /* Fundo do botão: o azul escuro dá contraste 4,7 com o branco nos dois temas; o azul claro do link no escuro dava 3,0. */
+  --btn-bg: #0071e3;
   --ok-bg: #e7f6ec;
   --ok-fg: #1b7f3b;
   --ok-dot: #30b454;
@@ -192,7 +194,7 @@ summary:focus-visible {
   height: 44px;
   padding: 0 22px;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--btn-bg);
   color: #ffffff;
   font-size: 17px;
   font-weight: 500;
