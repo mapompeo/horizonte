@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8')
@@ -59,4 +59,14 @@ test('estrutura inteira: uma página, um rodapé, três cartões de download', (
   assert.equal(count(/data-dl-meta="/g), 3)
   assert.equal(count(/class="spec-line"/g), 1)
   assert.match(html, /<\/footer>\s*<script src="\.\/vendor\/motion\.min\.js"><\/script>/)
+})
+
+test('imagem de compartilhamento, robots e sitemap existem', () => {
+  const og = new URL('../og.png', import.meta.url)
+  assert.ok(existsSync(og))
+  assert.ok(statSync(og).size > 10_000)
+  const robots = readFileSync(new URL('../robots.txt', import.meta.url), 'utf8')
+  assert.match(robots, /Sitemap: https:\/\/mapompeo\.github\.io\/horizonte\/sitemap\.xml/)
+  const sitemap = readFileSync(new URL('../sitemap.xml', import.meta.url), 'utf8')
+  assert.match(sitemap, /<loc>https:\/\/mapompeo\.github\.io\/horizonte\/<\/loc>/)
 })
