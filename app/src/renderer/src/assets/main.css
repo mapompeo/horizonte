@@ -832,3 +832,13 @@ input,
   position: relative;
   z-index: 1;
 }
+
+.manual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.manual-input {
+  text-align: left;
+}

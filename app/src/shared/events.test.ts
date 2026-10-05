@@ -35,6 +35,7 @@ describe('isUiEvent', () => {
     { type: 'CHOOSE', mode: 'qualquer' },
     { type: 'CONNECT' },
     { type: 'CONNECT', host: '' },
+    { type: 'CONNECT', host: '--fullscreen', name: 'x' },
     { type: 'CONNECT', host: 5, name: 'x' },
     { type: 'CONNECT', host: 'Desktop' },
     { type: 'CONNECT', name: 'Desktop' },
