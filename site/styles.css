@@ -104,6 +104,19 @@
 * {
   box-sizing: border-box;
 }
+/* O que a prévia ganhava de graça do Artifact: sem margem no corpo e imagem que não estoura. */
+html,
+body {
+  margin: 0;
+}
+img {
+  max-width: 100%;
+}
+/* O brilho atrás do app e a linha do horizonte passam da largura de propósito: cortados aqui, nunca empurram a página. */
+.showcase,
+.stage {
+  overflow-x: clip;
+}
 body {
   background: var(--bg);
   color: var(--fg);
@@ -1007,5 +1020,12 @@ footer a {
   }
   .screen {
     border-width: 5px;
+  }
+}
+
+/* Menos movimento: o app do topo fica reto, sem a inclinação de partida. */
+@media (prefers-reduced-motion: reduce) {
+  .showcase .appwin {
+    transform: none;
   }
 }
