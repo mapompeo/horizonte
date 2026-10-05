@@ -2,9 +2,11 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore: ['site/**', '.github/workflows/pages.yml']
   push:
     branches: [main]
     tags: ['v*']
+    paths-ignore: ['site/**', '.github/workflows/pages.yml']
 
 defaults:
   run:
