@@ -44,11 +44,11 @@ test('buildDownloads monta os arquivos de cada sistema com o tamanho em MB', () 
   const d = buildDownloads(release('v0.1.0-beta.4', '2026-10-05T15:30:00Z'))
   assert.equal(d.version, '0.1.0 beta 4')
   assert.equal(d.windows.href, 'https://dl/Horizonte-0.1.0-setup.exe')
-  assert.deepEqual(d.windows.files, [{ name: 'Horizonte-0.1.0-setup.exe', mb: 110 }])
+  assert.deepEqual(d.windows.files, [{ name: 'Horizonte-0.1.0-setup.exe', mb: 110, url: 'https://dl/Horizonte-0.1.0-setup.exe' }])
   assert.equal(d.linux.href, 'https://dl/Horizonte-0.1.0.AppImage')
   assert.deepEqual(d.linux.files.map((f) => f.name), ['Horizonte-0.1.0.AppImage', 'Horizonte-0.1.0.deb'])
   assert.equal(d.mac.href, 'https://dl/horizonte-0.1.0.dmg')
-  assert.deepEqual(d.mac.files, [{ name: 'horizonte-0.1.0.dmg', mb: 128 }])
+  assert.deepEqual(d.mac.files, [{ name: 'horizonte-0.1.0.dmg', mb: 128, url: 'https://dl/horizonte-0.1.0.dmg' }])
 })
 
 test('sistema sem arquivo na release aponta para a página da release', () => {
@@ -84,4 +84,10 @@ test('loadReleases devolve a lista quando a API responde', async () => {
   })
   assert.equal(asked, 'https://api.github.com/repos/mapompeo/horizonte/releases?per_page=10')
   assert.equal(got.length, 1)
+})
+
+test('cada arquivo tem o próprio link: quem quer o .deb não recebe o AppImage', () => {
+  const d = buildDownloads(release('v0.1.0-beta.4', '2026-10-05T15:30:00Z'))
+  assert.deepEqual(d.linux.files.map((f) => f.url), ['https://dl/Horizonte-0.1.0.AppImage', 'https://dl/Horizonte-0.1.0.deb'])
+  assert.equal(d.windows.files[0].url, 'https://dl/Horizonte-0.1.0-setup.exe')
 })

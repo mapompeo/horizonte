@@ -70,3 +70,8 @@ test('imagem de compartilhamento, robots e sitemap existem', () => {
   const sitemap = readFileSync(new URL('../sitemap.xml', import.meta.url), 'utf8')
   assert.match(sitemap, /<loc>https:\/\/mapompeo\.github\.io\/horizonte\/<\/loc>/)
 })
+
+test('a réplica da história é decorativa para leitor de tela (as legendas contam a cena)', () => {
+  assert.match(html, /<div class="appwin" id="app" aria-hidden="true">/)
+  assert.match(html, /<div class="devices" id="devices" aria-hidden="true">/)
+})

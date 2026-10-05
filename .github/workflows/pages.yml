@@ -13,10 +13,6 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: pages
-  cancel-in-progress: true
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -33,6 +29,10 @@ jobs:
   deploy:
     needs: test
     if: github.event_name != 'pull_request'
+    # Só a publicação entra na fila, e uma publicação em andamento nunca é cancelada.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     environment:
       name: github-pages

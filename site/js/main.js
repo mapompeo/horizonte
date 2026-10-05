@@ -10,8 +10,16 @@ function kind(name) {
   return /-setup\.exe$/i.test(name) ? 'Instalador .exe' : name.slice(name.lastIndexOf('.'))
 }
 
-function describe(files) {
-  return files.map((f) => `${kind(f.name)} · ${f.mb} MB`).join('<br />')
+/** Uma linha por arquivo, cada uma com o próprio link (o Linux tem .AppImage e .deb). Montado com DOM, sem HTML em texto. */
+function fillMeta(meta, files) {
+  meta.replaceChildren()
+  files.forEach((f, i) => {
+    if (i > 0) meta.append(document.createElement('br'))
+    const link = document.createElement('a')
+    link.href = f.url
+    link.textContent = `${kind(f.name)} · ${f.mb} MB`
+    meta.append(link)
+  })
 }
 
 async function fillDownloads() {
@@ -22,7 +30,8 @@ async function fillDownloads() {
     if (link) link.href = downloads[key].href
     const meta = document.querySelector(`[data-dl-meta="${key}"]`)
     // Sem o arquivo desse sistema na versão, o link vai para a página da versão: o texto fixo mentiria.
-    if (meta) meta.innerHTML = downloads[key].files.length > 0 ? describe(downloads[key].files) : 'Veja na página da versão'
+    if (meta && downloads[key].files.length > 0) fillMeta(meta, downloads[key].files)
+    else if (meta) meta.textContent = 'Veja na página da versão'
   }
   document.querySelectorAll('[data-version]').forEach((el) => (el.textContent = downloads.version))
 }

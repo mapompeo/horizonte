@@ -26,7 +26,7 @@ export function buildDownloads(release) {
     const found = patterns.flatMap((p) => assets.filter((a) => p.test(a.name)))
     return {
       href: found[0]?.browser_download_url ?? fallback,
-      files: found.map((a) => ({ name: a.name, mb: Math.round(a.size / 1e6) }))
+      files: found.map((a) => ({ name: a.name, mb: Math.round(a.size / 1e6), url: a.browser_download_url }))
     }
   }
   return {
