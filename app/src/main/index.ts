@@ -19,6 +19,7 @@ import { createDiscovery } from './engine/discovery'
 import { createPinChannel, sendPin } from './engine/pin-channel'
 import { FakeEngine } from './engine/fake'
 import { createMoonlightClient } from './engine/moonlight/client'
+import { createPairedHostsStore } from './engine/moonlight/paired-hosts'
 import { ensureMoonlight } from './engine/moonlight/install'
 import { noClientEngine } from './engine/no-client'
 import type { EnginePort } from './engine/port'
@@ -145,6 +146,7 @@ async function boot(): Promise<void> {
       ? createMoonlightClient({
           listHosts: discovery.listHosts,
           sendPin,
+          pairedHosts: createPairedHostsStore(join(app.getPath('userData'), 'paired-hosts.json')),
           // O Moonlight se apresenta ao outro lado com o nome do computador.
           deviceName: () => cleanName(hostname()) || 'Dispositivo',
           randomPin: () => String(randomInt(10_000)).padStart(4, '0'),
