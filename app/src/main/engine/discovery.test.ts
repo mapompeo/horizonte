@@ -61,4 +61,62 @@ describe('createDiscovery', () => {
     }).listHosts()
     expect(hosts).toEqual([])
   })
+
+  describe('vários endereços no mesmo anúncio', () => {
+    const run = async (
+      services: ServiceFound[],
+      own: string[],
+      localNetworks: { address: string; netmask: string }[] = []
+    ): Promise<unknown> =>
+      createDiscovery({
+        find: () => fakeBrowser(services).browser,
+        ownAddresses: () => own,
+        localNetworks: () => localNetworks,
+        listenMs: 20
+      }).listHosts()
+
+    it('endereço virtual repetido nos dois PCs (WSL) não esconde o aparelho', async () => {
+      const hosts = await run(
+        [{ name: 'Desktop', addresses: ['172.31.0.1', '192.168.1.5'] }],
+        ['172.31.0.1', '192.168.1.7']
+      )
+      expect(hosts).toEqual([{ name: 'Desktop', address: '192.168.1.5' }])
+    })
+
+    it('prefere o endereço da mesma sub-rede de uma interface local', async () => {
+      const hosts = await run(
+        [{ name: 'Desktop', addresses: ['10.9.9.9', '192.168.1.5'] }],
+        [],
+        [{ address: '192.168.1.7', netmask: '255.255.255.0' }]
+      )
+      expect(hosts).toEqual([{ name: 'Desktop', address: '192.168.1.5' }])
+    })
+
+    it('sem sub-rede em comum, usa o primeiro endereço que não é deste PC', async () => {
+      const hosts = await run([{ name: 'Desktop', addresses: ['10.9.9.9', '10.9.9.8'] }], [])
+      expect(hosts).toEqual([{ name: 'Desktop', address: '10.9.9.9' }])
+    })
+
+    it('usa o endereço de origem do pacote quando os anunciados não servem', async () => {
+      const hosts = await run(
+        [{ name: 'Desktop', addresses: ['172.31.0.1'], referer: { address: '192.168.1.5' } }],
+        ['172.31.0.1']
+      )
+      expect(hosts).toEqual([{ name: 'Desktop', address: '192.168.1.5' }])
+    })
+
+    it('se todos os endereços são deste PC, não lista', async () => {
+      const hosts = await run(
+        [
+          {
+            name: 'Eu',
+            addresses: ['172.31.0.1', '192.168.1.7'],
+            referer: { address: '192.168.1.7' }
+          }
+        ],
+        ['172.31.0.1', '192.168.1.7']
+      )
+      expect(hosts).toEqual([])
+    })
+  })
 })

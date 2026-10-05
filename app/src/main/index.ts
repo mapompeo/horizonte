@@ -121,7 +121,13 @@ async function boot(): Promise<void> {
     ownAddresses: () =>
       Object.values(networkInterfaces())
         .flat()
-        .flatMap((i) => (i ? [i.address] : []))
+        .flatMap((i) => (i ? [i.address] : [])),
+    localNetworks: () =>
+      Object.values(networkInterfaces())
+        .flat()
+        .flatMap((i) =>
+          i && i.family === 'IPv4' ? [{ address: i.address, netmask: i.netmask }] : []
+        )
   })
   // O Moonlight portátil é baixado na primeira vez que a pessoa conecta (versão fixa, hash conferido).
   const moonlightDir = join(app.getPath('userData'), 'moonlight')
