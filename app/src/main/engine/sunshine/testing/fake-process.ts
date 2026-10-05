@@ -14,6 +14,9 @@ const header = (n: number): string =>
 export class FakeSunshineProcess implements SunshineApiPort {
   config: Record<string, unknown> = {}
   pairings: Pairing[] = []
+  /** Nomes dos aparelhos já pareados (o que o Sunshine guarda). */
+  clients: string[] = []
+  clientsFail = false
   displays: FakeDisplay[] = [{ deviceId: '{aaa}', friendlyName: '24G2W1G4', primary: true }]
   /** Valores de amd_usage com os quais o encoder de GPU abre. */
   hardwareWorksWith = new Set<string>(['lowlatency_high_quality', 'transcoding'])
@@ -95,6 +98,12 @@ export class FakeSunshineProcess implements SunshineApiPort {
   async listPairings(): Promise<Pairing[]> {
     this.guard()
     return [...this.pairings]
+  }
+
+  async listClientNames(): Promise<string[]> {
+    this.guard()
+    if (this.clientsFail) throw new SunshineApiError('server', 'falhou', 500)
+    return [...this.clients]
   }
 
   async submitPin(request: { pairingId: string; pin: string; name: string }): Promise<boolean> {

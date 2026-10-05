@@ -9,6 +9,7 @@ const api: HorizonteApi = {
   listHosts: () => ipcRenderer.invoke(CHANNELS.hosts),
   getWebAccess: () => ipcRenderer.invoke(CHANNELS.webAccess),
   setWebAccess: (on) => ipcRenderer.invoke(CHANNELS.setWebAccess, on),
+  openRepo: () => ipcRenderer.invoke(CHANNELS.openRepo),
   onSnapshot: (callback) => {
     const handler = (_event: unknown, snapshot: Snapshot): void => callback(snapshot)
     ipcRenderer.on(CHANNELS.push, handler)

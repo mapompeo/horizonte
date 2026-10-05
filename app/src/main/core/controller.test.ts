@@ -24,6 +24,21 @@ async function setup(
   return { controller, engine, saved }
 }
 
+async function startWith(
+  mode: Settings['mode'],
+  engine = new FakeEngine(0)
+): Promise<{ controller: Controller; engine: FakeEngine; saved: Settings[] }> {
+  const saved: Settings[] = []
+  const store: SettingsStore = {
+    load: async () => ({ ...DEFAULT_SETTINGS, mode }),
+    save: async (settings) => {
+      saved.push(settings)
+    }
+  }
+  const controller = await createController({ engine, store })
+  return { controller, engine, saved }
+}
+
 const screen = (controller: Controller): string => controller.getSnapshot().state.screen
 const settle = (ms = 40): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -470,5 +485,51 @@ describe('ajustes e assinantes', () => {
     stop()
     controller.dispatch({ type: 'CHOOSE', mode: 'send' })
     expect(count).toBe(1)
+  })
+})
+
+describe('abrir o app depois de instalado', () => {
+  it('primeira vez (nenhum modo escolhido ainda): mostra a tela de começar', async () => {
+    const { controller } = await startWith(null)
+    expect(screen(controller)).toBe('install')
+  })
+
+  it('último modo foi mostrar: abre direto procurando aparelhos', async () => {
+    const { controller } = await startWith('receive')
+    expect(controller.getSnapshot().state).toEqual({ screen: 'discover', mode: 'receive' })
+  })
+
+  it('último modo foi enviar: abre direto preparando e chega em pronto', async () => {
+    const engine = new FakeEngine(0)
+    const prepare = vi.spyOn(engine, 'prepare')
+    const { controller } = await startWith('send', engine)
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'preparing', mode: 'send' })
+    await settle(200)
+    expect(prepare).toHaveBeenCalledOnce()
+    expect(screen(controller)).toBe('ready')
+  })
+
+  it('escolher um modo grava para a próxima abertura', async () => {
+    const { controller, saved } = await startWith(null)
+    controller.dispatch({ type: 'INSTALL_DONE' })
+    await settle(200)
+    expect(screen(controller)).toBe('choose')
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    await settle()
+    expect(saved.at(-1)?.mode).toBe('receive')
+  })
+
+  it('trocar de modo pela pílula também grava', async () => {
+    const { controller, saved } = await startWith('receive')
+    controller.dispatch({ type: 'CHOOSE', mode: 'send' })
+    await settle()
+    expect(saved.at(-1)?.mode).toBe('send')
+  })
+
+  it('escolher o mesmo modo de novo não regrava à toa', async () => {
+    const { controller, saved } = await startWith('receive')
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    await settle()
+    expect(saved).toHaveLength(0)
   })
 })

@@ -5,6 +5,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS, createSettingsStore, parseSettings } from './settings'
 
 describe('parseSettings', () => {
+  it('lembra o último modo; sem modo válido, é a primeira vez (null)', () => {
+    expect(parseSettings({ mode: 'send' }).mode).toBe('send')
+    expect(parseSettings({ mode: 'receive' }).mode).toBe('receive')
+    for (const mode of [undefined, null, '', 'both', 1, {}]) {
+      expect(parseSettings({ mode }).mode).toBeNull()
+    }
+  })
+
   it('devolve os padrões para entradas que não são objeto', () => {
     for (const raw of [null, undefined, 'texto', 42, true, []]) {
       expect(parseSettings(raw)).toEqual(DEFAULT_SETTINGS)
@@ -21,7 +29,7 @@ describe('parseSettings', () => {
       autostart: false,
       deviceName: 'Notebook'
     }
-    expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom' })
+    expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null })
   })
 
   it('corrige valores inválidos campo a campo', () => {

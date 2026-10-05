@@ -293,7 +293,7 @@ export class SunshineEngine implements ServerEngine {
     this.session = createSessionWatcher({
       readLog: this.deps.readLog,
       intervalMs: this.timing.sessionIntervalMs,
-      deviceName: () => this.lastApprovedName,
+      deviceName: () => this.connectedName(api),
       onConnected: (device) => {
         for (const listener of [...this.connectedListeners]) listener(device)
       },
@@ -304,6 +304,22 @@ export class SunshineEngine implements ServerEngine {
     void this.deps.pins?.start().catch(() => undefined) // porta ocupada: cai para o PIN manual
     this.pairing.start()
     this.session.start()
+  }
+
+  /**
+   * O log do Sunshine não diz quem conectou. Quem acabou de ser aprovado vale; senão, se só há um aparelho
+   * pareado, é ele; com vários não dá para saber e ficamos com o nome genérico.
+   */
+  private async connectedName(api: SunshineApiPort): Promise<string> {
+    if (this.lastApprovedName !== GENERIC_DEVICE) return this.lastApprovedName
+    try {
+      const names = (await api.listClientNames())
+        .map((name) => cleanName(name))
+        .filter((name) => name !== '')
+      return names.length === 1 ? names[0]! : GENERIC_DEVICE
+    } catch {
+      return GENERIC_DEVICE
+    }
   }
 
   protected stopWatchers(): void {

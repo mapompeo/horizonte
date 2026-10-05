@@ -27,6 +27,9 @@ export interface FakeSunshine {
   delayMs: number
   failNext: FailNext | null
   rawPinResponse: unknown | null
+  /** Aparelhos já pareados, como o Sunshine devolve em /api/clients/list. */
+  clients: { name: string; uuid: string }[]
+  rawClientsResponse: unknown | null
   close(): Promise<void>
 }
 
@@ -64,6 +67,8 @@ export async function startFakeSunshine(credentials: {
     delayMs: 0,
     failNext: null,
     rawPinResponse: null,
+    clients: [],
+    rawClientsResponse: null,
     close: () => closeServer()
   }
 
@@ -107,6 +112,9 @@ export async function startFakeSunshine(credentials: {
     const json = body ? (JSON.parse(body) as Record<string, unknown>) : {}
 
     switch (route) {
+      case 'GET /api/clients/list':
+        send(response, 200, fake.rawClientsResponse ?? { status: true, named_certs: fake.clients })
+        return
       case 'GET /api/pin':
         send(response, 200, fake.rawPinResponse ?? { pairings: fake.pairings })
         return

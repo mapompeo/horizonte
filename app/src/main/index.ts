@@ -1,4 +1,13 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage, session } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  nativeTheme,
+  safeStorage,
+  session,
+  shell
+} from 'electron'
 import { spawn } from 'node:child_process'
 import { randomInt } from 'node:crypto'
 import { existsSync } from 'node:fs'
@@ -7,7 +16,7 @@ import { join } from 'node:path'
 import { Bonjour } from 'bonjour-service'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { CHANNELS } from '../shared/api'
+import { CHANNELS, REPO_URL } from '../shared/api'
 import { isUiEvent } from '../shared/events'
 import { cleanName } from '../shared/names'
 import type { SettingsPatch } from '../shared/types'
@@ -283,6 +292,7 @@ async function boot(): Promise<void> {
     )
   )
   ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
+  ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
   const gateway = createRealGateway({
     userData: app.getPath('userData'),
     cipher: toCipher(safeStorage),
