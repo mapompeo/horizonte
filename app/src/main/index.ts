@@ -32,7 +32,6 @@ import { FakeEngine } from './engine/fake'
 import { createMoonlightClient } from './engine/moonlight/client'
 import { createPairedHostsStore } from './engine/moonlight/paired-hosts'
 import { ensureMoonlight } from './engine/moonlight/install'
-import { noClientEngine } from './engine/no-client'
 import type { EnginePort } from './engine/port'
 import { SunshineApi } from './engine/sunshine/api'
 import { SunshineEngine } from './engine/sunshine/engine'
@@ -42,7 +41,11 @@ import { downloadVerified } from './platform/windows/download'
 import { psQuote } from './platform/windows/elevation'
 import { runPowerShell } from './platform/windows/probes'
 import { MOONLIGHT } from './platform/windows/versions'
-import { createLinuxPlatform, SUNSHINE_LOG as LINUX_SUNSHINE_LOG } from './platform/linux/wire'
+import {
+  createLinuxPlatform,
+  createMoonlightLauncher as createLinuxMoonlightLauncher,
+  SUNSHINE_LOG as LINUX_SUNSHINE_LOG
+} from './platform/linux/wire'
 import { createRealGateway } from './web/wire'
 import {
   createMacPlatform,
@@ -169,36 +172,38 @@ async function boot(): Promise<void> {
         )
       }
     })
-  // Cada sistema tem o seu jeito de instalar o Moonlight (zip portátil no Windows, disco .dmg no Mac).
+  // Cada sistema tem o seu jeito de instalar o Moonlight (zip portátil no Windows, disco .dmg no Mac, AppImage no Linux).
   const moonlightExe =
     process.platform === 'darwin'
       ? createMoonlightLauncher(app.getPath('userData'))
-      : windowsMoonlightExe
-  const receiver =
-    process.platform === 'win32' || process.platform === 'darwin'
-      ? createMoonlightClient({
-          listHosts: discovery.listHosts,
-          sendPin,
-          pairedHosts: createPairedHostsStore(join(app.getPath('userData'), 'paired-hosts.json')),
-          // O Moonlight se apresenta ao outro lado com o nome do computador.
-          deviceName: () => cleanName(hostname()) || 'Dispositivo',
-          randomPin: () => String(randomInt(10_000)).padStart(4, '0'),
-          run: async (args) => {
-            const child = spawn(await moonlightExe(), args, { stdio: 'ignore' })
-            return new Promise((resolve) => {
-              child.once('exit', resolve)
-              child.once('error', () => resolve(null))
-            })
-          },
-          spawn: async (args) => {
-            const child = spawn(await moonlightExe(), args, { stdio: 'ignore' })
-            return {
-              kill: () => void child.kill(),
-              onExit: (listener) => void child.once('exit', listener)
-            }
-          }
-        })
-      : noClientEngine(discovery.listHosts)
+      : process.platform === 'linux'
+        ? createLinuxMoonlightLauncher(app.getPath('userData'))
+        : windowsMoonlightExe
+  // O AppImage abre sem precisar do FUSE (que falta no Ubuntu 24.04 de fábrica).
+  const clientEnv =
+    process.platform === 'linux' ? { ...process.env, APPIMAGE_EXTRACT_AND_RUN: '1' } : process.env
+  const receiver = createMoonlightClient({
+    listHosts: discovery.listHosts,
+    sendPin,
+    pairedHosts: createPairedHostsStore(join(app.getPath('userData'), 'paired-hosts.json')),
+    // O Moonlight se apresenta ao outro lado com o nome do computador.
+    deviceName: () => cleanName(hostname()) || 'Dispositivo',
+    randomPin: () => String(randomInt(10_000)).padStart(4, '0'),
+    run: async (args) => {
+      const child = spawn(await moonlightExe(), args, { stdio: 'ignore', env: clientEnv })
+      return new Promise((resolve) => {
+        child.once('exit', resolve)
+        child.once('error', () => resolve(null))
+      })
+    },
+    spawn: async (args) => {
+      const child = spawn(await moonlightExe(), args, { stdio: 'ignore', env: clientEnv })
+      return {
+        kill: () => void child.kill(),
+        onExit: (listener) => void child.once('exit', listener)
+      }
+    }
+  })
   let engine: EnginePort = fake
   if (dev) {
     engine = composeEngine(

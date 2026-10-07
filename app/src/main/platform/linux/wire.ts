@@ -7,8 +7,9 @@ import type { SunshineCredentials } from '../types'
 import { downloadVerified } from '../windows/download'
 import { createCredentialVault, type Cipher } from '../windows/secrets'
 import { generatePassword, waitForApi } from '../windows/wire'
-import { createLinuxSetup, MONITOR_NAME, SUNSHINE_UNIT, type LinuxProbe } from './setup'
-import { sunshineDebFor } from './versions'
+import { ensureMoonlightLinux } from './moonlight'
+import { createLinuxSetup, MONITOR_NAME, shQuote, SUNSHINE_UNIT, type LinuxProbe } from './setup'
+import { MOONLIGHT_LINUX_APPIMAGE, sunshineDebFor } from './versions'
 
 const PORT = 47989
 export const SUNSHINE_LOG = join(homedir(), '.config', 'sunshine', 'sunshine.log')
@@ -33,6 +34,18 @@ export const createProbe = (): LinuxProbe => ({
   sunshineResponding: () => succeeds('ss -ltn | grep -q ":47990 "'),
   monitorPresent: () => succeeds(`xrandr --listmonitors | grep -q ${MONITOR_NAME}`)
 })
+
+/** Devolve o caminho do Moonlight no Linux, baixando o AppImage na primeira vez (sem administrador). */
+export function createMoonlightLauncher(userData: string): () => Promise<string> {
+  return () =>
+    ensureMoonlightLinux({
+      dir: join(userData, 'moonlight'),
+      artifact: MOONLIGHT_LINUX_APPIMAGE,
+      exists: (path) => succeeds(`test -e ${shQuote(path)}`),
+      download: downloadVerified,
+      run: (script) => sh('sh', ['-c', script], 30_000)
+    })
+}
 
 type LinuxPlatform = ReturnType<typeof createLinuxSetup> & {
   restart(): Promise<void>

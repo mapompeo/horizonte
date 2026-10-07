@@ -39,3 +39,14 @@ export function sunshineDebFor(osRelease: string, arch: string): PinnedArtifact 
   }
   return found
 }
+
+/**
+ * Moonlight 6.1.0 (AppImage) para receber a tela. A API do GitHub não publica o hash deste arquivo: o SHA-256
+ * foi calculado baixando o arquivo em 07/10/2026 e fica fixo aqui; qualquer outro conteúdo é recusado.
+ */
+export const MOONLIGHT_LINUX_APPIMAGE: PinnedArtifact = {
+  version: '6.1.0',
+  fileName: 'Moonlight-6.1.0-x86_64.AppImage',
+  url: 'https://github.com/moonlight-stream/moonlight-qt/releases/download/v6.1.0/Moonlight-6.1.0-x86_64.AppImage',
+  sha256: '0e855ffd22d407e18ab5fdb575fed5f01ca119a3f91993c5f0213f15ac80b400'
+}
