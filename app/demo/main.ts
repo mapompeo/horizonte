@@ -1,5 +1,5 @@
 import '../src/renderer/src/assets/main.css'
-import { mount } from 'svelte'
+import { mount, tick } from 'svelte'
 import App from '../src/renderer/src/App.svelte'
 import Preview from './Preview.svelte'
 import type { AppState } from '../src/shared/types'
@@ -36,8 +36,10 @@ const initial =
 void installDemo({
   initial: initial ?? START[location.hash.slice(1)] ?? START.ready,
   auto: params.get('auto') !== '0'
-}).then(() => {
+}).then(async () => {
   const target = document.getElementById('app') as HTMLElement
   if (preview) mount(Preview, { target, props: { kind: preview } })
   else mount(App, { target })
+  await tick()
+  window.parent.postMessage({ type: 'horizonte:demo-mounted' }, location.origin)
 })

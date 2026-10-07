@@ -120,12 +120,20 @@ test('fileLabel diz para quem serve cada arquivo (chip Apple, chip Intel, instal
   assert.equal(fileLabel('semextensao'), 'semextensao')
 })
 
-test('macOS com dois discos: o primeiro (o botão Baixar) é o de chip Apple, e os dois aparecem', () => {
+test('macOS oferece destinos explícitos para cada chip sem escolher ARM64 por padrão', () => {
   const d = buildDownloads(macRelease())
-  assert.equal(d.mac.href, 'https://dl/Horizonte-0.1.0-beta.6-arm64.dmg')
+  assert.equal(d.mac.href, 'https://github.com/mapompeo/horizonte/releases/tag/v0.1.0-beta.6')
+  assert.equal(d.mac.arm64.href, 'https://dl/Horizonte-0.1.0-beta.6-arm64.dmg')
+  assert.equal(d.mac.x64.href, 'https://dl/Horizonte-0.1.0-beta.6-x64.dmg')
   assert.deepEqual(
     d.mac.files.map((f) => f.name),
     ['Horizonte-0.1.0-beta.6-arm64.dmg', 'Horizonte-0.1.0-beta.6-x64.dmg']
   )
   assert.equal(d.version, '0.1.0 beta 6')
+})
+
+test('Mac sem arquivo Intel não oferece o ARM64 como substituto', () => {
+  const r = macRelease()
+  r.assets = r.assets.filter(a => !a.name.includes('x64'))
+  assert.equal(buildDownloads(r).mac.x64.href, r.html_url)
 })

@@ -19,6 +19,8 @@ export function mountLive(root, { hash = "", auto = true } = {}) {
   frame.height = APP_H;
   frame.setAttribute("loading", "eager");
   frame.setAttribute("allow", "clipboard-write");
+  frame.inert = true;
+  frame.tabIndex = -1;
   frame.src = `./app/?auto=${auto ? 1 : 0}${hash ? "#" + hash : ""}`;
 
   const fit = () => {
@@ -29,18 +31,24 @@ export function mountLive(root, { hash = "", auto = true } = {}) {
   fit();
 
   const loaded = new Promise((resolve) => {
-    frame.addEventListener(
-      "load",
-      () => {
-        // Só troca o desenho estático depois que o app apareceu de verdade.
-        root
-          .querySelectorAll(":scope > :not(.controls):not(iframe)")
-          .forEach((el) => el.remove());
-        frame.classList.add("on");
-        resolve(frame);
-      },
-      { once: true },
-    );
+    const mounted = (event) => {
+      if (
+        event.source !== frame.contentWindow ||
+        event.origin !== window.location.origin ||
+        event.data?.type !== "horizonte:demo-mounted"
+      )
+        return;
+      window.removeEventListener("message", mounted);
+      // A demo confirma a montagem; load também dispara em páginas vazias ou com erro.
+      root
+        .querySelectorAll(":scope > :not(.controls):not(iframe)")
+        .forEach((el) => el.remove());
+      frame.classList.add("on");
+      frame.inert = false;
+      frame.removeAttribute("tabindex");
+      resolve(frame);
+    };
+    window.addEventListener("message", mounted);
   });
   root.append(frame);
   return { frame, loaded };

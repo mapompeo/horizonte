@@ -55,7 +55,7 @@ test('estrutura inteira: uma página, um rodapé, três cartões de download', (
   assert.equal(count(/<\/main>/g), 1)
   assert.equal(count(/<footer>/g), 1)
   assert.equal(count(/<\/footer>/g), 1)
-  assert.equal(count(/data-dl="/g), 3)
+  assert.equal(count(/data-dl="/g), 4)
   assert.equal(count(/data-dl-meta="/g), 3)
   assert.equal(count(/class="spec-line"/g), 1)
   assert.match(html, /<\/footer>\s*<script src="\.\/vendor\/motion\.min\.js"><\/script>/)
@@ -71,8 +71,8 @@ test('imagem de compartilhamento, robots e sitemap existem', () => {
   assert.match(sitemap, /<loc>https:\/\/mapompeo\.github\.io\/horizonte\/<\/loc>/)
 })
 
-test('a réplica da história é decorativa para leitor de tela (as legendas contam a cena)', () => {
-  assert.match(html, /<div class="appwin" id="app" aria-hidden="true">/)
+test('a história interativa é acessível e os desenhos de dispositivos são decorativos', () => {
+  assert.match(html, /<div class="appwin" id="app" role="group" aria-label="Demonstração interativa do Horizonte">/)
   assert.match(html, /<div class="devices" id="devices" aria-hidden="true">/)
 })
 
