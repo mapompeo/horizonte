@@ -46,15 +46,6 @@ export function startScenes(M) {
     M.animate(tilt, { rotateY: px * 8, rotateX: -py * 6 }, soft)
   })
   $('showcase').addEventListener('pointerleave', () => M.animate(tilt, { rotateY: 0, rotateX: 0 }, soft))
-  ;(async function breathe() {
-    const el = $('hero-mbps')
-    const steps = [35, 40, 45, 40, 35, 30]
-    for (let k = 0; ; k++) {
-      await wait(k % 3 === 2 ? 2200 : 420)
-      el.textContent = steps[k % steps.length] + ' Mbps'
-      M.animate(el, { scale: [1.1, 1] }, snappy)
-    }
-  })()
 
   /* ============ 2. Barra do topo some ao descer ============ */
   let lastY = scrollY

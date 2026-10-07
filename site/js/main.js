@@ -33,6 +33,14 @@ async function fillDownloads() {
 
 fillDownloads()
 
+// O app do topo é interativo (e funciona também com menos movimento: os efeitos dele são só CSS).
+import('./demo.js')
+  .then(({ mountDemo }) => {
+    const root = document.getElementById('hero-app')
+    if (root) mountDemo(root, { version: document.querySelector('[data-version]')?.textContent ?? '0.1.0' })
+  })
+  .catch(() => undefined)
+
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 if (window.Motion && !reduce) {
   import('./scenes.js').then(({ startScenes }) => startScenes(window.Motion)).catch(() => undefined)
