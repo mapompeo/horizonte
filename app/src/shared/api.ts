@@ -8,6 +8,7 @@ export const CHANNELS = {
   webAccess: 'horizonte:web-access',
   setWebAccess: 'horizonte:set-web-access',
   openRepo: 'horizonte:open-repo',
+  copyDiagnostic: 'horizonte:copy-diagnostic',
   push: 'horizonte:push'
 } as const
 
@@ -23,6 +24,8 @@ export interface HorizonteApi {
   setWebAccess(on: boolean): Promise<WebAccess>
   /** Abre a página do projeto no navegador padrão. */
   openRepo(): Promise<void>
+  /** Copia o diagnóstico (versão, sistema, tela e erro, sem dados pessoais). Devolve se deu certo. */
+  copyDiagnostic(): Promise<boolean>
   onSnapshot(callback: (snapshot: Snapshot) => void): () => void
 }
 

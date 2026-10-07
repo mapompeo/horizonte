@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   nativeTheme,
@@ -11,7 +12,7 @@ import {
 import { spawn } from 'node:child_process'
 import { randomInt } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { hostname, networkInterfaces } from 'node:os'
+import { homedir, hostname, networkInterfaces, release as osRelease } from 'node:os'
 import { join } from 'node:path'
 import { Bonjour } from 'bonjour-service'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
@@ -21,6 +22,7 @@ import { isUiEvent } from '../shared/events'
 import { cleanName } from '../shared/names'
 import type { SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
+import { buildDiagnostic } from './core/diagnostic'
 import { createSettingsStore } from './core/settings'
 import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
@@ -293,6 +295,27 @@ async function boot(): Promise<void> {
   )
   ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
   ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
+  // A área de transferência do navegador falha em alguns sistemas (visto no macOS): a cópia é feita aqui.
+  ipcMain.handle(CHANNELS.copyDiagnostic, () => {
+    try {
+      clipboard.writeText(
+        buildDiagnostic(
+          {
+            version: app.getVersion(),
+            platform: process.platform,
+            arch: process.arch,
+            osRelease: osRelease(),
+            electron: process.versions.electron,
+            home: homedir()
+          },
+          controller.getSnapshot()
+        )
+      )
+      return true
+    } catch {
+      return false
+    }
+  })
   const gateway = createRealGateway({
     userData: app.getPath('userData'),
     cipher: toCipher(safeStorage),

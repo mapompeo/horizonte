@@ -171,7 +171,7 @@
       <span>Horizonte 0.1.0</span>
       <div class="sheet-foot-actions">
         <button onclick={() => window.horizonte.openRepo()}>GitHub</button>
-        <CopyButton text={() => JSON.stringify(settings, null, 2)} />
+        <CopyButton />
       </div>
     </div>
   </div>

@@ -1,18 +1,17 @@
 <script lang="ts">
   interface Props {
-    text: () => string
     class?: string
   }
 
-  let { text, class: className = '' }: Props = $props()
+  let { class: className = '' }: Props = $props()
 
   let status = $state<'idle' | 'copied' | 'failed'>('idle')
   let timer: ReturnType<typeof setTimeout> | undefined
 
   async function copy(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(text())
-      status = 'copied'
+      // A cópia é feita pelo app (o navegador embutido falha em alguns sistemas, como o macOS).
+      status = (await window.horizonte.copyDiagnostic()) ? 'copied' : 'failed'
     } catch {
       status = 'failed'
     }
