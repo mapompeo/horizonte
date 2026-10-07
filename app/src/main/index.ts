@@ -69,7 +69,11 @@ function createWindow(controller: Controller): void {
     show: false,
     autoHideMenuBar: true,
     titleBarStyle: 'hidden',
-    titleBarOverlay: overlayFor(),
+    // Windows e Linux: botões da janela por cima da interface. No macOS são os três botões nativos, num ponto fixo
+    // dentro da barra de 64 px (o CSS reserva o espaço à esquerda).
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 20, y: 25 } }
+      : { titleBarOverlay: overlayFor() }),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#101012' : '#FBFBFD',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -80,11 +84,14 @@ function createWindow(controller: Controller): void {
   })
 
   window.once('ready-to-show', () => window.show())
-  const refreshOverlay = (): void => {
-    if (!window.isDestroyed()) window.setTitleBarOverlay(overlayFor())
+  // Só Windows e Linux têm a barra por cima: no macOS os botões são nativos e não mudam de cor.
+  if (process.platform !== 'darwin') {
+    const refreshOverlay = (): void => {
+      if (!window.isDestroyed()) window.setTitleBarOverlay(overlayFor())
+    }
+    nativeTheme.on('updated', refreshOverlay)
+    window.on('closed', () => nativeTheme.off('updated', refreshOverlay))
   }
-  nativeTheme.on('updated', refreshOverlay)
-  window.on('closed', () => nativeTheme.off('updated', refreshOverlay))
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
 

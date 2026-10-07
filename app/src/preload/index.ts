@@ -3,6 +3,7 @@ import { CHANNELS, type HorizonteApi } from '../shared/api'
 import type { Snapshot } from '../shared/types'
 
 const api: HorizonteApi = {
+  platform: process.platform,
   getSnapshot: () => ipcRenderer.invoke(CHANNELS.snapshot),
   dispatch: (event) => ipcRenderer.invoke(CHANNELS.dispatch, event),
   updateSettings: (patch) => ipcRenderer.invoke(CHANNELS.updateSettings, patch),

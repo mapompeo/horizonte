@@ -16,6 +16,8 @@ export const CHANNELS = {
 export const REPO_URL = 'https://github.com/mapompeo/horizonte'
 
 export interface HorizonteApi {
+  /** Sistema em que o app roda (`process.platform`): win32, darwin ou linux. */
+  platform: string
   getSnapshot(): Promise<Snapshot>
   dispatch(event: AppEvent): Promise<void>
   updateSettings(patch: SettingsPatch): Promise<Settings>

@@ -177,6 +177,11 @@ input:focus-visible {
   align-items: center;
 }
 
+/* No macOS os botões vermelho, amarelo e verde ficam sobre a barra (ver trafficLightPosition na janela). */
+[data-platform='darwin'] .topbar-left {
+  padding-left: 84px;
+}
+
 /* Seletor em pílula: o indicador desliza sob o texto escolhido. */
 .seg {
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
