@@ -1,4 +1,4 @@
-import { execFile, spawn } from 'node:child_process'
+import { execFile, spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -33,11 +33,59 @@ describe.runIf(process.platform === 'darwin' && process.env.CI === 'true')(
       })
 
       const notes: string[] = []
+      let child: ChildProcess | undefined
+      let pairingTimer: ReturnType<typeof setTimeout> | undefined
       try {
         await platform.installer.ensureInstalled((progress) => notes.push(progress.note))
         console.log('etapas:', [...new Set(notes)].join(' > '))
         await platform.display.ensureVirtualDisplay()
+        const screensWithMonitor = Number((await run(HELPER, ['--count'])).trim())
+        expect(screensWithMonitor).toBeGreaterThanOrEqual(2)
+        const credentials = await platform.credentials()
+        const api = new SunshineApi({ ...credentials, timeoutMs: 3000 })
+        expect(await api.getConfig()).toBeTypeOf('object')
+
+        // Mantém a tela viva durante o pareamento, como o aplicativo durante Enviar.
+        const moonlight = await createMoonlightLauncher(mkdtempSync(join(tmpdir(), 'hz-mac-ml-')))()
+        const pin = '4821'
+        const name = 'Notebook de teste'
+        child = spawn(moonlight, ['pair', '127.0.0.1', '--pin', pin], {
+          stdio: 'inherit',
+          detached: true
+        })
+        const exited = new Promise<number | null>((resolveExit) => {
+          child!.once('exit', resolveExit)
+          child!.once('error', () => resolveExit(null))
+        })
+        let pairingId: string | undefined
+        const deadline = Date.now() + 60_000
+        while (!pairingId && Date.now() < deadline) {
+          pairingId = (await api.listPairings())[0]?.id
+          if (!pairingId) await new Promise((resolveWait) => setTimeout(resolveWait, 1000))
+        }
+        expect(pairingId, 'o Sunshine recebeu o pedido de pareamento').toBeTruthy()
+        expect(await api.submitPin({ pairingId: pairingId as string, pin, name })).toBe(true)
+        const outcome = await Promise.race([
+          exited,
+          new Promise<'travou'>((resolveWait) => {
+            pairingTimer = setTimeout(() => resolveWait('travou'), 20_000)
+          })
+        ])
+        clearTimeout(pairingTimer)
+        const names = await api.listClientNames()
+        console.log('--- pareamento no Mac: saída do Moonlight =', outcome, '| aparelhos =', names)
+        expect(names, 'o Sunshine registrou o aparelho').toContain(name)
       } finally {
+        clearTimeout(pairingTimer)
+        // Só o grupo do processo criado por este teste; também limpa quando uma chamada da API falha.
+        if (child?.pid) {
+          try {
+            process.kill(-child.pid, 'SIGKILL')
+          } catch {
+            // O grupo já encerrou.
+          }
+        }
+        platform.stopVirtualDisplay()
         console.log('--- telas segundo o auxiliar:', (await run(HELPER, ['--count'])).trim())
         console.log(
           '--- processos',
@@ -51,55 +99,6 @@ describe.runIf(process.platform === 'darwin' && process.env.CI === 'true')(
               : '(sem log)')
         )
       }
-      // O monitor virtual some com o auxiliar: libera a identidade para o próximo teste.
-      const screensWithMonitor = Number((await run(HELPER, ['--count'])).trim())
-      platform.stopVirtualDisplay()
-
-      const credentials = await platform.credentials()
-      const config = await new SunshineApi({
-        port: credentials.port,
-        username: credentials.username,
-        password: credentials.password
-      }).getConfig()
-      expect(config).toBeTypeOf('object')
-      expect(screensWithMonitor).toBeGreaterThanOrEqual(2)
-
-      // Pareamento por PIN de verdade: o Moonlight pede, a API aprova e o aparelho entra na lista.
-      const api = new SunshineApi({
-        port: credentials.port,
-        username: credentials.username,
-        password: credentials.password
-      })
-      const moonlight = await createMoonlightLauncher(mkdtempSync(join(tmpdir(), 'hz-mac-ml-')))()
-      const pin = '4821'
-      const name = 'Notebook de teste'
-      const child = spawn(moonlight, ['pair', '127.0.0.1', '--pin', pin], {
-        stdio: 'inherit',
-        detached: true
-      })
-      const exited = new Promise<number | null>((resolve) => {
-        child.once('exit', resolve)
-        child.once('error', () => resolve(null))
-      })
-      let pairingId: string | undefined
-      for (let i = 0; i < 60 && !pairingId; i++) {
-        pairingId = (await api.listPairings())[0]?.id
-        if (!pairingId) await new Promise((resolve) => setTimeout(resolve, 1000))
-      }
-      expect(pairingId, 'o Sunshine recebeu o pedido de pareamento').toBeTruthy()
-      expect(await api.submitPin({ pairingId: pairingId as string, pin, name })).toBe(true)
-      const outcome = await Promise.race([
-        exited,
-        new Promise<'travou'>((resolve) => setTimeout(() => resolve('travou'), 20_000))
-      ])
-      const names = await api.listClientNames()
-      console.log('--- pareamento no Mac: saída do Moonlight =', outcome, '| aparelhos =', names)
-      try {
-        if (child.pid) process.kill(-child.pid, 'SIGKILL')
-      } catch {
-        // já tinha encerrado
-      }
-      expect(names, 'o Sunshine registrou o aparelho').toContain(name)
     })
   }
 )
