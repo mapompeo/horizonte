@@ -9,21 +9,21 @@ export function chapterAt(progress) {
   return { index, local: clamp(x - index) }
 }
 
-/** A janela sai do computador (a) e entra no notebook (b), presa à rolagem nos dois sentidos. */
-export function windowCross(local, widths) {
-  const out = clamp((local - 0.08) / 0.55)
-  const into = clamp((local - 0.3) / 0.45)
-  const off = widths.a * 0.5 + 6
-  return {
-    aX: off * out,
-    aCursor: off * out,
-    aCursorVisible: out < 0.98,
-    // (into - 1), e não -(1 - into): no fim dá 0, e não -0, que é outro valor numa comparação estrita.
-    bX: widths.b * 0.65 * (into - 1),
-    bTilt: (into - 1) * 3,
-    bCursor: widths.b * 0.22 * into,
-    bCursorVisible: into > 0.02
-  }
+const smooth = (t) => t * t * (3 - 2 * t)
+
+/**
+ * A janela é uma só, arrastada em linha reta por todos os aparelhos (todos com o centro da tela na mesma altura).
+ * Cada aparelho mostra a parte dela que cai dentro da sua tela: devolve o deslocamento horizontal da janela dentro
+ * de cada tela. Começa no meio da primeira tela e termina no meio da última.
+ * `screens` é a posição (left) e a largura de cada tela, na mesma unidade da largura da janela.
+ */
+export function windowSpots(local, screens, windowWidth) {
+  const first = screens[0]
+  const last = screens[screens.length - 1]
+  const from = first.left + (first.width - windowWidth) / 2
+  const to = last.left + (last.width - windowWidth) / 2
+  const x = from + (to - from) * smooth(clamp((local - 0.06) / 0.82))
+  return screens.map((screen) => x - screen.left)
 }
 
 export function qualityAt(local) {

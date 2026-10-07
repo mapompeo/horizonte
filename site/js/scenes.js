@@ -1,4 +1,5 @@
-import { chapterAt, qualityAt, windowCross } from './story.js'
+import { mountLive } from './live.js'
+import { chapterAt, qualityAt, windowSpots } from './story.js'
 
 /** Todas as animações da página (Motion). Só é chamada com a Motion carregada e sem pedido de menos movimento. */
 export function startScenes(M) {
@@ -8,8 +9,7 @@ export function startScenes(M) {
   const soft = { type: 'spring', visualDuration: 0.9, bounce: 0.1 }
   const snappy = { type: 'spring', visualDuration: 0.35, bounce: 0.25 }
   const $ = (id) => document.getElementById(id)
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
-  const screens = [...document.querySelectorAll('#app [data-screen]')]
+
   /* ---------- Utilitários de texto ---------- */
   const splitWords = (el, cls) => {
     const words = el.textContent.trim().split(/\s+/)
@@ -98,106 +98,60 @@ export function startScenes(M) {
   /* ============ 5. A história presa na tela ============ */
   const app = $('app')
   const devices = $('devices')
-  const bar = $('app-bar')
-  const cur = $('app-cur')
   const caps = [...document.querySelectorAll('.cap')]
   const dots = [...document.querySelectorAll('#dots i')]
-  const SCREEN_OF = ['welcome', 'choose', 'discover', null, 'connected']
-  const ANGLE = [
-    { rotateY: -10, rotateX: 6 },
-    { rotateY: 8, rotateX: 4 },
-    { rotateY: -6, rotateX: 2 },
-    { rotateY: 0, rotateX: 0 },
-    { rotateY: 0, rotateX: 0 }
-  ]
-  const GLOW = ['rgba(10,132,255,.38)', 'rgba(191,90,242,.34)', 'rgba(48,209,200,.32)', 'rgba(255,159,10,.30)', 'rgba(48,209,88,.32)']
+  const live = mountLive(app, { auto: false })
   let current = -1
-  let token = 0
-  screens.forEach((s) => (s.style.opacity = '0'))
-  bar.style.opacity = '0'
-
-  function setMode(mode) {
-    const recv = mode === 'receive'
-    $('m-send').classList.toggle('on', !recv)
-    $('m-recv').classList.toggle('on', recv)
-    M.animate($('app-thumb'), { x: recv ? app.clientWidth * 0.124 : 0 }, spring)
+  let frameReady = false
+  const states = [
+    { screen: 'install', status: 'idle' },
+    { screen: 'choose' },
+    { screen: 'discover', mode: 'receive' },
+    null,
+    { screen: 'connected', mode: 'send', device: 'Notebook' }
+  ]
+  const syncDemo = () => {
+    if (frameReady && states[current]) live.frame.contentWindow.__demo?.reset(states[current])
   }
-  async function click(el, t) {
-    const a = app.getBoundingClientRect()
-    const r = el.getBoundingClientRect()
-    const sx = a.width / app.offsetWidth || 1
-    await M.animate(cur, { x: (r.left - a.left + r.width * 0.55) / sx, y: (r.top - a.top + r.height * 0.55) / sx, opacity: 1 }, { type: 'spring', visualDuration: 0.7, bounce: 0.1 }).finished
-    if (t !== token) return false
-    await M.animate(el, { scale: [1, 0.93, 1] }, { duration: 0.3 }).finished
-    return t === token
-  }
-  function showScreen(name) {
-    screens.forEach((s) => {
-      const on = s.dataset.screen === name
-      M.animate(s, on ? { opacity: 1, scale: [0.96, 1], filter: ['blur(8px)', 'blur(0px)'] } : { opacity: 0, scale: 1.03, filter: 'blur(8px)' }, on ? soft : { duration: 0.25 })
+  live.loaded.then(() => { frameReady = true; syncDemo() })
+  function enter(i, prev) {
+    caps.forEach((caption, k) => {
+      M.animate(caption, { opacity: k === i ? 1 : 0, y: k === i ? 0 : -20 }, soft)
     })
-    M.animate(bar, { opacity: name === 'discover' || name === 'connected' ? 1 : 0 }, { duration: 0.3 })
-  }
-
-  async function enter(i, prev) {
-    const t = ++token
-    const dir = i > prev ? 1 : -1
-    caps.forEach((c, k) => {
-      if (k === i) M.animate(c, { opacity: [0, 1], y: [24 * dir, 0], filter: ['blur(6px)', 'blur(0px)'] }, soft)
-      else if (k === prev) M.animate(c, { opacity: 0, y: -24 * dir, filter: 'blur(6px)' }, { duration: 0.3 })
-      else c.style.opacity = '0'
+    dots.forEach((dot, k) => {
+      dot.classList.toggle('on', k === i)
+      M.animate(dot, { width: k === i ? '28px' : '8px' }, spring)
     })
-    dots.forEach((d, k) => {
-      d.classList.toggle('on', k === i)
-      M.animate(d, { width: k === i ? '28px' : '8px' }, spring)
-    })
-    $('stage').style.setProperty('--glow', GLOW[i])
     const isDevices = i === 3
-    M.animate(app, isDevices ? { opacity: 0, scale: 0.8, y: 40, rotateX: 12 } : { opacity: 1, scale: 1, y: 0, ...ANGLE[i] }, soft)
-    M.animate(devices, isDevices ? { opacity: 1, scale: [1.08, 1], y: [30, 0] } : { opacity: 0, scale: 0.95, y: 20 }, soft)
-    if (SCREEN_OF[i]) showScreen(SCREEN_OF[i])
-    M.animate(cur, { opacity: 0 }, { duration: 0.2 })
-    $('b-recv').classList.toggle('picked', false)
-
-    if (i === 0) {
-      await wait(500)
-      if (t === token) await click($('b-start'), t)
-    } else if (i === 1) {
-      await wait(400)
-      if (t === token && (await click($('b-recv'), t))) $('b-recv').classList.add('picked')
-    } else if (i === 2) {
-      setMode('receive')
-      M.animate($('host'), { opacity: 0, y: 18, scale: 0.96 }, { duration: 0 })
-      M.animate($('searching'), { opacity: [0.4, 1, 0.4] }, { duration: 1.6, repeat: Infinity })
-      await wait(800)
-      if (t !== token) return
-      M.animate($('host'), { opacity: 1, y: 0, scale: 1 }, snappy)
-      await wait(650)
-      if (t === token) await click($('b-extend'), t)
-    } else if (i === 4) {
-      setMode('send')
-      M.animate($('app-pill'), { scale: [0.7, 1.06, 1], opacity: [0, 1, 1] }, { duration: 0.6, delay: 0.2 })
-    }
+    $('stage').style.setProperty('--glow', 'rgba(10,132,255,.24)')
+    M.animate(app, { opacity: isDevices ? 0 : 1, scale: isDevices ? .85 : 1, rotateY: i === 0 ? -6 : 0 }, soft)
+    app.style.pointerEvents = isDevices ? 'none' : 'auto'
+    M.animate(devices, { opacity: isDevices ? 1 : 0, scale: isDevices ? 1 : .95, y: isDevices ? 0 : 20 }, soft)
+    syncDemo()
   }
 
-  const winA = $('win-a'), winB = $('win-b'), curA = $('cur-a'), curB = $('cur-b')
+  const deviceScreens = [...devices.querySelectorAll('.screen')]
   function scrubWindow(p) {
-    const w = windowCross(p, { a: $('screen-a').clientWidth, b: $('screen-b').clientWidth })
-    winA.style.transform = `translateX(${w.aX}px)`
-    curA.style.transform = `translateX(${w.aCursor}px)`
-    curA.style.opacity = w.aCursorVisible ? '1' : '0'
-    winB.style.transform = `translateX(${w.bX}px) rotate(${w.bTilt}deg)`
-    curB.style.transform = `translateX(${w.bCursor}px)`
-    curB.style.opacity = w.bCursorVisible ? '1' : '0'
+    const origin = deviceScreens[0].getBoundingClientRect()
+    const scale = origin.width / deviceScreens[0].offsetWidth || 1
+    const width = deviceScreens[0].clientWidth * .46
+    const positions = deviceScreens.map((screen) => ({ left: (screen.getBoundingClientRect().left - origin.left) / scale, width: screen.clientWidth }))
+    windowSpots(p, positions, width).forEach((x, i) => {
+      const win = deviceScreens[i].querySelector('.win')
+      win.style.width = width + 'px'
+      win.style.left = '0'
+      win.style.top = '50%'
+      win.style.transform = `translate(${x}px, -50%)`
+      const cursor = deviceScreens[i].querySelector('.dcur')
+      if (cursor) cursor.style.opacity = '0'
+    })
   }
   let lastMbps = 30
   function scrubQuality(p) {
     const v = qualityAt(p)
     if (v !== lastMbps) {
       lastMbps = v
-      $('mbps').textContent = v + ' Mbps'
-      M.animate($('mbps'), { scale: [1.12, 1] }, snappy)
-      M.animate($('b-plus'), { scale: [0.88, 1] }, snappy)
+      if (frameReady) live.frame.contentWindow.horizonte?.updateSettings({ bitrate: v })
     }
   }
   M.scroll(

@@ -1,3 +1,4 @@
+import { mountMatrix } from './matrix.js'
 import { detectOs, OS_LABEL } from './os.js'
 import { buildDownloads, fileLabel, loadReleases, pickLatest } from './releases.js'
 
@@ -45,3 +46,5 @@ const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 if (window.Motion && !reduce) {
   import('./scenes.js').then(({ startScenes }) => startScenes(window.Motion)).catch(() => undefined)
 }
+
+mountMatrix(document.getElementById('mx'))

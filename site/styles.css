@@ -24,9 +24,9 @@
   --app-card: #ffffff;
   --device: #1d1d1f;
   --device-edge: #3a3a3e;
-  --wall-a: #6f8fd8;
-  --wall-b: #c9a7e6;
-  --wall-c: #f2c6a0;
+  --wall-a: #1f6bff;
+  --wall-b: #5ac8fa;
+  --wall-c: #e3f2ff;
   --win: #ffffff;
   --win-fg: #1d1d1f;
   --win-line: #e5e5ea;
@@ -1041,7 +1041,7 @@ footer a {
   inset: 0 0 auto 0;
   height: 3px;
   z-index: 60;
-  background: linear-gradient(90deg, #0a84ff, #bf5af2, #ff9f0a);
+  background: linear-gradient(90deg, #0a84ff, #64d2ff);
   transform-origin: 0 50%;
   transform: scaleX(0);
 }
@@ -1092,14 +1092,14 @@ main {
   top: 4%;
 }
 .aurora i:nth-child(2) {
-  background: #bf5af2;
+  background: #5ac8fa;
   right: -10vw;
   top: -6%;
   animation-duration: 23s;
   animation-delay: -6s;
 }
 .aurora i:nth-child(3) {
-  background: #ff9f0a;
+  background: #0040dd;
   left: 34vw;
   top: 34%;
   opacity: 0.22;
@@ -1171,7 +1171,7 @@ main {
 }
 .matrix h2 .grad,
 .radar-sec h2 .grad {
-  background: linear-gradient(90deg, #0a84ff, #bf5af2 60%, #ff9f0a);
+  background: linear-gradient(90deg, #0040dd, #0a84ff 55%, #5ac8fa);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1537,7 +1537,7 @@ main {
   width: 12px;
   height: 100%;
   border-radius: 6px;
-  background: linear-gradient(var(--accent), #bf5af2);
+  background: linear-gradient(#5ac8fa, var(--accent));
   transform-origin: 50% 100%;
   animation: eq 1.8s ease-in-out infinite;
 }
@@ -1990,7 +1990,7 @@ body {
   min-height: 90px;
 }
 .rt-hero {
-  background: linear-gradient(135deg, #0a84ff, #5e5ce6 55%, #bf5af2);
+  background: linear-gradient(135deg, #1a8cff, #0a52e0 60%, #0a2a8a);
   color: #fff;
   justify-content: center;
   gap: 14px;
@@ -2036,7 +2036,7 @@ body {
   font-size: clamp(2.4rem, 1.4rem + 3vw, 4rem);
   font-weight: 800;
   letter-spacing: -0.05em;
-  background: linear-gradient(90deg, #0a84ff, #bf5af2 60%, #ff9f0a);
+  background: linear-gradient(90deg, #0040dd, #0a84ff 55%, #5ac8fa);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -2229,3 +2229,15 @@ body {
   width: 108%;
   left: -4%;
 }
+
+/* Centros alinhados: a janela cruza aparelhos com tamanhos físicos diferentes. */
+.devices { grid-template-columns: 1.4fr 1fr .65fr; gap: 5%; align-items: start; padding-bottom: 8%; }
+.devices .dev { height: 260px; display: flex; flex-direction: column; justify-content: center; }
+.devices .screen { flex-shrink: 0; }
+.devices .monitor .screen { translate: 0 14px; }
+.devices .monitor .neck, .devices .monitor .foot { position: relative; top: 14px; }
+.devices .laptop .screen { translate: 0 5px; }
+.devices .laptop .base { top: 5px; }
+.devices .tablet .screen { aspect-ratio: 3 / 4; border-radius: 16px; border-width: 6px; }
+.devices .dev-label { bottom: -8px; font-size: clamp(8px, 1.5vw, 12px); }
+@media (max-width: 600px) { .devices .dev { height: 180px; } .screen { border-width: 4px; } }
