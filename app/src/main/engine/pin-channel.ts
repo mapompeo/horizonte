@@ -24,6 +24,7 @@ export function createPinChannel(
   const now = options.now ?? Date.now
   const pins = new Map<string, { pin: string; at: number }>()
   let server: Server | null = null
+  let opening: Promise<void> | null = null
 
   const key = (device: string): string => cleanName(device).toLowerCase()
 
@@ -47,6 +48,7 @@ export function createPinChannel(
     port: () =>
       (server?.address() as { port: number } | null)?.port ?? options.port ?? PIN_CHANNEL_PORT,
     start() {
+      if (opening) return opening
       if (server) return Promise.resolve()
       const created = createServer((request, response) => {
         if (request.method !== 'POST' || request.url !== '/pin') {
@@ -60,19 +62,35 @@ export function createPinChannel(
         })
         request.on('end', () => response.writeHead(handle(raw) ? 204 : 400).end())
       })
-      return new Promise((resolve, reject) => {
-        created.once('error', reject)
+      server = created
+      const pending = new Promise<void>((resolve, reject) => {
+        created.once('error', (error) => {
+          if (server === created) server = null
+          reject(error)
+        })
         created.listen(options.port ?? PIN_CHANNEL_PORT, () => {
-          server = created
           resolve()
         })
       })
+      opening = pending
+      const clearOpening = (): void => {
+        if (opening === pending) opening = null
+      }
+      void pending.then(clearOpening, clearOpening)
+      return pending
     },
     stop() {
       pins.clear()
       const closing = server
+      const pending = opening
       server = null
-      return new Promise((resolve) => (closing ? closing.close(() => resolve()) : resolve()))
+      opening = null
+      return (pending ?? Promise.resolve())
+        .catch(() => undefined)
+        .then(
+          () =>
+            new Promise<void>((resolve) => (closing ? closing.close(() => resolve()) : resolve()))
+        )
     },
     take(device) {
       const entry = pins.get(key(device))

@@ -13,6 +13,24 @@ async function post(port: number, body: string, path = '/pin'): Promise<number> 
 }
 
 describe('createPinChannel', () => {
+  it('duas aberturas simultâneas compartilham a mesma porta', async () => {
+    channel = createPinChannel({ port: 0 })
+    const first = channel.start()
+    const second = channel.start()
+    await Promise.all([first, second])
+    expect(second).toBe(first)
+    expect(await post(channel.port(), JSON.stringify({ device: 'Notebook', pin: '1234' }))).toBe(
+      204
+    )
+  })
+  it('stop durante a abertura não deixa a porta escutando depois', async () => {
+    channel = createPinChannel({ port: 0 })
+    const opening = channel.start()
+    await channel.stop()
+    await opening
+    expect(channel.port()).toBe(0)
+  })
+
   it('guarda o PIN do dispositivo e entrega uma vez só', async () => {
     channel = createPinChannel({ port: 0 })
     await channel.start()
