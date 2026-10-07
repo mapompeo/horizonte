@@ -25,10 +25,10 @@ const failure = { message: 'Falhou', detail: 'detalhe' }
 describe('reduce: caminho feliz', () => {
   const cases: [string, AppState, AppEvent, AppState][] = [
     [
-      'Começar prepara tudo',
+      'Começar leva à escolha do modo, sem instalar nada',
       { screen: 'install' },
       { type: 'INSTALL_DONE' },
-      { screen: 'preparing', mode: 'send', step: 'engine', firstRun: true }
+      { screen: 'choose' }
     ],
     ['escolher enviar', { screen: 'choose' }, { type: 'CHOOSE', mode: 'send' }, preparing],
     ['escolher mostrar', { screen: 'choose' }, { type: 'CHOOSE', mode: 'receive' }, discover],
@@ -238,17 +238,22 @@ describe('reduce: progresso da preparação', () => {
   })
 })
 
-describe('preparação do Começar', () => {
-  const first = { screen: 'preparing', mode: 'send', step: 'engine', firstRun: true } as const
-
-  it('ao terminar volta para a escolha, não para a espera', () => {
-    expect(reduce(first, { type: 'PREP_DONE' })).toEqual({ screen: 'choose' })
+describe('primeira vez: nada é preparado antes de escolher o modo', () => {
+  it('quem escolhe Mostrar nunca passa pela preparação do envio', () => {
+    const afterStart = reduce({ screen: 'install' }, { type: 'INSTALL_DONE' })
+    expect(afterStart).toEqual({ screen: 'choose' })
+    expect(reduce(afterStart, { type: 'CHOOSE', mode: 'receive' })).toEqual(discover)
   })
 
-  it('as etapas não perdem a marca de primeira vez', () => {
-    expect(reduce(first, { type: 'PREP_STEP', step: 'display' })).toMatchObject({
-      step: 'display',
-      firstRun: true
-    })
+  it('quem escolhe Enviar prepara e termina na espera, como em qualquer outra vez', () => {
+    const afterChoose = reduce({ screen: 'choose' }, { type: 'CHOOSE', mode: 'send' })
+    expect(afterChoose).toEqual(preparing)
+    expect(reduce(afterChoose, { type: 'PREP_DONE' })).toEqual(ready)
+  })
+
+  it('a tela de começar ignora eventos de preparação e de escolha que chegarem cedo', () => {
+    const install: AppState = { screen: 'install' }
+    expect(reduce(install, { type: 'PREP_DONE' })).toBe(install)
+    expect(reduce(install, { type: 'CHOOSE', mode: 'send' })).toBe(install)
   })
 })
