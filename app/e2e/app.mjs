@@ -3,13 +3,34 @@
 // a área de transferência e o desenho da barra do topo. Usa o motor de mentira do modo de desenvolvimento
 // (nada é instalado). Capturas e resultados vão para app/e2e-out/.
 import { execFileSync, spawn } from 'node:child_process'
-import { createWriteStream, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  writeFileSync
+} from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const require = createRequire(import.meta.url)
 const electronPath = require('electron')
+// E2E_PACKAGED=1: abre o app já empacotado (dist/, de `electron-builder --dir`) em vez do código-fonte, e só confere
+// o que o empacotamento pode quebrar: abrir, achar os recursos e chegar na escolha do modo.
+const packaged = process.env.E2E_PACKAGED === '1'
+
+function packagedExecutable() {
+  const dist = resolve('dist')
+  if (process.platform === 'win32') return join(dist, 'win-unpacked', 'Horizonte.exe')
+  if (process.platform === 'linux') {
+    return ['Horizonte', 'horizonte'].map((n) => join(dist, 'linux-unpacked', n)).find(existsSync)
+  }
+  const mac = readdirSync(dist).find((d) => d.startsWith('mac'))
+  return join(dist, mac, 'Horizonte.app', 'Contents', 'MacOS', 'Horizonte')
+}
+
 const OUT = resolve('e2e-out')
 mkdirSync(OUT, { recursive: true })
 const userData = mkdtempSync(join(tmpdir(), 'hz-e2e-'))
@@ -23,10 +44,17 @@ function record(name, ok, detail = '') {
 
 async function launch(label) {
   const port = 9300 + Math.floor(Math.random() * 600)
-  const args = ['.', `--remote-debugging-port=${port}`, `--user-data-dir=${userData}`]
+  const args = [
+    ...(packaged ? [] : ['.']),
+    `--remote-debugging-port=${port}`,
+    `--user-data-dir=${userData}`
+  ]
   if (process.platform === 'linux') args.push('--no-sandbox', '--disable-gpu')
   const log = createWriteStream(join(OUT, `app-${label}.log`))
-  const child = spawn(electronPath, args, {
+  const executable = packaged ? packagedExecutable() : electronPath
+  if (!executable || !existsSync(executable))
+    throw new Error(`não achei o app para abrir: ${executable}`)
+  const child = spawn(executable, args, {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env }
   })
@@ -174,80 +202,86 @@ try {
     if (/Preparando/.test(text)) throw new Error('começou a preparar antes de escolher')
     await app.shot('02-escolha')
   })
-  await step('escolher Mostrar vai direto para a lista, sem instalar nada', async () => {
-    await app.click(/Mostrar a tela/)
-    const text = await app.waitText(/Na sua rede/)
-    if (/Preparando|permissão/.test(text))
-      throw new Error('mostrou preparação/permissão no receptor')
-    await app.shot('03-lista')
-  })
-  await step('a engrenagem não fica sob os botões da janela do macOS', async () => {
-    const left = await app.ev(
-      `Math.round(document.querySelector('[aria-label="Ajustes"]').getBoundingClientRect().left)`
+  if (packaged) {
+    await app.close()
+    app = null
+  }
+  if (!packaged) {
+    await step('escolher Mostrar vai direto para a lista, sem instalar nada', async () => {
+      await app.click(/Mostrar a tela/)
+      const text = await app.waitText(/Na sua rede/)
+      if (/Preparando|permissão/.test(text))
+        throw new Error('mostrou preparação/permissão no receptor')
+      await app.shot('03-lista')
+    })
+    await step('a engrenagem não fica sob os botões da janela do macOS', async () => {
+      const left = await app.ev(
+        `Math.round(document.querySelector('[aria-label="Ajustes"]').getBoundingClientRect().left)`
+      )
+      if (process.platform === 'darwin' && left < 80)
+        throw new Error(`engrenagem em ${left}px, cobre os botões`)
+      return `engrenagem a ${left}px da borda`
+    })
+    await step(
+      'ajustes: nome só para ver, botão do GitHub e diagnóstico copiado de verdade',
+      async () => {
+        await app.click(/Ajustes/)
+        const text = await app.waitText(/Nome deste dispositivo/)
+        if (!/GitHub/.test(text)) throw new Error('sem o botão do GitHub')
+        await app.shot('04-ajustes')
+        await app.click(/Copiar diagnóstico/)
+        await app.waitText(/Copiado/, 8_000)
+        let clipboard
+        try {
+          clipboard = await readClipboard()
+        } catch (error) {
+          // Sessões sem acesso à área de transferência (visto numa sessão local do Windows): só a CI é obrigada a ler.
+          if (process.env.CI === 'true') throw error
+          return 'PULADO: esta sessão não consegue ler a área de transferência (o app mostrou "Copiado")'
+        }
+        for (const part of ['Horizonte ', `Sistema: ${process.platform}`, 'Tela:', 'Qualidade:']) {
+          if (!clipboard.includes(part))
+            throw new Error(`o diagnóstico copiado não tem "${part}": ${clipboard.slice(0, 200)}`)
+        }
+        if (/4821|pair-/.test(clipboard)) throw new Error('o diagnóstico vazou PIN ou pedido')
+        writeFileSync(join(OUT, 'diagnostico-copiado.txt'), clipboard)
+        return clipboard.split('\n')[0]
+      }
     )
-    if (process.platform === 'darwin' && left < 80)
-      throw new Error(`engrenagem em ${left}px, cobre os botões`)
-    return `engrenagem a ${left}px da borda`
-  })
-  await step(
-    'ajustes: nome só para ver, botão do GitHub e diagnóstico copiado de verdade',
-    async () => {
-      await app.click(/Ajustes/)
-      const text = await app.waitText(/Nome deste dispositivo/)
-      if (!/GitHub/.test(text)) throw new Error('sem o botão do GitHub')
-      await app.shot('04-ajustes')
-      await app.click(/Copiar diagnóstico/)
-      await app.waitText(/Copiado/, 8_000)
-      let clipboard
-      try {
-        clipboard = await readClipboard()
-      } catch (error) {
-        // Sessões sem acesso à área de transferência (visto numa sessão local do Windows): só a CI é obrigada a ler.
-        if (process.env.CI === 'true') throw error
-        return 'PULADO: esta sessão não consegue ler a área de transferência (o app mostrou "Copiado")'
-      }
-      for (const part of ['Horizonte ', `Sistema: ${process.platform}`, 'Tela:', 'Qualidade:']) {
-        if (!clipboard.includes(part))
-          throw new Error(`o diagnóstico copiado não tem "${part}": ${clipboard.slice(0, 200)}`)
-      }
-      if (/4821|pair-/.test(clipboard)) throw new Error('o diagnóstico vazou PIN ou pedido')
-      writeFileSync(join(OUT, 'diagnostico-copiado.txt'), clipboard)
-      return clipboard.split('\n')[0]
-    }
-  )
-  await app.close()
+    await app.close()
 
-  // ---------- 2ª abertura: lembra o modo ----------
-  app = await launch('2-lembra-mostrar')
-  await step('reabrir: vai direto para Mostrar, sem a tela de começar', async () => {
-    const text = await app.waitText(/Na sua rede/, 30_000)
-    if (/Começar/.test(text)) throw new Error('mostrou a tela de começar de novo')
-    await app.shot('05-reabriu-mostrar')
-  })
-  await step('trocar para Enviar pela pílula: prepara e chega em pronto', async () => {
-    await app.click(/^Enviar$/)
-    await app.waitText(/Pronto\./, 30_000)
-    await app.shot('06-pronto')
-  })
-  await step(
-    'envio completo: pedido de pareamento, aprovar e conectado com o nome do aparelho',
-    async () => {
-      await app.waitText(/Permitir o Notebook/, 30_000)
-      await app.click(/^Permitir$/)
-      const text = await app.waitText(/Notebook conectado/, 30_000)
-      if (!/Tela estendida/.test(text)) throw new Error('sem "Tela estendida"')
-      await app.shot('07-conectado')
-    }
-  )
-  await app.close()
+    // ---------- 2ª abertura: lembra o modo ----------
+    app = await launch('2-lembra-mostrar')
+    await step('reabrir: vai direto para Mostrar, sem a tela de começar', async () => {
+      const text = await app.waitText(/Na sua rede/, 30_000)
+      if (/Começar/.test(text)) throw new Error('mostrou a tela de começar de novo')
+      await app.shot('05-reabriu-mostrar')
+    })
+    await step('trocar para Enviar pela pílula: prepara e chega em pronto', async () => {
+      await app.click(/^Enviar$/)
+      await app.waitText(/Pronto\./, 30_000)
+      await app.shot('06-pronto')
+    })
+    await step(
+      'envio completo: pedido de pareamento, aprovar e conectado com o nome do aparelho',
+      async () => {
+        await app.waitText(/Permitir o Notebook/, 30_000)
+        await app.click(/^Permitir$/)
+        const text = await app.waitText(/Notebook conectado/, 30_000)
+        if (!/Tela estendida/.test(text)) throw new Error('sem "Tela estendida"')
+        await app.shot('07-conectado')
+      }
+    )
+    await app.close()
 
-  // ---------- 3ª abertura: lembra Enviar ----------
-  app = await launch('3-lembra-enviar')
-  await step('reabrir: vai direto para Enviar e fica pronto', async () => {
-    const text = await app.waitText(/Pronto\./, 30_000)
-    if (/Começar|Na sua rede/.test(text)) throw new Error('abriu na tela errada')
-    await app.shot('08-reabriu-enviar')
-  })
+    // ---------- 3ª abertura: lembra Enviar ----------
+    app = await launch('3-lembra-enviar')
+    await step('reabrir: vai direto para Enviar e fica pronto', async () => {
+      const text = await app.waitText(/Pronto\./, 30_000)
+      if (/Começar|Na sua rede/.test(text)) throw new Error('abriu na tela errada')
+      await app.shot('08-reabriu-enviar')
+    })
+  }
 } catch (error) {
   console.error('\nParou em:', error instanceof Error ? error.message : error)
   try {
