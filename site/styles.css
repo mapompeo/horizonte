@@ -768,6 +768,7 @@ h2 .l2 {
   padding-block: 20px;
 }
 .stage {
+  isolation: isolate;
   position: relative;
   width: min(100%, 760px, calc((100vh - 290px) * 760 / 580));
   aspect-ratio: 760 / 580;
@@ -2215,4 +2216,478 @@ body {
   .demo .dpill.wait::before {
     animation: none;
   }
+}
+
+/* ============ Ajustes pedidos: alinhamento, radar de verdade, resumo, letras cortadas ============ */
+
+/* Letras que descem (g, q, p) não podem ser cortadas pela máscara dos títulos */
+.mask {
+  padding-bottom: 0.3em;
+  margin-bottom: -0.26em;
+}
+.values .grad,
+.matrix h2 .grad,
+.radar-sec h2 .grad {
+  display: inline-block;
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+  line-height: 1.12;
+}
+
+/* As duas telas lado a lado, na mesma altura e no mesmo topo, como um desktop estendido de verdade */
+.devices {
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  align-content: center;
+  gap: 4%;
+  padding-bottom: 8%;
+}
+.devices .line {
+  display: none;
+}
+.laptop .base {
+  width: 112%;
+  left: -6%;
+}
+.laptop .dev-label {
+  bottom: -42px;
+}
+.monitor .neck {
+  width: 14%;
+}
+
+/* A cena toda flutua de leve e o brilho de trás muda a cada capítulo */
+.motion .stage > .appwin,
+.motion .stage > .devices {
+  animation: floaty 7s ease-in-out infinite;
+}
+@keyframes floaty {
+  50% {
+    translate: 0 -10px;
+  }
+}
+.stage::before {
+  content: '';
+  position: absolute;
+  inset: -14% -10%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow, rgba(10, 132, 255, 0.35)), transparent);
+  filter: blur(40px);
+  opacity: 0.8;
+  transition: background 1.2s var(--ease);
+  animation: glowpulse 8s ease-in-out infinite alternate;
+}
+@keyframes glowpulse {
+  to {
+    transform: scale(1.12) rotate(8deg);
+    opacity: 0.55;
+  }
+}
+.appwin .aicon {
+  animation: iconglow 3.6s ease-in-out infinite;
+}
+@keyframes iconglow {
+  50% {
+    filter: drop-shadow(0 0 2.4cqw rgba(10, 132, 255, 0.55));
+    transform: translateY(-0.6cqw);
+  }
+}
+.appwin .abtn {
+  position: relative;
+}
+.appwin [data-screen='welcome'] .abtn::after {
+  content: '';
+  position: absolute;
+  inset: -0.5cqw;
+  border-radius: 99cqw;
+  border: 0.3cqw solid currentColor;
+  opacity: 0;
+  animation: demo-ping 2.4s ease-out infinite;
+}
+.win,
+.dcur {
+  will-change: transform;
+}
+.screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.18) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: sheen 6s ease-in-out infinite;
+  pointer-events: none;
+}
+.laptop .screen::after {
+  animation-delay: 0.4s;
+}
+@keyframes sheen {
+  0%,
+  55% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+/* Radar de verdade: o aparelho só acende quando a varredura passa por ele e depois some aos poucos */
+.radar .sweep {
+  background: conic-gradient(from 0deg, transparent 0 70%, color-mix(in srgb, var(--accent) 10%, transparent) 90%, color-mix(in srgb, var(--accent) 48%, transparent) 100%);
+  animation: spin 4.8s linear infinite;
+}
+.radar .sweep::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 50%;
+  margin-left: -1px;
+  background: linear-gradient(var(--accent), transparent);
+  opacity: 0.9;
+}
+.radar .blip {
+  opacity: 0;
+  animation: blip 4.8s linear infinite;
+}
+.radar .b1 {
+  animation-delay: 0.82s;
+}
+.radar .b3 {
+  animation-delay: 2.1s;
+}
+.radar .b2 {
+  animation-delay: 3.32s;
+}
+@keyframes blip {
+  0% {
+    opacity: 1;
+    transform: scale(1.25);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent), var(--shadow-card);
+  }
+  6% {
+    transform: scale(1);
+    box-shadow: 0 0 0 14px transparent, var(--shadow-card);
+  }
+  70% {
+    opacity: 0.12;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.radar .blip::after {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .radar .blip {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+/* Wi-Fi: o ponto e as ondas partem do mesmo centro */
+.g-wifi i {
+  box-sizing: border-box;
+  bottom: 30px;
+}
+.g-wifi b {
+  bottom: 33px;
+}
+
+/* ============ Resumo final, no estilo dos resumos de apresentação ============ */
+.recap-sec {
+  padding-block: 40px 150px;
+}
+.recap {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: repeat(4, 170px);
+  gap: 14px;
+  grid-template-areas:
+    'a a b c d d'
+    'e f H H g i'
+    'e h H H j k'
+    'l l m n o o';
+}
+.rt {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--seg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 12px 14px;
+  text-align: center;
+  color: var(--fg);
+  will-change: transform;
+}
+.rt .rg {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+.rt .rg > svg {
+  width: 56px;
+  height: 56px;
+}
+.rt .lab {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.rt .glyph {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 100%;
+  transform: scale(0.72);
+}
+.rt .g-wifi {
+  min-height: 90px;
+}
+.rt-hero {
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6 55%, #bf5af2);
+  color: #fff;
+  justify-content: center;
+  gap: 14px;
+}
+.rt-hero img {
+  width: 28%;
+  max-width: 96px;
+  border-radius: 24%;
+  box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.45);
+  animation: bob 5s ease-in-out infinite;
+}
+.rt-hero b {
+  font-size: clamp(1.6rem, 1rem + 2.2vw, 3rem);
+  letter-spacing: -0.04em;
+}
+.os3 {
+  display: flex;
+  gap: 18px;
+}
+.os3 .ico {
+  width: 38px;
+  height: 38px;
+}
+.rt .slash {
+  stroke: #ff453a;
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: draw 4s var(--ease) infinite;
+}
+.rt .tick {
+  stroke: var(--ok-dot);
+}
+.clip .tick {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: draw 3.6s var(--ease) infinite;
+}
+.clip svg {
+  width: 52px;
+  height: 52px;
+}
+.zero {
+  font-size: clamp(2.4rem, 1.4rem + 3vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  background: linear-gradient(90deg, #0a84ff, #bf5af2 60%, #ff9f0a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.fps {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.fps b {
+  font-size: 28px;
+  letter-spacing: -0.03em;
+  color: var(--faint);
+  animation: fpslit 3.6s ease-in-out infinite;
+}
+.fps b:nth-child(2) {
+  animation-delay: 1.2s;
+}
+.fps b:nth-child(3) {
+  animation-delay: 2.4s;
+}
+@keyframes fpslit {
+  0%,
+  30%,
+  100% {
+    color: var(--faint);
+    transform: none;
+  }
+  12% {
+    color: var(--fg);
+    transform: scale(1.25);
+  }
+}
+.mini-radar {
+  position: relative;
+  width: 74px;
+  height: 74px;
+}
+.mini-radar i {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+}
+.mini-radar i:nth-child(2) {
+  inset: 22%;
+}
+.mini-radar i.sw {
+  border: 0;
+  inset: 0;
+  background: conic-gradient(from 0deg, transparent 0 70%, color-mix(in srgb, var(--accent) 50%, transparent));
+  animation: spin 3s linear infinite;
+}
+.mini-radar b {
+  position: absolute;
+  left: 46%;
+  top: 46%;
+  width: 8%;
+  height: 8%;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.mini-seg {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 130px;
+  padding: 4px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  font-size: 13px;
+  font-weight: 600;
+}
+.mini-seg b {
+  position: relative;
+  z-index: 1;
+  padding: 7px 0;
+}
+.mini-seg i {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 99px;
+  background: var(--card);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  animation: seg 4.4s var(--ease) infinite;
+}
+@keyframes seg {
+  0%,
+  35% {
+    transform: none;
+  }
+  50%,
+  85% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: none;
+  }
+}
+.mini-sliders {
+  display: grid;
+  gap: 12px;
+  width: 92px;
+}
+.mini-sliders i {
+  position: relative;
+  height: 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
+}
+.mini-sliders b {
+  position: absolute;
+  top: -6px;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  animation: knob 3.6s ease-in-out infinite;
+}
+.mini-sliders i:nth-child(2) b {
+  animation-delay: -1.2s;
+}
+.mini-sliders i:nth-child(3) b {
+  animation-delay: -2.4s;
+}
+@keyframes knob {
+  0%,
+  100% {
+    left: 8%;
+  }
+  50% {
+    left: 70%;
+  }
+}
+.rt .g-monitor i {
+  width: 56px;
+  height: 38px;
+}
+@media (max-width: 900px) {
+  .recap {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-auto-rows: 150px;
+    grid-template-areas:
+      'H H'
+      'a a'
+      'b c'
+      'd d'
+      'e f'
+      'g i'
+      'h j'
+      'k m'
+      'l l'
+      'n o';
+  }
+  .rt-hero {
+    min-height: 200px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .motion .stage > .appwin,
+  .motion .stage > .devices,
+  .stage::before,
+  .appwin .aicon,
+  .appwin [data-screen='welcome'] .abtn::after,
+  .screen::after,
+  .rt-hero img,
+  .rt .slash,
+  .clip .tick,
+  .fps b,
+  .mini-radar i.sw,
+  .mini-seg i,
+  .mini-sliders b {
+    animation: none;
+  }
+  .rt .slash,
+  .clip .tick {
+    stroke-dashoffset: 0;
+  }
+}
+.devices {
+  gap: 8%;
+}
+.laptop .base {
+  width: 108%;
+  left: -4%;
 }

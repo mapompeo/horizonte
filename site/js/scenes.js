@@ -110,6 +110,7 @@ export function startScenes(M) {
     { rotateY: 0, rotateX: 0 },
     { rotateY: 0, rotateX: 0 }
   ]
+  const GLOW = ['rgba(10,132,255,.38)', 'rgba(191,90,242,.34)', 'rgba(48,209,200,.32)', 'rgba(255,159,10,.30)', 'rgba(48,209,88,.32)']
   let current = -1
   let token = 0
   screens.forEach((s) => (s.style.opacity = '0'))
@@ -150,6 +151,7 @@ export function startScenes(M) {
       d.classList.toggle('on', k === i)
       M.animate(d, { width: k === i ? '28px' : '8px' }, spring)
     })
+    $('stage').style.setProperty('--glow', GLOW[i])
     const isDevices = i === 3
     M.animate(app, isDevices ? { opacity: 0, scale: 0.8, y: 40, rotateX: 12 } : { opacity: 1, scale: 1, y: 0, ...ANGLE[i] }, soft)
     M.animate(devices, isDevices ? { opacity: 1, scale: [1.08, 1], y: [30, 0] } : { opacity: 0, scale: 0.95, y: 20 }, soft)
@@ -269,14 +271,12 @@ export function startScenes(M) {
 
   // Radar: o aparelho central surge e os outros são encontrados um a um
   const radar = $('radar')
-  const blips = [...radar.querySelectorAll('.blip')]
-  blips.forEach((b) => (b.style.opacity = '0'))
+  // Os aparelhos acendem sozinhos, quando a varredura (CSS) passa por eles.
   radar.querySelector('.core').style.opacity = '0'
   M.inView(
     radar,
     () => {
       M.animate(radar.querySelector('.core'), { opacity: [0, 1], scale: [0.4, 1] }, spring)
-      blips.forEach((b, i) => M.animate(b, { opacity: [0, 1], scale: [0, 1.15, 1] }, { duration: 0.7, delay: 0.9 + i * 0.9 }))
     },
     { amount: 0.5 }
   )
@@ -301,6 +301,28 @@ export function startScenes(M) {
   M.hover('[data-tile]', (el) => {
     M.animate(el, { y: -6, scale: 1.015 }, spring)
     return () => M.animate(el, { y: 0, scale: 1 }, spring)
+  })
+
+  // Resumo final: os quadrinhos pulam no lugar, de dentro para fora, e levantam ao passar o mouse
+  const rts = [...document.querySelectorAll('[data-rt]')]
+  rts.forEach((t) => (t.style.opacity = '0'))
+  const center = document.querySelector('.rt-hero')
+  const dist = (t) => {
+    const a = t.getBoundingClientRect()
+    const b = center.getBoundingClientRect()
+    return Math.hypot(a.left + a.width / 2 - (b.left + b.width / 2), a.top + a.height / 2 - (b.top + b.height / 2))
+  }
+  M.inView(
+    $('recap'),
+    () => {
+      const order = [...rts].sort((x, y) => dist(x) - dist(y))
+      order.forEach((t, i) => M.animate(t, { opacity: [0, 1], scale: [0.6, 1], y: [30, 0] }, { ...spring, delay: 0.06 * i }))
+    },
+    { amount: 0.25 }
+  )
+  M.hover('[data-rt]', (el) => {
+    M.animate(el, { scale: 1.04, y: -4 }, spring)
+    return () => M.animate(el, { scale: 1, y: 0 }, spring)
   })
 
   /* ============ 7. Botões atraídos pelo cursor, toque com mola ============ */
