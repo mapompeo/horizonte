@@ -154,8 +154,19 @@ describe.runIf(process.platform === 'linux' && process.env.CI === 'true')(
       }
       expect(pairingId, 'o Sunshine recebeu o pedido de pareamento').toBeTruthy()
       expect(await api.submitPin({ pairingId: pairingId as string, pin, name })).toBe(true)
-      expect(await paired, 'o Moonlight terminou o pareamento').toBe(0)
-      expect(await api.listClientNames()).toContain(name)
+      const outcome = await Promise.race([
+        paired,
+        new Promise<'travou'>((resolve) => setTimeout(() => resolve('travou'), 45_000))
+      ])
+      const names = await api.listClientNames()
+      console.log(
+        '--- pareamento: saída do Moonlight =',
+        outcome,
+        '| aparelhos no Sunshine =',
+        names
+      )
+      expect(names, 'o Sunshine registrou o aparelho').toContain(name)
+      expect(outcome, 'o Moonlight terminou o pareamento').toBe(0)
     }, 180_000)
   }
 )
