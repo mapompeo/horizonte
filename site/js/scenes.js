@@ -191,6 +191,7 @@ export function startScenes(M) {
       soft,
     );
     app.style.pointerEvents = isDevices ? "none" : "auto";
+    app.inert = isDevices;
     M.animate(
       devices,
       {

@@ -28,7 +28,7 @@ export function copyFor(state: AppState): ScreenCopy {
     case 'approve':
       return {
         title: `Permitir o ${safeName(state.device)}?`,
-        subtitle: 'Ele quer usar este dispositivo como segunda tela.'
+        subtitle: 'Ele quer receber a tela deste dispositivo.'
       }
     case 'connected':
       return {

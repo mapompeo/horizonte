@@ -24,7 +24,7 @@ export function fileLabel(name) {
   return dot === -1 ? name : name.slice(dot)
 }
 
-/** O Mac com chip Apple é o caso mais comum: o botão Baixar leva a ele. */
+/** Mantém a lista de arquivos organizada por chip; o download é escolhido explicitamente. */
 const appleFirst = (a, b) => Number(/arm64/i.test(b.name)) - Number(/arm64/i.test(a.name))
 
 const MATCH = {
@@ -43,11 +43,15 @@ export function buildDownloads(release) {
       files: found.map((a) => ({ name: a.name, mb: Math.round(a.size / 1e6), url: a.browser_download_url }))
     }
   }
+  const mac = entry(MATCH.mac)
+  if (mac.files.length > 1) mac.href = fallback
+  mac.arm64 = entry([/arm64.*\.dmg$/i])
+  mac.x64 = entry([/(?:x64|x86_64|intel).*\.dmg$/i])
   return {
     version: release ? formatVersion(release.tag_name) : null,
     windows: entry(MATCH.windows),
     linux: entry(MATCH.linux),
-    mac: entry(MATCH.mac)
+    mac
   }
 }
 

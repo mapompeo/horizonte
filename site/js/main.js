@@ -28,8 +28,11 @@ async function fillDownloads() {
   const downloads = buildDownloads(pickLatest(await loadReleases()));
   if (downloads.version === null) return; // sem API: ficam os links e textos fixos do HTML
   for (const key of Object.keys(OS_LABEL)) {
-    const link = document.querySelector(`[data-dl="${key}"]`);
-    if (link) link.href = downloads[key].href;
+    document.querySelectorAll(`[data-dl="${key}"]`).forEach((link) => {
+      link.href = link.dataset.chip
+        ? downloads.mac[link.dataset.chip].href
+        : downloads[key].href;
+    });
     const meta = document.querySelector(`[data-dl-meta="${key}"]`);
     // Sem o arquivo desse sistema na versão, o link vai para a página da versão: o texto fixo mentiria.
     if (meta && downloads[key].files.length > 0)

@@ -90,7 +90,7 @@
     <div class="story" id="story">
       <div class="wrap sticky">
         <div class="stage" id="stage">
-<div class="appwin" id="app" aria-hidden="true">
+<div class="appwin" id="app" role="group" aria-label="Demonstração interativa do Horizonte">
             <div class="controls"><span>_</span><span>▢</span><span>✕</span></div>
             <div class="bar" id="app-bar">
               <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></svg>
@@ -178,7 +178,7 @@
         <div class="captions" id="captions">
           <div class="cap"><h3>Abra o Horizonte.</h3><p>Na primeira vez ele instala o motor de transmissão e o monitor virtual. Você só clica em Começar.</p></div>
           <div class="cap"><h3>Diga quem envia e quem mostra.</h3><p>O computador principal envia. O outro dispositivo mostra. Da próxima vez, cada um já abre no seu papel.</p></div>
-          <div class="cap"><h3>Ele acha o outro sozinho.</h3><p>Os dois se encontram pela rede local. Sem digitar IP, sem PIN, sem conta.</p></div>
+          <div class="cap"><h3>Ele acha o outro sozinho.</h3><p>Os dois se encontram pela rede local, sem criar conta. Se o pareamento pedir, digite o PIN mostrado no outro dispositivo.</p></div>
           <div class="cap"><h3>Arraste a janela para o lado.</h3><p>O outro dispositivo vira uma extensão da sua tela. É só levar a janela até a borda.</p></div>
           <div class="cap"><h3>Ajuste a qualidade ao vivo.</h3><p>Mais nitidez ou mais leveza, com um toque. O selo mostra quem está conectado.</p></div>
         </div>
@@ -205,7 +205,7 @@
   <section class="wrap radar-sec" id="rede">
     <div class="radar-copy">
       <h2 data-mask><span class="mask"><span>Ele acha o outro</span></span><span class="mask"><span class="grad">sozinho.</span></span></h2>
-      <p data-rise>Pela rede local. Sem IP, sem PIN, sem conta.</p>
+      <p data-rise>Pela rede local, sem criar conta. A descoberta é automática; se necessário, conecte pelo IP e digite o PIN mostrado no outro dispositivo.</p>
     </div>
     <div class="radar" id="radar" aria-hidden="true">
       <i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i><i class="sweep"></i>
@@ -303,7 +303,8 @@
         <svg class="ico os-ico" aria-hidden="true"><use href="#i-apple"/></svg><span class="state">Em teste</span>
         <h3>macOS</h3>
         <span class="meta" data-dl-meta="mac">Chip Apple e chip Intel · .dmg</span>
-        <a class="linkbtn magnet" data-dl="mac" href="https://github.com/mapompeo/horizonte/releases">Baixar</a>
+        <a class="linkbtn magnet" data-dl="mac" data-chip="arm64" href="https://github.com/mapompeo/horizonte/releases">Baixar para chip Apple (ARM64)</a>
+        <a class="linkbtn magnet" data-dl="mac" data-chip="x64" href="https://github.com/mapompeo/horizonte/releases">Baixar para chip Intel (x64)</a>
       </div>
     </div>
   </section>
