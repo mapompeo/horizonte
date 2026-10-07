@@ -5,7 +5,11 @@
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.svelte",
     "src/preload/*.d.ts",
-    "src/shared/**/*"
+    "src/shared/**/*",
+    "src/main/core/**/*",
+    "src/main/engine/fake.ts",
+    "src/main/engine/port.ts",
+    "demo/**/*"
   ],
   "compilerOptions": {
     "verbatimModuleSyntax": true,

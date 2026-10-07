@@ -3,9 +3,9 @@ name: Site
 on:
   push:
     branches: [main]
-    paths: ['site/**', '.github/workflows/pages.yml']
+    paths: ['site/**', 'app/src/**', 'app/demo/**', 'app/vite.demo.config.ts', '.github/workflows/pages.yml']
   pull_request:
-    paths: ['site/**', '.github/workflows/pages.yml']
+    paths: ['site/**', 'app/src/**', 'app/demo/**', 'app/vite.demo.config.ts', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -25,6 +25,11 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      # O app de verdade compila para o navegador: se uma mudança no app quebrar a demonstração, o teste acusa aqui.
+      - run: npm ci --ignore-scripts
+        working-directory: app
+      - run: npm run build:demo
+        working-directory: app
 
   deploy:
     needs: test
@@ -39,6 +44,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # A página mostra o app de verdade, compilado do código atual do projeto (site/app não vai para o git).
+      - run: npm ci --ignore-scripts
+        working-directory: app
+      - run: npm run build:demo
+        working-directory: app
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
