@@ -4,6 +4,7 @@ const join = posix.join
 import type { PrepProgress } from '../../../shared/types'
 import type { SunshineDisplay } from '../../engine/sunshine/log'
 import type { EngineInstaller, SunshineCredentials, VirtualDisplay } from '../types'
+import { createSetupTask, setupStep } from '../types'
 import type { Artifact } from '../windows/download'
 import type { PinnedArtifact } from '../windows/versions'
 import { sessionKind, WAYLAND_MESSAGE } from './session'
@@ -39,7 +40,8 @@ export interface LinuxSetupDeps {
   download(
     artifact: Artifact & { fileName?: string },
     dest: string,
-    onProgress?: (fraction: number) => void
+    onProgress?: (fraction: number) => void,
+    signal?: AbortSignal
   ): Promise<void>
   /** Roda como administrador, com UM aviso do sistema (polkit). */
   runPrivileged(script: string): Promise<void>
@@ -71,18 +73,23 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
   installer: EngineInstaller
   display: VirtualDisplay
 } {
-  let report: (progress: PrepProgress) => void = () => undefined
-
-  async function run(): Promise<void> {
+  async function run(
+    report: (progress: PrepProgress) => void,
+    signal?: AbortSignal
+  ): Promise<void> {
+    signal?.throwIfAborted()
+    const step = <T>(action: () => Promise<T>): Promise<T> => setupStep(signal, action)
     if (sessionKind(deps.env) === 'wayland') throw new Error(WAYLAND_MESSAGE)
 
-    const [installed, active, responding, stored, monitor] = await Promise.all([
-      deps.probe.sunshineInstalled(),
-      deps.probe.serviceActive(),
-      deps.probe.sunshineResponding(),
-      deps.vault.load(),
-      deps.probe.monitorPresent()
-    ])
+    const [installed, active, responding, stored, monitor] = await step(() =>
+      Promise.all([
+        deps.probe.sunshineInstalled(),
+        deps.probe.serviceActive(),
+        deps.probe.sunshineResponding(),
+        deps.vault.load(),
+        deps.probe.monitorPresent()
+      ])
+    )
     const needInstall = !installed
     const needCredentials = needInstall || stored === null
     const needStart = !active || !responding
@@ -91,8 +98,13 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
       const deb = deps.debForThisSystem()
       const file = join(deps.workDir, deb.fileName)
       report({ note: 'Baixando o motor de transmissão', fraction: 0 })
-      await deps.download(deb, file, (f) =>
-        report({ note: 'Baixando o motor de transmissão', fraction: f * DOWNLOAD_SHARE })
+      await step(() =>
+        deps.download(
+          deb,
+          file,
+          (f) => report({ note: 'Baixando o motor de transmissão', fraction: f * DOWNLOAD_SHARE }),
+          signal
+        )
       )
       report({
         note: 'Instalando o motor de transmissão (confirme o aviso do sistema)',
@@ -100,56 +112,59 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
         permission: true
       })
       // Copia para uma pasta só do administrador e confere o hash de novo antes de instalar.
-      await deps.runPrivileged(
-        [
-          'set -e',
-          'stage=/var/lib/horizonte/stage',
-          'mkdir -p "$stage"',
-          `install -m 600 ${shQuote(file)} "$stage/pacote.deb"`,
-          `echo ${shQuote(`${deb.sha256}  `)}"$stage/pacote.deb" | sha256sum -c - >/dev/null`,
-          'DEBIAN_FRONTEND=noninteractive apt-get install -y "$stage/pacote.deb"',
-          'rm -rf "$stage"'
-        ].join('\n')
+      await step(() =>
+        deps.runPrivileged(
+          [
+            'set -e',
+            'stage=/var/lib/horizonte/stage',
+            'mkdir -p "$stage"',
+            `install -m 600 ${shQuote(file)} "$stage/pacote.deb"`,
+            `echo ${shQuote(`${deb.sha256}  `)}"$stage/pacote.deb" | sha256sum -c - >/dev/null`,
+            'DEBIAN_FRONTEND=noninteractive apt-get install -y "$stage/pacote.deb"',
+            'rm -rf "$stage"'
+          ].join('\n')
+        )
       )
     }
 
-    let credentials: SunshineCredentials | null = stored
     if (needCredentials) {
-      credentials = { username: USERNAME, password: deps.generatePassword(), port: deps.port }
-      await deps.runUser(
-        `sunshine --creds ${shQuote(credentials.username)} ${shQuote(credentials.password)}`
+      signal?.throwIfAborted()
+      const credentials: SunshineCredentials = {
+        username: USERNAME,
+        password: deps.generatePassword(),
+        port: deps.port
+      }
+      await step(() =>
+        deps.runUser(
+          `sunshine --creds ${shQuote(credentials.username)} ${shQuote(credentials.password)}`
+        )
       )
-      await deps.vault.save(credentials)
+      await step(() => deps.vault.save(credentials))
     }
 
     if (needInstall || needCredentials || needStart) {
       report({ note: 'Ligando o motor de transmissão', fraction: INSTALL_SHARE })
       // A senha nova só vale depois de reiniciar um serviço que já rodava.
-      await deps.runUser(
-        needCredentials || (active && !responding)
-          ? `systemctl --user enable ${SUNSHINE_UNIT} && systemctl --user restart ${SUNSHINE_UNIT}`
-          : `systemctl --user enable --now ${SUNSHINE_UNIT}`
+      await step(() =>
+        deps.runUser(
+          needCredentials || (active && !responding)
+            ? `systemctl --user enable ${SUNSHINE_UNIT} && systemctl --user restart ${SUNSHINE_UNIT}`
+            : `systemctl --user enable --now ${SUNSHINE_UNIT}`
+        )
       )
-      await deps.waitForApi()
+      await step(() => deps.waitForApi())
     }
 
-    if (!monitor) await deps.runUser(VIRTUAL_MONITOR_SCRIPT)
+    if (!monitor) await step(() => deps.runUser(VIRTUAL_MONITOR_SCRIPT))
     report({ note: 'Motor pronto', fraction: 1 })
   }
 
-  let inFlight: Promise<void> | null = null
-  const ensure = (onReport?: (progress: PrepProgress) => void): Promise<void> => {
-    if (onReport) report = onReport
-    inFlight ??= run().finally(() => {
-      inFlight = null
-    })
-    return inFlight
-  }
+  const ensure = createSetupTask(run)
 
   return {
-    installer: { ensureInstalled: (r) => ensure(r) },
+    installer: { ensureInstalled: ensure },
     display: {
-      ensureVirtualDisplay: () => ensure(),
+      ensureVirtualDisplay: (signal) => ensure(undefined, signal),
       isVirtual: (display: SunshineDisplay) => display.friendlyName.includes(MONITOR_NAME)
     }
   }
