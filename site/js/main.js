@@ -1,14 +1,9 @@
 import { detectOs, OS_LABEL } from './os.js'
-import { buildDownloads, loadReleases, pickLatest } from './releases.js'
+import { buildDownloads, fileLabel, loadReleases, pickLatest } from './releases.js'
 
 const os = detectOs(navigator.userAgent)
 const mine = document.querySelector(`.os[data-os="${os}"] h3`)
 if (mine) mine.insertAdjacentHTML('afterend', '<span class="you">Seu sistema</span>')
-
-/** 'Horizonte-0.1.0-setup.exe' vira 'Instalador .exe'; os outros mostram só a extensão. */
-function kind(name) {
-  return /-setup\.exe$/i.test(name) ? 'Instalador .exe' : name.slice(name.lastIndexOf('.'))
-}
 
 /** Uma linha por arquivo, cada uma com o próprio link (o Linux tem .AppImage e .deb). Montado com DOM, sem HTML em texto. */
 function fillMeta(meta, files) {
@@ -17,7 +12,7 @@ function fillMeta(meta, files) {
     if (i > 0) meta.append(document.createElement('br'))
     const link = document.createElement('a')
     link.href = f.url
-    link.textContent = `${kind(f.name)} · ${f.mb} MB`
+    link.textContent = `${fileLabel(f.name)} · ${f.mb} MB`
     meta.append(link)
   })
 }
