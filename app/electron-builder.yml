@@ -37,6 +37,10 @@ mac:
   # Assinatura ad hoc com hardened runtime exige liberar a validação de bibliotecas; sem notarização ele não é preciso.
   hardenedRuntime: false
   entitlementsInherit: build/entitlements.mac.plist
+  # O auxiliar que cria o monitor virtual (compilado por npm run build:helper:mac) vai dentro do app.
+  extraResources:
+    - from: native/macos/build/horizonte-display
+      to: horizonte-display
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.

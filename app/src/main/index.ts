@@ -279,7 +279,11 @@ async function boot(): Promise<void> {
     const platform = createMacPlatform({
       userData: app.getPath('userData'),
       cipher: toCipher(safeStorage),
-      sleep
+      sleep,
+      // Empacotado, o auxiliar vem junto do app (extraResources); do código-fonte, da pasta onde ele é compilado.
+      helperPath: app.isPackaged
+        ? join(process.resourcesPath, 'horizonte-display')
+        : join(app.getAppPath(), 'native', 'macos', 'build', 'horizonte-display')
     })
     engine = composeEngine(
       new SunshineEngine({

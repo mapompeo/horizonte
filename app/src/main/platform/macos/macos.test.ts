@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SunshineDisplay } from '../../engine/sunshine/log'
-import { createMacSetup, ONE_SCREEN_MESSAGE, type MacSetupDeps } from './setup'
+import {
+  createMacSetup,
+  ONE_SCREEN_MESSAGE,
+  VIRTUAL_DISPLAY_FAILED_MESSAGE,
+  type MacSetupDeps
+} from './setup'
 import { sunshineDmgFor } from './versions'
 import { countDisplays } from './wire'
 
@@ -19,19 +24,29 @@ interface Harness {
   scripts: string[]
   download: ReturnType<typeof vi.fn>
   save: ReturnType<typeof vi.fn>
+  helperStarts: () => number
 }
 
 function harness(
-  options: { installed?: boolean; responding?: boolean; stored?: boolean; screens?: number } = {}
+  options: {
+    installed?: boolean
+    responding?: boolean
+    stored?: boolean
+    screens?: number
+    /** Com o auxiliar: quantas telas existem depois de ele criar o monitor (a de antes é `screens`). */
+    helper?: { screensAfter: number } | { fails: string }
+  } = {}
 ): Harness {
   const scripts: string[] = []
   const download = vi.fn(async () => undefined)
   const save = vi.fn(async () => undefined)
+  let screens = options.screens ?? 2
+  let helperStarts = 0
   const deps: MacSetupDeps = {
     probe: {
       sunshineInstalled: async () => options.installed ?? false,
       sunshineResponding: async () => options.responding ?? false,
-      displayCount: async () => options.screens ?? 2
+      displayCount: async () => screens
     },
     vault: {
       load: async () =>
@@ -43,11 +58,19 @@ function harness(
     dmgForThisMac: () => sunshineDmgFor('arm64'),
     waitForApi: async () => undefined,
     generatePassword: () => 'senha-nova',
+    sleep: async () => undefined,
+    startVirtualDisplay: options.helper
+      ? async () => {
+          helperStarts++
+          if ('fails' in options.helper!) throw new Error(options.helper.fails)
+          screens = options.helper!.screensAfter
+        }
+      : undefined,
     workDir: '/tmp',
     appsDir: '/Users/ana/Applications',
     port: 47989
   }
-  return { deps, scripts, download, save }
+  return { deps, scripts, download, save, helperStarts: () => helperStarts }
 }
 
 const display = (primary: boolean): SunshineDisplay => ({
@@ -112,6 +135,40 @@ describe('createMacSetup', () => {
     )
     expect(h.download).not.toHaveBeenCalled()
     expect(h.scripts).toEqual([])
+  })
+
+  it('Mac com uma tela só e o auxiliar do Horizonte: cria o monitor virtual e só então instala', async () => {
+    const h = harness({ screens: 1, helper: { screensAfter: 2 } })
+    await createMacSetup(h.deps).installer.ensureInstalled()
+    expect(h.helperStarts()).toBe(1)
+    expect(h.download).toHaveBeenCalledOnce()
+  })
+
+  it('Mac com duas telas ou mais: nem liga o auxiliar', async () => {
+    const h = harness({ screens: 2, helper: { screensAfter: 3 } })
+    await createMacSetup(h.deps).installer.ensureInstalled()
+    expect(h.helperStarts()).toBe(0)
+  })
+
+  it('o auxiliar roda mas o macOS não mostra a tela nova: explica e não instala nada', async () => {
+    const h = harness({ screens: 1, helper: { screensAfter: 1 } })
+    await expect(createMacSetup(h.deps).installer.ensureInstalled()).rejects.toThrow(
+      VIRTUAL_DISPLAY_FAILED_MESSAGE
+    )
+    expect(h.download).not.toHaveBeenCalled()
+  })
+
+  it('o auxiliar falha ao iniciar: explica com o que o sistema disse e não instala nada', async () => {
+    const h = harness({ screens: 1, helper: { fails: 'o macOS recusou criar o monitor virtual' } })
+    const error = await createMacSetup(h.deps)
+      .installer.ensureInstalled()
+      .then(
+        () => null,
+        (cause: unknown) => cause as Error
+      )
+    expect(error?.message).toContain(VIRTUAL_DISPLAY_FAILED_MESSAGE)
+    expect(error?.message).toContain('o macOS recusou criar o monitor virtual')
+    expect(h.download).not.toHaveBeenCalled()
   })
 
   it('o monitor "virtual" é qualquer tela que não seja a principal', () => {

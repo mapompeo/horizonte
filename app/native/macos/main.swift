@@ -69,6 +69,13 @@ if CGBeginDisplayConfiguration(&config) == .success, let config = config {
 print("DISPLAY_ID \(display.displayID)")
 fflush(stdout)
 
+// Se o app que me iniciou morrer, o processo passa a ter outro pai: aí o monitor virtual não tem mais dono.
+let originalParent = getppid()
+let watcher = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+    if getppid() != originalParent { exit(0) }
+}
+watcher.tolerance = 0.5
+
 var signalSources: [DispatchSourceSignal] = []
 for signalNumber in [SIGTERM, SIGINT] {
     signal(signalNumber, SIG_IGN)

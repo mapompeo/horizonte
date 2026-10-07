@@ -21,6 +21,9 @@ export const SCREEN_RECORDING_PANE =
 export const ONE_SCREEN_MESSAGE =
   'Este Mac só tem uma tela, e o macOS não cria monitor virtual sozinho. Para estender a tela, conecte um plugue HDMI "dummy" ou instale o BetterDisplay (ele cria um monitor virtual), e abra o Horizonte de novo.'
 
+export const VIRTUAL_DISPLAY_FAILED_MESSAGE =
+  'Não consegui criar o monitor virtual neste Mac. Conecte um plugue HDMI "dummy" ou instale o BetterDisplay (ele cria um monitor virtual), e abra o Horizonte de novo.'
+
 export interface MacProbe {
   sunshineInstalled(): Promise<boolean>
   sunshineResponding(): Promise<boolean>
@@ -44,6 +47,12 @@ export interface MacSetupDeps {
   dmgForThisMac(): PinnedArtifact
   waitForApi(): Promise<void>
   generatePassword(): string
+  sleep(ms: number): Promise<void>
+  /**
+   * Cria o monitor virtual próprio do Horizonte (o auxiliar horizonte-display) e devolve quando ele já está
+   * rodando. Ausente quando o auxiliar não existe (por exemplo, rodando do código-fonte sem compilá-lo).
+   */
+  startVirtualDisplay?(): Promise<void>
   workDir: string
   /** Pasta de aplicativos da pessoa (`~/Applications`): instalar nela dispensa administrador. */
   appsDir: string
@@ -65,7 +74,24 @@ export function createMacSetup(deps: MacSetupDeps): {
       deps.vault.load(),
       deps.probe.displayCount()
     ])
-    if (screens < 2) throw new Error(ONE_SCREEN_MESSAGE)
+    let screenCount = screens
+    if (screenCount < 2) {
+      // Sem uma segunda tela o Sunshine só espelha a principal: o Horizonte cria o monitor virtual sozinho.
+      if (!deps.startVirtualDisplay) throw new Error(ONE_SCREEN_MESSAGE)
+      report({ note: 'Criando o monitor virtual', fraction: 0 })
+      try {
+        await deps.startVirtualDisplay()
+      } catch (cause) {
+        const detail = cause instanceof Error ? cause.message : String(cause)
+        throw new Error(`${VIRTUAL_DISPLAY_FAILED_MESSAGE} (${detail})`)
+      }
+      // O macOS leva um instante para mostrar a tela nova.
+      for (let attempt = 0; attempt < 20 && screenCount < 2; attempt += 1) {
+        await deps.sleep(500)
+        screenCount = await deps.probe.displayCount()
+      }
+      if (screenCount < 2) throw new Error(VIRTUAL_DISPLAY_FAILED_MESSAGE)
+    }
 
     const needInstall = !installed
     const needCredentials = needInstall || stored === null

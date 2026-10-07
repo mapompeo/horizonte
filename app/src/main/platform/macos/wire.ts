@@ -1,4 +1,5 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { SunshineApi } from '../../engine/sunshine/api'
@@ -8,6 +9,7 @@ import { createCredentialVault, type Cipher } from '../windows/secrets'
 import { generatePassword, waitForApi } from '../windows/wire'
 import { shQuote } from '../linux/setup'
 import { ensureMoonlightMac } from './moonlight'
+import { startDisplayHelper, type RunningDisplay } from './helper'
 import { createMacSetup, SUNSHINE_PROCESS, type MacProbe } from './setup'
 import { MOONLIGHT_MAC_DMG, sunshineDmgFor } from './versions'
 
@@ -31,10 +33,14 @@ const succeeds = (script: string): Promise<boolean> =>
 /** Conta as linhas "Resolution:" do relatório de telas: uma por tela ligada. */
 export const countDisplays = (report: string): number => (report.match(/Resolution:/g) ?? []).length
 
-export const createProbe = (): MacProbe => ({
+/** O auxiliar sabe contar as telas pela API do sistema; sem ele, o relatório do `system_profiler`. */
+export const createProbe = (helperPath: string | null = null): MacProbe => ({
   sunshineInstalled: () => succeeds(`test -d ${shQuote(join(APPS_DIR, 'Sunshine.app'))}`),
   sunshineResponding: () => succeeds('lsof -nP -iTCP:47990 -sTCP:LISTEN'),
-  displayCount: async () => countDisplays(await sh('system_profiler SPDisplaysDataType', 30_000))
+  displayCount: async () =>
+    helperPath
+      ? Number((await sh(`${shQuote(helperPath)} --count`, 15_000)).trim())
+      : countDisplays(await sh('system_profiler SPDisplaysDataType', 30_000))
 })
 
 /** Devolve o caminho do executável do Moonlight no Mac, baixando e instalando na primeira vez (sem administrador). */
@@ -60,6 +66,8 @@ export function createMacPlatform(deps: {
   userData: string
   cipher: Cipher
   sleep: (ms: number) => Promise<void>
+  /** Caminho do auxiliar horizonte-display, ou null quando ele não existe (código-fonte sem compilar). */
+  helperPath: string | null
 }): MacPlatform {
   const vault = createCredentialVault({
     file: join(deps.userData, 'sunshine.bin'),
@@ -68,8 +76,14 @@ export function createMacPlatform(deps: {
   const createApi = (c: SunshineCredentials): SunshineApi =>
     new SunshineApi({ port: c.port, username: c.username, password: c.password })
 
+  let monitor: RunningDisplay | null = null
+  const helperPath =
+    deps.helperPath !== null && existsSync(deps.helperPath) ? deps.helperPath : null
+  // O auxiliar também encerra sozinho se o app morrer (ele confere o processo pai); isto cobre o fim normal.
+  process.on('exit', () => monitor?.stop())
+
   const setup = createMacSetup({
-    probe: createProbe(),
+    probe: createProbe(helperPath),
     vault,
     download: downloadVerified,
     run: async (script) => void (await sh(script, 600_000)),
@@ -80,6 +94,27 @@ export function createMacPlatform(deps: {
       await waitForApi(() => createApi(credentials).getConfig(), deps.sleep)
     },
     generatePassword,
+    sleep: deps.sleep,
+    startVirtualDisplay: helperPath
+      ? async () => {
+          if (monitor) return
+          monitor = await startDisplayHelper(() => {
+            const child = spawn(helperPath, [], { stdio: ['ignore', 'pipe', 'pipe'] })
+            return {
+              onStdout: (cb) =>
+                void child.stdout.on('data', (chunk: Buffer) => cb(chunk.toString())),
+              onStderr: (cb) =>
+                void child.stderr.on('data', (chunk: Buffer) => cb(chunk.toString())),
+              onExit: (cb) =>
+                void child.on('exit', (code) => {
+                  monitor = null
+                  cb(code)
+                }),
+              kill: () => void child.kill('SIGTERM')
+            }
+          })
+        }
+      : undefined,
     workDir: tmpdir(),
     appsDir: APPS_DIR,
     port: PORT
