@@ -28,6 +28,7 @@ import { buildDiagnostic } from './core/diagnostic'
 import { createDiagnosticHistory } from './core/diagnostic-history'
 import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
+import { finishStartup, runStartup } from './startup'
 import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
@@ -158,7 +159,6 @@ async function boot(): Promise<void> {
       }
     }
   }
-  if (app.isPackaged) await autostart.set((await persisted.load()).autostart)
   const fake = new FakeEngine(is.dev ? 700 : 0)
   const dev = readDevEngineConfig(process.env)
   const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -453,11 +453,23 @@ async function boot(): Promise<void> {
   )
   app.on('before-quit', () => void gateway.stop())
 
-  createWindow(controller)
-  void updates.perform('check')
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(controller)
   })
+  await finishStartup({
+    createWindow: () => createWindow(controller),
+    syncAutostart: app.isPackaged
+      ? () => autostart.set(controller.getSnapshot().settings.autostart)
+      : undefined,
+    reportError: (error) => {
+      console.error(error)
+      dialog.showErrorBox(
+        'Não consegui configurar a abertura com o sistema',
+        `${error.message}\n\nDetalhe: ${error.cause instanceof Error ? error.cause.message : String(error.cause)}`
+      )
+    }
+  })
+  void updates.perform('check')
 }
 
 app.on('window-all-closed', () => {
@@ -472,7 +484,17 @@ if (!app.isPackaged || app.requestSingleInstanceLock()) {
     if (window.isMinimized()) window.restore()
     window.focus()
   })
-  void boot()
+  void runStartup(boot, (error) => {
+    console.error(error)
+    try {
+      dialog.showErrorBox(
+        'Não consegui iniciar o Horizonte',
+        `${error.message}\n\nDetalhe: ${error.cause instanceof Error ? error.cause.message : String(error.cause)}`
+      )
+    } finally {
+      app.quit()
+    }
+  })
 } else {
   app.quit()
 }
