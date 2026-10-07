@@ -81,7 +81,10 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
             'Não consegui falar com o outro dispositivo. Confira se o Horizonte está aberto em Enviar lá.'
           )
         })
-        if ((await deps.run(['pair', host, '--pin', pin])) !== 0) {
+        // O Moonlight às vezes registra o pareamento e não encerra o processo (visto no Mac e no Linux):
+        // se o pair não deu 0, o `list` diz se o aparelho ficou pareado mesmo assim.
+        const pairCode = await deps.run(['pair', host, '--pin', pin])
+        if (pairCode !== 0 && (await deps.run(['list', host])) !== 0) {
           throw new Error(
             'O pareamento não foi concluído. Aprove o pedido no outro dispositivo e tente de novo.'
           )

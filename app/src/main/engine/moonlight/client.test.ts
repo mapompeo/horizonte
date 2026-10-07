@@ -105,10 +105,20 @@ describe('createMoonlightClient', () => {
   })
 
   it('pareamento recusado explica e não abre a transmissão', async () => {
-    pairing.run.mockResolvedValueOnce(1)
+    pairing.run.mockResolvedValue(1) // o pair falha e o list também: não está pareado
     const { spawn, client } = make()
     await expect(client.connect('192.168.1.9', DEFAULT_SETTINGS)).rejects.toThrow(/pareamento/i)
     expect(spawn).not.toHaveBeenCalled()
+    pairing.run.mockResolvedValue(0)
+  })
+
+  it('pair que não encerra (null) mas o list enxerga o aparelho: está pareado e transmite', async () => {
+    pairing.run.mockImplementation(async (args) => (args[0] === 'pair' ? null : 0))
+    const { spawn, client } = make()
+    await client.connect('192.168.1.8', DEFAULT_SETTINGS)
+    expect(pairing.run).toHaveBeenCalledWith(['list', '192.168.1.8'])
+    expect(spawn).toHaveBeenCalledTimes(1)
+    pairing.run.mockImplementation(async () => 0)
   })
 
   describe('aparelhos já pareados', () => {
