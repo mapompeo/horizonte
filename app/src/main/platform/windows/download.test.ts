@@ -4,7 +4,7 @@ import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { downloadVerified, DownloadError } from './download'
 
 const sha256 = (data: Buffer): string => createHash('sha256').update(data).digest('hex')
@@ -48,26 +48,48 @@ const serve = (path: string, body: Buffer): void => {
 describe('downloadVerified', () => {
   it('renova o prazo enquanto chegam dados, permitindo downloads demorados', async () => {
     const body = Buffer.alloc(6, 7)
+    let respond!: (res: import('node:http').ServerResponse) => void
+    const response = new Promise<import('node:http').ServerResponse>((resolve) => {
+      respond = resolve
+    })
     routes['/continuo'] = (res) => {
       res.setHeader('content-length', body.length)
-      let sent = 0
-      const timer = setInterval(() => {
-        res.write(body.subarray(sent, ++sent))
-        if (sent === body.length) {
-          clearInterval(timer)
-          res.end()
-        }
-      }, 30)
-      res.on('close', () => clearInterval(timer))
+      res.flushHeaders()
+      respond(res)
     }
     const dest = join(dir, 'continuo')
-    await downloadVerified(
+    const timeoutMs = 100
+    // Só o relógio é simulado: rede, pipeline, hash e arquivo continuam reais.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    const started = Date.now()
+    let received!: () => void
+    const pending = downloadVerified(
       { url: urlFor('/continuo'), sha256: sha256(body) },
       dest,
+      () => received(),
       undefined,
-      undefined,
-      100
+      timeoutMs
     )
+    // A falha também é observada abaixo; evita rejeição solta durante o avanço do relógio.
+    void pending.catch(() => undefined)
+    const res = await response
+    try {
+      for (let sent = 0; sent < body.length; sent++) {
+        const measured = new Promise<void>((resolve) => {
+          received = resolve
+        })
+        await vi.advanceTimersByTimeAsync(60)
+        res.write(body.subarray(sent, sent + 1))
+        // Não avance o relógio até o pipeline processar este chunk e renovar o prazo.
+        await Promise.race([measured, pending])
+      }
+      expect(Date.now() - started).toBeGreaterThan(timeoutMs)
+      res.end()
+      await pending
+    } finally {
+      res.destroy()
+      vi.useRealTimers()
+    }
     expect(await readFile(dest)).toEqual(body)
   })
   it.each(['sem-cabecalho', 'corpo-parado'])(
