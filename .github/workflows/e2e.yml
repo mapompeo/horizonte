@@ -1,0 +1,52 @@
+name: E2E
+
+# Testes de verdade nos três sistemas: instalação real (o que dá para instalar sem administrador) e o app aberto
+# e dirigido pela interface. Capturas de tela e logs ficam como artefatos da execução.
+on:
+  pull_request:
+    paths: ['app/**', '.github/workflows/e2e.yml']
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/e2e.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Dependências do Linux (tela virtual, área de transferência e bibliotecas do Electron)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xclip libnss3 libgbm1 libgtk-3-0t64 libasound2t64 libxss1
+      - run: npm ci
+      - run: npm run build
+      - name: Testes reais do sistema (rede, instalação, hash)
+        run: npm run test:e2e
+      - name: App aberto de verdade (Linux, com tela virtual)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a --server-args="-screen 0 1280x800x24" npm run e2e:app
+      - name: App aberto de verdade
+        if: runner.os != 'Linux'
+        run: npm run e2e:app
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-${{ matrix.os }}
+          path: app/e2e-out
+          if-no-files-found: ignore
