@@ -56,8 +56,10 @@ import {
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
 
-// Um pareamento de verdade leva segundos; passou disso, algo travou.
-const PAIR_TIMEOUT_MS = 90_000
+// Um pareamento de verdade leva segundos; passou disso, o Moonlight travou (e o list confere se pareou).
+const PAIR_TIMEOUT_MS = 60_000
+// O list responde em segundos quando o aparelho está pareado.
+const LIST_TIMEOUT_MS = 20_000
 
 /** Os botões de janela ficam por cima da interface, na cor do fundo e discretos. */
 function overlayFor(): { color: string; symbolColor: string; height: number } {
@@ -197,7 +199,7 @@ async function boot(): Promise<void> {
       const child = spawn(await moonlightExe(), args, { stdio: 'ignore', env: clientEnv })
       return waitForExit(
         { kill: () => void child.kill(), onExit: (l) => void child.once('exit', l) },
-        PAIR_TIMEOUT_MS,
+        args[0] === 'list' ? LIST_TIMEOUT_MS : PAIR_TIMEOUT_MS,
         (l) => void child.once('error', l)
       )
     },
