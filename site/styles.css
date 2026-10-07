@@ -2241,3 +2241,8 @@ body {
 .devices .tablet .screen { aspect-ratio: 3 / 4; border-radius: 16px; border-width: 6px; }
 .devices .dev-label { bottom: -8px; font-size: clamp(8px, 1.5vw, 12px); }
 @media (max-width: 600px) { .devices .dev { height: 180px; } .screen { border-width: 4px; } }
+
+.recap { perspective: 1200px; }
+.rt::after { content: ''; pointer-events: none; position: absolute; inset: 0; opacity: 0; transition: opacity .3s; background: radial-gradient(240px circle at var(--light-x,50%) var(--light-y,50%), rgba(10,132,255,.16), transparent 75%); }
+@media (hover: hover) and (pointer: fine) { .rt:hover::after { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .rt::after { transition: none; } }

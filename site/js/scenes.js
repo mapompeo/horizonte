@@ -274,6 +274,20 @@ export function startScenes(M) {
     },
     { amount: 0.25 }
   )
+  if (matchMedia('(hover: hover) and (pointer: fine)').matches) rts.forEach((tile) => {
+    tile.addEventListener('pointermove', (event) => {
+      const rect = tile.getBoundingClientRect()
+      const x = event.clientX - rect.left
+      const y = event.clientY - rect.top
+      tile.style.setProperty('--light-x', x + 'px')
+      tile.style.setProperty('--light-y', y + 'px')
+      M.animate(tile, { rotateY: (x / rect.width - .5) * 8, rotateX: (.5 - y / rect.height) * 8 }, snappy)
+    })
+    tile.addEventListener('pointerleave', () => M.animate(tile, { rotateX: 0, rotateY: 0 }, soft))
+  })
+  M.scroll(M.animate('.rt-hero img', { rotate: [-8, 8], scale: [.9, 1.12] }, { ease: 'linear' }), {
+    target: $('recap'), offset: ['start end', 'end start']
+  })
   M.hover('[data-rt]', (el) => {
     M.animate(el, { scale: 1.04, y: -4 }, spring)
     return () => M.animate(el, { scale: 1, y: 0 }, spring)
