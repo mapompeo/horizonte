@@ -143,7 +143,8 @@ describe.runIf(process.platform === 'linux' && process.env.CI === 'true')(
       const paired = new Promise<number | null>((resolve) => {
         child = spawn(moonlight, ['pair', '127.0.0.1', '--pin', pin], {
           env: { ...process.env, APPIMAGE_EXTRACT_AND_RUN: '1' },
-          stdio: 'inherit'
+          stdio: 'inherit',
+          detached: true
         })
         child.once('exit', resolve)
         child.once('error', () => resolve(null))
@@ -168,7 +169,12 @@ describe.runIf(process.platform === 'linux' && process.env.CI === 'true')(
       )
       expect(names, 'o Sunshine registrou o aparelho').toContain(name)
       // Na CI o Moonlight registra o aparelho mas não encerra o processo (sem tela de verdade): fica só o registro.
-      child?.kill()
+      // Grupo inteiro: o AppImage roda o Moonlight como filho, e um filho vivo prenderia o teste.
+      try {
+        if (child?.pid) process.kill(-child.pid, 'SIGKILL')
+      } catch {
+        // já tinha encerrado
+      }
     }, 180_000)
   }
 )
