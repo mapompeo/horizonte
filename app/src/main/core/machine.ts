@@ -34,10 +34,9 @@ export function reduce(state: AppState, event: AppEvent): AppState {
 
   switch (state.screen) {
     case 'install':
-      // Começar já instala tudo: a escolha só aparece com o motor pronto.
-      return event.type === 'INSTALL_DONE'
-        ? { screen: 'preparing', mode: 'send', step: 'engine', firstRun: true }
-        : state
+      // Começar só leva à escolha: o motor de envio é preparado se (e quando) a pessoa escolher Enviar.
+      // Quem só vai receber a tela não instala nada nem vê pedido de administrador.
+      return event.type === 'INSTALL_DONE' ? { screen: 'choose' } : state
     case 'choose':
       return state
     case 'preparing':
@@ -48,8 +47,7 @@ export function reduce(state: AppState, event: AppEvent): AppState {
           screen: 'preparing',
           mode: 'send',
           step: event.step,
-          progress: kept,
-          ...(state.firstRun ? { firstRun: true as const } : {})
+          progress: kept
         }
       }
       if (event.type === 'PREP_PROGRESS') {
@@ -61,7 +59,7 @@ export function reduce(state: AppState, event: AppEvent): AppState {
         }
       }
       if (event.type === 'PREP_DONE') {
-        return state.firstRun ? { screen: 'choose' } : { screen: 'ready', mode: 'send' }
+        return { screen: 'ready', mode: 'send' }
       }
       return state
     case 'ready':

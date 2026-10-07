@@ -22,8 +22,6 @@ export type AppState =
       mode: 'send'
       step: PrepStep
       progress?: PrepProgress
-      /** Preparação do botão Começar: ao terminar volta para a escolha, não para a espera. */
-      firstRun?: true
     }
   | { screen: 'ready'; mode: 'send' }
   | { screen: 'approve'; mode: 'send'; device: string; pairingId: string; pin: string | null }

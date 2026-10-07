@@ -79,6 +79,17 @@ describe('createMacSetup', () => {
     })
   })
 
+  it('o executável e o processo do Sunshine no Mac se chamam "Sunshine" (visto num Mac real, na CI)', async () => {
+    const h = harness()
+    await createMacSetup(h.deps).installer.ensureInstalled()
+    const all = h.scripts.join('\n')
+    // Em disco sensível a maiúsculas "sunshine" não existe, e o pkill com o nome errado não encerra nada.
+    expect(all).toContain("'/Users/ana/Applications/Sunshine.app/Contents/MacOS/Sunshine' --creds")
+    expect(all).toContain('pkill -x Sunshine')
+    expect(all).not.toMatch(/pkill -x sunshine/)
+    expect(all).not.toContain('MacOS/sunshine')
+  })
+
   it('já instalado e respondendo: não faz nada', async () => {
     const h = harness({ installed: true, responding: true, stored: true })
     await createMacSetup(h.deps).installer.ensureInstalled()

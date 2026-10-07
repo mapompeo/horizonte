@@ -32,8 +32,5 @@
 </div>
 <div class="stack gap-xs">
   <button class="btn btn-primary" onclick={() => send({ type: 'RETRY' })}>Tentar de novo</button>
-  <CopyButton
-    class="btn btn-ghost"
-    text={() => [error.message, error.detail ?? ''].join('\n').trim()}
-  />
+  <CopyButton class="btn btn-ghost" />
 </div>

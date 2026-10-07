@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createLinuxSetup, shQuote, VIRTUAL_MONITOR_SCRIPT, type LinuxSetupDeps } from './setup'
+import {
+  createLinuxSetup,
+  shQuote,
+  SUNSHINE_UNIT,
+  VIRTUAL_MONITOR_SCRIPT,
+  type LinuxSetupDeps
+} from './setup'
 import type { SunshineDisplay } from '../../engine/sunshine/log'
 import { sessionKind, WAYLAND_MESSAGE } from './session'
 import { sunshineDebFor } from './versions'
@@ -114,6 +120,18 @@ describe('createLinuxSetup', () => {
     expect(h.user).toContain(VIRTUAL_MONITOR_SCRIPT)
   })
 
+  it('liga o serviço pelo nome de verdade da unidade, e não por "sunshine" (visto num Ubuntu real, na CI)', async () => {
+    const h = harness()
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
+    const all = h.user.join('\n')
+    // O alias sunshine.service só passa a existir depois de habilitar a unidade real: antes disso o enable falha.
+    expect(all).toContain(
+      `systemctl --user enable ${SUNSHINE_UNIT} && systemctl --user restart ${SUNSHINE_UNIT}`
+    )
+    expect(all).not.toMatch(/systemctl --user (enable|restart|enable --now) sunshine\b/)
+    expect(SUNSHINE_UNIT).toBe('app-dev.lizardbyte.app.Sunshine.service')
+  })
+
   it('tudo pronto: não baixa, não pede administrador e não mexe em nada', async () => {
     const h = harness({
       installed: true,
@@ -141,7 +159,7 @@ describe('createLinuxSetup', () => {
     const h = harness({ installed: true, stored: true, monitor: true })
     await createLinuxSetup(h.deps).installer.ensureInstalled()
 
-    expect(h.user).toEqual(['systemctl --user enable --now sunshine'])
+    expect(h.user).toEqual([`systemctl --user enable --now ${SUNSHINE_UNIT}`])
     expect(h.save).not.toHaveBeenCalled()
   })
 

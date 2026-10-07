@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   nativeTheme,
@@ -11,7 +12,7 @@ import {
 import { spawn } from 'node:child_process'
 import { randomInt } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { hostname, networkInterfaces } from 'node:os'
+import { homedir, hostname, networkInterfaces, release as osRelease } from 'node:os'
 import { join } from 'node:path'
 import { Bonjour } from 'bonjour-service'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
@@ -21,6 +22,7 @@ import { isUiEvent } from '../shared/events'
 import { cleanName } from '../shared/names'
 import type { SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
+import { buildDiagnostic } from './core/diagnostic'
 import { createSettingsStore } from './core/settings'
 import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
@@ -42,7 +44,11 @@ import { runPowerShell } from './platform/windows/probes'
 import { MOONLIGHT } from './platform/windows/versions'
 import { createLinuxPlatform, SUNSHINE_LOG as LINUX_SUNSHINE_LOG } from './platform/linux/wire'
 import { createRealGateway } from './web/wire'
-import { createMacPlatform, SUNSHINE_LOG as MAC_SUNSHINE_LOG } from './platform/macos/wire'
+import {
+  createMacPlatform,
+  createMoonlightLauncher,
+  SUNSHINE_LOG as MAC_SUNSHINE_LOG
+} from './platform/macos/wire'
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
 
@@ -67,7 +73,11 @@ function createWindow(controller: Controller): void {
     show: false,
     autoHideMenuBar: true,
     titleBarStyle: 'hidden',
-    titleBarOverlay: overlayFor(),
+    // Windows e Linux: botões da janela por cima da interface. No macOS são os três botões nativos, num ponto fixo
+    // dentro da barra de 64 px (o CSS reserva o espaço à esquerda).
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 20, y: 25 } }
+      : { titleBarOverlay: overlayFor() }),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#101012' : '#FBFBFD',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -78,11 +88,14 @@ function createWindow(controller: Controller): void {
   })
 
   window.once('ready-to-show', () => window.show())
-  const refreshOverlay = (): void => {
-    if (!window.isDestroyed()) window.setTitleBarOverlay(overlayFor())
+  // Só Windows e Linux têm a barra por cima: no macOS os botões são nativos e não mudam de cor.
+  if (process.platform !== 'darwin') {
+    const refreshOverlay = (): void => {
+      if (!window.isDestroyed()) window.setTitleBarOverlay(overlayFor())
+    }
+    nativeTheme.on('updated', refreshOverlay)
+    window.on('closed', () => nativeTheme.off('updated', refreshOverlay))
   }
-  nativeTheme.on('updated', refreshOverlay)
-  window.on('closed', () => nativeTheme.off('updated', refreshOverlay))
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
 
@@ -140,7 +153,7 @@ async function boot(): Promise<void> {
   })
   // O Moonlight portátil é baixado na primeira vez que a pessoa conecta (versão fixa, hash conferido).
   const moonlightDir = join(app.getPath('userData'), 'moonlight')
-  const moonlightExe = (): Promise<string> =>
+  const windowsMoonlightExe = (): Promise<string> =>
     ensureMoonlight({
       dir: moonlightDir,
       exists: async (path) => existsSync(path),
@@ -156,8 +169,13 @@ async function boot(): Promise<void> {
         )
       }
     })
+  // Cada sistema tem o seu jeito de instalar o Moonlight (zip portátil no Windows, disco .dmg no Mac).
+  const moonlightExe =
+    process.platform === 'darwin'
+      ? createMoonlightLauncher(app.getPath('userData'))
+      : windowsMoonlightExe
   const receiver =
-    process.platform === 'win32'
+    process.platform === 'win32' || process.platform === 'darwin'
       ? createMoonlightClient({
           listHosts: discovery.listHosts,
           sendPin,
@@ -293,6 +311,27 @@ async function boot(): Promise<void> {
   )
   ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
   ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
+  // A área de transferência do navegador falha em alguns sistemas (visto no macOS): a cópia é feita aqui.
+  ipcMain.handle(CHANNELS.copyDiagnostic, () => {
+    try {
+      clipboard.writeText(
+        buildDiagnostic(
+          {
+            version: app.getVersion(),
+            platform: process.platform,
+            arch: process.arch,
+            osRelease: osRelease(),
+            electron: process.versions.electron,
+            home: homedir()
+          },
+          controller.getSnapshot()
+        )
+      )
+      return true
+    } catch {
+      return false
+    }
+  })
   const gateway = createRealGateway({
     userData: app.getPath('userData'),
     cipher: toCipher(safeStorage),

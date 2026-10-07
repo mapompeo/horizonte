@@ -12,6 +12,9 @@ const USERNAME = 'horizonte'
 const DOWNLOAD_SHARE = 0.6
 const INSTALL_SHARE = 0.85
 
+/** O executável e o processo do app no Mac (visto no disco do Sunshine, numa execução real na CI): com S maiúsculo. */
+export const SUNSHINE_PROCESS = 'Sunshine'
+
 export const SCREEN_RECORDING_PANE =
   'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
 
@@ -53,7 +56,7 @@ export function createMacSetup(deps: MacSetupDeps): {
 } {
   let report: (progress: PrepProgress) => void = () => undefined
   const app = join(deps.appsDir, 'Sunshine.app')
-  const binary = join(app, 'Contents', 'MacOS', 'sunshine')
+  const binary = join(app, 'Contents', 'MacOS', SUNSHINE_PROCESS)
 
   async function run(): Promise<void> {
     const [installed, responding, stored, screens] = await Promise.all([
@@ -105,7 +108,7 @@ export function createMacSetup(deps: MacSetupDeps): {
         permission: true
       })
       // Um Sunshine já aberto precisa fechar para ler a senha nova; `open` abre o aplicativo do usuário.
-      await deps.run(`pkill -x sunshine || true\nopen ${shQuote(app)}`)
+      await deps.run(`pkill -x ${SUNSHINE_PROCESS} || true\nopen ${shQuote(app)}`)
       await deps.run(`open ${shQuote(SCREEN_RECORDING_PANE)}`).catch(() => undefined)
       await deps.waitForApi()
     }

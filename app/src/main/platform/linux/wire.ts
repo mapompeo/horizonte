@@ -7,7 +7,7 @@ import type { SunshineCredentials } from '../types'
 import { downloadVerified } from '../windows/download'
 import { createCredentialVault, type Cipher } from '../windows/secrets'
 import { generatePassword, waitForApi } from '../windows/wire'
-import { createLinuxSetup, MONITOR_NAME, type LinuxProbe } from './setup'
+import { createLinuxSetup, MONITOR_NAME, SUNSHINE_UNIT, type LinuxProbe } from './setup'
 import { sunshineDebFor } from './versions'
 
 const PORT = 47989
@@ -29,7 +29,7 @@ const succeeds = (script: string): Promise<boolean> =>
 
 export const createProbe = (): LinuxProbe => ({
   sunshineInstalled: () => succeeds('command -v sunshine'),
-  serviceActive: () => succeeds('systemctl --user is-active --quiet sunshine'),
+  serviceActive: () => succeeds(`systemctl --user is-active --quiet ${SUNSHINE_UNIT}`),
   sunshineResponding: () => succeeds('ss -ltn | grep -q ":47990 "'),
   monitorPresent: () => succeeds(`xrandr --listmonitors | grep -q ${MONITOR_NAME}`)
 })
@@ -74,7 +74,7 @@ export function createLinuxPlatform(deps: {
 
   return {
     ...setup,
-    restart: () => sh('systemctl', ['--user', 'restart', 'sunshine'], 90_000),
+    restart: () => sh('systemctl', ['--user', 'restart', SUNSHINE_UNIT], 90_000),
     createApi,
     credentials: async () => {
       const stored = await vault.load()

@@ -8,6 +8,7 @@ export const CHANNELS = {
   webAccess: 'horizonte:web-access',
   setWebAccess: 'horizonte:set-web-access',
   openRepo: 'horizonte:open-repo',
+  copyDiagnostic: 'horizonte:copy-diagnostic',
   push: 'horizonte:push'
 } as const
 
@@ -15,6 +16,8 @@ export const CHANNELS = {
 export const REPO_URL = 'https://github.com/mapompeo/horizonte'
 
 export interface HorizonteApi {
+  /** Sistema em que o app roda (`process.platform`): win32, darwin ou linux. */
+  platform: string
   getSnapshot(): Promise<Snapshot>
   dispatch(event: AppEvent): Promise<void>
   updateSettings(patch: SettingsPatch): Promise<Settings>
@@ -23,6 +26,8 @@ export interface HorizonteApi {
   setWebAccess(on: boolean): Promise<WebAccess>
   /** Abre a página do projeto no navegador padrão. */
   openRepo(): Promise<void>
+  /** Copia o diagnóstico (versão, sistema, tela e erro, sem dados pessoais). Devolve se deu certo. */
+  copyDiagnostic(): Promise<boolean>
   onSnapshot(callback: (snapshot: Snapshot) => void): () => void
 }
 

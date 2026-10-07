@@ -8,6 +8,12 @@ import type { Artifact } from '../windows/download'
 import type { PinnedArtifact } from '../windows/versions'
 import { sessionKind, WAYLAND_MESSAGE } from './session'
 
+/**
+ * Nome real da unidade de serviço do usuário que o pacote instala (visto num Ubuntu de verdade, na CI). O alias
+ * "sunshine.service" só existe depois de habilitar esta unidade: usar "sunshine" antes disso falha.
+ */
+export const SUNSHINE_UNIT = 'app-dev.lizardbyte.app.Sunshine.service'
+
 export const MONITOR_NAME = 'HorizonteVirtual'
 const USERNAME = 'horizonte'
 const DOWNLOAD_SHARE = 0.6
@@ -121,8 +127,8 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
       // A senha nova só vale depois de reiniciar um serviço que já rodava.
       await deps.runUser(
         needCredentials
-          ? 'systemctl --user enable sunshine && systemctl --user restart sunshine'
-          : 'systemctl --user enable --now sunshine'
+          ? `systemctl --user enable ${SUNSHINE_UNIT} && systemctl --user restart ${SUNSHINE_UNIT}`
+          : `systemctl --user enable --now ${SUNSHINE_UNIT}`
       )
       await deps.waitForApi()
     }

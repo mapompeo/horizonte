@@ -7,8 +7,9 @@ import { downloadVerified } from '../windows/download'
 import { createCredentialVault, type Cipher } from '../windows/secrets'
 import { generatePassword, waitForApi } from '../windows/wire'
 import { shQuote } from '../linux/setup'
-import { createMacSetup, type MacProbe } from './setup'
-import { sunshineDmgFor } from './versions'
+import { ensureMoonlightMac } from './moonlight'
+import { createMacSetup, SUNSHINE_PROCESS, type MacProbe } from './setup'
+import { MOONLIGHT_MAC_DMG, sunshineDmgFor } from './versions'
 
 const PORT = 47989
 const APPS_DIR = join(homedir(), 'Applications')
@@ -35,6 +36,19 @@ export const createProbe = (): MacProbe => ({
   sunshineResponding: () => succeeds('lsof -nP -iTCP:47990 -sTCP:LISTEN'),
   displayCount: async () => countDisplays(await sh('system_profiler SPDisplaysDataType', 30_000))
 })
+
+/** Devolve o caminho do executável do Moonlight no Mac, baixando e instalando na primeira vez (sem administrador). */
+export function createMoonlightLauncher(userData: string): () => Promise<string> {
+  return () =>
+    ensureMoonlightMac({
+      dir: join(userData, 'moonlight'),
+      workDir: tmpdir(),
+      artifact: MOONLIGHT_MAC_DMG,
+      exists: (path) => succeeds(`test -e ${shQuote(path)}`),
+      download: downloadVerified,
+      run: (script) => sh(script, 600_000)
+    })
+}
 
 type MacPlatform = ReturnType<typeof createMacSetup> & {
   restart(): Promise<void>
@@ -74,7 +88,9 @@ export function createMacPlatform(deps: {
   return {
     ...setup,
     restart: async () => {
-      await sh(`pkill -x sunshine || true\nopen ${shQuote(join(APPS_DIR, 'Sunshine.app'))}`)
+      await sh(
+        `pkill -x ${SUNSHINE_PROCESS} || true\nopen ${shQuote(join(APPS_DIR, 'Sunshine.app'))}`
+      )
     },
     createApi,
     credentials: async () => {
