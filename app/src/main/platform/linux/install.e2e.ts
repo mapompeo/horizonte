@@ -80,7 +80,31 @@ describe.runIf(process.platform === 'linux' && process.env.CI === 'true')(
             'tail',
             ['-n', '40', join(homedir(), '.config/sunshine/sunshine.log')]
           ],
-          ['monitores', 'xrandr', ['--listmonitors']]
+          ['monitores', 'xrandr', ['--listmonitors']],
+          ['processos do sunshine', 'sh', ['-c', 'pgrep -a -f sunshine || true']],
+          [
+            'quem escuta nas portas 4798x/4799x',
+            'sh',
+            ['-c', 'ss -ltnp | grep -E "4798|4799" || true']
+          ],
+          [
+            'unidades de usuário do sunshine',
+            'sh',
+            ['-c', 'systemctl --user list-units --all | grep -i sunshine || true']
+          ],
+          [
+            'unidades do sistema do sunshine',
+            'sh',
+            ['-c', 'systemctl list-units --all | grep -i sunshine || true']
+          ],
+          [
+            'início do journal do serviço',
+            'sh',
+            [
+              '-c',
+              'journalctl --user --no-pager -u app-dev.lizardbyte.app.Sunshine.service | grep -E "Started|Stopping|Stopped|Starting|Failed|Main process|Fatal|Sunshine version" | head -30 || true'
+            ]
+          ]
         ] as const) {
           const text = await run(command, [...args], 30_000).catch(
             (e: Error) => `(falhou: ${e.message})`
