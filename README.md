@@ -20,6 +20,8 @@ A versão mais recente fica em [Releases](https://github.com/mapompeo/horizonte/
 
 O instalador ainda não é assinado. No Windows aparece "O Windows protegeu o computador": clique em Mais informações e depois em Executar assim mesmo.
 
+No Mac, o primeiro "Abrir" pode ser recusado ("danificado" ou "desenvolvedor não identificado"). Arraste o Horizonte para Aplicativos e rode uma vez no Terminal: `xattr -cr /Applications/Horizonte.app`. Depois abra normalmente. Para enviar a tela, o macOS pede a permissão de Gravação de Tela na primeira vez.
+
 ## Como funciona
 
 1. Instale nos dois computadores.
