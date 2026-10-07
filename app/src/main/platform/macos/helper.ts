@@ -3,6 +3,7 @@ export interface HelperProcess {
   onStdout(callback: (text: string) => void): void
   onStderr(callback: (text: string) => void): void
   onExit(callback: (code: number | null) => void): void
+  onError(callback: (error: Error) => void): void
   kill(): void
 }
 
@@ -45,6 +46,9 @@ export function startDisplayHelper(
       timeoutMs
     )
 
+    child.onError((error) =>
+      fail(`não consegui iniciar o auxiliar do monitor virtual: ${error.message}`)
+    )
     child.onStderr((text) => {
       stderr += text
     })

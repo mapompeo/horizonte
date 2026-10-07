@@ -103,6 +103,7 @@ export function createMacPlatform(deps: {
           monitor = await startDisplayHelper(() => {
             const child = spawn(helperPath, [], { stdio: ['ignore', 'pipe', 'pipe'] })
             return {
+              onError: (cb) => void child.on('error', cb),
               onStdout: (cb) =>
                 void child.stdout.on('data', (chunk: Buffer) => cb(chunk.toString())),
               onStderr: (cb) =>

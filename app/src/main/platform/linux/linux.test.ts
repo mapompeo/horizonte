@@ -163,6 +163,26 @@ describe('createLinuxSetup', () => {
     expect(h.save).not.toHaveBeenCalled()
   })
 
+  it('serviço ativo sem responder é reiniciado antes de esperar a API', async () => {
+    const h = harness({
+      installed: true,
+      active: true,
+      responding: false,
+      stored: true,
+      monitor: true
+    })
+    let restarted = false
+    h.deps.runUser = async (script) => {
+      restarted = script.includes(`systemctl --user restart ${SUNSHINE_UNIT}`)
+    }
+    h.deps.waitForApi = async () => {
+      if (!restarted) throw new Error('serviço continua preso')
+    }
+    await expect(createLinuxSetup(h.deps).installer.ensureInstalled()).resolves.toBeUndefined()
+    expect(h.download).not.toHaveBeenCalled()
+    expect(h.save).not.toHaveBeenCalled()
+  })
+
   it('Wayland: explica como trocar para Xorg e não instala nada', async () => {
     const h = harness({ env: { XDG_SESSION_TYPE: 'wayland' } })
     await expect(createLinuxSetup(h.deps).installer.ensureInstalled()).rejects.toThrow(

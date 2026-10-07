@@ -45,7 +45,8 @@ export async function ensureMoonlightMac(
     return join(app, 'Contents', 'MacOS', name)
   }
 
-  if (!(await deps.exists(plist))) {
+  const installed = (await deps.exists(plist)) && (await deps.exists(await executable()))
+  if (!installed) {
     const file = join(deps.workDir, deps.artifact.fileName)
     await deps.download(deps.artifact, file, (f) => onProgress?.(f * 0.8))
     await deps.run(

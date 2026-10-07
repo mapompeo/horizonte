@@ -17,6 +17,76 @@ const snapshot = (state: AppState): Snapshot => ({
 })
 
 describe('buildDiagnostic', () => {
+  it.each([
+    [
+      'sh',
+      "sunshine --creds 'usuario privado' 'senha privada'",
+      ['usuario privado', 'senha privada']
+    ],
+    [
+      'sh com apóstrofo',
+      String.raw`sunshine --creds 'ana' 'segredo'\''com-aspas'`,
+      ['ana', 'segredo', 'com-aspas']
+    ],
+    [
+      'PowerShell',
+      "& 'C:\\Program Files\\Sunshine\\sunshine.exe' --creds 'ana''silva' 'senha''privada'",
+      ['ana', 'silva', 'senha', 'privada']
+    ],
+    [
+      'Windows com aspas duplas',
+      String.raw`sunshine.exe --creds "usuario privado" "segredo\"com-aspas"`,
+      ['usuario privado', 'segredo', 'com-aspas']
+    ],
+    [
+      'sem aspas',
+      'sunshine --creds usuarioSecreto senhaSecreta',
+      ['usuarioSecreto', 'senhaSecreta']
+    ],
+    [
+      'sh com escape',
+      String.raw`sunshine --creds usuario\ privado senha\ privada`,
+      ['usuario', 'senha']
+    ],
+    [
+      'URL',
+      'https://usuarioSecreto:senha%40Secreta@localhost:47990/api/config',
+      ['usuarioSecreto', 'senha%40Secreta']
+    ],
+    ['Basic', 'Authorization: Basic dXN1YXJpbzpzZW5oYQ==', ['dXN1YXJpbzpzZW5oYQ==']],
+    ['Bearer JSON', '"Authorization": "Bearer token.Secreto-123"', ['token.Secreto-123']],
+    ['Bearer minúsculo', 'authorization: bearer segredoToken', ['segredoToken']]
+  ])('remove credenciais de mensagem e detalhe: %s', (_name, sensitive, secrets) => {
+    const error = `Command failed: ${sensitive}\nECONNREFUSED porta 47990; exit code 1`
+    const text = buildDiagnostic(
+      env,
+      snapshot({
+        screen: 'error',
+        mode: 'send',
+        error: { message: error, detail: error }
+      })
+    )
+    for (const secret of secrets) expect(text).not.toContain(secret)
+    expect(text).toContain('Command failed:')
+    expect(text.match(/ECONNREFUSED porta 47990; exit code 1/g)).toHaveLength(2)
+    expect(text).toContain('[oculto]')
+    if (sensitive.includes('localhost')) expect(text).toContain('localhost:47990/api/config')
+  })
+
+  it('preserva texto comum, URLs sem credenciais e opções não sensíveis', () => {
+    const detail =
+      'sunshine --config /tmp/sunshine.conf; https://localhost:47990/api/config; Authorization recusada: HTTP 401'
+    const text = buildDiagnostic(
+      env,
+      snapshot({
+        screen: 'error',
+        mode: 'send',
+        error: { message: 'Falha de conexão', detail }
+      })
+    )
+    expect(text).toContain(detail)
+  })
+
   it('traz versão, sistema, tela atual e ajustes: o que quem recebe precisa para entender', () => {
     const text = buildDiagnostic(env, snapshot({ screen: 'ready', mode: 'send' }))
     expect(text).toContain('Horizonte 0.1.0-beta.6')

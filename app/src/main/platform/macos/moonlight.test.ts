@@ -50,6 +50,16 @@ function setup(
 }
 
 describe('ensureMoonlightMac', () => {
+  it('recupera instalação parcial com plist presente e binário ausente', async () => {
+    const t = setup({ installed: true })
+    const binary =
+      '/Users/ana/Library/Application Support/horizonte/Moonlight.app/Contents/MacOS/Moonlight'
+    t.files.delete(binary)
+    await expect(ensureMoonlightMac(t.deps)).resolves.toBe(binary)
+    expect(t.files.has(binary)).toBe(true)
+    expect(t.downloads).toHaveLength(1)
+  })
+
   it('já instalado: devolve o executável sem baixar nada', async () => {
     const t = setup({ installed: true })
     const exe = await ensureMoonlightMac(t.deps)
