@@ -238,7 +238,6 @@ async function boot(): Promise<void> {
         return answer.response === 0
       }
     })
-    app.on('before-quit', () => platform.stopVirtualDisplay())
     engine = composeEngine(
       new SunshineEngine({
         installer: platform.installer,
@@ -286,6 +285,7 @@ async function boot(): Promise<void> {
         ? join(process.resourcesPath, 'horizonte-display')
         : join(app.getAppPath(), 'native', 'macos', 'build', 'horizonte-display')
     })
+    app.on('before-quit', () => platform.stopVirtualDisplay())
     engine = composeEngine(
       new SunshineEngine({
         installer: platform.installer,
