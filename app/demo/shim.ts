@@ -7,6 +7,7 @@ import type { AppState, Settings, Snapshot, WebAccess } from '../src/shared/type
 export interface DemoControl {
   /** Recomeça o app numa tela (ou no modo salvo, se vazio). Usado pela página para dirigir o app. */
   reset(initial?: AppState): Promise<void>
+  requestConnection(): void
 }
 
 declare global {
@@ -36,16 +37,18 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
   let controller: Controller
   let engine: FakeEngine
   let stopWatching = (): void => undefined
+  let stopForwarding = (): void => undefined
+  let generation = 0
   let web: WebAccess = { on: false }
 
   /** O "outro aparelho" da demonstração: pede para conectar e, aprovado, conecta. */
   function watch(current: Controller, fake: FakeEngine): () => void {
     let timer: ReturnType<typeof setTimeout> | undefined
     let approvedTimer: ReturnType<typeof setTimeout> | undefined
-    const stop = current.subscribe(({ state }) => {
+    const update = ({ state }: Snapshot): void => {
       clearTimeout(timer)
-      if (!options.auto) return
-      if (state.screen === 'ready') {
+      clearTimeout(approvedTimer)
+      if (options.auto && state.screen === 'ready' && !fake.calls.includes('approve')) {
         timer = setTimeout(() => fake.simulatePairRequest('Notebook', 'p1', '4821'), 5000)
       }
       if (state.screen === 'ready' && fake.calls.includes('approve')) {
@@ -55,8 +58,16 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
           fake.simulateClientConnected('Notebook')
         }, 900)
       }
-    })
+    }
+    let active = true
+    const stop = current.subscribe(() =>
+      queueMicrotask(() => {
+        if (active) update(current.getSnapshot())
+      })
+    )
+    update(current.getSnapshot())
     return () => {
+      active = false
       clearTimeout(timer)
       clearTimeout(approvedTimer)
       stop()
@@ -64,11 +75,16 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
   }
 
   async function build(initial?: AppState): Promise<void> {
+    const run = ++generation
     stopWatching()
+    stopForwarding()
     engine = new FakeEngine(450)
     engine.hosts = [{ name: 'Desktop', address: '192.168.1.5' }]
     controller = await createController({ engine, store, initial })
-    controller.subscribe((snapshot) => listeners.forEach((listener) => listener(snapshot)))
+    if (run !== generation) return
+    stopForwarding = controller.subscribe((snapshot) =>
+      listeners.forEach((listener) => listener(snapshot))
+    )
     stopWatching = watch(controller, engine)
     listeners.forEach((listener) => listener(controller.getSnapshot()))
   }
@@ -93,7 +109,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
       try {
         await navigator.clipboard.writeText('Horizonte (demonstração): este texto é só um exemplo.')
       } catch {
-        // Sem permissão de área de transferência: a demonstração segue como se tivesse copiado.
+        return false
       }
       return true
     },
@@ -105,5 +121,11 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     }
   }
   window.horizonte = api
-  window.__demo = { reset: (initial) => build(initial) }
+  window.__demo = {
+    reset: (initial) => build(initial),
+    requestConnection: () => {
+      if (controller.getSnapshot().state.screen === 'ready')
+        engine.simulatePairRequest('Notebook', 'p1', '4821')
+    }
+  }
 }
