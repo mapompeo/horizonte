@@ -3,9 +3,9 @@ name: Site
 on:
   push:
     branches: [main]
-    paths: ['site/**', 'app/src/**', 'app/demo/**', 'app/vite.demo.config.ts', 'app/package.json', 'app/package-lock.json', '.github/workflows/pages.yml']
+    paths: ['site/**', 'app/src/**', 'app/demo/**', 'app/vite.demo.config.ts', 'app/package.json', 'app/package-lock.json', '.github/workflows/pages.yml', '.github/scripts/configure-ci-apt.sh']
   pull_request:
-    paths: ['site/**', 'app/src/**', 'app/demo/**', 'app/vite.demo.config.ts', 'app/package.json', 'app/package-lock.json', '.github/workflows/pages.yml']
+    paths: ['site/**', 'app/src/**', 'app/demo/**', 'app/vite.demo.config.ts', 'app/package.json', 'app/package-lock.json', '.github/workflows/pages.yml', '.github/scripts/configure-ci-apt.sh']
   workflow_dispatch:
 
 permissions:
@@ -16,6 +16,10 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: site-test-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
     defaults:
       run:
         working-directory: site
@@ -32,7 +36,10 @@ jobs:
         working-directory: app
 
       - run: npm ci
+      - name: Preparar download das bibliotecas do navegador
+        run: bash ../.github/scripts/configure-ci-apt.sh
       - run: npx playwright install --with-deps chromium
+        timeout-minutes: 5
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()

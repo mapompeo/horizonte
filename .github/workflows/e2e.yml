@@ -4,10 +4,10 @@ name: E2E
 # e dirigido pela interface. Capturas de tela e logs ficam como artefatos da execução.
 on:
   pull_request:
-    paths: ['app/**', '.github/workflows/e2e.yml']
+    paths: ['app/**', '.github/workflows/e2e.yml', '.github/scripts/configure-ci-apt.sh']
   push:
     branches: [main]
-    paths: ['app/**', '.github/workflows/e2e.yml']
+    paths: ['app/**', '.github/workflows/e2e.yml', '.github/scripts/configure-ci-apt.sh']
   workflow_dispatch:
 
 defaults:
@@ -37,10 +37,7 @@ jobs:
         if: runner.os == 'Linux'
         timeout-minutes: 5
         run: |
-          # O mirror Azure ficou sem responder ao baixar bibliotecas Mesa. Mantém a verificação de assinaturas do APT.
-          if [ -f /etc/apt/apt-mirrors.txt ]; then
-            echo 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
-          fi
+          bash ../.github/scripts/configure-ci-apt.sh
           sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
           sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y xserver-xorg-core xserver-xorg-video-dummy xclip x11-xserver-utils libnss3 libgbm1 libgtk-3-0t64 libasound2t64 libxss1
       - name: Servidor gráfico no Linux (Xorg com driver dummy e tela grande, como um desktop de verdade)
