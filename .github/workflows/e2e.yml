@@ -48,7 +48,7 @@ jobs:
       - name: Testes reais do sistema (rede, instalação, hash)
         if: runner.os != 'Linux'
         run: npm run test:e2e
-      - name: Testes reais do sistema (Linux, com tela virtual: instala o Sunshine de verdade)
+      - name: Testes reais do sistema (Linux, com tela virtual, instala o Sunshine de verdade)
         if: runner.os == 'Linux'
         run: xvfb-run -a --server-args="-screen 0 1280x800x24" npm run test:e2e
       - name: App aberto de verdade (Linux, com tela virtual)
