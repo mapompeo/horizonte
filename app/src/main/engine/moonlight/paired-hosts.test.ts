@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rmdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -32,4 +32,26 @@ describe('createPairedHostsStore', () => {
     await writeFile(file, JSON.stringify(['192.168.1.5', 7, null]), 'utf8')
     expect(await createPairedHostsStore(file).load()).toEqual(['192.168.1.5'])
   })
+})
+
+it('serializa saves concorrentes e persiste a ultima lista sem colisao do temporario', async () => {
+  const file = join(await folder(), 'paired.json')
+  const store = createPairedHostsStore(file)
+  const lists = Array.from({ length: 16 }, (_, i) => [`host-${i}`])
+  const results = await Promise.allSettled(lists.map((hosts) => store.save(hosts)))
+  expect(results.every((result) => result.status === 'fulfilled')).toBe(true)
+  expect(await store.load()).toEqual(lists.at(-1))
+})
+
+it('falha de escrita preserva arquivo anterior e nao bloqueia saves seguintes', async () => {
+  const file = join(await folder(), 'paired.json')
+  const store = createPairedHostsStore(file)
+  await store.save(['anterior'])
+  const temporary = `${file}.${process.pid}.tmp`
+  await mkdir(temporary)
+  await expect(store.save(['falhou'])).rejects.toThrow()
+  expect(await store.load()).toEqual(['anterior'])
+  await rmdir(temporary)
+  await store.save(['seguinte'])
+  expect(await store.load()).toEqual(['seguinte'])
 })

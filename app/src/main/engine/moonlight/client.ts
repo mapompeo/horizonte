@@ -118,7 +118,7 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
           if (current !== child) return // foi o próprio disconnect
           const duration = now() - startedAt
           if (code !== 0 && duration < EARLY_FAILURE_MS && paired.delete(host)) {
-            void remember()
+            void remember()?.catch(() => undefined)
           }
           current = null
           if (duration >= 60_000) retries = 0
