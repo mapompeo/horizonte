@@ -43,6 +43,7 @@ export class SunshineApi {
   private readonly host: string
   private readonly webPort: number
   private readonly authorization: string
+  private configWrites: Promise<void> = Promise.resolve()
   private readonly timeoutMs: number
 
   constructor(options: SunshineApiOptions) {
@@ -123,9 +124,15 @@ export class SunshineApi {
    * O Sunshine pode tratar o corpo como a configuração inteira. Por isso lemos tudo,
    * mesclamos o trecho novo por cima e gravamos o conjunto, sem nunca apagar o resto.
    */
-  async saveConfig(patch: Record<string, string>): Promise<void> {
-    const current = await this.getConfig()
-    await this.request('POST', '/api/config', { ...current, ...patch })
+  async saveConfig(patch: Record<string, string>, alive = (): boolean => true): Promise<void> {
+    const write = this.configWrites.then(async () => {
+      if (!alive()) return
+      const current = await this.getConfig()
+      if (!alive()) return
+      await this.request('POST', '/api/config', { ...current, ...patch })
+    })
+    this.configWrites = write.catch(() => undefined)
+    await write
   }
 
   /** O reinício derruba a própria conexão; isso não é falha. */

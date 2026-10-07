@@ -21,16 +21,20 @@ export function createRestarter(deps: RestarterDeps): (alive?: () => boolean) =>
   const pollMs = deps.pollMs ?? 500
 
   return async (alive = () => true) => {
+    if (!alive()) return ''
     const beforeLog = await deps.readLog()
+    if (!alive()) return ''
     const before = { signature: logSignature(beforeLog), startups: countStartups(beforeLog) }
 
     await (deps.restart ?? (() => deps.api.restart()))()
+    if (!alive()) return ''
 
     const polls = Math.max(1, Math.ceil(timeoutMs / pollMs))
     for (let i = 0; i < polls; i++) {
       await deps.sleep(pollMs)
       if (!alive()) return ''
       const log = await deps.readLog()
+      if (!alive()) return ''
       const fresh = logSignature(log) !== before.signature || countStartups(log) > before.startups
       if (!fresh || !isStartupComplete(log)) continue
       try {
@@ -38,6 +42,7 @@ export function createRestarter(deps: RestarterDeps): (alive?: () => boolean) =>
       } catch {
         continue
       }
+      if (!alive()) return ''
       return log
     }
     throw new Error(

@@ -109,15 +109,19 @@ export class SunshineEngine implements ServerEngine {
       const api = this.api
       try {
         await api.getConfig()
+        if (!alive()) return
         const changed = await this.ensureConfig(
           api,
-          this.desiredConfig(settings, known.displayId, known.chosen)
+          this.desiredConfig(settings, known.displayId, known.chosen),
+          alive
         )
+        if (!alive()) return
         if (changed) await this.restarter(api)(alive)
         if (!alive()) return
         this.startWatchers(api)
         return
       } catch {
+        if (!alive()) return
         this.known = null // algo mudou por baixo: volta para a preparação completa
       }
     }
@@ -130,7 +134,9 @@ export class SunshineEngine implements ServerEngine {
     }, preparation.signal)
     if (!alive()) return
     report('Conectando ao motor de transmissão', PROGRESS_AFTER_INSTALL)
-    const api = this.deps.createApi(await this.deps.credentials())
+    const credentials = await this.deps.credentials()
+    if (!alive()) return
+    const api = this.deps.createApi(credentials)
     this.api = api
     await this.waitUntilReachable(api, alive)
     if (!alive()) return
@@ -147,7 +153,12 @@ export class SunshineEngine implements ServerEngine {
     const chosen = await this.resolveEncoder(api, restartAndRead, settings, alive)
     if (!alive()) return
 
-    const changed = await this.ensureConfig(api, this.desiredConfig(settings, displayId, chosen))
+    const changed = await this.ensureConfig(
+      api,
+      this.desiredConfig(settings, displayId, chosen),
+      alive
+    )
+    if (!alive()) return
     if (changed) await restartAndRead(alive)
     if (!alive()) return
 
@@ -197,6 +208,7 @@ export class SunshineEngine implements ServerEngine {
       parseDisplays(log).find((display) => this.deps.display.isVirtual(display))?.deviceId ?? null
 
     let id = find(await this.deps.readLog())
+    if (!alive()) return ''
     if (id === null) {
       // O log atual pode ser de uma execução que não listou os monitores: reinicia para ver a lista.
       const log = await restartAndRead(alive)
@@ -215,6 +227,7 @@ export class SunshineEngine implements ServerEngine {
   ): Promise<ChosenEncoder | null> {
     if (settings.encoding === 'cpu') return null
     const remembered = await this.deps.memory.load()
+    if (!alive()) return null
     if (remembered !== null) {
       const candidate = GPU_ENCODERS.find((item) => item.id === remembered.encoder)
       return candidate ? { candidate, fellBack: false, inconclusive: false } : null
@@ -222,12 +235,14 @@ export class SunshineEngine implements ServerEngine {
     // Reiniciar o Sunshine é arriscado (já travou na instância real): se o log atual e a configuração
     // gravada já provam um encoder de hardware, usamos isso em vez de sondar reiniciando.
     const proven = await this.provenCandidate(api)
+    if (!alive()) return null
     if (proven !== null) {
       await this.deps.memory.save({ encoder: proven.id })
       return { candidate: proven, fellBack: false, inconclusive: false }
     }
     const probe = createLogEncoderProbe({
       api,
+      alive,
       restartAndRead: (stillWanted) => restartAndRead(() => alive() && (stillWanted?.() ?? true))
     })
     const chosen = await chooseEncoder(probe, settings.encoding, this.timing.probeTimeoutMs)
@@ -261,9 +276,11 @@ export class SunshineEngine implements ServerEngine {
   /** Grava só o que mudou. Devolve verdadeiro se mudou algo (e portanto precisa reiniciar). */
   private async ensureConfig(
     api: SunshineApiPort,
-    desired: Record<string, string>
+    desired: Record<string, string>,
+    alive: () => boolean
   ): Promise<boolean> {
     const current = await api.getConfig()
+    if (!alive()) return false
     const diff = Object.fromEntries(
       Object.entries(desired).filter(([key, value]) => {
         if (String(current[key] ?? '') === value) return false
@@ -276,7 +293,7 @@ export class SunshineEngine implements ServerEngine {
       })
     )
     if (Object.keys(diff).length === 0) return false
-    await api.saveConfig(diff)
+    await api.saveConfig(diff, alive)
     return true
   }
 
