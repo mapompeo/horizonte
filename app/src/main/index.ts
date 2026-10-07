@@ -25,6 +25,7 @@ import type { SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
 import { buildDiagnostic } from './core/diagnostic'
+import { createDiagnosticHistory } from './core/diagnostic-history'
 import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
 import { runDevDemo } from './dev-demo'
@@ -354,6 +355,30 @@ async function boot(): Promise<void> {
     )
   }
   const controller = await createController({ engine, store })
+  const diagnosticEnv = {
+    version: app.getVersion(),
+    platform: process.platform,
+    arch: process.arch,
+    osRelease: osRelease(),
+    electron: process.versions.electron,
+    home: homedir()
+  }
+  const history = createDiagnosticHistory(
+    join(app.getPath('userData'), 'diagnostic-history.json'),
+    diagnosticEnv
+  )
+  let recordedError: unknown = null
+  const rememberError = (snapshot: ReturnType<Controller['getSnapshot']>): void => {
+    if (snapshot.state.screen !== 'error') {
+      recordedError = null
+      return
+    }
+    if (recordedError === snapshot.state.error) return
+    recordedError = snapshot.state.error
+    void history.record(snapshot).catch(() => undefined)
+  }
+  controller.subscribe(rememberError)
+  rememberError(controller.getSnapshot())
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = false
   autoUpdater.allowPrerelease = app.getVersion().includes('-')
@@ -404,20 +429,12 @@ async function boot(): Promise<void> {
   ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
   ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
   // A área de transferência do navegador falha em alguns sistemas (visto no macOS): a cópia é feita aqui.
-  ipcMain.handle(CHANNELS.copyDiagnostic, () => {
+  ipcMain.handle(CHANNELS.copyDiagnostic, async () => {
     try {
+      const recent = await history.text()
       clipboard.writeText(
-        buildDiagnostic(
-          {
-            version: app.getVersion(),
-            platform: process.platform,
-            arch: process.arch,
-            osRelease: osRelease(),
-            electron: process.versions.electron,
-            home: homedir()
-          },
-          controller.getSnapshot()
-        )
+        buildDiagnostic(diagnosticEnv, controller.getSnapshot()) +
+          (recent ? `\n\nErros recentes (histórico local):\n${recent}` : '')
       )
       return true
     } catch {

@@ -35,7 +35,7 @@ function hideCredentials(text: string): string {
       new RegExp(String.raw`(--creds)[\t ]+${argument}[\t ]+${argument}`, 'gi'),
       '$1 [oculto] [oculto]'
     )
-    .replace(/([a-z][a-z\d+.-]*:\/\/)[^\s/?#]+@/gi, '$1[oculto]@')
+    .replace(/([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/?#]+@/gi, '$1[oculto]@')
     .replace(
       /(\bAuthorization["']?[\t ]*[:=][\t ]*["']?(?:Basic|Bearer)[\t ]+)[a-z\d._~+/=-]+/gi,
       '$1[oculto]'
