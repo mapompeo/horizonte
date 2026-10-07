@@ -32,11 +32,21 @@ export async function downloadVerified(
   artifact: Artifact,
   dest: string,
   onProgress?: (fraction: number) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  stallTimeoutMs = 30_000
 ): Promise<void> {
   const part = `${dest}.part`
+  const stalled = new AbortController()
+  const combined = signal ? AbortSignal.any([signal, stalled.signal]) : stalled.signal
+  let timer: ReturnType<typeof setTimeout>
+  const keepAlive = (): void => {
+    clearTimeout(timer)
+    timer = setTimeout(() => stalled.abort(), stallTimeoutMs)
+  }
+  keepAlive()
   try {
-    const response = await fetch(artifact.url, { signal })
+    const response = await fetch(artifact.url, { signal: combined })
+    keepAlive()
     if (!response.ok || response.body === null) {
       throw new DownloadError(
         'network',
@@ -49,6 +59,7 @@ export async function downloadVerified(
 
     const measure = new Transform({
       transform(chunk: Buffer, _encoding, done) {
+        keepAlive()
         hash.update(chunk)
         received += chunk.length
         if (total > 0) onProgress?.(Math.min(received / total, 1))
@@ -59,7 +70,7 @@ export async function downloadVerified(
       Readable.fromWeb(response.body as WebReadableStream),
       measure,
       createWriteStream(part),
-      { signal }
+      { signal: combined }
     )
 
     if (hash.digest('hex') !== artifact.sha256.toLowerCase()) {
@@ -74,10 +85,19 @@ export async function downloadVerified(
     await rm(part, { force: true })
     if (cause instanceof DownloadError) throw cause
     if (signal?.aborted) throw new DownloadError('cancelled', 'Download cancelado.', { cause })
+    if (stalled.signal.aborted) {
+      throw new DownloadError(
+        'network',
+        'O download parou de responder. Confira a conexão e tente de novo.',
+        { cause }
+      )
+    }
     throw new DownloadError(
       'network',
       'Não consegui baixar. Confira a conexão com a internet e tente de novo.',
       { cause }
     )
+  } finally {
+    clearTimeout(timer!)
   }
 }
