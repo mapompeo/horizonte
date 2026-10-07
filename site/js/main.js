@@ -7,10 +7,17 @@ import {
   pickLatest,
 } from "./releases.js";
 
-const os = detectOs(navigator.userAgent);
+const os = detectOs(navigator.userAgent, navigator.maxTouchPoints);
 const mine = document.querySelector(`.os[data-os="${os}"] h3`);
 if (mine)
   mine.insertAdjacentHTML("afterend", '<span class="you">Seu sistema</span>');
+if (['ios', 'android', 'chromeos'].includes(os)) {
+  const guidance = document.createElement('p');
+  guidance.id = 'browser-guidance';
+  guidance.className = 'lede';
+  guidance.textContent = 'Neste dispositivo, receba pelo navegador. No Windows que envia, ative “Receber pelo navegador” e abra aqui o endereço mostrado pelo app, na mesma rede.';
+  document.querySelector('#baixar .lede').after(guidance);
+}
 
 /** Uma linha por arquivo, cada uma com o próprio link (o Linux tem .AppImage e .deb). Montado com DOM, sem HTML em texto. */
 function fillMeta(meta, files) {

@@ -8,16 +8,17 @@ test('Windows é o padrão, inclusive para user agent vazio ou desconhecido', ()
   assert.equal(detectOs('algo estranho'), 'windows')
 })
 
-test('reconhece macOS, iPhone e iPad como mac', () => {
+test('reconhece macOS sem confundir iOS', () => {
   assert.equal(detectOs('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)'), 'mac')
-  assert.equal(detectOs('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'), 'mac')
-  assert.equal(detectOs('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)'), 'mac')
+  assert.equal(detectOs('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'), 'ios')
+  assert.equal(detectOs('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)'), 'ios')
+  assert.equal(detectOs('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)', 5), 'ios')
 })
 
-test('reconhece Linux, Android e ChromeOS como linux', () => {
+test('distingue Linux, Android e ChromeOS', () => {
   assert.equal(detectOs('Mozilla/5.0 (X11; Linux x86_64)'), 'linux')
-  assert.equal(detectOs('Mozilla/5.0 (Linux; Android 14)'), 'linux')
-  assert.equal(detectOs('Mozilla/5.0 (X11; CrOS x86_64 15000.0.0)'), 'linux')
+  assert.equal(detectOs('Mozilla/5.0 (Linux; Android 14)'), 'android')
+  assert.equal(detectOs('Mozilla/5.0 (X11; CrOS x86_64 15000.0.0)'), 'chromeos')
 })
 
 test('os nomes mostrados na página', () => {
