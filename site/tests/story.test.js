@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { CHAPTERS, chapterAt, qualityAt, windowCross } from '../js/story.js'
+import { CHAPTERS, chapterAt, qualityAt, windowSpots } from '../js/story.js'
 
 test('cinco cenas', () => assert.equal(CHAPTERS, 5))
 
@@ -19,27 +19,38 @@ test('chapterAt nunca sai do intervalo (fim exato, antes do começo, depois do f
   assert.deepEqual(chapterAt(Number.NaN), { index: 0, local: 0 })
 })
 
-test('windowCross: parada no começo, atravessada no fim', () => {
-  const start = windowCross(0, { a: 400, b: 300 })
-  assert.equal(start.aX, 0)
-  assert.equal(start.bX, -195)
-  assert.equal(start.bCursorVisible, false)
-  const end = windowCross(1, { a: 400, b: 300 })
-  assert.equal(end.aX, 206)
-  assert.equal(end.aCursorVisible, false)
-  assert.equal(end.bX, 0)
-  assert.equal(end.bTilt, 0)
-  assert.equal(end.bCursor, 66)
-  assert.equal(end.bCursorVisible, true)
+const SCREENS = [
+  { left: 0, width: 300 },
+  { left: 340, width: 220 },
+  { left: 600, width: 150 },
+  { left: 790, width: 70 }
+]
+
+test('windowSpots: começa no meio da primeira tela e termina no meio da última', () => {
+  const start = windowSpots(0, SCREENS, 60)
+  assert.equal(start[0], 120)
+  const end = windowSpots(1, SCREENS, 60)
+  assert.equal(end[3], 5)
 })
 
-test('windowCross anda para frente sem voltar conforme a rolagem desce', () => {
+test('windowSpots: um só x global, cada tela vê a janela deslocada pela própria posição', () => {
+  const spots = windowSpots(0.5, SCREENS, 60)
+  SCREENS.forEach((screen, i) => assert.equal(spots[i] + screen.left, spots[0] + SCREENS[0].left))
+})
+
+test('windowSpots anda para frente sem voltar conforme a rolagem desce', () => {
   let last = -Infinity
-  for (let p = 0; p <= 1; p += 0.05) {
-    const { aX } = windowCross(p, { a: 400, b: 300 })
-    assert.ok(aX >= last)
-    last = aX
+  for (let p = 0; p <= 1.0001; p += 0.05) {
+    const x = windowSpots(p, SCREENS, 60)[0]
+    assert.ok(x >= last)
+    last = x
   }
+})
+
+test('windowSpots aceita rolagem fora de 0 a 1 e NaN sem quebrar', () => {
+  assert.deepEqual(windowSpots(-3, SCREENS, 60), windowSpots(0, SCREENS, 60))
+  assert.deepEqual(windowSpots(9, SCREENS, 60), windowSpots(1, SCREENS, 60))
+  assert.deepEqual(windowSpots(Number.NaN, SCREENS, 60), windowSpots(0, SCREENS, 60))
 })
 
 test('qualityAt sobe de 30 a 50 em passos de 5', () => {
@@ -48,4 +59,9 @@ test('qualityAt sobe de 30 a 50 em passos de 5', () => {
   assert.equal(qualityAt(1), 50)
   assert.equal(qualityAt(2), 50)
   for (let p = 0; p <= 1; p += 0.1) assert.equal(qualityAt(p) % 5, 0)
+})
+
+test('animações carregam com as funções atuais da história', async () => {
+  const { startScenes } = await import('../js/scenes.js')
+  assert.equal(typeof startScenes, 'function')
 })
