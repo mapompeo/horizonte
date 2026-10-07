@@ -1,10 +1,10 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { SunshineApi } from '../../engine/sunshine/api'
-import { createMacPlatform } from './wire'
+import { createMacPlatform, createMoonlightLauncher } from './wire'
 
 const HELPER = resolve('native/macos/build/horizonte-display')
 const run = (command: string, args: string[]): Promise<string> =>
@@ -63,6 +63,43 @@ describe.runIf(process.platform === 'darwin' && process.env.CI === 'true')(
       }).getConfig()
       expect(config).toBeTypeOf('object')
       expect(screensWithMonitor).toBeGreaterThanOrEqual(2)
+
+      // Pareamento por PIN de verdade: o Moonlight pede, a API aprova e o aparelho entra na lista.
+      const api = new SunshineApi({
+        port: credentials.port,
+        username: credentials.username,
+        password: credentials.password
+      })
+      const moonlight = await createMoonlightLauncher(mkdtempSync(join(tmpdir(), 'hz-mac-ml-')))()
+      const pin = '4821'
+      const name = 'Notebook de teste'
+      const child = spawn(moonlight, ['pair', '127.0.0.1', '--pin', pin], {
+        stdio: 'inherit',
+        detached: true
+      })
+      const exited = new Promise<number | null>((resolve) => {
+        child.once('exit', resolve)
+        child.once('error', () => resolve(null))
+      })
+      let pairingId: string | undefined
+      for (let i = 0; i < 60 && !pairingId; i++) {
+        pairingId = (await api.listPairings())[0]?.id
+        if (!pairingId) await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+      expect(pairingId, 'o Sunshine recebeu o pedido de pareamento').toBeTruthy()
+      expect(await api.submitPin({ pairingId: pairingId as string, pin, name })).toBe(true)
+      const outcome = await Promise.race([
+        exited,
+        new Promise<'travou'>((resolve) => setTimeout(() => resolve('travou'), 20_000))
+      ])
+      const names = await api.listClientNames()
+      console.log('--- pareamento no Mac: saída do Moonlight =', outcome, '| aparelhos =', names)
+      try {
+        if (child.pid) process.kill(-child.pid, 'SIGKILL')
+      } catch {
+        // já tinha encerrado
+      }
+      expect(names, 'o Sunshine registrou o aparelho').toContain(name)
     })
   }
 )
