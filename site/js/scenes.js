@@ -46,15 +46,6 @@ export function startScenes(M) {
     M.animate(tilt, { rotateY: px * 8, rotateX: -py * 6 }, soft)
   })
   $('showcase').addEventListener('pointerleave', () => M.animate(tilt, { rotateY: 0, rotateX: 0 }, soft))
-  ;(async function breathe() {
-    const el = $('hero-mbps')
-    const steps = [35, 40, 45, 40, 35, 30]
-    for (let k = 0; ; k++) {
-      await wait(k % 3 === 2 ? 2200 : 420)
-      el.textContent = steps[k % steps.length] + ' Mbps'
-      M.animate(el, { scale: [1.1, 1] }, snappy)
-    }
-  })()
 
   /* ============ 2. Barra do topo some ao descer ============ */
   let lastY = scrollY
@@ -119,6 +110,7 @@ export function startScenes(M) {
     { rotateY: 0, rotateX: 0 },
     { rotateY: 0, rotateX: 0 }
   ]
+  const GLOW = ['rgba(10,132,255,.38)', 'rgba(191,90,242,.34)', 'rgba(48,209,200,.32)', 'rgba(255,159,10,.30)', 'rgba(48,209,88,.32)']
   let current = -1
   let token = 0
   screens.forEach((s) => (s.style.opacity = '0'))
@@ -159,6 +151,7 @@ export function startScenes(M) {
       d.classList.toggle('on', k === i)
       M.animate(d, { width: k === i ? '28px' : '8px' }, spring)
     })
+    $('stage').style.setProperty('--glow', GLOW[i])
     const isDevices = i === 3
     M.animate(app, isDevices ? { opacity: 0, scale: 0.8, y: 40, rotateX: 12 } : { opacity: 1, scale: 1, y: 0, ...ANGLE[i] }, soft)
     M.animate(devices, isDevices ? { opacity: 1, scale: [1.08, 1], y: [30, 0] } : { opacity: 0, scale: 0.95, y: 20 }, soft)
@@ -232,6 +225,104 @@ export function startScenes(M) {
       },
       { amount: 0.6 }
     )
+  })
+
+  /* ============ 6b. Barra de progresso, sistemas, radar e recursos ============ */
+  M.scroll(M.animate('#progress', { scaleX: [0, 1] }, { ease: 'linear' }))
+
+  // Faixa de sistemas: acelera e inclina de leve conforme a rolagem
+  const track = $('track')
+  let skewTarget = 0
+  let lastScroll = scrollY
+  addEventListener(
+    'scroll',
+    () => {
+      skewTarget = Math.max(-6, Math.min(6, (scrollY - lastScroll) * 0.25))
+      lastScroll = scrollY
+    },
+    { passive: true }
+  )
+  ;(function settle() {
+    skewTarget *= 0.9
+    track.parentElement.style.transform = 'skewX(' + (-skewTarget).toFixed(2) + 'deg)'
+    requestAnimationFrame(settle)
+  })()
+
+  // Matriz: os seis sistemas entram em mola e os pacotes passam a correr
+  const chips = [...document.querySelectorAll('.chip')]
+  chips.forEach((c) => (c.style.opacity = '0'))
+  document.querySelectorAll('.mx-lines, .mx-tag').forEach((el) => (el.style.opacity = '0'))
+  M.inView(
+    $('mx'),
+    () => {
+      M.animate('.mx-lines', { opacity: [0, 1] }, { duration: 1.2, delay: 0.3 })
+      M.animate('.mx-tag', { opacity: [0, 1], y: [10, 0] }, { ...soft, delay: 0.5 })
+      chips.forEach((c, i) => {
+        const side = c.classList.contains('l') ? -1 : 1
+        M.animate(c, { opacity: [0, 1], x: [side * 40, 0], scale: [0.8, 1] }, { ...spring, delay: 0.15 * (i % 3) + (side === 1 ? 0.4 : 0) })
+      })
+    },
+    { amount: 0.45 }
+  )
+  chips.forEach((c) => {
+    c.addEventListener('pointerenter', () => M.animate(c, { scale: 1.08 }, snappy))
+    c.addEventListener('pointerleave', () => M.animate(c, { scale: 1 }, spring))
+  })
+
+  // Radar: o aparelho central surge e os outros são encontrados um a um
+  const radar = $('radar')
+  // Os aparelhos acendem sozinhos, quando a varredura (CSS) passa por eles.
+  radar.querySelector('.core').style.opacity = '0'
+  M.inView(
+    radar,
+    () => {
+      M.animate(radar.querySelector('.core'), { opacity: [0, 1], scale: [0.4, 1] }, spring)
+    },
+    { amount: 0.5 }
+  )
+
+  // Recursos: cartões sobem em cascata e a luz segue o mouse
+  const tiles = [...document.querySelectorAll('[data-tile]')]
+  tiles.forEach((t) => (t.style.opacity = '0'))
+  M.inView(
+    $('bento'),
+    () => {
+      M.animate(tiles, { opacity: [0, 1], y: [50, 0], scale: [0.94, 1] }, { ...soft, delay: M.stagger(0.09) })
+    },
+    { amount: 0.2 }
+  )
+  tiles.forEach((t) => {
+    t.addEventListener('pointermove', (e) => {
+      const r = t.getBoundingClientRect()
+      t.style.setProperty('--mx', e.clientX - r.left + 'px')
+      t.style.setProperty('--my', e.clientY - r.top + 'px')
+    })
+  })
+  M.hover('[data-tile]', (el) => {
+    M.animate(el, { y: -6, scale: 1.015 }, spring)
+    return () => M.animate(el, { y: 0, scale: 1 }, spring)
+  })
+
+  // Resumo final: os quadrinhos pulam no lugar, de dentro para fora, e levantam ao passar o mouse
+  const rts = [...document.querySelectorAll('[data-rt]')]
+  rts.forEach((t) => (t.style.opacity = '0'))
+  const center = document.querySelector('.rt-hero')
+  const dist = (t) => {
+    const a = t.getBoundingClientRect()
+    const b = center.getBoundingClientRect()
+    return Math.hypot(a.left + a.width / 2 - (b.left + b.width / 2), a.top + a.height / 2 - (b.top + b.height / 2))
+  }
+  M.inView(
+    $('recap'),
+    () => {
+      const order = [...rts].sort((x, y) => dist(x) - dist(y))
+      order.forEach((t, i) => M.animate(t, { opacity: [0, 1], scale: [0.6, 1], y: [30, 0] }, { ...spring, delay: 0.06 * i }))
+    },
+    { amount: 0.25 }
+  )
+  M.hover('[data-rt]', (el) => {
+    M.animate(el, { scale: 1.04, y: -4 }, spring)
+    return () => M.animate(el, { scale: 1, y: 0 }, spring)
   })
 
   /* ============ 7. Botões atraídos pelo cursor, toque com mola ============ */
