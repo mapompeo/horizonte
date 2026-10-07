@@ -1,7 +1,7 @@
 import { win32 } from 'node:path'
 import type { PrepProgress } from '../../../shared/types'
 import type { EngineInstaller, SunshineCredentials, VirtualDisplay } from '../types'
-import { createSetupTask, setupStep } from '../types'
+import { createSetupTask, setupStep } from '../setup-task'
 import type { SunshineDisplay } from '../../engine/sunshine/log'
 import type { Artifact } from './download'
 import { DRIVER_INSTALL_SCRIPT } from './driver-script'

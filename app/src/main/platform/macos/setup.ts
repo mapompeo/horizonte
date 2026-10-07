@@ -4,7 +4,7 @@ const join = posix.join
 import type { PrepProgress } from '../../../shared/types'
 import type { SunshineDisplay } from '../../engine/sunshine/log'
 import type { EngineInstaller, SunshineCredentials, VirtualDisplay } from '../types'
-import { createSetupTask, setupStep } from '../types'
+import { createSetupTask, setupStep } from '../setup-task'
 import type { Artifact } from '../windows/download'
 import type { PinnedArtifact } from '../windows/versions'
 import { shQuote } from '../linux/setup'

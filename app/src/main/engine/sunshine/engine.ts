@@ -67,6 +67,7 @@ function friendly(cause: unknown): Error {
 export class SunshineEngine implements ServerEngine {
   protected api: SunshineApiPort | null = null
   protected run = 0
+  private preparation: AbortController | null = null
   private pairing: PairingWatcher | null = null
   private session: { start(): void; stop(): void } | null = null
   private lastApprovedName = GENERIC_DEVICE
@@ -94,6 +95,9 @@ export class SunshineEngine implements ServerEngine {
     settings: Settings,
     onProgress?: (progress: PrepProgress) => void
   ): Promise<void> {
+    this.preparation?.abort()
+    const preparation = new AbortController()
+    this.preparation = preparation
     const run = ++this.run
     const alive = (): boolean => run === this.run
     this.stopWatchers()
@@ -121,9 +125,9 @@ export class SunshineEngine implements ServerEngine {
     // O caminho todo vai de 0 a 1: instalar o motor ocupa o começo, depois vêm o monitor e a placa.
     const report = (note: string, fraction: number): void => onProgress?.({ note, fraction })
     onStep('engine')
-    await this.deps.installer.ensureInstalled((p) =>
-      onProgress?.({ ...p, fraction: p.fraction * PROGRESS_AFTER_INSTALL })
-    )
+    await this.deps.installer.ensureInstalled((p) => {
+      if (alive()) onProgress?.({ ...p, fraction: p.fraction * PROGRESS_AFTER_INSTALL })
+    }, preparation.signal)
     if (!alive()) return
     report('Conectando ao motor de transmissão', PROGRESS_AFTER_INSTALL)
     const api = this.deps.createApi(await this.deps.credentials())
@@ -133,7 +137,7 @@ export class SunshineEngine implements ServerEngine {
 
     onStep('display')
     report('Procurando o monitor virtual', PROGRESS_AFTER_INSTALL)
-    await this.deps.display.ensureVirtualDisplay()
+    await this.deps.display.ensureVirtualDisplay(preparation.signal)
     if (!alive()) return
     const restartAndRead = this.restarter(api)
     const displayId = await this.findVirtualDisplay(restartAndRead, alive)
@@ -336,6 +340,7 @@ export class SunshineEngine implements ServerEngine {
   }
 
   async abort(): Promise<void> {
+    this.preparation?.abort()
     this.run++
     this.stopWatchers()
   }
