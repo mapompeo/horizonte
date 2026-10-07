@@ -33,11 +33,11 @@ async function fillDownloads() {
 
 fillDownloads()
 
-// O app do topo é interativo (e funciona também com menos movimento: os efeitos dele são só CSS).
-import('./demo.js')
-  .then(({ mountDemo }) => {
+// O app do topo é o app de verdade (compilado do código do projeto), rodando com um motor de mentira.
+import('./live.js')
+  .then(({ mountLive }) => {
     const root = document.getElementById('hero-app')
-    if (root) mountDemo(root, { version: document.querySelector('[data-version]')?.textContent ?? '0.1.0' })
+    if (root) mountLive(root)
   })
   .catch(() => undefined)
 
