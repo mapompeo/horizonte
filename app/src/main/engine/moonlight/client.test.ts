@@ -37,6 +37,115 @@ describe('buildStreamArgs', () => {
 })
 
 describe('createMoonlightClient', () => {
+  it('falha ao reabrir depois da queda avisa o controlador', async () => {
+    const proc = fakeProcess()
+    const spawn = vi.fn().mockResolvedValueOnce(proc).mockRejectedValueOnce(new Error('sem rede'))
+    let clock = 0
+    const client = createMoonlightClient({
+      ...pairing,
+      spawn,
+      listHosts: async () => [],
+      now: () => clock,
+      sleep: async () => undefined,
+      pairedHosts: { load: async () => ['host'], save: async () => undefined }
+    })
+    const ended = vi.fn()
+    client.onStreamEnded(ended)
+    await client.connect('host', DEFAULT_SETTINGS)
+    clock = 20_000
+    proc.exit(1)
+    await vi.waitFor(() => expect(ended).toHaveBeenCalledOnce())
+  })
+
+  it('recupera uma queda tardia sem parear novamente', async () => {
+    const first = fakeProcess()
+    const second = fakeProcess()
+    const spawn = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(second)
+    let clock = 0
+    const client = createMoonlightClient({
+      ...pairing,
+      spawn,
+      listHosts: async () => [],
+      now: () => clock,
+      sleep: async () => undefined,
+      pairedHosts: { load: async () => ['host'], save: async () => undefined }
+    })
+    const ended = vi.fn()
+    client.onStreamEnded(ended)
+    await client.connect('host', DEFAULT_SETTINGS)
+    clock = 20_000
+    first.exit(1)
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalledTimes(2))
+    expect(ended).not.toHaveBeenCalled()
+    await client.disconnect()
+    expect(second.killed).toBe(true)
+  })
+
+  it('Sair durante a espera de recuperação cancela a reconexão', async () => {
+    const proc = fakeProcess()
+    let wake!: () => void
+    let clock = 0
+    const spawn = vi.fn(async () => proc)
+    const client = createMoonlightClient({
+      ...pairing,
+      spawn,
+      listHosts: async () => [],
+      now: () => clock,
+      sleep: () =>
+        new Promise((resolve) => {
+          wake = resolve
+        }),
+      pairedHosts: { load: async () => ['host'], save: async () => undefined }
+    })
+    await client.connect('host', DEFAULT_SETTINGS)
+    clock = 20_000
+    proc.exit(1)
+    await vi.waitFor(() => expect(wake).toBeDefined())
+    await client.disconnect()
+    wake()
+    await Promise.resolve()
+    expect(spawn).toHaveBeenCalledOnce()
+  })
+
+  it('cancelar durante a abertura encerra o processo que chega depois', async () => {
+    const proc = fakeProcess()
+    let finish!: (proc: MoonlightProcess) => void
+    const client = createMoonlightClient({
+      ...pairing,
+      listHosts: async () => [],
+      pairedHosts: { load: async () => ['host'], save: async () => undefined },
+      spawn: () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    })
+    const connecting = client.connect('host', DEFAULT_SETTINGS)
+    await vi.waitFor(() => expect(finish).toBeDefined())
+    await client.disconnect()
+    finish(proc)
+    await connecting
+    expect(proc.killed).toBe(true)
+  })
+
+  it('não permite outra tentativa enquanto a primeira ainda abre', async () => {
+    let finish!: (proc: MoonlightProcess) => void
+    const client = createMoonlightClient({
+      ...pairing,
+      listHosts: async () => [],
+      pairedHosts: { load: async () => ['host'], save: async () => undefined },
+      spawn: () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    })
+    const connecting = client.connect('host', DEFAULT_SETTINGS)
+    await vi.waitFor(() => expect(finish).toBeDefined())
+    await expect(client.connect('other', DEFAULT_SETTINGS)).rejects.toThrow(/já existe/i)
+    finish(fakeProcess())
+    await connecting
+    await client.disconnect()
+  })
+
   const pairing = {
     run: vi.fn<(args: string[]) => Promise<number | null>>(async () => 0),
     sendPin: vi.fn(async () => undefined),

@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { generatePassword, waitForApi } from './wire'
+import { generatePassword, waitForApi, toCipher } from './wire'
+
+describe('toCipher', () => {
+  it('recusa o backend basic_text do Linux mesmo quando o Electron diz que criptografia está disponível', () => {
+    const cipher = toCipher({
+      isEncryptionAvailable: () => true,
+      getSelectedStorageBackend: () => 'basic_text',
+      encryptString: () => Buffer.alloc(0),
+      decryptString: () => ''
+    })
+    expect(cipher.isAvailable()).toBe(false)
+  })
+})
 
 describe('generatePassword', () => {
   it('é longa, só com letras e números (segura para a linha de comando) e diferente a cada vez', () => {

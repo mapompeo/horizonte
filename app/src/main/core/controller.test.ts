@@ -43,6 +43,21 @@ const screen = (controller: Controller): string => controller.getSnapshot().stat
 const settle = (ms = 40): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 describe('pedidos de pareamento em sequência', () => {
+  it('falha ao salvar ajustes preserva o último estado confirmado', async () => {
+    const controller = await createController({
+      engine: new FakeEngine(0),
+      store: {
+        load: async () => ({ ...DEFAULT_SETTINGS }),
+        save: async () => {
+          throw new Error('disco cheio')
+        }
+      },
+      initial: { screen: 'ready', mode: 'send' }
+    })
+    await expect(controller.updateSettings({ bitrate: 60 })).rejects.toThrow('disco cheio')
+    expect(controller.getSnapshot().settings.bitrate).toBe(30)
+  })
+
   const ready: AppState = { screen: 'ready', mode: 'send' }
 
   it('um segundo pedido durante a tela Permitir aparece depois que o primeiro é respondido', async () => {

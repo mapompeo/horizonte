@@ -46,6 +46,58 @@ const serve = (path: string, body: Buffer): void => {
 }
 
 describe('downloadVerified', () => {
+  it('renova o prazo enquanto chegam dados, permitindo downloads demorados', async () => {
+    const body = Buffer.alloc(6, 7)
+    routes['/continuo'] = (res) => {
+      res.setHeader('content-length', body.length)
+      let sent = 0
+      const timer = setInterval(() => {
+        res.write(body.subarray(sent, ++sent))
+        if (sent === body.length) {
+          clearInterval(timer)
+          res.end()
+        }
+      }, 30)
+      res.on('close', () => clearInterval(timer))
+    }
+    const dest = join(dir, 'continuo')
+    await downloadVerified(
+      { url: urlFor('/continuo'), sha256: sha256(body) },
+      dest,
+      undefined,
+      undefined,
+      100
+    )
+    expect(await readFile(dest)).toEqual(body)
+  })
+  it.each(['sem-cabecalho', 'corpo-parado'])(
+    'interrompe %s sem deixar arquivo parcial',
+    async (route) => {
+      routes[`/${route}`] = (res) => {
+        if (route === 'corpo-parado') {
+          res.setHeader('content-length', 1000)
+          res.write(Buffer.alloc(10))
+        }
+        // O servidor aceita a conexão, mas não entrega mais nada.
+        setTimeout(() => res.destroy(), 250)
+      }
+      const dest = join(dir, route)
+      const failure = await downloadVerified(
+        { url: urlFor(`/${route}`), sha256: 'a'.repeat(64) },
+        dest,
+        undefined,
+        undefined,
+        50
+      ).catch((cause: unknown) => cause)
+      expect(failure).toBeInstanceOf(DownloadError)
+      expect((failure as DownloadError).kind).toBe('network')
+      expect((failure as DownloadError).message).toMatch(/parou|tempo/i)
+      expect(await exists(dest)).toBe(false)
+      expect(await exists(`${dest}.part`)).toBe(false)
+    },
+    1000
+  )
+
   it('baixa, confere o hash e deixa o arquivo no destino', async () => {
     const body = Buffer.from('conteudo do instalador')
     serve('/a.msi', body)

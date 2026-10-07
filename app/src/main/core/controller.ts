@@ -53,6 +53,7 @@ export async function createController({
   /** Pedidos de pareamento que chegaram com a tela ocupada (outro pedido ou uma conexão). */
   let queuedPairs: Extract<AppEvent, { type: 'PAIR_REQUEST' }>[] = []
   const listeners = new Set<(snapshot: Snapshot) => void>()
+  let settingsQueue: Promise<unknown> = Promise.resolve()
 
   const snapshot = (): Snapshot => ({ state, settings })
 
@@ -184,15 +185,20 @@ export async function createController({
   return {
     getSnapshot: snapshot,
     dispatch,
-    async updateSettings(patch) {
-      settings = parseSettings({ ...settings, ...patch })
-      await store.save(settings)
-      notify()
-      if (state.screen === 'connected' || state.screen === 'receiving') {
-        // Ajuste ao vivo é melhor esforço: se falhar, a conexão segue com o valor anterior.
-        await engine.applyBitrate(settings.bitrate).catch(() => undefined)
-      }
-      return settings
+    updateSettings(patch) {
+      const update = settingsQueue.then(async () => {
+        const next = parseSettings({ ...settings, ...patch })
+        await store.save(next)
+        settings = { ...next, mode: settings.mode }
+        notify()
+        if (state.screen === 'connected' || state.screen === 'receiving') {
+          // Ajuste ao vivo é melhor esforço: se falhar, a conexão segue com o valor anterior.
+          await engine.applyBitrate(settings.bitrate).catch(() => undefined)
+        }
+        return settings
+      })
+      settingsQueue = update.catch(() => undefined)
+      return update
     },
     listHosts: () => engine.listHosts(),
     subscribe(listener) {
