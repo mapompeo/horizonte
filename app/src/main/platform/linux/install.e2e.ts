@@ -168,6 +168,45 @@ describe.runIf(process.platform === 'linux' && process.env.CI === 'true')(
         names
       )
       expect(names, 'o Sunshine registrou o aparelho').toContain(name)
+
+      // Transmissão de verdade (codificador por software na CI): o Moonlight conecta e recebe quadros?
+      const stream = spawn(
+        moonlight,
+        [
+          'stream',
+          '127.0.0.1',
+          'Desktop',
+          '--video-decoder',
+          'software',
+          '--resolution',
+          '1280x720',
+          '--fps',
+          '30',
+          '--bitrate',
+          '5000',
+          '--display-mode',
+          'windowed'
+        ],
+        { env: { ...process.env, APPIMAGE_EXTRACT_AND_RUN: '1' }, stdio: 'inherit', detached: true }
+      )
+      await new Promise((resolve) => setTimeout(resolve, 20_000))
+      const sunshineLog = await run(
+        'sh',
+        [
+          '-c',
+          `tail -n 400 ${join(homedir(), '.config/sunshine/sunshine.log')} | grep -E "CLIENT CONNECTED|CLIENT DISCONNECTED|Resolution|Streaming bitrate|Frame|IDR|Error" | tail -n 25 || true`
+        ],
+        30_000
+      ).catch((e: Error) => '(falhou: ' + e.message + ')')
+      console.log('--- transmissão real: log do Sunshine', sunshineLog)
+      expect(sunshineLog, 'o Moonlight conectou e o Sunshine começou a transmitir').toContain(
+        'CLIENT CONNECTED'
+      )
+      try {
+        if (stream.pid) process.kill(-stream.pid, 'SIGKILL')
+      } catch {
+        // já tinha encerrado
+      }
       // Na CI o Moonlight registra o aparelho mas não encerra o processo (sem tela de verdade): fica só o registro.
       // Grupo inteiro: o AppImage roda o Moonlight como filho, e um filho vivo prenderia o teste.
       try {
