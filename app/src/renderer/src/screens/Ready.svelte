@@ -3,6 +3,7 @@
   import type { WebAccess } from '../../../shared/types'
   import { copyFor, readySubtitle } from '../lib/copy'
   import Pill from '../components/Pill.svelte'
+  import { changeWebAccess } from '../lib/store'
 
   interface Props {
     deviceName: string
@@ -23,11 +24,10 @@
   })
 
   async function toggle(): Promise<void> {
+    if (busy) return
     busy = true
     try {
-      web = await window.horizonte.setWebAccess(!web.on)
-    } catch {
-      web = { on: false, error: 'Não consegui mudar isso agora. Tente de novo.' }
+      web = await changeWebAccess(web)
     } finally {
       busy = false
     }
@@ -41,7 +41,9 @@
 <div class="stack gap-sm">
   <button class="btn btn-outline btn-sm" onclick={toggle} disabled={busy}>
     {busy
-      ? 'Ligando…'
+      ? web.on
+        ? 'Desligando…'
+        : 'Ligando…'
       : web.on
         ? 'Parar de receber pelo navegador'
         : 'Receber pelo navegador (sem instalar nada)'}

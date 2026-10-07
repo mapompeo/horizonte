@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import type { AppState, Mode } from '../../shared/types'
-  import { route, snapshot, startSync } from './lib/store'
+  import { route, snapshot, startSync, syncError } from './lib/store'
   import TopBar from './components/TopBar.svelte'
   import Install from './screens/Install.svelte'
   import Choose from './screens/Choose.svelte'
@@ -31,13 +31,26 @@
     }
   }
 
-  onMount(() => {
-    let stop: (() => void) | undefined
-    let disposed = false
-    void startSync().then((unsubscribe) => {
+  let syncing = $state(false)
+  let stop: (() => void) | undefined
+  let disposed = false
+
+  async function initialize(): Promise<void> {
+    if (syncing || disposed) return
+    syncing = true
+    try {
+      const unsubscribe = await startSync()
       if (disposed) unsubscribe()
       else stop = unsubscribe
-    })
+    } catch {
+      // startSync publica o erro de inicialização sem fabricar estado do motor.
+    } finally {
+      syncing = false
+    }
+  }
+
+  onMount(() => {
+    void initialize()
     return () => {
       disposed = true
       stop?.()
@@ -49,7 +62,7 @@
 {#if $snapshot}
   {@const state = $snapshot.state}
   {@const settings = $snapshot.settings}
-  {#if $route === 'settings'}
+  {#if $route === 'settings' && state.screen !== 'error' && state.screen !== 'approve'}
     <SettingsPage {settings} />
   {:else}
     {@const mode = modeOf(state)}
@@ -80,4 +93,17 @@
       {/key}
     </div>
   {/if}
+{:else}
+  <div class="screen">
+    <main class="center">
+      {#if $syncError}
+        <h1 class="title title-md" role="alert">{$syncError}</h1>
+        <button class="btn btn-primary" onclick={initialize} disabled={syncing}>
+          {syncing ? 'Carregando…' : 'Tentar de novo'}
+        </button>
+      {:else}
+        <p class="status" role="status">Carregando o Horizonte…</p>
+      {/if}
+    </main>
+  </div>
 {/if}

@@ -64,6 +64,7 @@ describe('copyFor', () => {
       pin: null
     })
     expect(copy.title).toBe('Permitir o Notebook?')
+    expect(copy.subtitle).toBe('Ele quer receber a tela deste dispositivo.')
     const hostile = copyFor({
       screen: 'approve',
       mode: 'send',
