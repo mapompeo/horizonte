@@ -14,6 +14,7 @@ import { createProbe } from './wire'
 
 const run = (command: string, args: string[], timeoutMs = 600_000): Promise<string> =>
   new Promise((resolve, reject) => {
+    console.log(`iniciando comando: ${command}`)
     execFile(command, args, { timeout: timeoutMs, env: process.env }, (error, out, stderr) =>
       error ? reject(new Error(stderr.trim() || error.message)) : resolve(out)
     )
@@ -65,7 +66,10 @@ describe.runIf(process.platform === 'linux' && process.env.CI === 'true')(
       )
       const notes: string[] = []
       try {
-        await setup.installer.ensureInstalled((progress) => notes.push(progress.note))
+        await setup.installer.ensureInstalled((progress) => {
+          if (notes.at(-1) !== progress.note) console.log(`etapa: ${progress.note}`)
+          notes.push(progress.note)
+        })
         console.log('etapas:', notes.join(' > '))
         await setup.display.ensureVirtualDisplay()
       } finally {
