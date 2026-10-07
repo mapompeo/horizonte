@@ -25,6 +25,7 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: true
 mac:
+  publish: null
   # Um disco para Mac com chip Apple e outro para Mac Intel: o Sunshine e o Moonlight que o app baixa já servem aos dois.
   target:
     - target: dmg
@@ -60,4 +61,7 @@ appImage:
 deb:
   artifactName: Horizonte-${version}.${ext}
 npmRebuild: false
-publish: null
+publish:
+  provider: github
+  owner: mapompeo
+  repo: horizonte

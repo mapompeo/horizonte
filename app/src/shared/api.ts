@@ -1,4 +1,5 @@
 import type { AppEvent, Host, Settings, SettingsPatch, Snapshot, WebAccess } from './types'
+import type { UpdateAction, UpdateStatus } from './updates'
 
 export const CHANNELS = {
   snapshot: 'horizonte:snapshot',
@@ -9,7 +10,10 @@ export const CHANNELS = {
   setWebAccess: 'horizonte:set-web-access',
   openRepo: 'horizonte:open-repo',
   copyDiagnostic: 'horizonte:copy-diagnostic',
-  push: 'horizonte:push'
+  push: 'horizonte:push',
+  update: 'horizonte:update',
+  updateStatus: 'horizonte:update-status',
+  updatePush: 'horizonte:update-push'
 } as const
 
 /** Endereço do projeto: fixo, o processo principal nunca abre um endereço vindo da interface. */
@@ -28,6 +32,9 @@ export interface HorizonteApi {
   openRepo(): Promise<void>
   /** Copia o diagnóstico (versão, sistema, tela e erro, sem dados pessoais). Devolve se deu certo. */
   copyDiagnostic(): Promise<boolean>
+  getUpdateStatus(): Promise<UpdateStatus>
+  update(action: UpdateAction): Promise<UpdateStatus>
+  onUpdate(callback: (status: UpdateStatus) => void): () => void
   onSnapshot(callback: (snapshot: Snapshot) => void): () => void
 }
 

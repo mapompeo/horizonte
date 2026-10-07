@@ -70,8 +70,12 @@ jobs:
       - name: Anexar à versão
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             app/dist/Horizonte-*-setup.exe
             app/dist/Horizonte-*.AppImage
             app/dist/Horizonte-*.deb
             app/dist/Horizonte-*.dmg
+            app/dist/latest*.yml
+            app/dist/beta*.yml
+            app/dist/*.blockmap

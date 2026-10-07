@@ -15,6 +15,7 @@ import { existsSync } from 'node:fs'
 import { homedir, hostname, networkInterfaces, release as osRelease } from 'node:os'
 import { join } from 'node:path'
 import { Bonjour } from 'bonjour-service'
+import { autoUpdater } from 'electron-updater'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { CHANNELS, REPO_URL } from '../shared/api'
@@ -22,6 +23,7 @@ import { isUiEvent } from '../shared/events'
 import { cleanName } from '../shared/names'
 import type { SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
+import { createUpdater } from './core/updater'
 import { buildDiagnostic } from './core/diagnostic'
 import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
@@ -352,6 +354,42 @@ async function boot(): Promise<void> {
     )
   }
   const controller = await createController({ engine, store })
+  autoUpdater.autoDownload = false
+  autoUpdater.autoInstallOnAppQuit = false
+  autoUpdater.allowPrerelease = app.getVersion().includes('-')
+  autoUpdater.allowDowngrade = false
+  const updates = createUpdater({
+    supported:
+      app.isPackaged &&
+      process.platform !== 'darwin' &&
+      (process.platform !== 'linux' || Boolean(process.env.APPIMAGE)),
+    currentVersion: app.getVersion(),
+    check: () => autoUpdater.checkForUpdates(),
+    download: () => autoUpdater.downloadUpdate(),
+    install: () => autoUpdater.quitAndInstall(false, true),
+    canInstall: () =>
+      !['connected', 'receiving', 'preparing', 'approve'].includes(
+        controller.getSnapshot().state.screen
+      ),
+    listen: (events) => {
+      autoUpdater.on('update-available', (info) => events.available(info.version))
+      autoUpdater.on('update-not-available', events.current)
+      autoUpdater.on('download-progress', (info) => events.progress(info.percent))
+      autoUpdater.on('update-downloaded', events.downloaded)
+      autoUpdater.on('error', events.error)
+    }
+  })
+  updates.subscribe((status) => {
+    BrowserWindow.getAllWindows().forEach((window) =>
+      window.webContents.send(CHANNELS.updatePush, status)
+    )
+  })
+  ipcMain.handle(CHANNELS.updateStatus, () => updates.status())
+  ipcMain.handle(CHANNELS.update, (_event, action: unknown) => {
+    if (action === 'check' || action === 'download' || action === 'install')
+      return updates.perform(action)
+    return updates.status()
+  })
   if (!dev && !real && !app.isPackaged) runDevDemo(controller, fake)
 
   ipcMain.handle(CHANNELS.snapshot, () => controller.getSnapshot())
@@ -399,6 +437,7 @@ async function boot(): Promise<void> {
   app.on('before-quit', () => void gateway.stop())
 
   createWindow(controller)
+  void updates.perform('check')
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(controller)
   })
