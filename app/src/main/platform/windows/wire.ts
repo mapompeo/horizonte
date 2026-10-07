@@ -40,10 +40,12 @@ export async function waitForApi(
 /** O `safeStorage` do Electron tem outros nomes de método; este adaptador o encaixa no cofre. */
 export const toCipher = (storage: {
   isEncryptionAvailable(): boolean
+  getSelectedStorageBackend?(): string
   encryptString(plain: string): Buffer
   decryptString(data: Buffer): string
 }): Cipher => ({
-  isAvailable: () => storage.isEncryptionAvailable(),
+  isAvailable: () =>
+    storage.isEncryptionAvailable() && storage.getSelectedStorageBackend?.() !== 'basic_text',
   encrypt: (plain) => storage.encryptString(plain),
   decrypt: (data) => storage.decryptString(data)
 })

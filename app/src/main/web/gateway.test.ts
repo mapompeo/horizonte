@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { SunshineCredentials } from '../platform/types'
 import { buildGatewayConfig, createGateway, type GatewayDeps, type GatewayProcess } from './gateway'
 
@@ -79,6 +79,58 @@ function harness(options: { stored?: boolean; loginStatus?: number; neverUp?: bo
 }
 
 describe('createGateway', () => {
+  it('desativar durante o download impede abertura tardia do gateway', async () => {
+    const h = harness({ stored: true })
+    let downloaded!: (dir: string) => void
+    h.deps.ensureFiles = () =>
+      new Promise((resolve) => {
+        downloaded = resolve
+      })
+    const gateway = createGateway(h.deps)
+    const starting = gateway.start()
+    await gateway.stop()
+    downloaded('package')
+    await starting
+    expect(h.launches).toEqual([])
+    expect(gateway.status()).toEqual({ on: false })
+  })
+
+  it('partidas simultâneas compartilham a mesma abertura', async () => {
+    const h = harness({ stored: true })
+    let downloaded!: (dir: string) => void
+    const download = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          downloaded = resolve
+        })
+    )
+    h.deps.ensureFiles = download
+    const gateway = createGateway(h.deps)
+    const first = gateway.start()
+    const second = gateway.start()
+    downloaded('package')
+    await Promise.all([first, second])
+    expect(download).toHaveBeenCalledOnce()
+    expect(h.launches).toHaveLength(1)
+  })
+
+  it('a saída inesperada do processo desativa o acesso e permite iniciar novamente', async () => {
+    const h = harness({ stored: true })
+    let exit!: () => void
+    h.deps.spawn = () => ({
+      kill: () => undefined,
+      onExit: (listener) => {
+        exit = listener
+      }
+    })
+    const gateway = createGateway(h.deps)
+    await gateway.start()
+    exit()
+    expect(gateway.status()).toMatchObject({ on: false })
+    expect(gateway.status().error).toBeTruthy()
+    expect(await gateway.start()).toMatchObject({ on: true })
+  })
+
   it('primeira vez: cria o acesso só em 127.0.0.1 e só depois abre para a rede', async () => {
     const h = harness()
     const access = await createGateway(h.deps).start()

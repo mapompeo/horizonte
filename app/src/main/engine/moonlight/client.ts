@@ -51,6 +51,7 @@ export interface MoonlightClientDeps {
    */
   pairedHosts?: { load(): Promise<string[]>; save(hosts: string[]): Promise<void> }
   now?: () => number
+  sleep?: (ms: number) => Promise<void>
 }
 
 /** Transmissão que cai com erro antes disso quase sempre é pareamento perdido, não queda de rede. */
@@ -58,6 +59,11 @@ const EARLY_FAILURE_MS = 15_000
 
 export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
   let current: MoonlightProcess | null = null
+  let generation = 0
+  let connecting: number | null = null
+  let retries = 0
+  const sleep =
+    deps.sleep ?? ((ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms)))
   const ended = new Set<() => void>()
   const paired = new Set<string>()
   const now = deps.now ?? Date.now
@@ -68,43 +74,81 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
       for (const host of (await deps.pairedHosts?.load().catch(() => [])) ?? []) paired.add(host)
     })())
 
-  return {
+  const client: ClientEngine = {
     listHosts: () => deps.listHosts(),
     async connect(host, settings) {
-      if (current) throw new Error('Já existe uma transmissão sendo recebida.')
-      await load()
-      if (!paired.has(host)) {
-        // Sem PIN digitado: este aparelho gera o PIN, manda pelo canal e o outro só precisa aprovar.
-        const pin = deps.randomPin()
-        await deps.sendPin(host, deps.deviceName(), pin).catch(() => {
-          throw new Error(
-            'Não consegui falar com o outro dispositivo. Confira se o Horizonte está aberto em Enviar lá.'
-          )
+      if (current || connecting !== null)
+        throw new Error('Já existe uma transmissão sendo recebida.')
+      const run = ++generation
+      connecting = run
+      const cancelled = (): boolean => run !== generation
+      try {
+        await load()
+        if (cancelled()) return
+        if (!paired.has(host)) {
+          // Sem PIN digitado: este aparelho gera o PIN, manda pelo canal e o outro só precisa aprovar.
+          const pin = deps.randomPin()
+          await deps.sendPin(host, deps.deviceName(), pin).catch(() => {
+            throw new Error(
+              'Não consegui falar com o outro dispositivo. Confira se o Horizonte está aberto em Enviar lá.'
+            )
+          })
+          if (cancelled()) return
+          // O Moonlight às vezes registra o pareamento e não encerra o processo (visto no Mac e no Linux):
+          // se o pair não deu 0, o `list` diz se o aparelho ficou pareado mesmo assim.
+          const pairCode = await deps.run(['pair', host, '--pin', pin])
+          if (cancelled()) return
+          if (pairCode !== 0 && (await deps.run(['list', host])) !== 0) {
+            throw new Error(
+              'O pareamento não foi concluído. Aprove o pedido no outro dispositivo e tente de novo.'
+            )
+          }
+          paired.add(host)
+          await remember()
+        }
+        if (cancelled()) return
+        const child = await deps.spawn(buildStreamArgs(host, settings))
+        if (cancelled()) {
+          child.kill()
+          return
+        }
+        const startedAt = now()
+        current = child
+        child.onExit((code) => {
+          if (current !== child) return // foi o próprio disconnect
+          const duration = now() - startedAt
+          if (code !== 0 && duration < EARLY_FAILURE_MS && paired.delete(host)) {
+            void remember()
+          }
+          current = null
+          if (duration >= 60_000) retries = 0
+          if (code !== 0 && duration >= EARLY_FAILURE_MS && retries < 3) {
+            const token = generation
+            retries++
+            void sleep(1000 * 2 ** (retries - 1))
+              .then(async () => {
+                if (token !== generation) return
+                try {
+                  await client.connect(host, settings)
+                } catch {
+                  if (generation === token + 1) ended.forEach((listener) => listener())
+                }
+              })
+              .catch(() => {
+                if (token === generation) ended.forEach((listener) => listener())
+              })
+            return
+          }
+          ended.forEach((listener) => listener())
         })
-        // O Moonlight às vezes registra o pareamento e não encerra o processo (visto no Mac e no Linux):
-        // se o pair não deu 0, o `list` diz se o aparelho ficou pareado mesmo assim.
-        const pairCode = await deps.run(['pair', host, '--pin', pin])
-        if (pairCode !== 0 && (await deps.run(['list', host])) !== 0) {
-          throw new Error(
-            'O pareamento não foi concluído. Aprove o pedido no outro dispositivo e tente de novo.'
-          )
-        }
-        paired.add(host)
-        await remember()
+      } finally {
+        if (connecting === run) connecting = null
       }
-      const child = await deps.spawn(buildStreamArgs(host, settings))
-      const startedAt = now()
-      current = child
-      child.onExit((code) => {
-        if (current !== child) return // foi o próprio disconnect
-        if (code !== 0 && now() - startedAt < EARLY_FAILURE_MS && paired.delete(host)) {
-          void remember()
-        }
-        current = null
-        ended.forEach((listener) => listener())
-      })
     },
     async disconnect() {
+      generation++
+      connecting = null
+      retries = 0
       const child = current
       current = null
       child?.kill()
@@ -116,4 +160,5 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
       return () => ended.delete(callback)
     }
   }
+  return client
 }

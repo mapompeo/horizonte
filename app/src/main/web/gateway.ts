@@ -87,6 +87,11 @@ async function waitUp(deps: GatewayDeps, url: string): Promise<void> {
 export function createGateway(deps: GatewayDeps): Gateway {
   let child: GatewayProcess | null = null
   let access: WebAccess = { on: false }
+  let generation = 0
+  let pending: Promise<WebAccess> | null = null
+  const check = (run: number): void => {
+    if (run !== generation) throw new Error('Abertura cancelada.')
+  }
 
   const stopChild = (): void => {
     const running = child
@@ -94,7 +99,7 @@ export function createGateway(deps: GatewayDeps): Gateway {
     running?.kill()
   }
 
-  async function launch(packageDir: string, bind: string): Promise<void> {
+  async function launch(packageDir: string, bind: string, run: number): Promise<void> {
     const configPath = join(deps.dir, 'config.json')
     const config = buildGatewayConfig({
       baseConfig: await deps.defaultConfig(packageDir),
@@ -103,45 +108,74 @@ export function createGateway(deps: GatewayDeps): Gateway {
       deviceName: deps.deviceName()
     })
     await deps.writeConfig(configPath, config)
-    child = deps.spawn(packageDir, configPath)
+    check(run)
+    const running = deps.spawn(packageDir, configPath)
+    child = running
+    running.onExit(() => {
+      if (child !== running) return
+      child = null
+      access = {
+        on: false,
+        error: 'O acesso pelo navegador foi interrompido. Ative-o de novo para tentar novamente.'
+      }
+    })
     await waitUp(deps, `http://127.0.0.1:${GATEWAY_PORT}/`)
+    check(run)
+    if (child !== running) throw new Error('O servidor do navegador encerrou durante a abertura.')
+  }
+
+  async function start(run: number): Promise<WebAccess> {
+    try {
+      const packageDir = await deps.ensureFiles()
+      check(run)
+      let credentials = await deps.vault.load()
+      check(run)
+      if (!credentials) {
+        const code = deps.generateCode()
+        await launch(packageDir, `127.0.0.1:${GATEWAY_PORT}`, run)
+        const status = await deps.post(`http://127.0.0.1:${GATEWAY_PORT}/api/login`, {
+          name: GATEWAY_USER,
+          password: code
+        })
+        if (status !== 200) throw new Error('Não consegui criar o acesso do navegador.')
+        check(run)
+        credentials = { username: GATEWAY_USER, password: code, port: GATEWAY_PORT }
+        await deps.vault.save(credentials)
+        check(run)
+        stopChild()
+        await deps.sleep(500)
+      }
+      check(run)
+      await launch(packageDir, `0.0.0.0:${GATEWAY_PORT}`, run)
+      const address = deps.lanAddress()
+      access = {
+        on: true,
+        url: address ? `http://${address}:${GATEWAY_PORT}` : undefined,
+        user: credentials.username,
+        code: credentials.password
+      }
+    } catch (cause) {
+      if (run !== generation) return access
+      stopChild()
+      access = { on: false, error: cause instanceof Error ? cause.message : String(cause) }
+    }
+    return access
   }
 
   return {
     status: () => access,
-    async start() {
-      if (child) return access
-      try {
-        const packageDir = await deps.ensureFiles()
-        let credentials = await deps.vault.load()
-        if (!credentials) {
-          const code = deps.generateCode()
-          await launch(packageDir, `127.0.0.1:${GATEWAY_PORT}`)
-          const status = await deps.post(`http://127.0.0.1:${GATEWAY_PORT}/api/login`, {
-            name: GATEWAY_USER,
-            password: code
-          })
-          if (status !== 200) throw new Error('Não consegui criar o acesso do navegador.')
-          credentials = { username: GATEWAY_USER, password: code, port: GATEWAY_PORT }
-          await deps.vault.save(credentials)
-          stopChild()
-          await deps.sleep(500)
-        }
-        await launch(packageDir, `0.0.0.0:${GATEWAY_PORT}`)
-        const address = deps.lanAddress()
-        access = {
-          on: true,
-          url: address ? `http://${address}:${GATEWAY_PORT}` : undefined,
-          user: credentials.username,
-          code: credentials.password
-        }
-      } catch (cause) {
-        stopChild()
-        access = { on: false, error: cause instanceof Error ? cause.message : String(cause) }
-      }
-      return access
+    start() {
+      if (pending) return pending
+      if (child) return Promise.resolve(access)
+      const opening = start(++generation).finally(() => {
+        if (pending === opening) pending = null
+      })
+      pending = opening
+      return opening
     },
     async stop() {
+      generation++
+      pending = null
       stopChild()
       access = { on: false }
     }

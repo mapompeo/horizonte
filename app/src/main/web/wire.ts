@@ -97,8 +97,18 @@ export function createRealGateway(deps: {
     },
     defaultConfig: (pkg) =>
       new Promise((resolve, reject) => {
-        execFile(join(pkg, target.exe), ['print-config'], { cwd: pkg }, (error, out) =>
-          error ? reject(error) : resolve(JSON.parse(out) as Record<string, unknown>)
+        execFile(
+          join(pkg, target.exe),
+          ['print-config'],
+          { cwd: pkg, timeout: 15_000 },
+          (error, out) => {
+            if (error) return reject(error)
+            try {
+              resolve(JSON.parse(out) as Record<string, unknown>)
+            } catch (cause) {
+              reject(cause)
+            }
+          }
         )
       }),
     writeConfig: async (path, config) => {
@@ -111,6 +121,7 @@ export function createRealGateway(deps: {
         stdio: 'ignore',
         windowsHide: true
       })
+      child.on('error', () => undefined) // waitUp converte falha de inicialização em erro de acesso
       return { kill: () => void child.kill(), onExit: (l) => void child.once('exit', l) }
     },
     post: async (url, body) =>
@@ -118,7 +129,8 @@ export function createRealGateway(deps: {
         await fetch(url, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(5000)
         })
       ).status,
     ping: async (url) => {

@@ -24,6 +24,7 @@ import type { SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { buildDiagnostic } from './core/diagnostic'
 import { createSettingsStore } from './core/settings'
+import { createAutostart } from './platform/autostart'
 import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
@@ -129,10 +130,32 @@ async function boot(): Promise<void> {
   )
   app.on('browser-window-created', (_event, window) => optimizer.watchWindowShortcuts(window))
 
-  const store = createSettingsStore(
+  const persisted = createSettingsStore(
     join(app.getPath('userData'), 'settings.json'),
     cleanName(hostname()) || undefined
   )
+  const autostart = createAutostart({
+    platform: process.platform,
+    executable: process.env.APPIMAGE || process.execPath,
+    configDir: process.env.XDG_CONFIG_HOME || join(homedir(), '.config'),
+    native: (on) => app.setLoginItemSettings({ openAtLogin: on })
+  })
+  const store = {
+    load: persisted.load,
+    save: async (settings: Parameters<typeof persisted.save>[0]): Promise<void> => {
+      const previous = await persisted.load()
+      if (app.isPackaged && settings.autostart !== previous.autostart)
+        await autostart.set(settings.autostart)
+      try {
+        await persisted.save(settings)
+      } catch (cause) {
+        if (app.isPackaged && settings.autostart !== previous.autostart)
+          await autostart.set(previous.autostart)
+        throw cause
+      }
+    }
+  }
+  if (app.isPackaged) await autostart.set((await persisted.load()).autostart)
   const fake = new FakeEngine(is.dev ? 700 : 0)
   const dev = readDevEngineConfig(process.env)
   const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -148,7 +171,17 @@ async function boot(): Promise<void> {
     process.platform === 'darwin' &&
     (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
   const discovery = createDiscovery({
-    find: () => new Bonjour().find({ type: 'nvstream' }),
+    find: () => {
+      const bonjour = new Bonjour()
+      const browser = bonjour.find({ type: 'nvstream' })
+      return {
+        on: (_event, listener) => browser.on('up', listener),
+        stop: () => {
+          browser.stop()
+          bonjour.destroy()
+        }
+      }
+    },
     ownAddresses: () =>
       Object.values(networkInterfaces())
         .flat()
@@ -205,6 +238,10 @@ async function boot(): Promise<void> {
     },
     spawn: async (args) => {
       const child = spawn(await moonlightExe(), args, { stdio: 'ignore', env: clientEnv })
+      await new Promise<void>((resolve, reject) => {
+        child.once('spawn', resolve)
+        child.once('error', reject)
+      })
       return {
         kill: () => void child.kill(),
         onExit: (listener) => void child.once('exit', listener)
