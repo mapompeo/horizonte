@@ -5,29 +5,90 @@ import Cocoa
 //
 // Uso: horizonte-display [--width 1920] [--height 1080] [--name Horizonte]
 //      horizonte-display --count   (só imprime quantas telas o macOS está usando agora e sai)
+//      horizonte-display --layout  (JSON com a tela principal e os limites reais das telas ativas)
 
-// Conta as telas em uso pela própria API do sistema. Funciona também sem placa de vídeo (máquina virtual),
-// onde o system_profiler não lista nada.
-if CommandLine.arguments.contains("--count") {
+func fail(_ message: String, code: Int32 = 2) -> Never {
+    fputs("\(message)\n", stderr)
+    exit(code)
+}
+
+let args = Array(CommandLine.arguments.dropFirst())
+
+// Consultas somente de leitura: coordenadas globais do Quartz, sem converter para pixels ou AppKit.
+struct DisplayBounds: Codable {
+    let id: CGDirectDisplayID
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
+
+    init(_ id: CGDirectDisplayID) {
+        let bounds = CGDisplayBounds(id)
+        self.id = id
+        x = Double(bounds.minX)
+        y = Double(bounds.minY)
+        width = Double(bounds.width)
+        height = Double(bounds.height)
+    }
+}
+
+struct Layout: Codable {
+    let main: CGDirectDisplayID
+    let displays: [DisplayBounds]
+}
+
+if args.contains("--count") || args.contains("--layout") {
+    guard args.count == 1 else {
+        fail("--count e --layout devem ser usados sozinhos", code: 64)
+    }
     var count: UInt32 = 0
-    CGGetActiveDisplayList(0, nil, &count)
-    print(count)
-    exit(0)
+    let countError = CGGetActiveDisplayList(0, nil, &count)
+    guard countError == .success else {
+        fail("nao consegui contar as telas: Quartz \(countError.rawValue)")
+    }
+    if args[0] == "--count" {
+        print(count)
+        exit(0)
+    }
+    var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+    let listError = CGGetActiveDisplayList(count, &ids, &count)
+    guard listError == .success else {
+        fail("nao consegui listar as telas: Quartz \(listError.rawValue)")
+    }
+    let layout = Layout(main: CGMainDisplayID(), displays: ids.prefix(Int(count)).map { DisplayBounds($0) })
+    do {
+        let json = try JSONEncoder().encode(layout)
+        print(String(decoding: json, as: UTF8.self))
+        exit(0)
+    } catch {
+        fail("nao consegui serializar o layout: \(error)")
+    }
 }
 
-func argument(_ name: String, default fallback: String) -> String {
-    let args = CommandLine.arguments
-    guard let index = args.firstIndex(of: name), index + 1 < args.count else { return fallback }
-    return args[index + 1]
+var options: [String: String] = [:]
+var index = 0
+while index < args.count {
+    let option = args[index]
+    guard ["--width", "--height", "--name"].contains(option) else {
+        fail("argumento desconhecido: \(option)", code: 64)
+    }
+    guard index + 1 < args.count, !args[index + 1].hasPrefix("--"), !args[index + 1].isEmpty else {
+        fail("valor ausente para \(option)", code: 64)
+    }
+    guard options[option] == nil else {
+        fail("argumento repetido: \(option)", code: 64)
+    }
+    options[option] = args[index + 1]
+    index += 2
 }
 
-let width = Int(argument("--width", default: "1920")) ?? 1920
-let height = Int(argument("--height", default: "1080")) ?? 1080
-let name = argument("--name", default: "Horizonte")
-
+guard let width = Int(options["--width"] ?? "1920"),
+      let height = Int(options["--height"] ?? "1080") else {
+    fail("--width e --height exigem numeros inteiros", code: 64)
+}
+let name = options["--name"] ?? "Horizonte"
 guard width >= 640, width <= 7680, height >= 480, height <= 4320 else {
-    fputs("tamanho inválido: \(width)x\(height)\n", stderr)
-    exit(64)
+    fail("tamanho invalido: \(width)x\(height)", code: 64)
 }
 
 let descriptor = CGVirtualDisplayDescriptor()
@@ -59,11 +120,31 @@ guard display.apply(settings) else {
 }
 
 // Coloca o monitor novo à direita do principal, como uma segunda tela de verdade.
-var config: CGDisplayConfigRef?
-if CGBeginDisplayConfiguration(&config) == .success, let config = config {
-    let main = CGMainDisplayID()
-    CGConfigureDisplayOrigin(config, display.displayID, Int32(CGDisplayBounds(main).width), 0)
-    CGCompleteDisplayConfiguration(config, .forSession)
+let mainBounds = CGDisplayBounds(CGMainDisplayID())
+guard let x = Int32(exactly: mainBounds.maxX), let y = Int32(exactly: mainBounds.minY) else {
+    fail("coordenadas do monitor principal fora do intervalo do Quartz")
+}
+var configuration: CGDisplayConfigRef?
+let beginError = CGBeginDisplayConfiguration(&configuration)
+guard beginError == .success, let config = configuration else {
+    fail("nao consegui iniciar o posicionamento do monitor virtual: Quartz \(beginError.rawValue)")
+}
+let originError = CGConfigureDisplayOrigin(config, display.displayID, x, y)
+guard originError == .success else {
+    let cancelError = CGCancelDisplayConfiguration(config)
+    if cancelError != .success {
+        fputs("nao consegui cancelar o posicionamento: Quartz \(cancelError.rawValue)\n", stderr)
+    }
+    fail("nao consegui posicionar o monitor virtual: Quartz \(originError.rawValue)")
+}
+// Complete consome a referencia da transacao, inclusive quando devolve erro.
+let completeError = CGCompleteDisplayConfiguration(config, .forSession)
+guard completeError == .success else {
+    fail("nao consegui aplicar o posicionamento do monitor virtual: Quartz \(completeError.rawValue)")
+}
+let positioned = CGDisplayBounds(display.displayID)
+guard positioned.minX == mainBounds.maxX, positioned.minY == mainBounds.minY else {
+    fail("o macOS nao posicionou o monitor virtual a direita do principal")
 }
 
 print("DISPLAY_ID \(display.displayID)")
