@@ -115,3 +115,13 @@ test("telas de tamanhos diferentes mantem passagem reta", async ({ page }) => {
     path: `test-results/telas-${test.info().project.name}.png`,
   });
 });
+
+test("recomecar funciona a partir dos ajustes", async ({ page }) => {
+  await page.goto("/");
+  const app = page.frameLocator("#hero-app iframe");
+  await app.getByRole("button", { name: "Ajustes", exact: true }).click();
+  await page.getByRole("button", { name: "Recomeçar", exact: true }).click();
+  await expect(
+    app.getByRole("button", { name: "Começar", exact: true }),
+  ).toBeVisible();
+});

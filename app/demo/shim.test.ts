@@ -1,3 +1,5 @@
+import { get } from 'svelte/store'
+import { route } from '../src/renderer/src/lib/store'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { installDemo } from './shim'
 beforeEach(() => {
@@ -38,4 +40,12 @@ test('pedido manual permite conectar sem interromper a demo automaticamente', as
   await window.horizonte.dispatch({ type: 'APPROVE' })
   await vi.advanceTimersByTimeAsync(1000)
   expect((await window.horizonte.getSnapshot()).state.screen).toBe('connected')
+})
+
+test('recomecar nos ajustes retorna a tela inicial', async () => {
+  await installDemo({ auto: false })
+  route.set('settings')
+  await window.__demo?.reset({ screen: 'install' })
+  expect(get(route)).toBe('main')
+  expect((await window.horizonte.getSnapshot()).state.screen).toBe('install')
 })

@@ -1,5 +1,6 @@
 import { createController, type Controller } from '../src/main/core/controller'
 import { DEFAULT_SETTINGS, type SettingsStore } from '../src/main/core/settings'
+import { route } from '../src/renderer/src/lib/store'
 import { FakeEngine } from '../src/main/engine/fake'
 import { REPO_URL, type HorizonteApi } from '../src/shared/api'
 import type { AppState, Settings, Snapshot, WebAccess } from '../src/shared/types'
@@ -78,10 +79,13 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     const run = ++generation
     stopWatching()
     stopForwarding()
-    engine = new FakeEngine(450)
-    engine.hosts = [{ name: 'Desktop', address: '192.168.1.5' }]
-    controller = await createController({ engine, store, initial })
+    const nextEngine = new FakeEngine(450)
+    nextEngine.hosts = [{ name: 'Desktop', address: '192.168.1.5' }]
+    const nextController = await createController({ engine: nextEngine, store, initial })
     if (run !== generation) return
+    engine = nextEngine
+    controller = nextController
+    route.set('main')
     stopForwarding = controller.subscribe((snapshot) =>
       listeners.forEach((listener) => listener(snapshot))
     )
