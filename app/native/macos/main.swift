@@ -43,7 +43,7 @@ guard let display = CGVirtualDisplay(descriptor: descriptor) else {
 let settings = CGVirtualDisplaySettings()
 settings.hiDPI = 0 // um pixel para um pixel: é o que o Sunshine captura
 settings.modes = [CGVirtualDisplayMode(width: UInt(width), height: UInt(height), refreshRate: 60)]
-guard display.applySettings(settings) else {
+guard display.apply(settings) else {
     fputs("o macOS recusou as configurações do monitor virtual\n", stderr)
     exit(2)
 }
