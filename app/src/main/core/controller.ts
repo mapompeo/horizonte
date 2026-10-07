@@ -148,7 +148,7 @@ export async function createController({
     state = next
     if (event.type === 'CHOOSE') {
       settings = { ...settings, mode: event.mode }
-      store.save(settings).catch(() => undefined) // lembrar o modo é só conveniência
+      settingsQueue = settingsQueue.then(() => store.save(settings)).catch(() => undefined) // lembrar o modo é só conveniência
     }
     notify()
     runEffects(prev, next, event)

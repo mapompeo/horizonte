@@ -547,3 +547,106 @@ describe('abrir o app depois de instalado', () => {
     expect(saved).toHaveLength(0)
   })
 })
+
+describe('persistencia concorrente de modo e ajustes', () => {
+  it('CHOOSE espera o update pendente e persiste o bitrate confirmado', async () => {
+    let persisted = { ...DEFAULT_SETTINGS }
+    let releaseUpdate!: () => void
+    let releaseMode!: () => void
+    let updateStarted!: () => void
+    let modeStarted!: () => void
+    let modeFinished!: () => void
+    const updating = new Promise<void>((resolve) => {
+      updateStarted = resolve
+    })
+    const choosing = new Promise<void>((resolve) => {
+      modeStarted = resolve
+    })
+    const chosen = new Promise<void>((resolve) => {
+      modeFinished = resolve
+    })
+    const saves: Settings[] = []
+    const controller = await createController({
+      engine: new FakeEngine(0),
+      initial: { screen: 'choose' },
+      store: {
+        load: async () => persisted,
+        save: async (value) => {
+          saves.push({ ...value })
+          if (saves.length === 1) {
+            updateStarted()
+            await new Promise<void>((resolve) => {
+              releaseUpdate = resolve
+            })
+          } else {
+            modeStarted()
+            await new Promise<void>((resolve) => {
+              releaseMode = resolve
+            })
+          }
+          persisted = { ...value }
+          if (saves.length === 2) modeFinished()
+        }
+      }
+    })
+    const update = controller.updateSettings({ bitrate: 60 })
+    await updating
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    expect(controller.getSnapshot().settings.mode).toBe('receive')
+    const savesWhilePending = saves.length
+    releaseUpdate()
+    await update
+    expect(controller.getSnapshot().settings).toMatchObject({ mode: 'receive', bitrate: 60 })
+    await choosing
+    releaseMode()
+    await chosen
+    expect(persisted).toMatchObject({ mode: 'receive', bitrate: 60 })
+    expect(savesWhilePending).toBe(1)
+  })
+
+  it('rejeicao ao salvar modo preserva memoria e permite o proximo update sem unhandled', async () => {
+    const unhandled: unknown[] = []
+    const onUnhandled = (cause: unknown): void => {
+      unhandled.push(cause)
+    }
+    process.on('unhandledRejection', onUnhandled)
+    try {
+      let persisted = { ...DEFAULT_SETTINGS }
+      let rejectMode!: (cause: Error) => void
+      let modeStarted!: () => void
+      const choosing = new Promise<void>((resolve) => {
+        modeStarted = resolve
+      })
+      let saves = 0
+      const controller = await createController({
+        engine: new FakeEngine(0),
+        initial: { screen: 'choose' },
+        store: {
+          load: async () => persisted,
+          save: async (value) => {
+            if (++saves === 1) {
+              modeStarted()
+              await new Promise<void>((_resolve, reject) => {
+                rejectMode = reject
+              })
+            }
+            persisted = { ...value }
+          }
+        }
+      })
+      controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+      await choosing
+      expect(controller.getSnapshot().settings.mode).toBe('receive')
+      const update = controller.updateSettings({ bitrate: 60 })
+      rejectMode(new Error('disco cheio'))
+      await update
+      await new Promise<void>((resolve) => setImmediate(resolve))
+      expect(controller.getSnapshot().settings).toMatchObject({ mode: 'receive', bitrate: 60 })
+      expect(persisted).toMatchObject({ mode: 'receive', bitrate: 60 })
+      expect(unhandled).toEqual([])
+      expect(screen(controller)).toBe('discover')
+    } finally {
+      process.off('unhandledRejection', onUnhandled)
+    }
+  })
+})
