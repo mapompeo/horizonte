@@ -26,6 +26,32 @@ const fakeCipher = (available = true): Cipher => ({
 const credentials = { username: 'horizonte', password: 'segredo-123', port: 47989 }
 
 describe('createCredentialVault', () => {
+  it('não reutiliza credenciais quando o backend seguro deixa de estar disponível', async () => {
+    await createCredentialVault({ file, cipher: fakeCipher() }).save(credentials)
+    expect(await createCredentialVault({ file, cipher: fakeCipher(false) }).load()).toBeNull()
+  })
+  it.each([0, -1, 65535, 1.5])('recusa porta base inválida no cofre: %s', async (port) => {
+    const cipher = fakeCipher()
+    await writeFile(file, cipher.encrypt(JSON.stringify({ ...credentials, port })))
+    expect(await createCredentialVault({ file, cipher }).load()).toBeNull()
+  })
+  it('clear aguarda gravações anteriores e não deixa a senha reaparecer', async () => {
+    const vault = createCredentialVault({ file, cipher: fakeCipher() })
+    const saving = vault.save(credentials)
+    const clearing = vault.clear()
+    await Promise.all([saving, clearing])
+    expect(await vault.load()).toBeNull()
+    expect(await readdir(dir)).toEqual([])
+  })
+  it('gravações concorrentes terminam sem colisão e a última chamada vence', async () => {
+    const vault = createCredentialVault({ file, cipher: fakeCipher() })
+    const results = await Promise.allSettled(
+      Array.from({ length: 20 }, (_, n) => vault.save({ ...credentials, password: `senha-${n}` }))
+    )
+    expect(results.every((result) => result.status === 'fulfilled')).toBe(true)
+    expect((await vault.load())?.password).toBe('senha-19')
+    expect(await readdir(dir)).toEqual(['credentials.bin'])
+  })
   it('guarda e devolve as credenciais', async () => {
     const vault = createCredentialVault({ file, cipher: fakeCipher() })
     await vault.save(credentials)

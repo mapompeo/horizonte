@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
 export interface EngineMemoryValue {
@@ -13,6 +13,7 @@ export interface EngineMemory {
 
 /** Lembra o resultado da sondagem para não reiniciar o Sunshine a cada abertura do app. */
 export function createEngineMemory(file: string): EngineMemory {
+  let writes: Promise<void> = Promise.resolve()
   return {
     async load() {
       try {
@@ -25,11 +26,21 @@ export function createEngineMemory(file: string): EngineMemory {
         return null
       }
     },
-    async save(value) {
-      await mkdir(dirname(file), { recursive: true })
-      const temporary = `${file}.${process.pid}.tmp`
-      await writeFile(temporary, JSON.stringify(value), 'utf8')
-      await rename(temporary, file)
+    save(value) {
+      const data = JSON.stringify(value)
+      const write = writes.then(async () => {
+        await mkdir(dirname(file), { recursive: true })
+        const temporary = `${file}.${process.pid}.tmp`
+        try {
+          await writeFile(temporary, data, 'utf8')
+          await rename(temporary, file)
+        } catch (cause) {
+          await rm(temporary, { force: true })
+          throw cause
+        }
+      })
+      writes = write.catch(() => undefined)
+      return write
     }
   }
 }

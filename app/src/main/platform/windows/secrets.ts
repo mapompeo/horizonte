@@ -22,31 +22,44 @@ const isCredentials = (value: unknown): value is SunshineCredentials => {
   return (
     typeof v['username'] === 'string' &&
     typeof v['password'] === 'string' &&
-    typeof v['port'] === 'number'
+    typeof v['port'] === 'number' &&
+    Number.isInteger(v['port']) &&
+    v['port'] > 0 &&
+    v['port'] < 65535
   )
 }
 
 export function createCredentialVault(deps: { file: string; cipher: Cipher }): CredentialVault {
+  let writes: Promise<void> = Promise.resolve()
+  const enqueue = (write: () => Promise<void>): Promise<void> => {
+    const pending = writes.then(write)
+    writes = pending.catch(() => undefined)
+    return pending
+  }
   return {
-    async save(credentials) {
-      // Sem cofre do sistema a alternativa seria texto puro: melhor recusar.
-      if (!deps.cipher.isAvailable()) {
-        throw new Error('O cofre de senhas do sistema não está disponível para guardar a senha.')
-      }
-      const data = deps.cipher.encrypt(JSON.stringify(credentials))
-      const temp = `${deps.file}.tmp`
-      try {
-        await mkdir(dirname(deps.file), { recursive: true })
-        await writeFile(temp, data)
-        await rename(temp, deps.file)
-      } catch {
-        await rm(temp, { force: true })
-        throw new Error('Não consegui gravar a senha do motor de transmissão no cofre.')
-      }
+    save(credentials) {
+      const value = { ...credentials }
+      return enqueue(async () => {
+        // Sem cofre do sistema a alternativa seria texto puro: melhor recusar.
+        if (!deps.cipher.isAvailable()) {
+          throw new Error('O cofre de senhas do sistema não está disponível para guardar a senha.')
+        }
+        const data = deps.cipher.encrypt(JSON.stringify(value))
+        const temp = `${deps.file}.tmp`
+        try {
+          await mkdir(dirname(deps.file), { recursive: true })
+          await writeFile(temp, data)
+          await rename(temp, deps.file)
+        } catch {
+          await rm(temp, { force: true })
+          throw new Error('Não consegui gravar a senha do motor de transmissão no cofre.')
+        }
+      })
     },
 
     async load() {
       try {
+        if (!deps.cipher.isAvailable()) return null
         const raw = await readFile(deps.file)
         const parsed: unknown = JSON.parse(deps.cipher.decrypt(raw))
         return isCredentials(parsed) ? parsed : null
@@ -55,8 +68,8 @@ export function createCredentialVault(deps: { file: string; cipher: Cipher }): C
       }
     },
 
-    async clear() {
-      await rm(deps.file, { force: true })
+    clear() {
+      return enqueue(() => rm(deps.file, { force: true }))
     }
   }
 }
