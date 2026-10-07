@@ -6,3 +6,5 @@ out
 *.log*
 
 e2e-out
+
+native/macos/build

@@ -77,6 +77,9 @@ jobs:
           systemctl --user is-system-running || true
       - run: npm ci
       - run: npm run build
+      - name: Compilar o auxiliar do monitor virtual (macOS)
+        if: runner.os == 'macOS'
+        run: npm run build:helper:mac
       - name: Testes reais do sistema (rede, instalação, hash)
         if: runner.os != 'Linux'
         run: npm run test:e2e
