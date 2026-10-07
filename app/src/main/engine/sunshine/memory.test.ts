@@ -17,6 +17,14 @@ afterEach(async () => {
 })
 
 describe('createEngineMemory', () => {
+  it('gravações concorrentes preservam a última chamada sem colisão', async () => {
+    const memory = createEngineMemory(file)
+    const results = await Promise.allSettled(
+      Array.from({ length: 20 }, (_, n) => memory.save({ encoder: `encoder-${n}` }))
+    )
+    expect(results.every((result) => result.status === 'fulfilled')).toBe(true)
+    expect(await memory.load()).toEqual({ encoder: 'encoder-19' })
+  })
   it('sem arquivo não há lembrança', async () => {
     expect(await createEngineMemory(file).load()).toBeNull()
   })
