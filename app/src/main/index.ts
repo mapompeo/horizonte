@@ -29,6 +29,7 @@ import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
 import { createPinChannel, sendPin } from './engine/pin-channel'
 import { FakeEngine } from './engine/fake'
+import { waitForExit } from './engine/moonlight/run'
 import { createMoonlightClient } from './engine/moonlight/client'
 import { createPairedHostsStore } from './engine/moonlight/paired-hosts'
 import { ensureMoonlight } from './engine/moonlight/install'
@@ -54,6 +55,9 @@ import {
 } from './platform/macos/wire'
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
+
+// Um pareamento de verdade leva segundos; passou disso, algo travou.
+const PAIR_TIMEOUT_MS = 90_000
 
 /** Os botões de janela ficam por cima da interface, na cor do fundo e discretos. */
 function overlayFor(): { color: string; symbolColor: string; height: number } {
@@ -191,10 +195,11 @@ async function boot(): Promise<void> {
     randomPin: () => String(randomInt(10_000)).padStart(4, '0'),
     run: async (args) => {
       const child = spawn(await moonlightExe(), args, { stdio: 'ignore', env: clientEnv })
-      return new Promise((resolve) => {
-        child.once('exit', resolve)
-        child.once('error', () => resolve(null))
-      })
+      return waitForExit(
+        { kill: () => void child.kill(), onExit: (l) => void child.once('exit', l) },
+        PAIR_TIMEOUT_MS,
+        (l) => void child.once('error', l)
+      )
     },
     spawn: async (args) => {
       const child = spawn(await moonlightExe(), args, { stdio: 'ignore', env: clientEnv })
