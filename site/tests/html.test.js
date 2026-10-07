@@ -37,7 +37,7 @@ test('textos sem travessão e sem o seletor de tema da prévia', () => {
 
 test('números e estados vistos funcionando, nada além', () => {
   assert.match(html, /data-count="60"/)
-  assert.match(html, /data-count="23"/)
+  assert.match(html, /data-count="0"[\s\S]*?contas/)
   assert.match(html, /data-count="3"/)
   assert.match(html, /data-os="linux"[\s\S]*?Em teste/)
   assert.match(html, /data-os="mac"[\s\S]*?Em teste/)
