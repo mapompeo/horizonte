@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { downloadVerified } from '../windows/download'
+import { SUNSHINE_PROCESS } from './setup'
 import { sunshineDmgFor } from './versions'
 import { createMoonlightLauncher } from './wire'
 
@@ -48,7 +49,8 @@ describe.runIf(process.platform === 'darwin')('macOS de verdade', () => {
       expect(apps).toContain('Sunshine.app')
       const macos = join(mnt, 'Sunshine.app', 'Contents', 'MacOS')
       console.log('conteúdo de Contents/MacOS:', readdirSync(macos))
-      expect(existsSync(join(macos, 'sunshine'))).toBe(true)
+      // readdir é sensível a maiúsculas mesmo num disco que não é: existsSync enganaria.
+      expect(readdirSync(macos)).toContain(SUNSHINE_PROCESS)
     } finally {
       execFileSync('hdiutil', ['detach', mnt, '-quiet'])
     }

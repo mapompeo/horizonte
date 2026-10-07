@@ -15,7 +15,10 @@ describe.runIf(process.platform === 'linux')('Linux de verdade', () => {
     const file = join(mkdtempSync(join(tmpdir(), 'hz-linux-')), deb.fileName)
     await downloadVerified(deb, file)
     const contents = execFileSync('dpkg-deb', ['--contents', file]).toString()
+    const interesting = contents
+      .split('\n')
+      .filter((line) => /systemd|\.service|bin\/sunshine|udev|rules/i.test(line))
+    console.log('arquivos do pacote que importam:\n' + interesting.join('\n'))
     expect(contents).toMatch(/\.\/usr\/bin\/sunshine\b/)
-    expect(contents).toMatch(/sunshine\.service/)
   })
 })

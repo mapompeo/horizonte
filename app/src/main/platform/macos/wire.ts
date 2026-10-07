@@ -8,7 +8,7 @@ import { createCredentialVault, type Cipher } from '../windows/secrets'
 import { generatePassword, waitForApi } from '../windows/wire'
 import { shQuote } from '../linux/setup'
 import { ensureMoonlightMac } from './moonlight'
-import { createMacSetup, type MacProbe } from './setup'
+import { createMacSetup, SUNSHINE_PROCESS, type MacProbe } from './setup'
 import { MOONLIGHT_MAC_DMG, sunshineDmgFor } from './versions'
 
 const PORT = 47989
@@ -88,7 +88,9 @@ export function createMacPlatform(deps: {
   return {
     ...setup,
     restart: async () => {
-      await sh(`pkill -x sunshine || true\nopen ${shQuote(join(APPS_DIR, 'Sunshine.app'))}`)
+      await sh(
+        `pkill -x ${SUNSHINE_PROCESS} || true\nopen ${shQuote(join(APPS_DIR, 'Sunshine.app'))}`
+      )
     },
     createApi,
     credentials: async () => {
