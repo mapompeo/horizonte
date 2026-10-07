@@ -18,6 +18,17 @@ const SUNSHINE_DMG: Record<string, PinnedArtifact> = {
   }
 }
 
+/**
+ * Moonlight 6.1.0 para macOS (receber a tela). A API do GitHub não publica o hash deste arquivo: o SHA-256 foi
+ * calculado baixando o disco em 06/10/2026 e fica fixo aqui; qualquer outro conteúdo é recusado.
+ */
+export const MOONLIGHT_MAC_DMG: PinnedArtifact = {
+  version: '6.1.0',
+  fileName: 'Moonlight-6.1.0.dmg',
+  url: 'https://github.com/moonlight-stream/moonlight-qt/releases/download/v6.1.0/Moonlight-6.1.0.dmg',
+  sha256: 'd494740eead8ad4e620cdc8feedb56083bc29cabbbeef34cb82585fd87725fa2'
+}
+
 export function sunshineDmgFor(arch: string): PinnedArtifact {
   const found = SUNSHINE_DMG[arch]
   if (!found)

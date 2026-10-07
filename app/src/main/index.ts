@@ -44,7 +44,11 @@ import { runPowerShell } from './platform/windows/probes'
 import { MOONLIGHT } from './platform/windows/versions'
 import { createLinuxPlatform, SUNSHINE_LOG as LINUX_SUNSHINE_LOG } from './platform/linux/wire'
 import { createRealGateway } from './web/wire'
-import { createMacPlatform, SUNSHINE_LOG as MAC_SUNSHINE_LOG } from './platform/macos/wire'
+import {
+  createMacPlatform,
+  createMoonlightLauncher,
+  SUNSHINE_LOG as MAC_SUNSHINE_LOG
+} from './platform/macos/wire'
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
 
@@ -149,7 +153,7 @@ async function boot(): Promise<void> {
   })
   // O Moonlight portátil é baixado na primeira vez que a pessoa conecta (versão fixa, hash conferido).
   const moonlightDir = join(app.getPath('userData'), 'moonlight')
-  const moonlightExe = (): Promise<string> =>
+  const windowsMoonlightExe = (): Promise<string> =>
     ensureMoonlight({
       dir: moonlightDir,
       exists: async (path) => existsSync(path),
@@ -165,8 +169,13 @@ async function boot(): Promise<void> {
         )
       }
     })
+  // Cada sistema tem o seu jeito de instalar o Moonlight (zip portátil no Windows, disco .dmg no Mac).
+  const moonlightExe =
+    process.platform === 'darwin'
+      ? createMoonlightLauncher(app.getPath('userData'))
+      : windowsMoonlightExe
   const receiver =
-    process.platform === 'win32'
+    process.platform === 'win32' || process.platform === 'darwin'
       ? createMoonlightClient({
           listHosts: discovery.listHosts,
           sendPin,
