@@ -84,6 +84,141 @@ const display = (primary: boolean): SunshineDisplay => ({
 })
 
 describe('createMacSetup', () => {
+  it('monitor com sinal já cancelado não inicia sondagens', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    controller.abort()
+    let probes = 0
+    h.deps.probe.sunshineInstalled = async () => {
+      probes++
+      return false
+    }
+    await expect(
+      createMacSetup(h.deps).display.ensureVirtualDisplay(controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(probes).toBe(0)
+  })
+
+  it('cancelar durante auxiliar preserva AbortError e não instala', async () => {
+    const h = harness({ screens: 1 })
+    const controller = new AbortController()
+    h.deps.startVirtualDisplay = async () => {
+      controller.abort()
+    }
+    await expect(
+      createMacSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.download).not.toHaveBeenCalled()
+    expect(h.scripts).toEqual([])
+  })
+
+  it('cancelar durante gravação impede restart', async () => {
+    const h = harness({ installed: true })
+    const controller = new AbortController()
+    h.deps.vault.save = async () => {
+      controller.abort()
+    }
+    await expect(
+      createMacSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.scripts).toHaveLength(1)
+    expect(h.scripts[0]).toContain('--creds')
+  })
+
+  it('cancelar interrompe download pendente pelo quarto argumento', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    let entered!: () => void
+    const downloading = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    h.deps.download = async (_artifact, _dest, _progress, signal) => {
+      entered()
+      await new Promise<void>((_resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true })
+        if (!signal) reject(new Error('download sem sinal'))
+      })
+    }
+    const pending = createMacSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    const failure = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    await downloading
+    controller.abort()
+    await failure
+    expect(h.scripts).toEqual([])
+    expect(h.save).not.toHaveBeenCalled()
+  })
+
+  it('cancelar após instalação impede credenciais e restart', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    h.deps.run = async (script) => {
+      h.scripts.push(script)
+      controller.abort()
+    }
+    await expect(
+      createMacSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.scripts).toHaveLength(1)
+    expect(h.scripts[0]).not.toContain('--creds')
+    expect(h.save).not.toHaveBeenCalled()
+  })
+
+  it('cancelar no progresso impede instalação', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    await expect(
+      createMacSetup(h.deps).installer.ensureInstalled((p) => {
+        if (p.note.startsWith('Instalando')) controller.abort()
+      }, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.scripts).toEqual([])
+  })
+
+  it('cancelar após comando de credenciais impede gravação e restart', async () => {
+    const h = harness({ installed: true })
+    const controller = new AbortController()
+    h.deps.run = async (script) => {
+      h.scripts.push(script)
+      controller.abort()
+    }
+    await expect(
+      createMacSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.scripts).toHaveLength(1)
+    expect(h.scripts[0]).toContain('--creds')
+    expect(h.save).not.toHaveBeenCalled()
+  })
+
+  it('nova tentativa não herda sucesso da operação cancelada', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    let entered!: () => void
+    let finish!: () => void
+    const downloading = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    let downloads = 0
+    h.deps.download = async () => {
+      if (++downloads === 1) {
+        entered()
+        await new Promise<void>((resolve) => {
+          finish = resolve
+        })
+      }
+    }
+    const setup = createMacSetup(h.deps)
+    const first = setup.installer.ensureInstalled(undefined, controller.signal)
+    const failure = expect(first).rejects.toMatchObject({ name: 'AbortError' })
+    await downloading
+    controller.abort()
+    const second = setup.display.ensureVirtualDisplay()
+    finish()
+    await failure
+    await second
+    expect(downloads).toBe(2)
+    expect(h.scripts.filter((script) => script.includes('hdiutil attach'))).toHaveLength(1)
+  })
+
   it('Mac limpo: baixa, copia o app para ~/Applications sem administrador, guarda a senha e liga', async () => {
     const h = harness()
     await createMacSetup(h.deps).installer.ensureInstalled()

@@ -62,6 +62,43 @@ function setup(
 }
 
 describe('preparar: caminho feliz', () => {
+  it('abort cancela o sinal recebido pelo instalador antes de continuar a preparação', async () => {
+    let signal: AbortSignal | undefined
+    let release!: () => void
+    let started!: () => void
+    const installed = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let credentialsRead = false
+    const engine = new SunshineEngine({
+      installer: {
+        ensureInstalled: async (_report, incoming) => {
+          signal = incoming
+          started()
+          await pending
+        }
+      },
+      display: { ensureVirtualDisplay: async () => undefined, isVirtual: () => true },
+      memory: memory().api,
+      credentials: async () => {
+        credentialsRead = true
+        return { username: 'horizonte', password: PASSWORD, port: 47989 }
+      },
+      createApi: () => new FakeSunshineProcess(),
+      readLog: async () => '',
+      sleep: async () => undefined
+    })
+    const preparing = engine.prepare(() => undefined, DEFAULT_SETTINGS)
+    await installed
+    await engine.abort()
+    release()
+    await preparing
+    expect(signal?.aborted).toBe(true)
+    expect(credentialsRead).toBe(false)
+  })
   it('passa pelas três etapas na ordem e deixa tudo configurado', async () => {
     const t = setup()
     await t.prepare({ ...DEFAULT_SETTINGS, deviceName: 'Sala' })

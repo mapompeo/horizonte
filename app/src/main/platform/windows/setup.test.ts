@@ -74,6 +74,152 @@ const all = (h: Harness): string =>
     .join('\n')
 
 describe('createWindowsSetup', () => {
+  it('cancelar durante consentimento impede download e elevação', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    h.deps.confirmDriverTrust = async () => {
+      controller.abort()
+      return true
+    }
+    await expect(
+      createWindowsSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.downloads).toEqual([])
+    expect(h.elevated).toEqual([])
+  })
+
+  it('cancelar durante gravação impede espera da API', async () => {
+    const h = harness({ driverPresent: true })
+    const controller = new AbortController()
+    h.deps.vault.save = async () => {
+      controller.abort()
+    }
+    await expect(
+      createWindowsSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.elevated).toHaveLength(1)
+    expect(h.waited).toBe(0)
+  })
+
+  it('progresso atrasado após cancelamento é ignorado sem lançar no callback do stream', async () => {
+    const h = harness({ driverPresent: true })
+    const controller = new AbortController()
+    let reports = 0
+    h.deps.download = async (_artifact, _dest, onProgress) => {
+      controller.abort()
+      expect(() => onProgress?.(0.5)).not.toThrow()
+    }
+    await expect(
+      createWindowsSetup(h.deps).installer.ensureInstalled(() => {
+        reports++
+      }, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(reports).toBe(0)
+    expect(h.elevated).toEqual([])
+  })
+
+  it('sinal já cancelado não inicia sondagens nem instalação', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    controller.abort()
+    let probes = 0
+    h.deps.probe.sunshineRunning = async () => {
+      probes++
+      return false
+    }
+    await expect(
+      createWindowsSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(probes).toBe(0)
+    expect(h.elevated).toEqual([])
+  })
+
+  it('cancelar interrompe download pendente pelo quarto argumento', async () => {
+    const h = harness({ driverPresent: true })
+    const controller = new AbortController()
+    let entered!: () => void
+    const downloading = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    h.deps.download = async (_artifact, _dest, _progress, signal) => {
+      entered()
+      await new Promise<void>((_resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true })
+        if (!signal) reject(new Error('download sem sinal'))
+      })
+    }
+    const pending = createWindowsSetup(h.deps).installer.ensureInstalled(
+      undefined,
+      controller.signal
+    )
+    const failure = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    await downloading
+    controller.abort()
+    await failure
+    expect(h.elevated).toEqual([])
+    expect(h.saved).toEqual([])
+  })
+
+  it('cancelar no progresso impede elevação e criação de credenciais', async () => {
+    const h = harness({ driverPresent: true })
+    const controller = new AbortController()
+    await expect(
+      createWindowsSetup(h.deps).installer.ensureInstalled((p) => {
+        if (p.permission) controller.abort()
+      }, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.elevated).toEqual([])
+    expect(h.saved).toEqual([])
+  })
+
+  it('cancelar durante elevação impede gravação e espera posteriores', async () => {
+    const controller = new AbortController()
+    const h = harness({
+      driverPresent: true,
+      elevation: {
+        runElevated: async () => {
+          controller.abort()
+        }
+      }
+    })
+    await expect(
+      createWindowsSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.saved).toEqual([])
+    expect(h.waited).toBe(0)
+  })
+
+  it('nova tentativa aguarda a cancelada e faz sua própria preparação', async () => {
+    const h = harness({ driverPresent: true })
+    const controller = new AbortController()
+    let entered!: () => void
+    let finish!: () => void
+    const downloading = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    let downloads = 0
+    h.deps.download = async () => {
+      if (++downloads === 1) {
+        entered()
+        await new Promise<void>((resolve) => {
+          finish = resolve
+        })
+      }
+    }
+    const setup = createWindowsSetup(h.deps)
+    const first = setup.installer.ensureInstalled(undefined, controller.signal)
+    const failure = expect(first).rejects.toMatchObject({ name: 'AbortError' })
+    await downloading
+    controller.abort()
+    const second = setup.display.ensureVirtualDisplay(new AbortController().signal)
+    expect(downloads).toBe(1)
+    finish()
+    await failure
+    await second
+    expect(downloads).toBe(2)
+    expect(h.elevated).toHaveLength(1)
+  })
+
   it('tudo já instalado: não baixa nem pede administrador', async () => {
     const h = harness({ sunshineRunning: true, driverPresent: true, stored })
     const { installer, display } = createWindowsSetup(h.deps)

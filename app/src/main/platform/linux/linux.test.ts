@@ -102,6 +102,127 @@ const fakeDisplay = (friendlyName: string): SunshineDisplay => ({
 })
 
 describe('createLinuxSetup', () => {
+  it('monitor com sinal já cancelado não inicia sondagens', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    controller.abort()
+    let probes = 0
+    h.deps.probe.sunshineInstalled = async () => {
+      probes++
+      return false
+    }
+    await expect(
+      createLinuxSetup(h.deps).display.ensureVirtualDisplay(controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(probes).toBe(0)
+  })
+
+  it('cancelar durante gravação impede restart', async () => {
+    const h = harness({ installed: true })
+    const controller = new AbortController()
+    h.deps.vault.save = async () => {
+      controller.abort()
+    }
+    await expect(
+      createLinuxSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.user).toHaveLength(1)
+    expect(h.user[0]).toContain('--creds')
+  })
+
+  it('cancelar interrompe download pendente pelo quarto argumento', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    let entered!: () => void
+    const downloading = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    h.deps.download = async (_artifact, _dest, _progress, signal) => {
+      entered()
+      await new Promise<void>((_resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true })
+        if (!signal) reject(new Error('download sem sinal'))
+      })
+    }
+    const pending = createLinuxSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    const failure = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    await downloading
+    controller.abort()
+    await failure
+    expect(h.privileged).toEqual([])
+    expect(h.user).toEqual([])
+    expect(h.save).not.toHaveBeenCalled()
+  })
+
+  it('cancelar após instalação impede credenciais e restart', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    h.deps.runPrivileged = async () => {
+      controller.abort()
+    }
+    await expect(
+      createLinuxSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.user).toEqual([])
+    expect(h.save).not.toHaveBeenCalled()
+  })
+
+  it('cancelar no progresso impede chamada privilegiada', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    await expect(
+      createLinuxSetup(h.deps).installer.ensureInstalled((p) => {
+        if (p.permission) controller.abort()
+      }, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.privileged).toEqual([])
+  })
+
+  it('cancelar após comando de credenciais impede gravação e restart', async () => {
+    const h = harness({ installed: true })
+    const controller = new AbortController()
+    h.deps.runUser = async (script) => {
+      h.user.push(script)
+      controller.abort()
+    }
+    await expect(
+      createLinuxSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(h.user).toHaveLength(1)
+    expect(h.user[0]).toContain('--creds')
+    expect(h.save).not.toHaveBeenCalled()
+  })
+
+  it('nova tentativa não herda sucesso da operação cancelada', async () => {
+    const h = harness()
+    const controller = new AbortController()
+    let entered!: () => void
+    let finish!: () => void
+    const downloading = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    let downloads = 0
+    h.deps.download = async () => {
+      if (++downloads === 1) {
+        entered()
+        await new Promise<void>((resolve) => {
+          finish = resolve
+        })
+      }
+    }
+    const setup = createLinuxSetup(h.deps)
+    const first = setup.installer.ensureInstalled(undefined, controller.signal)
+    const failure = expect(first).rejects.toMatchObject({ name: 'AbortError' })
+    await downloading
+    controller.abort()
+    const second = setup.display.ensureVirtualDisplay()
+    finish()
+    await failure
+    await second
+    expect(downloads).toBe(2)
+    expect(h.privileged).toHaveLength(1)
+  })
+
   it('computador limpo: baixa, instala com UM aviso, guarda a senha e cria o monitor', async () => {
     const h = harness()
     await createLinuxSetup(h.deps).installer.ensureInstalled()

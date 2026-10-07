@@ -1,6 +1,7 @@
 import { win32 } from 'node:path'
 import type { PrepProgress } from '../../../shared/types'
 import type { EngineInstaller, SunshineCredentials, VirtualDisplay } from '../types'
+import { createSetupTask, setupStep } from '../setup-task'
 import type { SunshineDisplay } from '../../engine/sunshine/log'
 import type { Artifact } from './download'
 import { DRIVER_INSTALL_SCRIPT } from './driver-script'
@@ -35,7 +36,8 @@ export interface SetupDeps {
   download(
     artifact: Artifact & { fileName?: string },
     dest: string,
-    onProgress?: (fraction: number) => void
+    onProgress?: (fraction: number) => void,
+    signal?: AbortSignal
   ): Promise<void>
   elevation: Elevation
   /**
@@ -86,19 +88,23 @@ export function createWindowsSetup(deps: SetupDeps): {
   const sunshineExe = win32.join(deps.sunshineDir, 'sunshine.exe')
   const sunshineConf = win32.join(deps.sunshineDir, 'config', 'sunshine.conf')
 
-  let report: (progress: PrepProgress) => void = () => undefined
-
-  async function run(): Promise<void> {
+  async function run(
+    report: (progress: PrepProgress) => void,
+    signal?: AbortSignal
+  ): Promise<void> {
+    const step = <T>(action: () => Promise<T>): Promise<T> => setupStep(signal, action)
     const [running, responding, controllable, driverPresent, stored, portOpen, outdated] =
-      await Promise.all([
-        deps.probe.sunshineRunning(),
-        deps.probe.sunshineResponding(),
-        deps.probe.serviceControllable(),
-        deps.probe.driverPresent(),
-        deps.vault.load(),
-        deps.probe.pairingPortOpen?.() ?? Promise.resolve(true),
-        deps.probe.sunshineOutdated?.() ?? Promise.resolve(false)
-      ])
+      await step(() =>
+        Promise.all([
+          deps.probe.sunshineRunning(),
+          deps.probe.sunshineResponding(),
+          deps.probe.serviceControllable(),
+          deps.probe.driverPresent(),
+          deps.vault.load(),
+          deps.probe.pairingPortOpen?.() ?? Promise.resolve(true),
+          deps.probe.sunshineOutdated?.() ?? Promise.resolve(false)
+        ])
+      )
     const needSunshine = !running
     // Instalar por cima mantém a configuração e as senhas; só troca o programa.
     const needMsi = needSunshine || outdated
@@ -112,7 +118,7 @@ export function createWindowsSetup(deps: SetupDeps): {
     if (!needMsi && !needCredentials && !needDriver && !needRestart && !needAccess && !needFirewall)
       return
 
-    if (needDriver && !(await deps.confirmDriverTrust())) {
+    if (needDriver && !(await step(() => deps.confirmDriverTrust()))) {
       throw new Error(
         'Sem a sua autorização para o certificado do monitor virtual, não consigo instalá-lo.'
       )
@@ -127,14 +133,21 @@ export function createWindowsSetup(deps: SetupDeps): {
       const dest = win32.join(deps.workDir, artifact.fileName)
       paths.set(artifact.fileName, dest)
       const what = artifact === SUNSHINE ? 'o motor de transmissão' : 'o monitor virtual'
-      await deps.download(artifact, dest, (fraction) =>
-        report({
-          note: `Baixando ${what}`,
-          fraction: ((index + fraction) / downloads.length) * DOWNLOAD_SHARE
-        })
+      await step(() =>
+        deps.download(
+          artifact,
+          dest,
+          (fraction) =>
+            report({
+              note: `Baixando ${what}`,
+              fraction: ((index + fraction) / downloads.length) * DOWNLOAD_SHARE
+            }),
+          signal
+        )
       )
     }
 
+    signal?.throwIfAborted()
     const credentials: SunshineCredentials = needCredentials
       ? { username: USERNAME, password: deps.generatePassword(), port: deps.port }
       : (stored as SunshineCredentials)
@@ -221,29 +234,22 @@ export function createWindowsSetup(deps: SetupDeps): {
       fraction: DOWNLOAD_SHARE,
       permission: true
     })
-    await deps.elevation.runElevated(steps)
-    if (needCredentials) await deps.vault.save(credentials)
+    // O roteiro inteiro enviado ao UAC não pode ser desfeito; o cancelamento bloqueia o que vem depois.
+    await step(() => deps.elevation.runElevated(steps))
+    if (needCredentials) await step(() => deps.vault.save(credentials))
     if (needMsi || needCredentials || needRestart) {
       report({ note: 'Esperando o motor ligar', fraction: INSTALL_SHARE })
-      await deps.waitForApi()
+      await step(() => deps.waitForApi())
     }
     report({ note: 'Motor pronto', fraction: 1 })
   }
 
-  // Duas chamadas ao mesmo tempo (instalador e monitor) compartilham UMA preparação e UM pedido de administrador.
-  let inFlight: Promise<void> | null = null
-  const ensure = (onReport?: (progress: PrepProgress) => void): Promise<void> => {
-    if (onReport) report = onReport
-    inFlight ??= run().finally(() => {
-      inFlight = null
-    })
-    return inFlight
-  }
+  const ensure = createSetupTask(run)
 
   return {
-    installer: { ensureInstalled: (r) => ensure(r) },
+    installer: { ensureInstalled: ensure },
     display: {
-      ensureVirtualDisplay: () => ensure(),
+      ensureVirtualDisplay: (signal) => ensure(undefined, signal),
       isVirtual: (display: SunshineDisplay) => /vdd|virtual/i.test(display.friendlyName)
     }
   }

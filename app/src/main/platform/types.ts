@@ -10,11 +10,11 @@ export interface SunshineCredentials {
 
 /** Garante que o Sunshine está instalado e rodando. A implementação real (com administrador) é do Plano 2B. */
 export interface EngineInstaller {
-  ensureInstalled(report?: (progress: PrepProgress) => void): Promise<void>
+  ensureInstalled(report?: (progress: PrepProgress) => void, signal?: AbortSignal): Promise<void>
 }
 
 /** Garante que existe um monitor virtual e sabe reconhecê-lo na lista do Sunshine. */
 export interface VirtualDisplay {
-  ensureVirtualDisplay(): Promise<void>
+  ensureVirtualDisplay(signal?: AbortSignal): Promise<void>
   isVirtual(display: SunshineDisplay): boolean
 }
