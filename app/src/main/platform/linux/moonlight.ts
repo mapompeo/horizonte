@@ -25,8 +25,8 @@ export async function ensureMoonlightLinux(
   if (!(await deps.exists(target))) {
     await deps.run(`mkdir -p ${shQuote(deps.dir)}`)
     await deps.download(deps.artifact, target, (f) => onProgress?.(f * 0.95))
-    await deps.run(`chmod +x ${shQuote(target)}`)
   }
+  await deps.run(`chmod +x ${shQuote(target)}`)
   onProgress?.(1)
   return target
 }

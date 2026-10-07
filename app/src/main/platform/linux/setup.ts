@@ -126,7 +126,7 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
       report({ note: 'Ligando o motor de transmissão', fraction: INSTALL_SHARE })
       // A senha nova só vale depois de reiniciar um serviço que já rodava.
       await deps.runUser(
-        needCredentials
+        needCredentials || (active && !responding)
           ? `systemctl --user enable ${SUNSHINE_UNIT} && systemctl --user restart ${SUNSHINE_UNIT}`
           : `systemctl --user enable --now ${SUNSHINE_UNIT}`
       )

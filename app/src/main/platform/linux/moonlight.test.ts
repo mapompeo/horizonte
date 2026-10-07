@@ -39,6 +39,21 @@ function setup(installed = false): {
 }
 
 describe('ensureMoonlightLinux', () => {
+  it('nova tentativa recupera o arquivo quando chmod falhou depois do download', async () => {
+    const t = setup()
+    let attempts = 0
+    let executable = false
+    t.deps.run = async (script) => {
+      if (!script.startsWith('chmod')) return
+      if (++attempts === 1) throw new Error('chmod interrompido')
+      executable = true
+    }
+    await expect(ensureMoonlightLinux(t.deps)).rejects.toThrow('chmod interrompido')
+    await ensureMoonlightLinux(t.deps)
+    expect(executable).toBe(true)
+    expect(t.downloads).toHaveLength(1)
+  })
+
   it('baixa o AppImage para a pasta do Horizonte, deixa executável e devolve o caminho', async () => {
     const { deps, downloads, scripts } = setup()
     const path = await ensureMoonlightLinux(deps)

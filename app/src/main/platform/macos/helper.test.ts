@@ -13,18 +13,21 @@ function fakeHelper(): HelperProcess & {
   say(text: string): void
   complain(text: string): void
   die(code: number | null): void
+  fail(error: Error): void
   killed: () => boolean
   kills: () => number
 } {
   let out: (text: string) => void = () => undefined
   let err: (text: string) => void = () => undefined
   let exit: (code: number | null) => void = () => undefined
+  let error: (cause: Error) => void = () => undefined
   let killed = false
   let kills = 0
   return {
     onStdout: (cb) => void (out = cb),
     onStderr: (cb) => void (err = cb),
     onExit: (cb) => void (exit = cb),
+    onError: (cb: (cause: Error) => void) => void (error = cb),
     kill: () => {
       killed = true
       kills++
@@ -32,12 +35,27 @@ function fakeHelper(): HelperProcess & {
     say: (text) => out(text),
     complain: (text) => err(text),
     die: (code) => exit(code),
+    fail: (cause) => error(cause),
     killed: () => killed,
     kills: () => kills
   }
 }
 
 describe('startDisplayHelper', () => {
+  it('erro de spawn rejeita imediatamente e limpa o timer', async () => {
+    const helper = fakeHelper()
+    const started = startDisplayHelper(() => helper)
+    let failure: unknown
+    void started.catch((cause: unknown) => {
+      failure = cause
+    })
+    helper.fail(new Error('spawn EACCES'))
+    await Promise.resolve()
+    expect(failure).toBeInstanceOf(Error)
+    expect((failure as Error).message).toContain('EACCES')
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('devolve o número da tela quando o auxiliar avisa que criou', async () => {
     const helper = fakeHelper()
     const started = startDisplayHelper(() => helper)
