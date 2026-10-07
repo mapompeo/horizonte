@@ -2,7 +2,6 @@ import { execFileSync, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { countDisplays } from './wire'
 
 const HELPER = resolve('native/macos/build/horizonte-display')
 const screens = (): number =>
@@ -49,7 +48,7 @@ describe.runIf(process.platform === 'darwin')('monitor virtual no Mac de verdade
 
       const appeared = await until(() => screens() > before, 30_000)
       console.log('telas durante:', screens())
-      console.log(execFileSync('system_profiler', ['SPDisplaysDataType']).toString())
+      console.log(execFileSync('system_profiler', ['SPDisplaysDataType']).toString().slice(0, 1500))
       expect(appeared, 'o sistema passou a enxergar uma tela a mais').toBe(true)
     } finally {
       child.kill('SIGTERM')

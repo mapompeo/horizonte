@@ -4,6 +4,16 @@ import Cocoa
 // O monitor some junto com o processo. Imprime "DISPLAY_ID <número>" quando a tela está pronta.
 //
 // Uso: horizonte-display [--width 1920] [--height 1080] [--name Horizonte]
+//      horizonte-display --count   (só imprime quantas telas o macOS está usando agora e sai)
+
+// Conta as telas em uso pela própria API do sistema. Funciona também sem placa de vídeo (máquina virtual),
+// onde o system_profiler não lista nada.
+if CommandLine.arguments.contains("--count") {
+    var count: UInt32 = 0
+    CGGetActiveDisplayList(0, nil, &count)
+    print(count)
+    exit(0)
+}
 
 func argument(_ name: String, default fallback: String) -> String {
     let args = CommandLine.arguments
