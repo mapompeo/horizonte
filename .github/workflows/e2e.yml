@@ -33,11 +33,24 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xclip libnss3 libgbm1 libgtk-3-0t64 libasound2t64 libxss1
+          sudo apt-get install -y xvfb xclip x11-xserver-utils libnss3 libgbm1 libgtk-3-0t64 libasound2t64 libxss1
+      - name: Serviços do usuário no Linux (systemd --user, como numa sessão de verdade)
+        if: runner.os == 'Linux'
+        run: |
+          sudo loginctl enable-linger "$USER"
+          sudo systemctl start "user@$(id -u).service"
+          for i in $(seq 1 30); do [ -S "/run/user/$(id -u)/bus" ] && break; sleep 1; done
+          echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
+          systemctl --user is-system-running || true
       - run: npm ci
       - run: npm run build
       - name: Testes reais do sistema (rede, instalação, hash)
+        if: runner.os != 'Linux'
         run: npm run test:e2e
+      - name: Testes reais do sistema (Linux, com tela virtual: instala o Sunshine de verdade)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a --server-args="-screen 0 1280x800x24" npm run test:e2e
       - name: App aberto de verdade (Linux, com tela virtual)
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         run: xvfb-run -a --server-args="-screen 0 1280x800x24" npm run e2e:app
