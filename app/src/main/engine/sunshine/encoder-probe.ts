@@ -22,14 +22,17 @@ export function amdConfig(candidate: EncoderCandidate): Record<string, string> {
  */
 export function createLogEncoderProbe(deps: {
   api: Pick<SunshineApiPort, 'saveConfig'>
+  alive?: () => boolean
   restartAndRead: (alive?: () => boolean) => Promise<string>
 }): Probe {
   return async (candidate, signal) => {
-    if (signal?.aborted) return false
-    await deps.api.saveConfig(amdConfig(candidate))
-    const log = await deps.restartAndRead(() => signal?.aborted !== true)
+    const alive = (): boolean => signal?.aborted !== true && (deps.alive?.() ?? true)
+    if (!alive()) return false
+    await deps.api.saveConfig(amdConfig(candidate), alive)
+    if (!alive()) throw new Error('Sondagem do encoder cancelada.')
+    const log = await deps.restartAndRead(alive)
     // Sondagem abandonada devolve log vazio: isso não diz nada sobre a GPU.
-    if (signal?.aborted) throw new Error('Sondagem do encoder cancelada.')
+    if (!alive()) throw new Error('Sondagem do encoder cancelada.')
     return parseFoundEncoder(log)?.hardware === true
   }
 }

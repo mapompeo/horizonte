@@ -305,3 +305,43 @@ describe('createMoonlightClient', () => {
     })
   })
 })
+
+it('falha ao esquecer pareamento nao perde onStreamEnded nem gera rejeicao sem tratamento', async () => {
+  const proc = fakeProcess()
+  const run = vi.fn(async () => 0)
+  const saves: string[][] = []
+  const save = async (hosts: string[]): Promise<void> => {
+    saves.push(hosts)
+    if (saves.length === 1) throw new Error('disco cheio')
+  }
+  const client = createMoonlightClient({
+    spawn: async () => proc,
+    listHosts: async () => [],
+    run,
+    sendPin: async () => undefined,
+    deviceName: () => 'Notebook',
+    randomPin: () => '4821',
+    now: () => 0,
+    pairedHosts: { load: async () => ['host'], save }
+  })
+  const ended = vi.fn()
+  const unhandled: unknown[] = []
+  const onUnhandled = (cause: unknown): void => {
+    unhandled.push(cause)
+  }
+  process.on('unhandledRejection', onUnhandled)
+  try {
+    client.onStreamEnded(ended)
+    await client.connect('host', DEFAULT_SETTINGS)
+    proc.exit(1)
+    expect(ended).toHaveBeenCalledOnce()
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    expect(unhandled).toEqual([])
+    await client.connect('host', DEFAULT_SETTINGS)
+    expect(run).toHaveBeenCalledWith(['pair', 'host', '--pin', '4821'])
+    expect(saves.at(-1)).toEqual(['host'])
+    await client.disconnect()
+  } finally {
+    process.off('unhandledRejection', onUnhandled)
+  }
+})

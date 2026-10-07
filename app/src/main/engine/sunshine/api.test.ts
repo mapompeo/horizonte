@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SunshineApi, SunshineApiError } from './api'
 import { startFakeSunshine, type FakeSunshine } from './testing/fake-sunshine'
 
@@ -211,4 +211,64 @@ describe('segurança do destino', () => {
   it.each(['127.0.0.1', 'localhost', '::1'])('aceita o endereço de loopback %s', (host) => {
     expect(() => new SunshineApi({ port: 47989, username: 'u', password: 'p', host })).not.toThrow()
   })
+})
+
+it('preserva patches concorrentes de saveConfig', async () => {
+  fake.config = { original: 'sim' }
+  let release!: () => void
+  let entered!: () => void
+  const reading = new Promise<void>((resolve) => {
+    entered = resolve
+  })
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let reads = 0
+  vi.spyOn(api, 'getConfig').mockImplementation(async () => {
+    const snapshot = { ...fake.config }
+    if (++reads === 1) {
+      entered()
+      await gate
+    }
+    return snapshot
+  })
+  const first = api.saveConfig({ sunshine_name: 'Sala' })
+  await reading
+  const second = api.saveConfig({ max_bitrate: '50000' })
+  await Promise.resolve()
+  release()
+  await Promise.all([first, second])
+  expect(fake.config).toEqual({ original: 'sim', sunshine_name: 'Sala', max_bitrate: '50000' })
+})
+
+it('nao despacha escrita cancelada enquanto getConfig esta pendente', async () => {
+  fake.config = { original: 'sim' }
+  let release!: (config: Record<string, unknown>) => void
+  let entered!: () => void
+  const reading = new Promise<void>((resolve) => {
+    entered = resolve
+  })
+  vi.spyOn(api, 'getConfig').mockImplementationOnce(() => {
+    entered()
+    return new Promise((resolve) => {
+      release = resolve
+    })
+  })
+  let alive = true
+  const writing = api.saveConfig({ sunshine_name: 'Cancelado' }, () => alive)
+  await reading
+  alive = false
+  release({ original: 'sim' })
+  await writing
+  expect(fake.config).toEqual({ original: 'sim' })
+})
+
+it('uma escrita com falha nao bloqueia os patches seguintes', async () => {
+  fake.config = { original: 'sim' }
+  vi.spyOn(api, 'getConfig').mockRejectedValueOnce(new Error('leitura falhou'))
+  const first = api.saveConfig({ sunshine_name: 'Falhou' })
+  const second = api.saveConfig({ max_bitrate: '50000' })
+  await expect(first).rejects.toThrow('leitura falhou')
+  await second
+  expect(fake.config).toEqual({ original: 'sim', max_bitrate: '50000' })
 })

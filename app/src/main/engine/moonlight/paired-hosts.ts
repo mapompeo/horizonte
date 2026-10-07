@@ -6,6 +6,7 @@ export function createPairedHostsStore(file: string): {
   load(): Promise<string[]>
   save(hosts: string[]): Promise<void>
 } {
+  let saves: Promise<void> = Promise.resolve()
   return {
     async load() {
       try {
@@ -16,10 +17,15 @@ export function createPairedHostsStore(file: string): {
       }
     },
     async save(hosts) {
-      await mkdir(dirname(file), { recursive: true })
-      const temporary = `${file}.${process.pid}.tmp`
-      await writeFile(temporary, JSON.stringify(hosts), 'utf8')
-      await rename(temporary, file)
+      const snapshot = [...hosts]
+      const save = saves.then(async () => {
+        await mkdir(dirname(file), { recursive: true })
+        const temporary = `${file}.${process.pid}.tmp`
+        await writeFile(temporary, JSON.stringify(snapshot), 'utf8')
+        await rename(temporary, file)
+      })
+      saves = save.catch(() => undefined)
+      await save
     }
   }
 }

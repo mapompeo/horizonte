@@ -313,3 +313,38 @@ describe('preparar de novo na mesma sessão', () => {
     expect(h.calls).toContain('install')
   })
 })
+
+describe('cancelamento durante leituras pendentes', () => {
+  it.each([1, 2])(
+    'n�o grava ap�s abortar a leitura %i da prepara��o conhecida',
+    async (pendingRead) => {
+      const t = setup()
+      await t.prepare()
+      await t.engine.abort()
+      const before = { ...t.process.config }
+      const restarts = t.process.restarts
+      const original = t.process.getConfig.bind(t.process)
+      let release!: (config: Record<string, unknown>) => void
+      let entered!: () => void
+      const reading = new Promise<void>((resolve) => {
+        entered = resolve
+      })
+      let reads = 0
+      t.process.getConfig = async () => {
+        if (++reads !== pendingRead) return original()
+        entered()
+        return new Promise((resolve) => {
+          release = resolve
+        })
+      }
+      const preparing = t.prepare({ ...DEFAULT_SETTINGS, deviceName: 'Cancelado' })
+      await reading
+      await t.engine.abort()
+      release(before)
+      await preparing
+      expect(t.process.config).toEqual(before)
+      expect(t.process.restarts).toBe(restarts)
+      await t.engine.abort()
+    }
+  )
+})

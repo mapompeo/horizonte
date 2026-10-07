@@ -64,7 +64,7 @@ describe('createRestarter', () => {
     const result = restart(() => alive)
     alive = false
     expect(await result).toBe('')
-    expect(process.restarts).toBe(1)
+    expect(process.restarts).toBe(0)
   })
 
   it('log que continua igual (sem nova partida) conta como reinício não concluído', async () => {
@@ -82,4 +82,34 @@ describe('createRestarter', () => {
       'O motor de transmissão não voltou depois de reiniciar.'
     )
   })
+})
+
+it('cancela efeitos seguintes de um restart ja despachado', async () => {
+  const process = new FakeSunshineProcess()
+  let alive = true
+  let release!: () => void
+  let entered!: () => void
+  const restarting = new Promise<void>((resolve) => {
+    entered = resolve
+  })
+  const restart = createRestarter({
+    api: process,
+    restart: async () => {
+      await process.restart()
+      entered()
+      await new Promise<void>((resolve) => {
+        release = resolve
+      })
+    },
+    readLog: () => process.readLog(),
+    sleep: async () => {
+      throw new Error('nao deve aguardar apos cancelamento')
+    }
+  })
+  const result = restart(() => alive)
+  await restarting
+  alive = false
+  release()
+  expect(await result).toBe('')
+  expect(process.restarts).toBe(1)
 })
