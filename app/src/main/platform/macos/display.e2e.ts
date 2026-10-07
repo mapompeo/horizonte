@@ -4,10 +4,9 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const HELPER = resolve('native/macos/build/horizonte-display')
+/** Telas em uso segundo o próprio CoreGraphics (o system_profiler não lista nada em máquina virtual sem GPU). */
 const screens = (): number =>
-  countDisplays(
-    execFileSync('system_profiler', ['SPDisplaysDataType'], { timeout: 60_000 }).toString()
-  )
+  Number(execFileSync(HELPER, ['--count'], { timeout: 30_000 }).toString().trim())
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 async function until(condition: () => boolean, ms: number): Promise<boolean> {
