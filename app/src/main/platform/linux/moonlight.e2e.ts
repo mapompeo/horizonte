@@ -26,8 +26,8 @@ describe.runIf(process.platform === 'linux')('Moonlight no Linux de verdade', ()
       download: downloadVerified,
       run: async (script) => void execFileSync('sh', ['-c', script])
     })
-    const out = execFileSync('sh', ['-c', `${shQuote(path)} --help 2>&1 | head -n 5`], {
-      env: { ...process.env, APPIMAGE_EXTRACT_AND_RUN: '1', QT_QPA_PLATFORM: 'offscreen' },
+    const out = execFileSync('sh', ['-c', `${shQuote(path)} --help 2>&1`], {
+      env: { ...process.env, APPIMAGE_EXTRACT_AND_RUN: '1' },
       timeout: 120_000
     }).toString()
     console.log(out)
