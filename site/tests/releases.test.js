@@ -1,6 +1,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { RELEASES_PAGE, buildDownloads, formatVersion, loadReleases, pickLatest } from '../js/releases.js'
+import {
+  RELEASES_PAGE,
+  buildDownloads,
+  fileLabel,
+  formatVersion,
+  loadReleases,
+  pickLatest
+} from '../js/releases.js'
 
 const asset = (name, size) => ({ name, size, browser_download_url: `https://dl/${name}` })
 const release = (tag, published, extra = {}) => ({
@@ -90,4 +97,35 @@ test('cada arquivo tem o próprio link: quem quer o .deb não recebe o AppImage'
   const d = buildDownloads(release('v0.1.0-beta.4', '2026-10-05T15:30:00Z'))
   assert.deepEqual(d.linux.files.map((f) => f.url), ['https://dl/Horizonte-0.1.0.AppImage', 'https://dl/Horizonte-0.1.0.deb'])
   assert.equal(d.windows.files[0].url, 'https://dl/Horizonte-0.1.0-setup.exe')
+})
+
+const macRelease = () => {
+  const r = release('v0.1.0-beta.6', '2026-10-07T10:00:00Z')
+  r.assets = [
+    asset('Horizonte-0.1.0-beta.6-setup.exe', 110242450),
+    asset('Horizonte-0.1.0-beta.6-x64.dmg', 130000000),
+    asset('Horizonte-0.1.0-beta.6-arm64.dmg', 127620512),
+    asset('Horizonte-0.1.0-beta.6.AppImage', 124994332)
+  ]
+  return r
+}
+
+test('fileLabel diz para quem serve cada arquivo (chip Apple, chip Intel, instalador)', () => {
+  assert.equal(fileLabel('Horizonte-0.1.0-beta.6-setup.exe'), 'Instalador .exe')
+  assert.equal(fileLabel('Horizonte-0.1.0-beta.6-arm64.dmg'), 'Mac com chip Apple (.dmg)')
+  assert.equal(fileLabel('Horizonte-0.1.0-beta.6-x64.dmg'), 'Mac com chip Intel (.dmg)')
+  assert.equal(fileLabel('horizonte-0.1.0.dmg'), '.dmg')
+  assert.equal(fileLabel('Horizonte-0.1.0.AppImage'), '.AppImage')
+  assert.equal(fileLabel('Horizonte-0.1.0.deb'), '.deb')
+  assert.equal(fileLabel('semextensao'), 'semextensao')
+})
+
+test('macOS com dois discos: o primeiro (o botão Baixar) é o de chip Apple, e os dois aparecem', () => {
+  const d = buildDownloads(macRelease())
+  assert.equal(d.mac.href, 'https://dl/Horizonte-0.1.0-beta.6-arm64.dmg')
+  assert.deepEqual(
+    d.mac.files.map((f) => f.name),
+    ['Horizonte-0.1.0-beta.6-arm64.dmg', 'Horizonte-0.1.0-beta.6-x64.dmg']
+  )
+  assert.equal(d.version, '0.1.0 beta 6')
 })

@@ -25,8 +25,10 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: true
 mac:
+  # Um disco para Mac com chip Apple e outro para Mac Intel: o Sunshine e o Moonlight que o app baixa já servem aos dois.
   target:
-    - dmg
+    - target: dmg
+      arch: [arm64, x64]
   category: public.app-category.utilities
   # Sem conta de desenvolvedor Apple ainda: assinatura ad hoc ("-"), sem notarização. Sem nenhuma assinatura o macOS
   # diz que o app "está danificado" e não deixa abrir; com a ad hoc ele avisa "desenvolvedor não identificado" e
@@ -42,7 +44,7 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: Horizonte-${version}-${arch}.${ext}
 linux:
   target:
     - AppImage
