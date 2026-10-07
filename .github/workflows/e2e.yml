@@ -33,7 +33,39 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xclip x11-xserver-utils libnss3 libgbm1 libgtk-3-0t64 libasound2t64 libxss1
+          sudo apt-get install -y xserver-xorg-core xserver-xorg-video-dummy xclip x11-xserver-utils libnss3 libgbm1 libgtk-3-0t64 libasound2t64 libxss1
+      - name: Servidor gráfico no Linux (Xorg com driver dummy e tela grande, como um desktop de verdade)
+        if: runner.os == 'Linux'
+        run: |
+          cat > /tmp/xorg-dummy.conf <<'CONF'
+          Section "Device"
+            Identifier "dummy"
+            Driver "dummy"
+            VideoRam 256000
+          EndSection
+          Section "Monitor"
+            Identifier "Monitor0"
+            HorizSync 5.0 - 1000.0
+            VertRefresh 5.0 - 200.0
+            Modeline "1280x800" 83.46 1280 1344 1480 1680 800 801 804 828 -hsync +vsync
+          EndSection
+          Section "Screen"
+            Identifier "Screen0"
+            Device "dummy"
+            Monitor "Monitor0"
+            DefaultDepth 24
+            SubSection "Display"
+              Viewport 0 0
+              Depth 24
+              Virtual 8192 4096
+              Modes "1280x800"
+            EndSubSection
+          EndSection
+          CONF
+          sudo Xorg :99 -noreset -novtswitch -sharevts -ac -config /tmp/xorg-dummy.conf -logfile /tmp/xorg.log &
+          for i in $(seq 1 30); do xrandr -d :99 >/dev/null 2>&1 && break; sleep 1; done
+          xrandr -d :99 | head -3 || (cat /tmp/xorg.log; exit 1)
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
       - name: Serviços do usuário no Linux (systemd --user, como numa sessão de verdade)
         if: runner.os == 'Linux'
         run: |
@@ -48,12 +80,12 @@ jobs:
       - name: Testes reais do sistema (rede, instalação, hash)
         if: runner.os != 'Linux'
         run: npm run test:e2e
-      - name: Testes reais do sistema (Linux, com tela virtual, instala o Sunshine de verdade)
+      - name: Testes reais do sistema (Linux, instala o Sunshine de verdade)
         if: runner.os == 'Linux'
-        run: xvfb-run -a --server-args="-screen 0 1280x800x24" npm run test:e2e
-      - name: App aberto de verdade (Linux, com tela virtual)
+        run: npm run test:e2e
+      - name: App aberto de verdade (Linux)
         if: ${{ !cancelled() && runner.os == 'Linux' }}
-        run: xvfb-run -a --server-args="-screen 0 1280x800x24" npm run e2e:app
+        run: npm run e2e:app
       - name: App aberto de verdade
         if: ${{ !cancelled() && runner.os != 'Linux' }}
         run: npm run e2e:app
