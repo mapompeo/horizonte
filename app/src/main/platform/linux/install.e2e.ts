@@ -199,6 +199,9 @@ describe.runIf(process.platform === 'linux' && process.env.CI === 'true')(
         30_000
       ).catch((e: Error) => '(falhou: ' + e.message + ')')
       console.log('--- transmissão real: log do Sunshine', sunshineLog)
+      expect(sunshineLog, 'o Moonlight conectou e o Sunshine começou a transmitir').toContain(
+        'CLIENT CONNECTED'
+      )
       try {
         if (stream.pid) process.kill(-stream.pid, 'SIGKILL')
       } catch {
