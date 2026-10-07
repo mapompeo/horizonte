@@ -1027,3 +1027,709 @@ footer a {
     transform: none;
   }
 }
+
+/* ============ Mais produto: ícones, faixa de sistemas, matriz, radar e recursos ============ */
+.ico {
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+  fill: currentColor;
+}
+.progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 3px;
+  z-index: 60;
+  background: linear-gradient(90deg, #0a84ff, #bf5af2, #ff9f0a);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+.nav .gh,
+footer .gh,
+.linkbtn.withico {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.nav .gh .ico {
+  width: 18px;
+  height: 18px;
+}
+.linkbtn.withico .ico {
+  width: 20px;
+  height: 20px;
+}
+
+/* Fundo do topo: três manchas de cor que derivam devagar */
+main {
+  position: relative;
+}
+.aurora {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: min(1100px, 130vh);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+  -webkit-mask-image: linear-gradient(#000 55%, transparent);
+  mask-image: linear-gradient(#000 55%, transparent);
+}
+.aurora i {
+  position: absolute;
+  width: 46vw;
+  height: 46vw;
+  max-width: 640px;
+  max-height: 640px;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.38;
+  animation: drift 18s ease-in-out infinite alternate;
+}
+.aurora i:nth-child(1) {
+  background: #0a84ff;
+  left: -8vw;
+  top: 4%;
+}
+.aurora i:nth-child(2) {
+  background: #bf5af2;
+  right: -10vw;
+  top: -6%;
+  animation-duration: 23s;
+  animation-delay: -6s;
+}
+.aurora i:nth-child(3) {
+  background: #ff9f0a;
+  left: 34vw;
+  top: 34%;
+  opacity: 0.22;
+  animation-duration: 27s;
+  animation-delay: -11s;
+}
+@keyframes drift {
+  to {
+    transform: translate3d(7vw, 6vh, 0) scale(1.18);
+  }
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .aurora i {
+    opacity: 0.2;
+  }
+}
+
+/* Faixa que corre */
+.marquee {
+  overflow: hidden;
+  padding-block: 30px;
+  border-block: 1px solid var(--line-soft);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.marquee .track {
+  display: flex;
+  width: max-content;
+  animation: slide 38s linear infinite;
+}
+.marquee:hover .track {
+  animation-play-state: paused;
+}
+.marquee .set {
+  display: flex;
+  flex: none;
+}
+.mq {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding-inline: 34px;
+  font-size: clamp(1.1rem, 1rem + 0.6vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.mq .ico {
+  width: 1.5em;
+  height: 1.5em;
+  color: var(--fg);
+}
+.mq img {
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 28%;
+}
+@keyframes slide {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Matriz: qualquer sistema com qualquer outro */
+.matrix {
+  padding-block: 150px 40px;
+  text-align: center;
+}
+.matrix h2 .grad,
+.radar-sec h2 .grad {
+  background: linear-gradient(90deg, #0a84ff, #bf5af2 60%, #ff9f0a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.mx {
+  position: relative;
+  max-width: 760px;
+  margin: 70px auto 0;
+  aspect-ratio: 2 / 1;
+}
+.mx-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.mx-lines .rails path {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 6;
+}
+.mx-lines .packets circle {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 5px var(--accent));
+}
+.chip {
+  position: absolute;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: clamp(8px, 1.6vw, 14px) clamp(10px, 2vw, 20px);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  font-weight: 600;
+  font-size: clamp(0.8rem, 0.6rem + 1vw, 1.1rem);
+  white-space: nowrap;
+}
+.chip.l {
+  left: 0;
+}
+.chip.r {
+  right: 0;
+}
+.chip .ico {
+  width: 1.4em;
+  height: 1.4em;
+}
+.chip span {
+  display: none;
+}
+@media (min-width: 560px) {
+  .chip span {
+    display: inline;
+  }
+}
+.mx-tag {
+  position: absolute;
+  bottom: calc(100% + 18px);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.mx-tag.l {
+  left: 0;
+}
+.mx-tag.r {
+  right: 0;
+}
+
+/* Radar: ele acha o outro sozinho */
+.radar-sec {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+  padding-block: 120px;
+}
+.radar-copy p {
+  margin: 24px 0 0;
+  font-size: var(--step-1);
+  color: var(--muted);
+  max-width: 28ch;
+}
+.radar {
+  position: relative;
+  width: min(100%, 460px);
+  aspect-ratio: 1;
+  justify-self: center;
+}
+.radar .ring {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+.radar .r1 {
+  width: 34%;
+  height: 34%;
+}
+.radar .r2 {
+  width: 68%;
+  height: 68%;
+}
+.radar .r3 {
+  width: 100%;
+  height: 100%;
+}
+.radar .ring::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  opacity: 0;
+  animation: ping 3.6s ease-out infinite;
+}
+.radar .r2::after {
+  animation-delay: 1.2s;
+}
+.radar .r3::after {
+  animation-delay: 2.4s;
+}
+@keyframes ping {
+  0% {
+    transform: scale(0.45);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+.radar .sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 75%, color-mix(in srgb, var(--accent) 38%, transparent) 100%);
+  animation: spin 4.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.radar .core,
+.radar .blip {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+}
+.radar .core {
+  inset: 0;
+  margin: auto;
+  width: 22%;
+  height: 22%;
+  color: var(--fg);
+}
+.radar .core svg {
+  width: 56%;
+}
+.radar .blip {
+  width: 15%;
+  height: 15%;
+  color: var(--accent);
+}
+.radar .blip svg {
+  width: 62%;
+}
+.radar .b1 {
+  left: 80%;
+  top: 22%;
+}
+.radar .b2 {
+  left: 8%;
+  top: 56%;
+}
+.radar .b3 {
+  left: 58%;
+  top: 80%;
+}
+.radar .blip::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  opacity: 0;
+  animation: ping 3.6s ease-out infinite;
+}
+.radar .b2::after {
+  animation-delay: 1.2s;
+}
+.radar .b3::after {
+  animation-delay: 2.4s;
+}
+
+/* Recursos: grade de cartões com luz que segue o mouse */
+.bento-sec {
+  padding-block: 40px 140px;
+}
+.bento-sec h2 {
+  text-align: center;
+}
+.bento {
+  margin-top: 64px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.tile {
+  position: relative;
+  overflow: hidden;
+  grid-column: span 1;
+  min-height: 240px;
+  padding: 26px;
+  border-radius: 28px;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  will-change: transform;
+}
+.tile.wide {
+  grid-column: span 2;
+}
+.tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 0%), color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.35s var(--ease);
+  pointer-events: none;
+}
+.tile:hover::before {
+  opacity: 1;
+}
+.tile h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+.tile p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+.glyph {
+  position: absolute;
+  inset: 22px 22px auto 22px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  color: var(--fg);
+}
+/* monitor virtual: o segundo monitor desliza para o lado do primeiro */
+.g-monitor {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  align-items: center;
+}
+.g-monitor i {
+  display: block;
+  width: 96px;
+  height: 64px;
+  border-radius: 8px;
+  border: 3px solid var(--fg);
+}
+.g-monitor .m2 {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  animation: second 5s var(--ease) infinite;
+}
+@keyframes second {
+  0%,
+  12% {
+    transform: translateX(-60px) scale(0.6);
+    opacity: 0;
+  }
+  35%,
+  80% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-60px) scale(0.6);
+    opacity: 0;
+  }
+}
+/* pareamento: o escudo desenha o visto */
+.g-check svg {
+  width: 84px;
+  height: 84px;
+}
+.g-check .tick {
+  stroke: var(--ok-dot);
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: draw 3.4s var(--ease) infinite;
+}
+@keyframes draw {
+  0%,
+  15% {
+    stroke-dashoffset: 40;
+  }
+  45%,
+  85% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 40;
+  }
+}
+/* lembra o modo: o botão vai e volta */
+.g-toggle .rail {
+  width: 120px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--seg);
+  padding: 5px;
+  display: flex;
+}
+.g-toggle .rail b {
+  width: 56px;
+  height: 46px;
+  border-radius: 999px;
+  background: var(--seg-on);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  animation: slide-thumb 4s var(--ease) infinite;
+}
+@keyframes slide-thumb {
+  0%,
+  30% {
+    transform: translateX(0);
+  }
+  50%,
+  80% {
+    transform: translateX(54px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+/* qualidade: barras de equalizador */
+.g-bars {
+  display: flex;
+  gap: 7px;
+  align-items: flex-end;
+  justify-content: center;
+}
+.g-bars i {
+  display: block;
+  width: 12px;
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(var(--accent), #bf5af2);
+  transform-origin: 50% 100%;
+  animation: eq 1.8s ease-in-out infinite;
+}
+.g-bars i:nth-child(2n) {
+  animation-duration: 2.3s;
+}
+.g-bars i:nth-child(3n) {
+  animation-duration: 1.4s;
+  animation-delay: -0.4s;
+}
+.g-bars i:nth-child(1) {
+  animation-delay: -0.2s;
+}
+.g-bars i:nth-child(4) {
+  animation-delay: -0.9s;
+}
+.g-bars i:nth-child(5) {
+  animation-delay: -1.3s;
+}
+.g-bars i:nth-child(7) {
+  animation-delay: -0.6s;
+}
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+/* rede local: ondas saindo do ponto */
+.g-wifi {
+  position: relative;
+}
+.g-wifi b {
+  position: absolute;
+  left: calc(50% - 7px);
+  bottom: 26px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--fg);
+}
+.g-wifi i {
+  position: absolute;
+  left: 50%;
+  bottom: 33px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  opacity: 0;
+  animation: wave 2.4s ease-out infinite;
+}
+.g-wifi i:nth-child(2) {
+  animation-delay: 0.8s;
+}
+.g-wifi i:nth-child(3) {
+  animation-delay: 1.6s;
+}
+@keyframes wave {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(4.2);
+    opacity: 0;
+  }
+}
+/* código aberto: o ícone do GitHub gira de leve */
+.g-open .ico {
+  width: 76px;
+  height: 76px;
+  animation: bob 5s ease-in-out infinite;
+}
+@keyframes bob {
+  0%,
+  100% {
+    transform: rotate(-8deg) translateY(0);
+  }
+  50% {
+    transform: rotate(8deg) translateY(-6px);
+  }
+}
+
+/* Cartões de download com o ícone do sistema */
+.os .os-ico {
+  width: 54px;
+  height: 54px;
+  margin-bottom: 6px;
+  color: var(--fg);
+  transition: transform 0.5s var(--ease), color 0.3s;
+}
+.os:hover .os-ico {
+  transform: scale(1.12) rotate(-4deg);
+  color: var(--accent);
+}
+
+/* Rodapé com marca e ícones */
+footer .wrap {
+  align-items: center;
+}
+.foot-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--fg);
+}
+.foot-brand img {
+  width: 22px;
+  height: 22px;
+  border-radius: 28%;
+}
+.foot-os {
+  display: inline-flex;
+  gap: 14px;
+  color: var(--muted);
+}
+.foot-os .ico {
+  width: 18px;
+  height: 18px;
+}
+footer .gh .ico {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 760px) {
+  .radar-sec {
+    grid-template-columns: minmax(0, 1fr);
+    padding-block: 80px;
+  }
+  .bento {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tile.wide {
+    grid-column: span 1;
+  }
+  .nav .gh span {
+    display: none;
+  }
+  .matrix {
+    padding-top: 100px;
+  }
+}
+
+/* Menos movimento: tudo que corre para, só sobra o desenho parado. */
+@media (prefers-reduced-motion: reduce) {
+  .aurora i,
+  .marquee .track,
+  .radar .ring::after,
+  .radar .blip::after,
+  .radar .sweep,
+  .g-monitor .m2,
+  .g-check .tick,
+  .g-toggle .rail b,
+  .g-bars i,
+  .g-wifi i,
+  .g-open .ico {
+    animation: none;
+  }
+  .g-check .tick {
+    stroke-dashoffset: 0;
+  }
+  .g-bars i {
+    transform: scaleY(0.7);
+  }
+  .mx-lines .packets {
+    display: none;
+  }
+}
+.g-wifi {
+  overflow: hidden;
+}
+@keyframes wave {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(3.4);
+    opacity: 0;
+  }
+}
+/* O radar gira dentro do cartão: a caixa girada não pode criar rolagem lateral. */
+.radar-sec {
+  overflow-x: clip;
+}
+body {
+  overflow-x: clip;
+}

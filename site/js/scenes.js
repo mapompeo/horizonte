@@ -234,6 +234,84 @@ export function startScenes(M) {
     )
   })
 
+  /* ============ 6b. Barra de progresso, sistemas, radar e recursos ============ */
+  M.scroll(M.animate('#progress', { scaleX: [0, 1] }, { ease: 'linear' }))
+
+  // Faixa de sistemas: acelera e inclina de leve conforme a rolagem
+  const track = $('track')
+  let skewTarget = 0
+  let lastScroll = scrollY
+  addEventListener(
+    'scroll',
+    () => {
+      skewTarget = Math.max(-6, Math.min(6, (scrollY - lastScroll) * 0.25))
+      lastScroll = scrollY
+    },
+    { passive: true }
+  )
+  ;(function settle() {
+    skewTarget *= 0.9
+    track.parentElement.style.transform = 'skewX(' + (-skewTarget).toFixed(2) + 'deg)'
+    requestAnimationFrame(settle)
+  })()
+
+  // Matriz: os seis sistemas entram em mola e os pacotes passam a correr
+  const chips = [...document.querySelectorAll('.chip')]
+  chips.forEach((c) => (c.style.opacity = '0'))
+  document.querySelectorAll('.mx-lines, .mx-tag').forEach((el) => (el.style.opacity = '0'))
+  M.inView(
+    $('mx'),
+    () => {
+      M.animate('.mx-lines', { opacity: [0, 1] }, { duration: 1.2, delay: 0.3 })
+      M.animate('.mx-tag', { opacity: [0, 1], y: [10, 0] }, { ...soft, delay: 0.5 })
+      chips.forEach((c, i) => {
+        const side = c.classList.contains('l') ? -1 : 1
+        M.animate(c, { opacity: [0, 1], x: [side * 40, 0], scale: [0.8, 1] }, { ...spring, delay: 0.15 * (i % 3) + (side === 1 ? 0.4 : 0) })
+      })
+    },
+    { amount: 0.45 }
+  )
+  chips.forEach((c) => {
+    c.addEventListener('pointerenter', () => M.animate(c, { scale: 1.08 }, snappy))
+    c.addEventListener('pointerleave', () => M.animate(c, { scale: 1 }, spring))
+  })
+
+  // Radar: o aparelho central surge e os outros são encontrados um a um
+  const radar = $('radar')
+  const blips = [...radar.querySelectorAll('.blip')]
+  blips.forEach((b) => (b.style.opacity = '0'))
+  radar.querySelector('.core').style.opacity = '0'
+  M.inView(
+    radar,
+    () => {
+      M.animate(radar.querySelector('.core'), { opacity: [0, 1], scale: [0.4, 1] }, spring)
+      blips.forEach((b, i) => M.animate(b, { opacity: [0, 1], scale: [0, 1.15, 1] }, { duration: 0.7, delay: 0.9 + i * 0.9 }))
+    },
+    { amount: 0.5 }
+  )
+
+  // Recursos: cartões sobem em cascata e a luz segue o mouse
+  const tiles = [...document.querySelectorAll('[data-tile]')]
+  tiles.forEach((t) => (t.style.opacity = '0'))
+  M.inView(
+    $('bento'),
+    () => {
+      M.animate(tiles, { opacity: [0, 1], y: [50, 0], scale: [0.94, 1] }, { ...soft, delay: M.stagger(0.09) })
+    },
+    { amount: 0.2 }
+  )
+  tiles.forEach((t) => {
+    t.addEventListener('pointermove', (e) => {
+      const r = t.getBoundingClientRect()
+      t.style.setProperty('--mx', e.clientX - r.left + 'px')
+      t.style.setProperty('--my', e.clientY - r.top + 'px')
+    })
+  })
+  M.hover('[data-tile]', (el) => {
+    M.animate(el, { y: -6, scale: 1.015 }, spring)
+    return () => M.animate(el, { y: 0, scale: 1 }, spring)
+  })
+
   /* ============ 7. Botões atraídos pelo cursor, toque com mola ============ */
   document.querySelectorAll('.magnet').forEach((el) => {
     el.addEventListener('pointermove', (e) => {
