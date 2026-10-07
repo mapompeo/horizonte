@@ -1,4 +1,5 @@
 import { createController, type Controller } from '../src/main/core/controller'
+import { version } from '../package.json'
 import { DEFAULT_SETTINGS, type SettingsStore } from '../src/main/core/settings'
 import { route } from '../src/renderer/src/lib/store'
 import { FakeEngine } from '../src/main/engine/fake'
@@ -97,6 +98,9 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
 
   const api: HorizonteApi = {
     platform: 'win32',
+    getUpdateStatus: async () => ({ phase: 'unavailable', currentVersion: version }),
+    update: async () => ({ phase: 'unavailable', currentVersion: version }),
+    onUpdate: () => () => undefined,
     getSnapshot: async () => controller.getSnapshot(),
     dispatch: async (event) => controller.dispatch(event),
     updateSettings: (patch) => controller.updateSettings(patch),

@@ -5,6 +5,7 @@
   import CopyButton from '../components/CopyButton.svelte'
   import Segmented from '../components/Segmented.svelte'
   import Toggle from '../components/Toggle.svelte'
+  import UpdateControls from '../components/UpdateControls.svelte'
 
   interface Props {
     settings: Settings
@@ -167,8 +168,9 @@
       </div>
     </section>
 
+    <UpdateControls />
     <div class="sheet-foot">
-      <span>Horizonte 0.1.0</span>
+      <span>Horizonte</span>
       <div class="sheet-foot-actions">
         <button onclick={() => window.horizonte.openRepo()}>GitHub</button>
         <CopyButton />
