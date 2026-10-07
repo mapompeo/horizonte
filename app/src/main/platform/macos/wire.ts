@@ -58,6 +58,8 @@ export function createMoonlightLauncher(userData: string): () => Promise<string>
 
 type MacPlatform = ReturnType<typeof createMacSetup> & {
   restart(): Promise<void>
+  /** Desliga o monitor virtual do Horizonte (ele some junto com o auxiliar). */
+  stopVirtualDisplay(): void
   createApi(credentials: SunshineCredentials): SunshineApi
   credentials(): Promise<SunshineCredentials>
 }
@@ -126,6 +128,10 @@ export function createMacPlatform(deps: {
       await sh(
         `pkill -x ${SUNSHINE_PROCESS} || true\nopen ${shQuote(join(APPS_DIR, 'Sunshine.app'))}`
       )
+    },
+    stopVirtualDisplay: () => {
+      monitor?.stop()
+      monitor = null
     },
     createApi,
     credentials: async () => {

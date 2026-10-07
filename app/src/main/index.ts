@@ -238,6 +238,7 @@ async function boot(): Promise<void> {
         return answer.response === 0
       }
     })
+    app.on('before-quit', () => platform.stopVirtualDisplay())
     engine = composeEngine(
       new SunshineEngine({
         installer: platform.installer,

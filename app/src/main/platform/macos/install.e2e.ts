@@ -51,6 +51,9 @@ describe.runIf(process.platform === 'darwin' && process.env.CI === 'true')(
               : '(sem log)')
         )
       }
+      // O monitor virtual some com o auxiliar: libera a identidade para o próximo teste.
+      const screensWithMonitor = Number((await run(HELPER, ['--count'])).trim())
+      platform.stopVirtualDisplay()
 
       const credentials = await platform.credentials()
       const config = await new SunshineApi({
@@ -59,7 +62,7 @@ describe.runIf(process.platform === 'darwin' && process.env.CI === 'true')(
         password: credentials.password
       }).getConfig()
       expect(config).toBeTypeOf('object')
-      expect(Number((await run(HELPER, ['--count'])).trim())).toBeGreaterThanOrEqual(2)
+      expect(screensWithMonitor).toBeGreaterThanOrEqual(2)
     })
   }
 )
