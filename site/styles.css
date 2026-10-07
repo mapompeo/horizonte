@@ -1945,9 +1945,9 @@ body {
   grid-template-rows: repeat(4, 170px);
   gap: 14px;
   grid-template-areas:
-    'a a b c d d'
+    'a a b b d d'
     'e f H H g i'
-    'e h H H j k'
+    'e h H H j j'
     'l l m n o o';
 }
 .rt {
@@ -2189,14 +2189,15 @@ body {
     grid-template-areas:
       'H H'
       'a a'
-      'b c'
+      'b b'
       'd d'
       'e f'
       'g i'
-      'h j'
-      'k m'
+      'h h'
+      'j j'
       'l l'
-      'n o';
+      'm n'
+      'o o';
   }
   .rt-hero {
     min-height: 200px;
@@ -2252,7 +2253,6 @@ body {
 .demo-tools button { border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; background: var(--card); color: var(--fg); cursor: pointer; min-height: 44px; }
 .demo-tools button:hover { color: var(--accent); }
 
-.recap { grid-template-areas: 'a a b b d d' 'e f H H g i' 'e h H H j j' 'l l m n o o'; }
 [data-preview] { position:relative; overflow:hidden; }
 [data-preview] iframe { position:absolute; left:50%; top:50%; border:0; flex-shrink:0; transform-origin:center; max-width:none; }
 @media (max-width: 700px) {
