@@ -20,6 +20,42 @@ function fakeBrowser(services: ServiceFound[]): {
 }
 
 describe('createDiscovery', () => {
+  it('interface removida durante a busca nao impede consultar nem fechar o Wi-Fi', async () => {
+    const wifi = fakeBrowser([{ name: 'Desktop', addresses: ['192.168.1.5'] }])
+    const discovery = createDiscovery({
+      find: (address?: string) => {
+        if (address === '192.168.56.1') throw new Error('interface removida')
+        return wifi.browser
+      },
+      ownAddresses: () => [],
+      localNetworks: () => [
+        { address: '192.168.56.1', netmask: '255.255.255.0' },
+        { address: '192.168.1.6', netmask: '255.255.255.0' }
+      ],
+      listenMs: 20
+    })
+    expect(await discovery.listHosts()).toEqual([{ name: 'Desktop', address: '192.168.1.5' }])
+    expect(wifi.stopped()).toBe(true)
+  })
+  it('consulta todas as interfaces: VirtualBox primeiro nao esconde o Wi-Fi', async () => {
+    const interfaces: (string | undefined)[] = []
+    const hosts = await createDiscovery({
+      find: (address?: string) => {
+        interfaces.push(address)
+        return fakeBrowser(
+          address === '192.168.1.6' ? [{ name: 'Desktop', addresses: ['192.168.1.5'] }] : []
+        ).browser
+      },
+      ownAddresses: () => ['192.168.56.1', '192.168.1.6'],
+      localNetworks: () => [
+        { address: '192.168.56.1', netmask: '255.255.255.0' },
+        { address: '192.168.1.6', netmask: '255.255.255.0' }
+      ],
+      listenMs: 20
+    }).listHosts()
+    expect(hosts).toEqual([{ name: 'Desktop', address: '192.168.1.5' }])
+    expect(interfaces).toEqual(['192.168.56.1', '192.168.1.6'])
+  })
   it('lista só o que respondeu, com o endereço IPv4, e para a busca', async () => {
     const fake = fakeBrowser([
       { name: 'Desktop', addresses: ['fe80::1', '192.168.1.3'] },

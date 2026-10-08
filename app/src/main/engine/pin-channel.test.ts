@@ -13,6 +13,31 @@ async function post(port: number, body: string, path = '/pin'): Promise<number> 
 }
 
 describe('createPinChannel', () => {
+  it('PIN expirado nao pode ser usado pelo IP', async () => {
+    let time = 0
+    channel = createPinChannel({ port: 0, now: () => time })
+    await channel.start()
+    await post(channel.port(), JSON.stringify({ device: 'Notebook', pin: '1234' }))
+    time = 3 * 60_000
+    expect(channel.takeByAddress?.('127.0.0.1')).toBeUndefined()
+  })
+  it('associa o PIN ao IP real do cliente, mesmo quando o Moonlight usa roth', async () => {
+    channel = createPinChannel({ port: 0 })
+    await channel.start()
+    await post(channel.port(), JSON.stringify({ device: 'Notebook', pin: '1234' }))
+    expect(channel.takeByAddress?.('192.168.1.99')).toBeUndefined()
+    expect(channel.takeByAddress?.('::ffff:127.0.0.1')).toEqual({ device: 'Notebook', pin: '1234' })
+    expect(channel.take('Notebook')).toBeUndefined()
+  })
+
+  it('nao escolhe um PIN se dois dispositivos no mesmo IP estiverem aguardando', async () => {
+    channel = createPinChannel({ port: 0 })
+    await channel.start()
+    await post(channel.port(), JSON.stringify({ device: 'Notebook', pin: '1234' }))
+    await post(channel.port(), JSON.stringify({ device: 'Tablet', pin: '5678' }))
+    expect(channel.takeByAddress?.('127.0.0.1')).toBeUndefined()
+    expect(channel.take('Notebook')).toBe('1234')
+  })
   it('duas aberturas simultâneas compartilham a mesma porta', async () => {
     channel = createPinChannel({ port: 0 })
     const first = channel.start()

@@ -303,9 +303,12 @@ export class SunshineEngine implements ServerEngine {
       api,
       intervalMs: this.timing.pairingIntervalMs,
       onRequest: (pairing) => {
-        const device = cleanName(pairing.name) || GENERIC_DEVICE
+        const request = this.deps.pins?.takeByAddress?.(pairing.address)
+        const device = cleanName(request?.device ?? pairing.name) || GENERIC_DEVICE
+        const pin =
+          request?.pin ?? (this.deps.pins?.takeByAddress ? undefined : this.deps.pins?.take(device))
         for (const listener of [...this.pairListeners])
-          listener({ device, pairingId: pairing.id, pin: this.deps.pins?.take(device) })
+          listener({ device, pairingId: pairing.id, pin })
       },
       onCancelled: (pairingId) => {
         for (const listener of [...this.cancelListeners]) listener(pairingId)
