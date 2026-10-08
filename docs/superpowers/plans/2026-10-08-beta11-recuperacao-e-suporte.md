@@ -1,5 +1,7 @@
 # Recuperação e suporte na beta.11
 
+A publicação da beta.11 foi interrompida antes de gerar instaladores: a compilação C# do teste de driver no Windows levou 6 segundos, acima do prazo padrão de 5 segundos. A beta.12 contém o mesmo comportamento do produto e um prazo explícito para esse teste: processo limitado a 20 segundos, teste limitado a 25 segundos. A asserção de vinculação do driver permanece obrigatória. A tag beta.11 não foi reescrita.
+
 ## Problema confirmado
 
 Depois da remoção do pacote MTT, este Windows manteve o dispositivo `ROOT\DISPLAY\0001`, com HardwareID `Root\MttVDD`, mas sem classe Display nem driver vinculado. A beta.10 tratava a presença do dispositivo como instalação completa. O Sunshine enxergava apenas o monitor físico.
