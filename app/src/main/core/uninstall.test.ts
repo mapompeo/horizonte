@@ -71,3 +71,17 @@ test('dois cliques compartilham a mesma confirmação', async () => {
   expect(deps.confirm).toHaveBeenCalledOnce()
   expect(deps.launch).toHaveBeenCalledOnce()
 })
+test('reavalia a conexão após a confirmação e permite tentar de novo após falhar', async () => {
+  const { deps, uninstall } = setup()
+  deps.confirm.mockImplementation(async () => {
+    deps.busy.mockReturnValue(true)
+    return true
+  })
+  expect(await uninstall()).toBe('busy')
+  expect(deps.launch).not.toHaveBeenCalled()
+  deps.busy.mockReturnValue(false)
+  deps.confirm.mockResolvedValue(true)
+  deps.launch.mockRejectedValueOnce(new Error('falha transitória'))
+  expect(await uninstall()).toBe('failed')
+  expect(await uninstall()).toBe('started')
+})
