@@ -37,6 +37,24 @@ describe('buildStreamArgs', () => {
 })
 
 describe('createMoonlightClient', () => {
+  it('reconhece o pareamento do Moonlight quando a lista local do Horizonte está vazia', async () => {
+    const run = vi.fn(async () => 0)
+    const sendPin = vi.fn(async () => undefined)
+    const spawn = vi.fn(async () => fakeProcess())
+    const client = createMoonlightClient({
+      run,
+      sendPin,
+      spawn,
+      listHosts: async () => [],
+      deviceName: () => 'Notebook',
+      randomPin: () => '4821'
+    })
+    await client.connect('host', DEFAULT_SETTINGS)
+    expect(run).toHaveBeenCalledWith(['list', 'host'])
+    expect(run).not.toHaveBeenCalledWith(['pair', 'host', '--pin', '4821'])
+    expect(sendPin).not.toHaveBeenCalled()
+    expect(spawn).toHaveBeenCalledOnce()
+  })
   it('falha ao reabrir depois da queda avisa o controlador', async () => {
     const proc = fakeProcess()
     const spawn = vi.fn().mockResolvedValueOnce(proc).mockRejectedValueOnce(new Error('sem rede'))
@@ -147,7 +165,9 @@ describe('createMoonlightClient', () => {
   })
 
   const pairing = {
-    run: vi.fn<(args: string[]) => Promise<number | null>>(async () => 0),
+    run: vi.fn<(args: string[]) => Promise<number | null>>(async (args) =>
+      args[0] === 'list' ? 1 : 0
+    ),
     sendPin: vi.fn(async () => undefined),
     deviceName: () => 'Notebook',
     randomPin: () => '4821'
@@ -218,16 +238,16 @@ describe('createMoonlightClient', () => {
     const { spawn, client } = make()
     await expect(client.connect('192.168.1.9', DEFAULT_SETTINGS)).rejects.toThrow(/pareamento/i)
     expect(spawn).not.toHaveBeenCalled()
-    pairing.run.mockResolvedValue(0)
+    pairing.run.mockImplementation(async (args) => (args[0] === 'list' ? 1 : 0))
   })
 
   it('pair que não encerra (null) mas o list enxerga o aparelho: está pareado e transmite', async () => {
-    pairing.run.mockImplementation(async (args) => (args[0] === 'pair' ? null : 0))
+    pairing.run.mockResolvedValueOnce(1).mockResolvedValueOnce(null).mockResolvedValueOnce(0)
     const { spawn, client } = make()
     await client.connect('192.168.1.8', DEFAULT_SETTINGS)
     expect(pairing.run).toHaveBeenCalledWith(['list', '192.168.1.8'])
     expect(spawn).toHaveBeenCalledTimes(1)
-    pairing.run.mockImplementation(async () => 0)
+    pairing.run.mockImplementation(async (args) => (args[0] === 'list' ? 1 : 0))
   })
 
   describe('aparelhos já pareados', () => {
@@ -283,7 +303,7 @@ describe('createMoonlightClient', () => {
       proc.exit(1)
       expect(pairedHosts.save).toHaveBeenLastCalledWith([])
       await client.connect('192.168.1.3', DEFAULT_SETTINGS)
-      expect(pairing.run).toHaveBeenCalledOnce()
+      expect(pairing.run).toHaveBeenCalledWith(['pair', '192.168.1.3', '--pin', '4821'])
     })
 
     it('transmissão encerrada normalmente (código 0), mesmo logo, mantém o pareamento', async () => {
@@ -308,7 +328,7 @@ describe('createMoonlightClient', () => {
 
 it('falha ao esquecer pareamento nao perde onStreamEnded nem gera rejeicao sem tratamento', async () => {
   const proc = fakeProcess()
-  const run = vi.fn(async () => 0)
+  const run = vi.fn(async (args: string[]) => (args[0] === 'list' ? 1 : 0))
   const saves: string[][] = []
   const save = async (hosts: string[]): Promise<void> => {
     saves.push(hosts)
