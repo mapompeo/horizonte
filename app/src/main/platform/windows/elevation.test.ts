@@ -1,4 +1,6 @@
 import { mkdir, readdir, writeFile } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
+import { readFile } from 'node:fs/promises'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -11,6 +13,7 @@ import {
   psQuote,
   type ElevationRunner
 } from './elevation'
+import { DRIVER_INSTALL_SCRIPT } from './driver-script'
 
 let dir: string
 
@@ -52,6 +55,53 @@ describe('buildScript', () => {
     expect(script).toContain("'C:\\tmp\\result.txt'")
     expect(script).toMatch(/fail:/)
   })
+})
+
+describe.runIf(process.platform === 'win32')('roteiro completo no PowerShell real', () => {
+  it('preserva here-strings e grava sucesso depois de executar o bloco', async () => {
+    const result = join(dir, 'real-result.txt')
+    const script = buildScript(
+      [
+        {
+          description: 'Texto literal',
+          script:
+            "$value = @'\nprimeira\nsegunda\n'@\nif ($value -ne \"primeira`nsegunda\") { throw 'Literal alterado' }"
+        }
+      ],
+      result
+    )
+    execFileSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-EncodedCommand',
+        Buffer.from(script, 'utf16le').toString('base64')
+      ],
+      { timeout: 20_000, windowsHide: true }
+    )
+    expect((await readFile(result, 'utf8')).trim()).toBe('ok')
+  }, 25_000)
+
+  it('o roteiro completo do driver tem sintaxe válida antes de pedir administrador', () => {
+    const script = buildScript(
+      [{ description: 'Driver', script: DRIVER_INSTALL_SCRIPT }],
+      join(dir, 'result.txt')
+    )
+    const checker =
+      '$errors=$null; $tokens=$null; $script=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($env:HZ_SCRIPT)); [void][Management.Automation.Language.Parser]::ParseInput($script,[ref]$tokens,[ref]$errors); $errors.Count'
+    const result = execFileSync(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', checker],
+      {
+        env: { ...process.env, HZ_SCRIPT: Buffer.from(script, 'utf16le').toString('base64') },
+        encoding: 'utf8',
+        timeout: 20_000,
+        windowsHide: true
+      }
+    )
+    expect(result.trim()).toBe('0')
+  }, 25_000)
 })
 
 describe('createElevation', () => {

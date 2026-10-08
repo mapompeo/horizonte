@@ -43,13 +43,9 @@ export const psQuote = (value: string): string => `'${value.replace(/'/g, "''")}
 
 export function buildScript(steps: ElevatedStep[], resultPath: string): string {
   const body = steps
-    .map(
-      (step, index) =>
-        `    $step = ${index}\n${step.script
-          .split('\n')
-          .map((line) => `    ${line}`)
-          .join('\n')}`
-    )
+    // Here-strings do PowerShell precisam do terminador na primeira coluna.
+    // Preservar o roteiro também evita alterar o conteúdo literal dentro delas.
+    .map((step, index) => `$step = ${index}\n${step.script}`)
     .join('\n')
   return [
     "$ErrorActionPreference = 'Stop'",

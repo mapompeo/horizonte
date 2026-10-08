@@ -8,7 +8,7 @@ Depois da remoção do pacote MTT, este Windows manteve o dispositivo `ROOT\DISP
 
 A detecção exige agora classe Display e status OK. O roteiro vincula o driver também ao dispositivo que já existe. Um teste executa esse caso em PowerShell real com APIs nativas substituídas, sem modificar o Windows do runner.
 
-A tentativa de recuperação física deste PC foi interrompida por falta de consentimento UAC. Não é evidência de monitor recuperado. Na próxima preparação, a versão corrigida deverá solicitar a instalação e o aviso de administrador.
+A primeira tentativa de recuperação não produziu o arquivo de resultado e foi interpretada como recusa do UAC. Um ensaio posterior do roteiro completo confirmou outra causa: `buildScript` indentava todas as linhas, inclusive o terminador da here-string C#, tornando o script inválido no PowerShell 5. A beta.13 preserva o texto de cada etapa e acrescenta execução real de uma here-string e análise sintática do roteiro completo do driver. A beta.12 foi retirada da distribuição durante a correção. Na próxima preparação, a versão corrigida deverá solicitar a instalação e o aviso de administrador.
 
 ## Diagnóstico
 
@@ -28,7 +28,7 @@ Sunshine, Moonlight e driver permanecem, pois são componentes separados que pod
 
 ## Validação
 
-- 733 testes locais passaram após integrar recuperação, desinstalação e diagnósticos.
+- 735 testes locais passaram após integrar recuperação, desinstalação, diagnósticos e roteiro elevado completo.
 - Typecheck, Svelte e ESLint sem erros.
 - Dez etapas do Electron real no Windows passaram, incluindo clicar no botão de remoção em desenvolvimento sem remover nada.
 - O teste da revisão de diagnóstico no navegador verifica cancelamento sem envio, resumo opcional, cópia por limite de URL e falha ao abrir o GitHub.
