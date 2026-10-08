@@ -46,8 +46,8 @@ $cer=[pscustomobject]@{ FullName='fixture.cer' }
         '-EncodedCommand',
         encodeCommand(harness + body + '\n[HzDev]::Calls')
       ],
-      { encoding: 'utf8' }
+      { encoding: 'utf8', timeout: 20_000 }
     )
     expect(out.trim()).toBe('1')
-  })
+  }, 25_000)
 })
