@@ -6,6 +6,7 @@
   import Segmented from '../components/Segmented.svelte'
   import Toggle from '../components/Toggle.svelte'
   import UpdateControls from '../components/UpdateControls.svelte'
+  import UninstallControls from '../components/UninstallControls.svelte'
 
   interface Props {
     settings: Settings
@@ -169,6 +170,7 @@
     </section>
 
     <UpdateControls />
+    <UninstallControls />
     <div class="sheet-foot">
       <span>Horizonte</span>
       <div class="sheet-foot-actions">

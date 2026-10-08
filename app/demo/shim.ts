@@ -113,6 +113,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
       return web
     },
     openRepo: async () => void window.open(REPO_URL, '_blank', 'noopener'),
+    uninstall: async () => 'unavailable',
     copyDiagnostic: async () => {
       try {
         await navigator.clipboard.writeText('Horizonte (demonstração): este texto é só um exemplo.')

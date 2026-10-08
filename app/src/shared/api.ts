@@ -10,6 +10,7 @@ export const CHANNELS = {
   setWebAccess: 'horizonte:set-web-access',
   openRepo: 'horizonte:open-repo',
   copyDiagnostic: 'horizonte:copy-diagnostic',
+  uninstall: 'horizonte:uninstall',
   push: 'horizonte:push',
   update: 'horizonte:update',
   updateStatus: 'horizonte:update-status',
@@ -32,6 +33,7 @@ export interface HorizonteApi {
   openRepo(): Promise<void>
   /** Copia o diagnóstico (versão, sistema, tela e erro, sem dados pessoais). Devolve se deu certo. */
   copyDiagnostic(): Promise<boolean>
+  uninstall(): Promise<import('./uninstall').UninstallResult>
   getUpdateStatus(): Promise<UpdateStatus>
   update(action: UpdateAction): Promise<UpdateStatus>
   onUpdate(callback: (status: UpdateStatus) => void): () => void

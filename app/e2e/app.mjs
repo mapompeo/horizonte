@@ -228,6 +228,8 @@ try {
         await app.click(/Ajustes/)
         const text = await app.waitText(/Nome deste dispositivo/)
         if (!/GitHub/.test(text)) throw new Error('sem o botão do GitHub')
+        await app.click(/Desinstalar Horizonte/)
+        await app.waitText(/Use Aplicativos instalados/)
         await app.shot('04-ajustes')
         await app.click(/Copiar diagnóstico/)
         await app.waitText(/Copiado/, 8_000)
