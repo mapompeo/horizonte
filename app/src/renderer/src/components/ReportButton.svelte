@@ -1,5 +1,4 @@
 <script lang="ts">
-  import CopyButton from './CopyButton.svelte'
   let dialog: HTMLDialogElement
   let text = $state('')
   let includeHistory = $state(false)
@@ -60,7 +59,6 @@
     <button class="btn btn-primary" disabled={busy || !text} onclick={report}
       >Abrir issue no GitHub</button
     >
-    <CopyButton />
     <button class="btn btn-ghost" onclick={() => dialog.close()} disabled={busy}>Cancelar</button>
   </div>
 </dialog>

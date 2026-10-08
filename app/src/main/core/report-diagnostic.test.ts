@@ -79,6 +79,7 @@ describe('diagnóstico revisado', () => {
   })
   it('limite considera a URL codificada inteira: 6000 abre preenchida, 6001 usa cópia', async () => {
     const base = new URL('https://github.com/mapompeo/horizonte/issues/new')
+    base.searchParams.set('labels', 'diagnostico')
     base.searchParams.set('title', 'Diagnóstico do Horizonte')
     base.searchParams.set('body', 'Horizonte ')
     for (const size of [6000, 6001]) {

@@ -40,6 +40,9 @@ jobs:
         run: bash ../.github/scripts/configure-ci-apt.sh
       - run: npx playwright install --with-deps chromium
         timeout-minutes: 5
+      - name: Revisão de diagnóstico na interface real
+        run: node e2e/report-diagnostic.mjs
+        working-directory: app
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()

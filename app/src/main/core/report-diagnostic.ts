@@ -3,7 +3,7 @@ import type { DiagnosticReportResult } from '../../shared/api'
 import type { Snapshot } from '../../shared/types'
 import { buildDiagnostic, diagnosticErrorCode, type DiagnosticEnv } from './diagnostic'
 
-const ISSUE_URL = `${REPO_URL}/issues/new`
+const ISSUE_URL = `${REPO_URL}/issues/new?labels=diagnostico`
 // Orçamento local conservador, não uma garantia do limite de todos os navegadores/servidores.
 const MAX_URL = 6000
 const ERROR_LINE =
