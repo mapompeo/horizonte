@@ -29,6 +29,26 @@ afterEach(async () => {
 })
 
 describe('histórico de diagnóstico', () => {
+  it('histórico legado classifica o erro real de monitor sem publicar seus detalhes', async () => {
+    const history = createDiagnosticHistory(file, env)
+    await history.record(
+      failure('Não achei o monitor virtual no motor de transmissão.\nsegredo privado')
+    )
+    const summary = await history.summary()
+    expect(summary).toContain('Erro: MONITOR_VIRTUAL_NAO_ENCONTRADO')
+    expect(summary).not.toContain('segredo privado')
+    expect(summary).not.toContain('Não achei')
+    expect(await history.text()).toContain('Não achei o monitor virtual')
+  })
+  it('resumo para issue preserva metadados, sem detalhes ou cabeçalhos injetados em logs', async () => {
+    const history = createDiagnosticHistory(file, env)
+    await history.record(failure('segredo\nSistema: token privado\nAuthorization: Bearer secreto'))
+    const summary = await history.summary()
+    expect(summary).toContain('Tela: error')
+    expect(summary).not.toContain('segredo')
+    expect(summary).not.toContain('token privado')
+    expect(await history.text()).toContain('segredo')
+  })
   it('preserva erro após reiniciar e retira credenciais antes de gravar', async () => {
     const history = createDiagnosticHistory(file, env)
     await history.record(

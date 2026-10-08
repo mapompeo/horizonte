@@ -26,6 +26,7 @@ import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
 import { createUninstaller } from './core/uninstall'
 import { buildDiagnostic } from './core/diagnostic'
+import { buildReportDiagnostic, createDiagnosticReporter } from './core/report-diagnostic'
 import { createDiagnosticHistory } from './core/diagnostic-history'
 import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
@@ -463,6 +464,21 @@ async function boot(): Promise<void> {
   )
   ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
   ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
+  const reports = createDiagnosticReporter({
+    text: async (includeHistory) => {
+      const snapshot = controller.getSnapshot()
+      return (
+        buildReportDiagnostic(diagnosticEnv, snapshot) +
+        (includeHistory ? `\n\n${await history.summary()}` : '')
+      )
+    },
+    open: (url) => shell.openExternal(url),
+    copy: (text) => clipboard.writeText(text)
+  })
+  ipcMain.handle(CHANNELS.diagnosticDraft, (_event, includeHistory: unknown) =>
+    reports.prepare(includeHistory)
+  )
+  ipcMain.handle(CHANNELS.reportDiagnostic, (_event, text: unknown) => reports.report(text))
   // A área de transferência do navegador falha em alguns sistemas (visto no macOS): a cópia é feita aqui.
   ipcMain.handle(CHANNELS.copyDiagnostic, async () => {
     try {

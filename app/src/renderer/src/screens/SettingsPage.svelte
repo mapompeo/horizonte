@@ -3,6 +3,7 @@
   import type { Codec, Encoding, Fps, Resolution, Settings } from '../../../shared/types'
   import { closeSettings, patchSettings } from '../lib/actions'
   import CopyButton from '../components/CopyButton.svelte'
+  import ReportButton from '../components/ReportButton.svelte'
   import Segmented from '../components/Segmented.svelte'
   import Toggle from '../components/Toggle.svelte'
   import UpdateControls from '../components/UpdateControls.svelte'
@@ -171,6 +172,7 @@
 
     <UpdateControls />
     <UninstallControls />
+    <ReportButton />
     <div class="sheet-foot">
       <span>Horizonte</span>
       <div class="sheet-foot-actions">

@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { Snapshot } from '../../shared/types'
-import { buildDiagnostic, type DiagnosticEnv } from './diagnostic'
+import { buildDiagnostic, diagnosticErrorCode, type DiagnosticEnv } from './diagnostic'
 
 const MAX_ENTRIES = 10
 const MAX_TEXT = 8192
@@ -19,6 +19,7 @@ export function createDiagnosticHistory(
 ): {
   record(snapshot: Snapshot): Promise<void>
   text(): Promise<string>
+  summary(): Promise<string>
 } {
   let writes: Promise<void> = Promise.resolve()
   const read = async (): Promise<Entry[]> => {
@@ -43,6 +44,16 @@ export function createDiagnosticHistory(
     }
   }
   return {
+    async summary() {
+      await writes
+      // Os quatro cabeçalhos precedem qualquer mensagem/detalhe livre.
+      return (await read())
+        .map(
+          (entry) =>
+            `${new Date(entry.at).toISOString()}\n${entry.text.split('\n').slice(0, 4).join('\n')}\nErro: ${diagnosticErrorCode(entry.text.split('\n').slice(4).join('\n'))}`
+        )
+        .join('\n\n')
+    },
     record(snapshot) {
       if (snapshot.state.screen !== 'error') return Promise.resolve()
       const entry = { at: now(), text: buildDiagnostic(env, snapshot).slice(0, MAX_TEXT) }

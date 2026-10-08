@@ -11,6 +11,8 @@ export const CHANNELS = {
   openRepo: 'horizonte:open-repo',
   copyDiagnostic: 'horizonte:copy-diagnostic',
   uninstall: 'horizonte:uninstall',
+  diagnosticDraft: 'horizonte:diagnostic-draft',
+  reportDiagnostic: 'horizonte:report-diagnostic',
   push: 'horizonte:push',
   update: 'horizonte:update',
   updateStatus: 'horizonte:update-status',
@@ -19,6 +21,7 @@ export const CHANNELS = {
 
 /** Endereço do projeto: fixo, o processo principal nunca abre um endereço vindo da interface. */
 export const REPO_URL = 'https://github.com/mapompeo/horizonte'
+export type DiagnosticReportResult = 'opened' | 'copied'
 
 export interface HorizonteApi {
   /** Sistema em que o app roda (`process.platform`): win32, darwin ou linux. */
@@ -34,6 +37,8 @@ export interface HorizonteApi {
   /** Copia o diagnóstico (versão, sistema, tela e erro, sem dados pessoais). Devolve se deu certo. */
   copyDiagnostic(): Promise<boolean>
   uninstall(): Promise<import('./uninstall').UninstallResult>
+  getDiagnosticDraft(includeHistory: boolean): Promise<string>
+  reportDiagnostic(reviewedText: string): Promise<DiagnosticReportResult>
   getUpdateStatus(): Promise<UpdateStatus>
   update(action: UpdateAction): Promise<UpdateStatus>
   onUpdate(callback: (status: UpdateStatus) => void): () => void
