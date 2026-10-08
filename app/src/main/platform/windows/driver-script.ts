@@ -40,9 +40,10 @@ export const DRIVER_INSTALL_SCRIPT = [
   '    [HzDev]::SetupDiSetDeviceRegistryPropertyW($set, [ref]$info, 1, $hw, $hw.Length) | Out-Null',
   `    if (-not [HzDev]::SetupDiCallClassInstaller(0x19, $set, [ref]$info)) { throw 'Não consegui registrar o monitor virtual.' }`,
   '    [HzDev]::SetupDiDestroyDeviceInfoList($set) | Out-Null',
-  '    $reboot = $false',
-  `    if (-not [HzDev]::UpdateDriverForPlugAndPlayDevicesW([IntPtr]::Zero, 'Root\\MttVDD', $inf.FullName, 1, [ref]$reboot)) { throw 'O Windows recusou o driver do monitor virtual.' }`,
   '  }',
+  // Um dispositivo órfão pode existir depois da desinstalação do pacote. Vincular também nesse caso.
+  '  $reboot = $false',
+  `  if (-not [HzDev]::UpdateDriverForPlugAndPlayDevicesW([IntPtr]::Zero, 'Root\\MttVDD', $inf.FullName, 1, [ref]$reboot)) { throw 'O Windows recusou o driver do monitor virtual.' }`,
   '} finally {',
   '  if (-not $rootWasThere) { Remove-Item -Path $rootPath -ErrorAction SilentlyContinue }',
   '}'

@@ -24,7 +24,9 @@ import { cleanName } from '../shared/names'
 import type { SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
+import { createUninstaller } from './core/uninstall'
 import { buildDiagnostic } from './core/diagnostic'
+import { buildReportDiagnostic, createDiagnosticReporter } from './core/report-diagnostic'
 import { createDiagnosticHistory } from './core/diagnostic-history'
 import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
@@ -410,6 +412,40 @@ async function boot(): Promise<void> {
     )
   })
   ipcMain.handle(CHANNELS.updateStatus, () => updates.status())
+  const uninstall = createUninstaller({
+    platform: process.platform,
+    packaged: app.isPackaged,
+    executable: process.execPath,
+    exists: existsSync,
+    busy: () =>
+      ['connected', 'receiving', 'preparing', 'approve'].includes(
+        controller.getSnapshot().state.screen
+      ) || ['checking', 'downloading'].includes(updates.status().phase),
+    confirm: async () =>
+      (
+        await dialog.showMessageBox({
+          type: 'question',
+          title: 'Desinstalar Horizonte',
+          message: 'Desinstalar o Horizonte deste dispositivo?',
+          detail:
+            'O desinstalador do Windows será aberto. Sunshine, Moonlight e o driver virtual são componentes separados e permanecerão instalados.',
+          buttons: ['Cancelar', 'Desinstalar'],
+          defaultId: 0,
+          cancelId: 0
+        })
+      ).response === 1,
+    launch: (path) =>
+      new Promise<void>((resolve, reject) => {
+        const child = spawn(path, [], { detached: true, stdio: 'ignore' })
+        child.once('error', reject)
+        child.once('spawn', () => {
+          child.unref()
+          resolve()
+        })
+      }),
+    quit: () => app.quit()
+  })
+  ipcMain.handle(CHANNELS.uninstall, () => uninstall())
   ipcMain.handle(CHANNELS.update, (_event, action: unknown) => {
     if (action === 'check' || action === 'download' || action === 'install')
       return updates.perform(action)
@@ -428,6 +464,21 @@ async function boot(): Promise<void> {
   )
   ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
   ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
+  const reports = createDiagnosticReporter({
+    text: async (includeHistory) => {
+      const snapshot = controller.getSnapshot()
+      return (
+        buildReportDiagnostic(diagnosticEnv, snapshot) +
+        (includeHistory ? `\n\n${await history.summary()}` : '')
+      )
+    },
+    open: (url) => shell.openExternal(url),
+    copy: (text) => clipboard.writeText(text)
+  })
+  ipcMain.handle(CHANNELS.diagnosticDraft, (_event, includeHistory: unknown) =>
+    reports.prepare(includeHistory)
+  )
+  ipcMain.handle(CHANNELS.reportDiagnostic, (_event, text: unknown) => reports.report(text))
   // A área de transferência do navegador falha em alguns sistemas (visto no macOS): a cópia é feita aqui.
   ipcMain.handle(CHANNELS.copyDiagnostic, async () => {
     try {

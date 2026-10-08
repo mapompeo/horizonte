@@ -48,6 +48,22 @@ describe('createProbe', () => {
 })
 
 describe.runIf(process.platform === 'win32')('no PowerShell de verdade, sem administrador', () => {
+  it.each([
+    ['$null', 'OK', false],
+    ["'Display'", 'Error', false],
+    ["'Display'", 'OK', true]
+  ] as const)(
+    'registro MttVDD com classe %s e estado %s: instalado=%s',
+    async (deviceClass, status, expected) => {
+      const probe = createProbe((script) =>
+        runPowerShell(
+          `function Get-PnpDevice { param([switch]$PresentOnly, $ErrorAction) [pscustomobject]@{ Class=${deviceClass}; Status='${status}'; HardwareID=@('Root\\MttVDD'); FriendlyName=$null } }; ${script}`
+        )
+      )
+      expect(await probe.driverPresent()).toBe(expected)
+    },
+    30_000
+  )
   it('as consultas rodam sem erro de sintaxe e respondem sim ou não', async () => {
     const probe = createProbe(runPowerShell)
     expect(typeof (await probe.sunshineRunning())).toBe('boolean')

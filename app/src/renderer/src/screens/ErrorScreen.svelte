@@ -2,6 +2,7 @@
   import type { AppError } from '../../../shared/types'
   import { send } from '../lib/actions'
   import CopyButton from '../components/CopyButton.svelte'
+  import ReportButton from '../components/ReportButton.svelte'
 
   interface Props {
     error: AppError
@@ -33,4 +34,5 @@
 <div class="stack gap-xs">
   <button class="btn btn-primary" onclick={() => send({ type: 'RETRY' })}>Tentar de novo</button>
   <CopyButton class="btn btn-ghost" />
+  <ReportButton />
 </div>
