@@ -48,7 +48,7 @@ export function createProbe(run: PowerShellRunner): InstallProbe {
     },
     driverPresent: async () =>
       (await ask(
-        "[bool](Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.HardwareID -contains 'Root\\MttVDD' -or $_.FriendlyName -match 'Virtual Display Driver|VDD by MTT' })"
+        "[bool](Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.Class -eq 'Display' -and $_.Status -eq 'OK' -and ($_.HardwareID -contains 'Root\\MttVDD' -or $_.FriendlyName -match 'Virtual Display Driver|VDD by MTT') })"
       )) === 'True'
   }
 }
