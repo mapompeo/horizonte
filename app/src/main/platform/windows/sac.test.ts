@@ -21,11 +21,16 @@ describe('readSmartAppControl', () => {
     ).toBe('unknown')
   })
 
-  it.runIf(process.platform === 'win32')('lê o registro de verdade', async () => {
-    expect(['off', 'on', 'evaluation', 'unknown']).toContain(
-      await readSmartAppControl(runPowerShell)
-    )
-  })
+  // O runner tem prazo de 20 s; o teste precisa permitir que a consulta real termine.
+  it.runIf(process.platform === 'win32')(
+    'lê o registro de verdade',
+    async () => {
+      expect(['off', 'on', 'evaluation', 'unknown']).toContain(
+        await readSmartAppControl(runPowerShell)
+      )
+    },
+    25_000
+  )
 })
 
 describe('describeSmartAppControl', () => {
