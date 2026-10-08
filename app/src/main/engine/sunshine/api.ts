@@ -94,11 +94,16 @@ export class SunshineApi {
   }
 
   async submitPin(request: { pairingId: string; pin: string; name: string }): Promise<boolean> {
-    const data = await this.request('POST', '/api/pin', {
-      pairing_id: request.pairingId,
-      pin: request.pin,
-      name: request.name
-    })
+    const data = await this.request(
+      'POST',
+      '/api/pin',
+      {
+        pairing_id: request.pairingId,
+        pin: request.pin,
+        name: request.name
+      },
+      Math.max(this.timeoutMs, 30_000)
+    )
     return isRecord(data) && data.status === true
   }
 
@@ -157,7 +162,8 @@ export class SunshineApi {
   private request(
     method: 'GET' | 'POST' | 'DELETE',
     path: string,
-    body?: unknown
+    body?: unknown,
+    timeoutMs = this.timeoutMs
   ): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const payload = body === undefined ? undefined : JSON.stringify(body)
@@ -180,7 +186,7 @@ export class SunshineApi {
         },
         (response) => this.collect(response, resolve, reject)
       )
-      request.setTimeout(this.timeoutMs, () => {
+      request.setTimeout(timeoutMs, () => {
         request.destroy(new SunshineApiError('timeout', 'O Sunshine não respondeu a tempo.'))
       })
       request.on('error', (cause) => {
