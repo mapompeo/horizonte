@@ -47,6 +47,35 @@ describe('parseFoundEncoder', () => {
 })
 
 describe('parseDisplays', () => {
+  it('Linux: lê a lista de monitores do KMS, com o 0 como principal', () => {
+    const log = [
+      '[2026-10-13 12:32:30.797]: Info: -------- Start of KMS monitor list --------',
+      '[2026-10-13 12:32:30.797]: Info: Monitor 0 is eDP-1: Built-in display',
+      '[2026-10-13 12:32:30.797]: Info: Monitor 1 is HDMI-A-1: DELL U2415',
+      '[2026-10-13 12:32:30.797]: Info: --------- End of KMS monitor list ---------'
+    ].join('\n')
+    expect(parseDisplays(log)).toEqual([
+      {
+        deviceId: '0',
+        displayName: 'eDP-1',
+        friendlyName: 'Built-in display',
+        width: 0,
+        height: 0,
+        primary: true,
+        originX: 0
+      },
+      {
+        deviceId: '1',
+        displayName: 'HDMI-A-1',
+        friendlyName: 'DELL U2415',
+        width: 0,
+        height: 0,
+        primary: false,
+        originX: 0
+      }
+    ])
+  })
+
   it('lê os monitores da última listagem', () => {
     const displays = parseDisplays(STARTUP_SOFTWARE_LOG)
     expect(displays).toHaveLength(2)

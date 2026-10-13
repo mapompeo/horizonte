@@ -66,6 +66,10 @@ import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/window
 // O AppImage não tem o chrome-sandbox com permissão especial, e o Ubuntu 24.04+ (AppArmor) bloqueia o sandbox por
 // namespace de usuário: sem isto o app fecha ao abrir. O .deb instala o chrome-sandbox e não precisa disso.
 if (process.platform === 'linux' && process.env.APPIMAGE) app.commandLine.appendSwitch('no-sandbox')
+// Fora de um desktop conhecido (i3, sway, SSH) o Electron não acha o cofre de senhas e recusa guardar a senha do
+// motor; o gnome-libsecret fala com qualquer provedor do Secret Service (GNOME Keyring, KWallet, KeePassXC).
+if (process.platform === 'linux' && !process.env.XDG_CURRENT_DESKTOP)
+  app.commandLine.appendSwitch('password-store', 'gnome-libsecret')
 
 // Um pareamento de verdade leva segundos; passou disso, o Moonlight travou (e o list confere se pareou).
 const PAIR_TIMEOUT_MS = 60_000
