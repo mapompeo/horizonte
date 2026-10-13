@@ -259,7 +259,8 @@ describe('createMoonlightClient', () => {
     })
     const makeWith = (
       pairedHosts: ReturnType<typeof store>,
-      now: () => number = () => 0
+      now: () => number = () => 0,
+      run: typeof pairing.run = pairing.run
     ): {
       proc: ReturnType<typeof fakeProcess>
       client: ReturnType<typeof createMoonlightClient>
@@ -271,19 +272,29 @@ describe('createMoonlightClient', () => {
           spawn: async () => proc,
           listHosts: async () => [],
           ...pairing,
+          run,
           pairedHosts,
           now
         })
       }
     }
 
-    it('aparelho pareado em outra abertura do app não pareia de novo', async () => {
-      pairing.run.mockClear()
+    it('aparelho lembrado de outra abertura: o list confirma e não pareia de novo', async () => {
+      const run = vi.fn<(args: string[]) => Promise<number | null>>(async () => 0)
       pairing.sendPin.mockClear()
+      const { client } = makeWith(store(['192.168.1.3']), () => 0, run)
+      await client.connect('192.168.1.3', DEFAULT_SETTINGS)
+      expect(run).toHaveBeenCalledWith(['list', '192.168.1.3'])
+      expect(run).not.toHaveBeenCalledWith(['pair', '192.168.1.3', '--pin', '4821'])
+      expect(pairing.sendPin).not.toHaveBeenCalled()
+    })
+
+    it('aparelho lembrado, mas o list diz que não está pareado: pareia de novo', async () => {
+      // O outro aparelho reinstalou o motor: o Moonlight não encerra, abre um aviso e espera um OK.
+      pairing.run.mockClear()
       const { client } = makeWith(store(['192.168.1.3']))
       await client.connect('192.168.1.3', DEFAULT_SETTINGS)
-      expect(pairing.run).not.toHaveBeenCalled()
-      expect(pairing.sendPin).not.toHaveBeenCalled()
+      expect(pairing.run).toHaveBeenCalledWith(['pair', '192.168.1.3', '--pin', '4821'])
     })
 
     it('depois de parear, grava o aparelho para as próximas aberturas', async () => {
@@ -311,7 +322,7 @@ describe('createMoonlightClient', () => {
       const { proc, client } = makeWith(pairedHosts, () => 0)
       await client.connect('192.168.1.3', DEFAULT_SETTINGS)
       proc.exit(0)
-      expect(pairedHosts.save).not.toHaveBeenCalled()
+      expect(pairedHosts.save).not.toHaveBeenCalledWith([])
     })
 
     it('transmissão que acaba depois de muito tempo, mesmo com erro, mantém o pareamento', async () => {
@@ -321,7 +332,7 @@ describe('createMoonlightClient', () => {
       await client.connect('192.168.1.3', DEFAULT_SETTINGS)
       clock = 120_000
       proc.exit(1)
-      expect(pairedHosts.save).not.toHaveBeenCalled()
+      expect(pairedHosts.save).not.toHaveBeenCalledWith([])
     })
   })
 })
@@ -332,7 +343,7 @@ it('falha ao esquecer pareamento nao perde onStreamEnded nem gera rejeicao sem t
   const saves: string[][] = []
   const save = async (hosts: string[]): Promise<void> => {
     saves.push(hosts)
-    if (saves.length === 1) throw new Error('disco cheio')
+    if (hosts.length === 0) throw new Error('disco cheio')
   }
   const client = createMoonlightClient({
     spawn: async () => proc,
