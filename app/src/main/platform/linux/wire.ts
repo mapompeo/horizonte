@@ -32,7 +32,9 @@ export const createProbe = (): LinuxProbe => ({
   sunshineInstalled: () => succeeds('command -v sunshine'),
   serviceActive: () => succeeds(`systemctl --user is-active --quiet ${SUNSHINE_UNIT}`),
   sunshineResponding: () => succeeds('ss -ltn | grep -q ":47990 "'),
-  monitorPresent: () => succeeds(`xrandr --listmonitors | grep -q ${MONITOR_NAME}`)
+  monitorPresent: () => succeeds(`xrandr --listmonitors | grep -q ${MONITOR_NAME}`),
+  firewallReady: () =>
+    succeeds('! systemctl is-active --quiet ufw || test -e ~/.config/horizonte/firewall-ok')
 })
 
 /** Devolve o caminho do Moonlight no Linux, baixando o AppImage na primeira vez (sem administrador). */

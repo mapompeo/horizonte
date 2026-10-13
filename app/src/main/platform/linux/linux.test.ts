@@ -89,6 +89,7 @@ function harness(
     active?: boolean
     responding?: boolean
     monitor?: boolean
+    firewall?: boolean
     stored?: boolean
     env?: Record<string, string>
   } = {}
@@ -102,7 +103,8 @@ function harness(
       sunshineInstalled: async () => options.installed ?? false,
       serviceActive: async () => options.active ?? false,
       sunshineResponding: async () => options.responding ?? false,
-      monitorPresent: async () => options.monitor ?? false
+      monitorPresent: async () => options.monitor ?? false,
+      firewallReady: async () => options.firewall ?? true
     },
     vault: {
       load: async () =>
@@ -385,6 +387,36 @@ describe('createLinuxSetup', () => {
     expect(await run('ID=opensuse-tumbleweed\n')).toContain('zypper')
     expect(await run('ID=arch\n')).toContain('pacman -U')
     expect(await run('ID=arch\n')).toContain('sha256sum -c')
+  })
+
+  it('firewall ativo: libera as portas junto da instalação, num só aviso de administrador', async () => {
+    const h = harness({ firewall: false })
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.privileged).toHaveLength(1)
+    expect(h.privileged[0]).toContain(
+      'ufw allow from "$net" to any port 47984,47989,48010 proto tcp'
+    )
+    expect(h.user.some((script) => script.includes('firewall-ok'))).toBe(true)
+  })
+
+  it('motor já instalado e firewall pendente: só um aviso para liberar as portas', async () => {
+    const h = harness({
+      installed: true,
+      active: true,
+      responding: true,
+      stored: true,
+      firewall: false
+    })
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.privileged).toHaveLength(1)
+    expect(h.privileged[0]).not.toContain('apt-get')
+    expect(h.privileged[0]).toContain('47998,47999,48000,48002,48010')
+  })
+
+  it('firewall já tratado: nenhum aviso extra', async () => {
+    const h = harness({ installed: true, active: true, responding: true, stored: true })
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.privileged).toEqual([])
   })
 
   it('duas chamadas ao mesmo tempo compartilham uma só preparação', async () => {

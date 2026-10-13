@@ -29,6 +29,8 @@ export interface LinuxProbe {
   serviceActive(): Promise<boolean>
   sunshineResponding(): Promise<boolean>
   monitorPresent(): Promise<boolean>
+  /** Sem firewall ativo, ou as portas do Sunshine já liberadas por este app. */
+  firewallReady(): Promise<boolean>
 }
 
 export interface LinuxSetupDeps {
@@ -64,6 +66,22 @@ const INSTALL_COMMAND: Record<PackageKind, string> = {
   pacman: 'pacman -U --noconfirm "$stage/$pkg"'
 }
 
+/**
+ * Com o firewall do Ubuntu (ufw) ligado, o outro dispositivo não alcança o Sunshine. Libera só as portas dele e só
+ * para as redes privadas (casa e escritório), nunca para a internet. Sem ufw ativo, não faz nada.
+ */
+export const FIREWALL_SCRIPT = [
+  'if command -v ufw >/dev/null && systemctl is-active --quiet ufw; then',
+  '  for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12; do',
+  '    ufw allow from "$net" to any port 47984,47989,48010 proto tcp',
+  '    ufw allow from "$net" to any port 47998,47999,48000,48002,48010 proto udp',
+  '  done',
+  'fi'
+].join('\n')
+
+/** Marca que o firewall já foi tratado, para não pedir administrador de novo a cada abertura. */
+export const MARK_FIREWALL = 'mkdir -p ~/.config/horizonte && touch ~/.config/horizonte/firewall-ok'
+
 export const MIRROR_NOTE =
   'Sem monitor extra neste sistema: vou espelhar a tela principal no outro dispositivo.'
 
@@ -95,13 +113,14 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
     signal?.throwIfAborted()
     const step = <T>(action: () => Promise<T>): Promise<T> => setupStep(signal, action)
 
-    const [installed, active, responding, stored, monitor] = await step(() =>
+    const [installed, active, responding, stored, monitor, firewall] = await step(() =>
       Promise.all([
         deps.probe.sunshineInstalled(),
         deps.probe.serviceActive(),
         deps.probe.sunshineResponding(),
         deps.vault.load(),
-        sessionKind(deps.env) === 'wayland' ? false : deps.probe.monitorPresent()
+        sessionKind(deps.env) === 'wayland' ? false : deps.probe.monitorPresent(),
+        deps.probe.firewallReady()
       ])
     )
     const needInstall = !installed
@@ -136,10 +155,23 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
             `install -m 600 ${shQuote(file)} "$stage/$pkg"`,
             `echo ${shQuote(`${pkg.sha256}  `)}"$stage/$pkg" | sha256sum -c - >/dev/null`,
             INSTALL_COMMAND[pkg.kind],
+            ...(firewall ? [] : [FIREWALL_SCRIPT]),
             'rm -rf "$stage"'
           ].join('\n')
         )
       )
+    }
+
+    if (!firewall) {
+      if (!needInstall) {
+        report({
+          note: 'Liberando o motor no firewall (confirme o aviso do sistema)',
+          fraction: DOWNLOAD_SHARE,
+          permission: true
+        })
+        await step(() => deps.runPrivileged(['set -e', FIREWALL_SCRIPT].join('\n')))
+      }
+      await step(() => deps.runUser(MARK_FIREWALL))
     }
 
     if (needCredentials) {
