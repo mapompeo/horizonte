@@ -1,29 +1,60 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   createLinuxSetup,
+  MIRROR_NOTE,
   shQuote,
   SUNSHINE_UNIT,
   VIRTUAL_MONITOR_SCRIPT,
   type LinuxSetupDeps
 } from './setup'
 import type { SunshineDisplay } from '../../engine/sunshine/log'
-import { sessionKind, WAYLAND_MESSAGE } from './session'
-import { sunshineDebFor } from './versions'
+import { sessionKind } from './session'
+import { sunshinePackageFor } from './versions'
 
 const UBUNTU_2404 = 'NAME="Ubuntu"\nVERSION_ID="24.04"\nID=ubuntu\n'
 
-describe('sunshineDebFor', () => {
+describe('sunshinePackageFor', () => {
   it('escolhe o pacote do Ubuntu da pessoa, com hash fixo', () => {
-    const deb = sunshineDebFor(UBUNTU_2404, 'x64')
-    expect(deb.fileName).toBe('sunshine_2026.914.233613-1+ubuntu24.04_amd64.deb')
-    expect(deb.url).toContain('%2B') // o "+" do nome vai codificado na URL
-    expect(deb.sha256).toMatch(/^[0-9a-f]{64}$/)
+    const pkg = sunshinePackageFor(UBUNTU_2404, 'x64')
+    expect(pkg.kind).toBe('deb')
+    expect(pkg.fileName).toBe('sunshine_2026.914.233613-1+ubuntu24.04_amd64.deb')
+    expect(pkg.url).toContain('%2B') // o "+" do nome vai codificado na URL
+    expect(pkg.sha256).toMatch(/^[0-9a-f]{64}$/)
   })
 
-  it('outras distribuições, versões e processadores são recusados com uma frase clara', () => {
-    expect(() => sunshineDebFor('ID=fedora\nVERSION_ID=40\n', 'x64')).toThrow(/Ubuntu/)
-    expect(() => sunshineDebFor('ID=ubuntu\nVERSION_ID="18.04"\n', 'x64')).toThrow(/18\.04/)
-    expect(() => sunshineDebFor(UBUNTU_2404, 'arm64')).toThrow(/x64/)
+  const pick = (text: string): string => sunshinePackageFor(text, 'x64').fileName
+
+  it('cobre Debian, Fedora, openSUSE e Arch', () => {
+    expect(pick('ID=debian\nVERSION_ID="13"\n')).toBe(
+      'sunshine_2026.914.233613-1+debiantrixie_amd64.deb'
+    )
+    expect(pick('ID=fedora\nVERSION_ID=44\n')).toBe('Sunshine-2026.914.233613-1.fc44.x86_64.rpm')
+    expect(pick('ID=opensuse-tumbleweed\nVERSION_ID="20261010"\n')).toContain('suse.tw')
+    expect(pick('ID="opensuse-leap"\nVERSION_ID="16.0"\n')).toContain('suse.lp160')
+    expect(pick('ID=arch\n')).toBe('sunshine-2026.914.233613-1-x86_64.pkg.tar.zst')
+  })
+
+  it('usa o gerenciador certo de cada família', () => {
+    const kind = (text: string): string => sunshinePackageFor(text, 'x64').kind
+    expect(kind('ID=fedora\nVERSION_ID=44\n')).toBe('rpm-dnf')
+    expect(kind('ID=opensuse-tumbleweed\n')).toBe('rpm-zypper')
+    expect(kind('ID=arch\n')).toBe('pacman')
+  })
+
+  it('derivados caem na família certa', () => {
+    // Linux Mint 22: ID próprio, VERSION_ID próprio, base Ubuntu 24.04 (noble).
+    expect(
+      pick('ID=linuxmint\nID_LIKE="ubuntu debian"\nVERSION_ID="22"\nUBUNTU_CODENAME=noble\n')
+    ).toContain('ubuntu24.04')
+    expect(pick('ID=manjaro\nID_LIKE=arch\n')).toContain('pkg.tar.zst')
+    expect(pick('ID=nobara\nID_LIKE="rhel centos fedora"\nVERSION_ID=43\n')).toContain('fc43')
+  })
+
+  it('recusa com uma frase clara o que não tem pacote', () => {
+    expect(() => sunshinePackageFor('ID=gentoo\n', 'x64')).toThrow(/Ubuntu, Debian 13, Fedora/)
+    expect(() => sunshinePackageFor('ID=ubuntu\nVERSION_ID="18.04"\n', 'x64')).toThrow(/18\.04/)
+    expect(() => sunshinePackageFor('ID=debian\nVERSION_ID="12"\n', 'x64')).toThrow(/Debian 12/)
+    expect(() => sunshinePackageFor(UBUNTU_2404, 'arm64')).toThrow(/x64/)
   })
 })
 
@@ -58,6 +89,7 @@ function harness(
     active?: boolean
     responding?: boolean
     monitor?: boolean
+    firewall?: boolean
     stored?: boolean
     env?: Record<string, string>
   } = {}
@@ -71,7 +103,8 @@ function harness(
       sunshineInstalled: async () => options.installed ?? false,
       serviceActive: async () => options.active ?? false,
       sunshineResponding: async () => options.responding ?? false,
-      monitorPresent: async () => options.monitor ?? false
+      monitorPresent: async () => options.monitor ?? false,
+      firewallReady: async () => options.firewall ?? true
     },
     vault: {
       load: async () =>
@@ -81,7 +114,7 @@ function harness(
     download,
     runPrivileged: async (script) => void privileged.push(script),
     runUser: async (script) => void user.push(script),
-    debForThisSystem: () => sunshineDebFor(UBUNTU_2404, 'x64'),
+    packageForThisSystem: () => sunshinePackageFor(UBUNTU_2404, 'x64'),
     env: options.env ?? { XDG_SESSION_TYPE: 'x11' },
     waitForApi: async () => undefined,
     generatePassword: () => 'senha-nova',
@@ -304,12 +337,85 @@ describe('createLinuxSetup', () => {
     expect(h.save).not.toHaveBeenCalled()
   })
 
-  it('Wayland: explica como trocar para Xorg e não instala nada', async () => {
+  it('Wayland: não falha, instala e espelha a tela principal', async () => {
     const h = harness({ env: { XDG_SESSION_TYPE: 'wayland' } })
-    await expect(createLinuxSetup(h.deps).installer.ensureInstalled()).rejects.toThrow(
-      WAYLAND_MESSAGE
+    const notes: string[] = []
+    const setup = createLinuxSetup(h.deps)
+    await setup.installer.ensureInstalled((p) => notes.push(p.note))
+    expect(h.privileged).toHaveLength(1)
+    expect(h.user.some((script) => script.includes('xrandr'))).toBe(false)
+    expect(notes).toContain(MIRROR_NOTE)
+    const main = { ...fakeDisplay('eDP-1'), primary: true }
+    expect(setup.display.isVirtual(main)).toBe(true)
+    expect(setup.display.isVirtual({ ...fakeDisplay('HDMI-1'), originX: 1920 })).toBe(false)
+  })
+
+  it('Xorg que recusa o monitor virtual também cai no espelho, sem erro', async () => {
+    const h = harness({ installed: true, active: true, responding: true, stored: true })
+    h.deps.runUser = async (script) => {
+      if (script.includes('xrandr')) throw new Error('xrandr: não suportado')
+    }
+    const notes: string[] = []
+    const setup = createLinuxSetup(h.deps)
+    await expect(
+      setup.installer.ensureInstalled((p) => notes.push(p.note))
+    ).resolves.toBeUndefined()
+    expect(notes).toContain(MIRROR_NOTE)
+  })
+
+  it('cancelar durante o monitor virtual continua sendo cancelamento, não espelho', async () => {
+    const h = harness({ installed: true, active: true, responding: true, stored: true })
+    const controller = new AbortController()
+    h.deps.runUser = async () => {
+      controller.abort()
+      throw new Error('interrompido')
+    }
+    await expect(
+      createLinuxSetup(h.deps).installer.ensureInstalled(undefined, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
+  it('comando de instalação acompanha o gerenciador do pacote', async () => {
+    const run = async (osRelease: string): Promise<string> => {
+      const h = harness()
+      h.deps.packageForThisSystem = () => sunshinePackageFor(osRelease, 'x64')
+      await createLinuxSetup(h.deps).installer.ensureInstalled()
+      return h.privileged[0] ?? ''
+    }
+    expect(await run(UBUNTU_2404)).toContain('apt-get install')
+    expect(await run('ID=fedora\nVERSION_ID=44\n')).toContain('dnf install')
+    expect(await run('ID=opensuse-tumbleweed\n')).toContain('zypper')
+    expect(await run('ID=arch\n')).toContain('pacman -U')
+    expect(await run('ID=arch\n')).toContain('sha256sum -c')
+  })
+
+  it('firewall ativo: libera as portas junto da instalação, num só aviso de administrador', async () => {
+    const h = harness({ firewall: false })
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.privileged).toHaveLength(1)
+    expect(h.privileged[0]).toContain(
+      'ufw allow from "$net" to any port 47900,47984,47989,48010 proto tcp'
     )
-    expect(h.download).not.toHaveBeenCalled()
+    expect(h.user.some((script) => script.includes('firewall-ok'))).toBe(true)
+  })
+
+  it('motor já instalado e firewall pendente: só um aviso para liberar as portas', async () => {
+    const h = harness({
+      installed: true,
+      active: true,
+      responding: true,
+      stored: true,
+      firewall: false
+    })
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.privileged).toHaveLength(1)
+    expect(h.privileged[0]).not.toContain('apt-get')
+    expect(h.privileged[0]).toContain('47998,47999,48000,48002,48010')
+  })
+
+  it('firewall já tratado: nenhum aviso extra', async () => {
+    const h = harness({ installed: true, active: true, responding: true, stored: true })
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
     expect(h.privileged).toEqual([])
   })
 

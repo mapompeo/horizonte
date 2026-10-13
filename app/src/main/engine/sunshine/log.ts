@@ -32,7 +32,35 @@ export function parseFoundEncoder(log: string): FoundEncoder | null {
   return { name, backend, hardware: backend !== 'software' }
 }
 
+const KMS_START = 'Start of KMS monitor list'
+const KMS_END = 'End of KMS monitor list'
+
+/**
+ * No Linux o Sunshine não imprime a lista em JSON: lista os monitores do KMS, um por linha ("Monitor 0 is eDP-1:
+ * Built-in display"). O número é o que a configuração `output_name` espera, e o monitor 0 é o principal.
+ */
+function parseKmsDisplays(log: string): SunshineDisplay[] {
+  const start = log.lastIndexOf(KMS_START)
+  if (start < 0) return []
+  const end = log.indexOf(KMS_END, start)
+  const block = log.slice(start, end < 0 ? undefined : end)
+  return [...block.matchAll(/Monitor (\d+) is ([^:\r\n]+):[ \t]*([^\r\n]*)/g)].map((match) => ({
+    deviceId: match[1] ?? '',
+    displayName: match[2] ?? '',
+    friendlyName: (match[3] ?? '').trim() || (match[2] ?? ''),
+    width: 0,
+    height: 0,
+    primary: match[1] === '0',
+    originX: 0
+  }))
+}
+
 export function parseDisplays(log: string): SunshineDisplay[] {
+  const found = parseJsonDisplays(log)
+  return found.length > 0 ? found : parseKmsDisplays(log)
+}
+
+function parseJsonDisplays(log: string): SunshineDisplay[] {
   const marker = log.lastIndexOf(DISPLAY_MARKER)
   if (marker < 0) return []
   const rest = log.slice(marker + DISPLAY_MARKER.length)

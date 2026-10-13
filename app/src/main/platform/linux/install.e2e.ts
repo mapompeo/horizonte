@@ -9,7 +9,7 @@ import { downloadVerified } from '../windows/download'
 import { generatePassword, waitForApi } from '../windows/wire'
 import { ensureMoonlightLinux } from './moonlight'
 import { createLinuxSetup } from './setup'
-import { MOONLIGHT_LINUX_APPIMAGE, sunshineDebFor } from './versions'
+import { MOONLIGHT_LINUX_APPIMAGE, sunshinePackageFor } from './versions'
 import { createProbe } from './wire'
 
 const run = (command: string, args: string[], timeoutMs = 600_000): Promise<string> =>
@@ -38,8 +38,8 @@ describe.runIf(process.platform === 'linux' && process.env.CI === 'true')(
         download: downloadVerified,
         runPrivileged: async (script) => void (await run('sudo', ['-n', 'sh', '-c', script])),
         runUser: async (script) => void (await run('sh', ['-c', script], 120_000)),
-        debForThisSystem: () =>
-          sunshineDebFor(readFileSync('/etc/os-release', 'utf8'), process.arch),
+        packageForThisSystem: () =>
+          sunshinePackageFor(readFileSync('/etc/os-release', 'utf8'), process.arch),
         env: process.env,
         waitForApi: async () => {
           const c = saved

@@ -4,14 +4,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { downloadVerified } from '../windows/download'
-import { sunshineDebFor } from './versions'
+import { sunshinePackageFor } from './versions'
 
 /** Só no Linux. */
 describe.runIf(process.platform === 'linux')('Linux de verdade', () => {
   it('o pacote do Sunshine para este Ubuntu existe, bate com o hash e traz o binário e o serviço que o instalador assume', async () => {
     const osRelease = readFileSync('/etc/os-release', 'utf8')
     console.log(osRelease.split('\n').slice(0, 4).join(' | '))
-    const deb = sunshineDebFor(osRelease, process.arch)
+    const deb = sunshinePackageFor(osRelease, process.arch)
+    // O conteúdo só é inspecionável com dpkg-deb; os outros formatos têm o hash conferido no download.
+    if (deb.kind !== 'deb') return
     const file = join(mkdtempSync(join(tmpdir(), 'hz-linux-')), deb.fileName)
     await downloadVerified(deb, file)
 
