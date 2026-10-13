@@ -176,8 +176,10 @@ async function boot(): Promise<void> {
     process.platform === 'darwin' &&
     (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
   const discovery = createDiscovery({
-    find: () => {
-      const bonjour = new Bonjour()
+    find: (interfaceAddress) => {
+      // A rota multicast padrao pode ser VirtualBox/WSL. Consulta cada interface explicitamente.
+      const options = { port: 5353, bind: '0.0.0.0', interface: interfaceAddress }
+      const bonjour = new Bonjour(options)
       const browser = bonjour.find({ type: 'nvstream' })
       return {
         on: (_event, listener) => browser.on('up', listener),

@@ -62,6 +62,34 @@ async function ready(pins?: PinChannel): Promise<Ready> {
 }
 
 describe('pareamento', () => {
+  it('nao usa o PIN de um homonimo vindo de outro IP', async () => {
+    const pins: PinChannel = {
+      start: async () => undefined,
+      stop: async () => undefined,
+      take: () => '4321',
+      takeByAddress: () => undefined
+    }
+    const t = await ready(pins)
+    t.process.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.99' })
+    await vi.advanceTimersByTimeAsync(250)
+    expect(t.requests[0]?.pin).toBeUndefined()
+  })
+  it('Moonlight com nome roth recebe o PIN e o nome do canal do mesmo IP', async () => {
+    const pins: PinChannel = {
+      start: async () => undefined,
+      stop: async () => undefined,
+      take: () => undefined,
+      takeByAddress: (address) =>
+        address === '192.168.1.6' ? { device: 'Notebook', pin: '4321' } : undefined
+    }
+    const t = await ready(pins)
+    t.process.acceptPin = '4321'
+    t.process.pairings.push({ id: 'p1', name: 'roth', address: '192.168.1.6' })
+    await vi.advanceTimersByTimeAsync(250)
+    expect(t.requests).toEqual([{ device: 'Notebook', pairingId: 'p1', pin: '4321' }])
+    await t.engine.approve({ pairingId: 'p1', pin: '4321', name: 'Notebook' })
+    expect(t.process.calls).toContain('submitPin:p1:4321:Notebook')
+  })
   it('um pedido novo no motor de transmissão vira um pedido para a interface', async () => {
     const t = await ready()
     t.process.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
