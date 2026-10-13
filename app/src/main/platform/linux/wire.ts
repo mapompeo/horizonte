@@ -9,7 +9,7 @@ import { createCredentialVault, type Cipher } from '../windows/secrets'
 import { generatePassword, waitForApi } from '../windows/wire'
 import { ensureMoonlightLinux } from './moonlight'
 import { createLinuxSetup, MONITOR_NAME, shQuote, SUNSHINE_UNIT, type LinuxProbe } from './setup'
-import { MOONLIGHT_LINUX_APPIMAGE, sunshineDebFor } from './versions'
+import { MOONLIGHT_LINUX_APPIMAGE, sunshinePackageFor } from './versions'
 
 const PORT = 47989
 export const SUNSHINE_LOG = join(homedir(), '.config', 'sunshine', 'sunshine.log')
@@ -73,7 +73,8 @@ export function createLinuxPlatform(deps: {
     runPrivileged: (script) => sh('pkexec', ['sh', '-c', script], 600_000),
     runUser: (script) => sh('sh', ['-c', script], 120_000),
     // Lido só na hora de instalar: o arquivo existe apenas no Linux.
-    debForThisSystem: () => sunshineDebFor(readFileSync('/etc/os-release', 'utf8'), process.arch),
+    packageForThisSystem: () =>
+      sunshinePackageFor(readFileSync('/etc/os-release', 'utf8'), process.arch),
     env: process.env,
     waitForApi: async () => {
       const credentials = await vault.load()

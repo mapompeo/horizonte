@@ -15,7 +15,7 @@ A versão mais recente fica em [Releases](https://github.com/mapompeo/horizonte/
 | Sistema | Arquivo | Estado |
 |---|---|---|
 | Windows 10 e 11 | `Horizonte-<versão>-setup.exe` | Disponível |
-| Linux (Ubuntu) | `.AppImage` ou `.deb` | Envia e recebe; em teste |
+| Linux (Ubuntu, Debian 13, Fedora, openSUSE, Arch e derivados; Xorg ou Wayland) | `.AppImage` ou `.deb` | Envia e recebe; em Wayland espelha a tela principal (sem monitor extra); em teste |
 | macOS (chip Apple e Intel) | `.dmg` | Envia (com monitor virtual próprio) e recebe; em teste |
 
 O instalador ainda não é assinado. No Windows aparece "O Windows protegeu o computador": clique em Mais informações e depois em Executar assim mesmo.
