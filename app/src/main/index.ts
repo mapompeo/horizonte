@@ -63,6 +63,10 @@ import {
 import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
 import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
 
+// O AppImage não tem o chrome-sandbox com permissão especial, e o Ubuntu 24.04+ (AppArmor) bloqueia o sandbox por
+// namespace de usuário: sem isto o app fecha ao abrir. O .deb instala o chrome-sandbox e não precisa disso.
+if (process.platform === 'linux' && process.env.APPIMAGE) app.commandLine.appendSwitch('no-sandbox')
+
 // Um pareamento de verdade leva segundos; passou disso, o Moonlight travou (e o list confere se pareou).
 const PAIR_TIMEOUT_MS = 60_000
 // O list responde em segundos quando o aparelho está pareado.
