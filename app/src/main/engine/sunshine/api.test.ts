@@ -54,6 +54,11 @@ describe('aparelhos pareados', () => {
 })
 
 describe('pareamentos', () => {
+  it('aguarda a confirmação do PIN além do prazo curto das consultas', async () => {
+    fake.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
+    fake.delayMs = 600
+    expect(await api.submitPin({ pairingId: 'p1', pin: '4821', name: 'Notebook' })).toBe(true)
+  })
   it('lista os pedidos pendentes', async () => {
     fake.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
     expect(await api.listPairings()).toEqual([

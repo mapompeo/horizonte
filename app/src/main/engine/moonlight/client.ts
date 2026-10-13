@@ -86,22 +86,26 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
         await load()
         if (cancelled()) return
         if (!paired.has(host)) {
-          // Sem PIN digitado: este aparelho gera o PIN, manda pelo canal e o outro só precisa aprovar.
-          const pin = deps.randomPin()
-          await deps.sendPin(host, deps.deviceName(), pin).catch(() => {
-            throw new Error(
-              'Não consegui falar com o outro dispositivo. Confira se o Horizonte está aberto em Enviar lá.'
-            )
-          })
+          const alreadyPaired = (await deps.run(['list', host])) === 0
           if (cancelled()) return
-          // O Moonlight às vezes registra o pareamento e não encerra o processo (visto no Mac e no Linux):
-          // se o pair não deu 0, o `list` diz se o aparelho ficou pareado mesmo assim.
-          const pairCode = await deps.run(['pair', host, '--pin', pin])
-          if (cancelled()) return
-          if (pairCode !== 0 && (await deps.run(['list', host])) !== 0) {
-            throw new Error(
-              'O pareamento não foi concluído. Aprove o pedido no outro dispositivo e tente de novo.'
-            )
+          if (!alreadyPaired) {
+            // Sem PIN digitado: este aparelho gera o PIN, manda pelo canal e o outro só precisa aprovar.
+            const pin = deps.randomPin()
+            await deps.sendPin(host, deps.deviceName(), pin).catch(() => {
+              throw new Error(
+                'Não consegui falar com o outro dispositivo. Confira se o Horizonte está aberto em Enviar lá.'
+              )
+            })
+            if (cancelled()) return
+            // O Moonlight às vezes registra o pareamento e não encerra o processo (visto no Mac e no Linux):
+            // se o pair não deu 0, o `list` diz se o aparelho ficou pareado mesmo assim.
+            const pairCode = await deps.run(['pair', host, '--pin', pin])
+            if (cancelled()) return
+            if (pairCode !== 0 && (await deps.run(['list', host])) !== 0) {
+              throw new Error(
+                'O pareamento não foi concluído. Aprove o pedido no outro dispositivo e tente de novo.'
+              )
+            }
           }
           paired.add(host)
           await remember()
