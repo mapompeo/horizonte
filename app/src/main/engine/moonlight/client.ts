@@ -66,6 +66,10 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
     deps.sleep ?? ((ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms)))
   const ended = new Set<() => void>()
   const paired = new Set<string>()
+  // Hosts conferidos com `list` nesta abertura do app: o que ficou lembrado de antes pode estar velho (o outro
+  // aparelho reinstalou o motor, ou o pareamento foi feito noutro perfil), e o Moonlight, sem pareamento, não
+  // encerra: abre um aviso e espera um OK, então nenhuma falha chegaria para esquecer o host.
+  const verified = new Set<string>()
   const now = deps.now ?? Date.now
   let loaded: Promise<void> | null = null
   const remember = (): Promise<void> | undefined => deps.pairedHosts?.save([...paired])
@@ -85,7 +89,7 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
       try {
         await load()
         if (cancelled()) return
-        if (!paired.has(host)) {
+        if (!verified.has(host)) {
           const alreadyPaired = (await deps.run(['list', host])) === 0
           if (cancelled()) return
           if (!alreadyPaired) {
@@ -108,6 +112,7 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
             }
           }
           paired.add(host)
+          verified.add(host)
           await remember()
         }
         if (cancelled()) return
@@ -121,7 +126,8 @@ export function createMoonlightClient(deps: MoonlightClientDeps): ClientEngine {
         child.onExit((code) => {
           if (current !== child) return // foi o próprio disconnect
           const duration = now() - startedAt
-          if (code !== 0 && duration < EARLY_FAILURE_MS && paired.delete(host)) {
+          if (code !== 0 && duration < EARLY_FAILURE_MS && verified.delete(host)) {
+            paired.delete(host)
             void remember()?.catch(() => undefined)
           }
           current = null
