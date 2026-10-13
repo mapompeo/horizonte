@@ -73,7 +73,7 @@ const INSTALL_COMMAND: Record<PackageKind, string> = {
 export const FIREWALL_SCRIPT = [
   'if command -v ufw >/dev/null && systemctl is-active --quiet ufw; then',
   '  for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12; do',
-  '    ufw allow from "$net" to any port 47984,47989,48010 proto tcp',
+  '    ufw allow from "$net" to any port 47900,47984,47989,48010 proto tcp',
   '    ufw allow from "$net" to any port 47998,47999,48000,48002,48010 proto udp',
   '  done',
   'fi'
