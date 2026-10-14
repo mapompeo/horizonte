@@ -25,6 +25,8 @@ export function buildStreamArgs(host: string, settings: Settings): string[] {
     CODEC[settings.codec],
     '--display-mode',
     'borderless',
+    // O som continua no aparelho que envia a tela: sem isto o Sunshine troca a saída de áudio dele.
+    '--audio-on-host',
     '--quit-after'
   ]
 }
