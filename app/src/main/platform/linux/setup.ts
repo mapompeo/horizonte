@@ -143,7 +143,16 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
         deps.probe.firewallReady()
       ])
     )
-    const needInstall = !installed
+    // Sunshine oficial onde existe o do Horizonte: troca, para a tela poder estender no Wayland.
+    let upgrade = false
+    if (installed && !(await step(() => deps.probe.portalVirtualSupported()))) {
+      try {
+        upgrade = deps.packageForThisSystem().horizonte === true
+      } catch {
+        // Distribuição sem pacote do Horizonte: segue com o Sunshine que já está instalado.
+      }
+    }
+    const needInstall = !installed || upgrade
     const needCredentials = needInstall || stored === null
     const needStart = !active || !responding
 

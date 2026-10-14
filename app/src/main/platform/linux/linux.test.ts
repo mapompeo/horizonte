@@ -13,14 +13,22 @@ import { sessionKind } from './session'
 import { sunshinePackageFor } from './versions'
 
 const UBUNTU_2404 = 'NAME="Ubuntu"\nVERSION_ID="24.04"\nID=ubuntu\n'
+const DEBIAN_13 = 'ID=debian\nVERSION_ID="13"\n'
 
 describe('sunshinePackageFor', () => {
   it('escolhe o pacote do Ubuntu da pessoa, com hash fixo', () => {
     const pkg = sunshinePackageFor(UBUNTU_2404, 'x64')
     expect(pkg.kind).toBe('deb')
-    expect(pkg.fileName).toBe('sunshine_2026.914.233613-1+ubuntu24.04_amd64.deb')
-    expect(pkg.url).toContain('%2B') // o "+" do nome vai codificado na URL
+    expect(pkg.fileName).toBe('sunshine-horizonte-ubuntu24.04-amd64.deb')
+    expect(pkg.horizonte).toBe(true)
+    expect(pkg.url).toBe(
+      'https://github.com/mapompeo/horizonte/releases/download/motores-hz1/sunshine-horizonte-ubuntu24.04-amd64.deb'
+    )
     expect(pkg.sha256).toMatch(/^[0-9a-f]{64}$/)
+    // O 26.10 ainda usa o Sunshine oficial (sem patch): o "+" do nome vai codificado na URL.
+    const official = sunshinePackageFor('ID=ubuntu\nVERSION_ID="26.10"\n', 'x64')
+    expect(official.horizonte).toBeUndefined()
+    expect(official.url).toContain('%2B')
   })
 
   const pick = (text: string): string => sunshinePackageFor(text, 'x64').fileName
@@ -117,7 +125,8 @@ function harness(
     download,
     runPrivileged: async (script) => void privileged.push(script),
     runUser: async (script) => void user.push(script),
-    packageForThisSystem: () => sunshinePackageFor(UBUNTU_2404, 'x64'),
+    // Debian 13 usa o Sunshine oficial: os testes de "já instalado" não disparam a troca pelo do Horizonte.
+    packageForThisSystem: () => sunshinePackageFor(DEBIAN_13, 'x64'),
     env: options.env ?? { XDG_SESSION_TYPE: 'x11' },
     waitForApi: async () => undefined,
     generatePassword: () => 'senha-nova',
@@ -445,6 +454,29 @@ describe('createLinuxSetup', () => {
   it('firewall já tratado: nenhum aviso extra', async () => {
     const h = harness({ installed: true, active: true, responding: true, stored: true })
     await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.privileged).toEqual([])
+  })
+
+  it('Sunshine oficial no Ubuntu: troca pelo do Horizonte, num só aviso de administrador', async () => {
+    const h = harness({ installed: true, active: true, responding: true, stored: true })
+    h.deps.packageForThisSystem = () => sunshinePackageFor(UBUNTU_2404, 'x64')
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.download).toHaveBeenCalledOnce()
+    expect(h.privileged).toHaveLength(1)
+    expect(h.privileged[0]).toContain('sunshine-horizonte-ubuntu24.04-amd64.deb')
+  })
+
+  it('Sunshine do Horizonte já instalado: não troca nada', async () => {
+    const h = harness({
+      installed: true,
+      active: true,
+      responding: true,
+      stored: true,
+      portal: true
+    })
+    h.deps.packageForThisSystem = () => sunshinePackageFor(UBUNTU_2404, 'x64')
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.download).not.toHaveBeenCalled()
     expect(h.privileged).toEqual([])
   })
 
