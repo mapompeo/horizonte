@@ -1,0 +1,46 @@
+name: Sunshine do Horizonte
+
+# Compila o Sunshine com os patches de engines/sunshine para cada Ubuntu que o Horizonte instala. Numa tag
+# sunshine-hz*, os pacotes vão para uma release do próprio Horizonte, de onde o app os baixa.
+on:
+  push:
+    tags: ['sunshine-hz*']
+  pull_request:
+    paths: ['engines/sunshine/**', '.github/workflows/sunshine.yml']
+  workflow_dispatch:
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '24.04', '26.04']
+    runs-on: ubuntu-latest
+    container: ubuntu:${{ matrix.ubuntu }}
+    timeout-minutes: 150
+    permissions:
+      contents: write
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - run: apt-get update && apt-get install -y git ca-certificates sudo
+      - uses: actions/checkout@v4
+      - name: Compilar
+        run: bash engines/sunshine/build-linux.sh "$RUNNER_TEMP" --sudo-off
+      - name: Nomear o pacote pelo Ubuntu
+        run: |
+          deb=$(find "$RUNNER_TEMP/Sunshine" -maxdepth 3 -name '*.deb' | head -n1)
+          test -n "$deb"
+          mkdir -p out
+          cp "$deb" "out/sunshine-horizonte-ubuntu${{ matrix.ubuntu }}-amd64.deb"
+          sha256sum out/*.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sunshine-ubuntu${{ matrix.ubuntu }}
+          path: out/*.deb
+      - name: Anexar à release
+        if: startsWith(github.ref, 'refs/tags/sunshine-hz')
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          files: out/*.deb

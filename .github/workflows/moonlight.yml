@@ -1,0 +1,56 @@
+name: Moonlight do Horizonte
+
+# Compila o Moonlight com os patches de engines/moonlight (sem aviso ao parear, tela de início limpa). Numa tag
+# moonlight-hz*, o zip portátil vai para uma release do próprio Horizonte, de onde o app o baixa.
+on:
+  push:
+    tags: ['moonlight-hz*']
+  pull_request:
+    paths: ['engines/moonlight/**', '.github/workflows/moonlight.yml']
+  workflow_dispatch:
+
+env:
+  MOONLIGHT_TAG: v6.1.0
+  MOONLIGHT_COMMIT: f786e94c7b2f943e24e65d7d74deb539b827fc84
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.3'
+          arch: win64_msvc2019_64
+          cache: true
+      - name: Baixar o Moonlight e aplicar os patches
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "$MOONLIGHT_TAG" https://github.com/moonlight-stream/moonlight-qt.git ml
+          test "$(git -C ml rev-parse HEAD)" = "$MOONLIGHT_COMMIT"
+          git -C ml submodule update --init --recursive --depth 1
+          for patch in engines/moonlight/patches/*.patch; do git -C ml apply --whitespace=nowarn "../$patch"; done
+      - name: Compilar
+        shell: cmd
+        working-directory: ml
+        run: scripts\build-arch.bat Release
+      - name: Nomear o pacote
+        shell: bash
+        run: |
+          zip=$(ls ml/build/installer-x64-Release/MoonlightPortable-x64-*.zip | head -n1)
+          mkdir -p out
+          cp "$zip" out/MoonlightPortable-horizonte-x64.zip
+          sha256sum out/*.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moonlight-windows-x64
+          path: out/*.zip
+      - name: Anexar à release
+        if: startsWith(github.ref, 'refs/tags/moonlight-hz')
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          files: out/*.zip

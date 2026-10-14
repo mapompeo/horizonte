@@ -1,0 +1,14 @@
+diff --git a/app/gui/CliPair.qml b/app/gui/CliPair.qml
+index 083c4db..979bccb 100644
+--- a/app/gui/CliPair.qml
++++ b/app/gui/CliPair.qml
+@@ -21,7 +21,8 @@ Item {
+ 
+     function onSuccess(appName) {
+         stageIndicator.visible = false
+-        pairCompleteDialog.open()
++        // Horizonte: quem chama é o app, não uma pessoa. Sem aviso de sucesso esperando um OK.
++        Qt.quit()
+     }
+ 
+     // Allow user to back out of pairing
