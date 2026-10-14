@@ -26,7 +26,10 @@ jobs:
       - run: apt-get update && apt-get install -y git ca-certificates sudo
       - uses: actions/checkout@v4
       - name: Compilar
-        run: bash engines/sunshine/build-linux.sh "$RUNNER_TEMP" --sudo-off
+        # O script do Sunshine lê o ~/.bashrc, que o container não tem.
+        run: |
+          touch "$HOME/.bashrc"
+          bash engines/sunshine/build-linux.sh "$RUNNER_TEMP" --sudo-off
       - name: Nomear o pacote pelo Ubuntu
         run: |
           deb=$(find "$RUNNER_TEMP/Sunshine" -maxdepth 3 -name '*.deb' | head -n1)
