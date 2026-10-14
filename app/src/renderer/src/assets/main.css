@@ -19,7 +19,6 @@
   --switch-on: #34c759;
   --danger-bg: #fdebea;
   --danger-fg: #c4160b;
-  --tile-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05);
   --font:
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable', 'Segoe UI', system-ui,
@@ -48,7 +47,6 @@
     --switch-on: #30d158;
     --danger-bg: rgba(255, 69, 58, 0.18);
     --danger-fg: #ff8a82;
-    --tile-shadow: none;
     --card-shadow: none;
   }
 }
@@ -233,6 +231,32 @@ input:focus-visible {
 
 .seg-wide {
   display: grid;
+}
+
+/* Opções com uma segunda linha (Qualidade: nome e Mbps). */
+.seg-tall {
+  border-radius: 18px;
+}
+.seg-tall .seg-thumb {
+  border-radius: 15px;
+}
+.seg-tall .seg-item {
+  height: 58px;
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 15px;
+}
+.seg-sub {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.75;
+}
+.seg-thumb-off {
+  opacity: 0;
 }
 
 .icon-btn {
@@ -574,38 +598,6 @@ input:focus-visible {
   letter-spacing: 0.02em;
 }
 
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.tile {
-  height: 84px;
-  border-radius: 16px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--fg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-
-.tile.on {
-  border: 2px solid var(--fg);
-  box-shadow: var(--tile-shadow);
-}
-.tile-name {
-  font-size: 16px;
-  font-weight: 600;
-}
-.tile-sub {
-  font-size: 13px;
-  color: var(--muted);
-}
-
 .card {
   background: var(--card);
   border: 1px solid var(--line-soft);
@@ -798,18 +790,34 @@ input[type='range'] {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.about-bar {
+.bar-sm {
   width: 160px;
-  height: 4px;
-  border-radius: 4px;
-  background: var(--line-soft);
-  overflow: hidden;
 }
-.about-bar > i {
-  display: block;
-  height: 100%;
-  background: var(--accent);
+.bar-xs {
+  width: 72px;
 }
+
+/* Rodapé da tela principal: a versão, e a atualização só quando há o que fazer. */
+.version-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 28px;
+  font-size: 12px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.foot-link {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+
 .about-link {
   border: 0;
   background: transparent;
@@ -888,7 +896,6 @@ input[type='range'] {
 }
 
 .btn,
-.tile,
 .icon-btn,
 .back {
   transition:
@@ -898,7 +905,6 @@ input[type='range'] {
 }
 
 .btn:active:not(:disabled),
-.tile:active,
 .icon-btn:active {
   transform: scale(0.97);
 }

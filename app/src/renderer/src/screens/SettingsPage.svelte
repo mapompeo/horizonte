@@ -59,19 +59,19 @@
   <div class="sheet-body">
     <section class="group" aria-labelledby="g-quality">
       <h2 class="group-label" id="g-quality">Qualidade</h2>
-      <div class="tiles">
-        {#each tiles as tile (tile.id)}
-          <button
-            class="tile"
-            class:on={settings.profile === tile.id}
-            aria-pressed={settings.profile === tile.id}
-            onclick={() => patchSettings({ bitrate: tile.mbps })}
-          >
-            <span class="tile-name">{tile.name}</span>
-            <span class="tile-sub">{tile.mbps} Mbps</span>
-          </button>
-        {/each}
-      </div>
+      <Segmented
+        label="Qualidade"
+        value={settings.profile}
+        options={tiles.map((tile) => ({
+          value: tile.id,
+          text: tile.name,
+          sub: `${tile.mbps} Mbps`
+        }))}
+        onSelect={(id) => {
+          const tile = tiles.find((option) => option.id === id)
+          if (tile) void patchSettings({ bitrate: tile.mbps })
+        }}
+      />
       <div class="card card-pad">
         <div class="range-row">
           <label for="bitrate">Personalizado</label><strong>{shown} Mbps</strong>

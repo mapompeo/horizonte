@@ -3,6 +3,7 @@
   import type { AppState, Mode } from '../../shared/types'
   import { route, snapshot, startSync, syncError } from './lib/store'
   import TopBar from './components/TopBar.svelte'
+  import UpdateControls from './components/UpdateControls.svelte'
   import Install from './screens/Install.svelte'
   import Choose from './screens/Choose.svelte'
   import Preparing from './screens/Preparing.svelte'
@@ -91,6 +92,7 @@
           {/if}
         </main>
       {/key}
+      {#if mode}<UpdateControls compact />{/if}
     </div>
   {/if}
 {:else}
