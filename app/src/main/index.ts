@@ -4,10 +4,13 @@ import {
   clipboard,
   dialog,
   ipcMain,
+  Menu,
+  nativeImage,
   nativeTheme,
   safeStorage,
   session,
-  shell
+  shell,
+  Tray
 } from 'electron'
 import { spawn } from 'node:child_process'
 import { randomInt } from 'node:crypto'
@@ -24,6 +27,7 @@ import { cleanName } from '../shared/names'
 import type { SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
+import { createTrayFollower } from './core/tray'
 import { createUninstaller } from './core/uninstall'
 import { buildDiagnostic } from './core/diagnostic'
 import { buildReportDiagnostic, createDiagnosticReporter } from './core/report-diagnostic'
@@ -123,10 +127,44 @@ function createWindow(controller: Controller): void {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
 
+  // Conectado, a janela sai da frente e o Horizonte fica nos ícones ocultos; ao desconectar ela volta.
+  let tray: Tray | null = null
+  const showWindow = (): void => {
+    if (window.isDestroyed()) return
+    window.show()
+    window.focus()
+  }
+  const followTray = createTrayFollower(
+    { hide: () => window.hide(), show: showWindow },
+    {
+      open: () => {
+        tray ??= new Tray(nativeImage.createFromPath(icon).resize({ width: 16, height: 16 }))
+        tray.setToolTip('Horizonte: conectado')
+        tray.setContextMenu(
+          Menu.buildFromTemplate([
+            { label: 'Abrir Horizonte', click: showWindow },
+            { label: 'Sair', click: () => app.quit() }
+          ])
+        )
+        tray.on('click', showWindow)
+      },
+      close: () => {
+        tray?.destroy()
+        tray = null
+      }
+    }
+  )
+
   const unsubscribe = controller.subscribe((snapshot) => {
-    if (!window.isDestroyed()) window.webContents.send(CHANNELS.push, snapshot)
+    if (window.isDestroyed()) return
+    window.webContents.send(CHANNELS.push, snapshot)
+    followTray(snapshot.state)
   })
-  window.on('closed', unsubscribe)
+  window.on('closed', () => {
+    unsubscribe()
+    tray?.destroy()
+    tray = null
+  })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     void window.loadURL(process.env['ELECTRON_RENDERER_URL'])
