@@ -28,9 +28,29 @@ describe('parseSettings', () => {
       codec: 'hevc',
       autostart: false,
       deviceName: 'Notebook',
-      extendSide: 'left'
+      extendSide: 'left',
+      trusted: [{ name: 'Desktop', address: '192.168.1.4' }]
     }
     expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null })
+  })
+
+  it('aparelhos confiáveis: nome limpo e endereço válido, no máximo 20; o resto some', () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      name: `A${i}`,
+      address: `10.0.0.${i + 1}`
+    }))
+    expect(parseSettings({ trusted: many }).trusted).toHaveLength(20)
+    expect(
+      parseSettings({
+        trusted: [
+          { name: 'Desktop', address: '192.168.1.4' },
+          { name: 'Sem endereço' },
+          { name: '', address: '192.168.1.5' },
+          { name: 'Ruim', address: 'http://x' },
+          'texto'
+        ]
+      }).trusted
+    ).toEqual([{ name: 'Desktop', address: '192.168.1.4' }])
   })
 
   it('posição da tela estendida: só esquerda, direita ou acima; padrão à direita', () => {

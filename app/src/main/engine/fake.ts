@@ -133,8 +133,13 @@ export class FakeEngine implements EnginePort {
     return this.ended.on(callback)
   }
 
-  simulatePairRequest(device: string, pairingId = 'p1', pin?: string): void {
-    this.pair.emit({ device, pairingId, ...(pin === undefined ? {} : { pin }) })
+  simulatePairRequest(device: string, pairingId = 'p1', pin?: string, address?: string): void {
+    this.pair.emit({
+      device,
+      pairingId,
+      ...(pin === undefined ? {} : { pin }),
+      ...(address === undefined ? {} : { address })
+    })
   }
 
   simulatePairCancelled(pairingId: string): void {

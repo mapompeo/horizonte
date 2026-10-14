@@ -959,3 +959,14 @@ input,
 .manual-input {
   text-align: left;
 }
+
+/* Pedido de pareamento: confiar no aparelho para aprovar sozinho da próxima vez. */
+.trust-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(320px, 100%);
+  font-size: 15px;
+  color: var(--muted);
+}

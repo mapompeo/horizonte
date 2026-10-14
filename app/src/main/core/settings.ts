@@ -2,7 +2,16 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { cleanName } from '../../shared/names'
 import { clampBitrate, profileFor } from '../../shared/quality'
-import type { Codec, Encoding, ExtendSide, Fps, Resolution, Settings } from '../../shared/types'
+import { isHostAddress } from '../../shared/address'
+import type {
+  Codec,
+  Encoding,
+  ExtendSide,
+  Fps,
+  Resolution,
+  Settings,
+  TrustedDevice
+} from '../../shared/types'
 
 export const DEFAULT_SETTINGS: Settings = {
   profile: 'equilibrado',
@@ -14,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: true,
   deviceName: 'Dispositivo',
   extendSide: 'right',
+  trusted: [],
   mode: null
 }
 
@@ -21,6 +31,21 @@ const LEGACY_DEFAULT_NAMES = ['Computador']
 
 function oneOf<T extends string | number>(value: unknown, allowed: readonly T[], fallback: T): T {
   return allowed.includes(value as T) ? (value as T) : fallback
+}
+
+/** Até 20 aparelhos, cada um com nome limpo e endereço de verdade; o resto é descartado. */
+function parseTrusted(raw: unknown): TrustedDevice[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .flatMap((item: unknown): TrustedDevice[] => {
+      if (typeof item !== 'object' || item === null) return []
+      const { name, address } = item as Record<string, unknown>
+      const clean = typeof name === 'string' ? cleanName(name) : ''
+      return clean && typeof address === 'string' && isHostAddress(address)
+        ? [{ name: clean, address }]
+        : []
+    })
+    .slice(0, 20)
 }
 
 /** Aceita qualquer entrada e sempre devolve ajustes válidos. */
@@ -47,6 +72,7 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
     encoding: oneOf<Encoding>(input.encoding, ['auto', 'gpu', 'cpu'], DEFAULT_SETTINGS.encoding),
     codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
     autostart: typeof input.autostart === 'boolean' ? input.autostart : DEFAULT_SETTINGS.autostart,
+    trusted: parseTrusted(input.trusted),
     extendSide: oneOf<ExtendSide>(
       input.extendSide,
       ['left', 'right', 'above'],

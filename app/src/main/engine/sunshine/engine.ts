@@ -311,7 +311,7 @@ export class SunshineEngine implements ServerEngine {
         const pin =
           request?.pin ?? (this.deps.pins?.takeByAddress ? undefined : this.deps.pins?.take(device))
         for (const listener of [...this.pairListeners])
-          listener({ device, pairingId: pairing.id, pin })
+          listener({ device, pairingId: pairing.id, pin, address: pairing.address })
       },
       onCancelled: (pairingId) => {
         for (const listener of [...this.cancelListeners]) listener(pairingId)

@@ -658,3 +658,53 @@ describe('persistencia concorrente de modo e ajustes', () => {
     }
   })
 })
+
+describe('aparelhos confiáveis', () => {
+  async function trustedSetup(
+    trusted: Settings['trusted']
+  ): Promise<{ controller: Controller; engine: FakeEngine; saved: Settings[] }> {
+    const engine = new FakeEngine(0)
+    const saved: Settings[] = []
+    const store: SettingsStore = {
+      load: async () => ({ ...DEFAULT_SETTINGS, mode: 'send', trusted }),
+      save: async (settings) => {
+        saved.push(settings)
+      }
+    }
+    const controller = await createController({
+      engine,
+      store,
+      initial: { screen: 'ready', mode: 'send' }
+    })
+    return { controller, engine, saved }
+  }
+
+  it('aparelho confiável com o PIN do Horizonte é aprovado sozinho, sem mostrar o pedido', async () => {
+    const { controller, engine } = await trustedSetup([{ name: 'Desktop', address: '192.168.1.4' }])
+    engine.simulatePairRequest('Desktop', 'p1', '4821', '192.168.1.4')
+    expect(screen(controller)).toBe('ready')
+    expect(engine.lastApprove).toEqual({ pairingId: 'p1', pin: '4821', name: 'Desktop' })
+  })
+
+  it('mesmo nome vindo de outro endereço não é aprovado sozinho', async () => {
+    const { controller, engine } = await trustedSetup([{ name: 'Desktop', address: '192.168.1.4' }])
+    engine.simulatePairRequest('Desktop', 'p1', '4821', '192.168.1.99')
+    expect(screen(controller)).toBe('approve')
+    expect(engine.calls).not.toContain('approve')
+  })
+
+  it('aprovar com "Confiar" guarda o aparelho; sem marcar, não guarda', async () => {
+    const { controller, engine, saved } = await trustedSetup([])
+    engine.simulatePairRequest('Notebook', 'p1', '4821', '192.168.1.6')
+    controller.dispatch({ type: 'APPROVE', trust: true })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(controller.getSnapshot().settings.trusted).toEqual([
+      { name: 'Notebook', address: '192.168.1.6' }
+    ])
+    expect(saved.at(-1)?.trusted).toEqual([{ name: 'Notebook', address: '192.168.1.6' }])
+
+    engine.simulatePairRequest('Tablet', 'p2', '1234', '192.168.1.8')
+    controller.dispatch({ type: 'APPROVE', trust: false })
+    expect(controller.getSnapshot().settings.trusted).toHaveLength(1)
+  })
+})
