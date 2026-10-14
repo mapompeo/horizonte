@@ -15,6 +15,10 @@ jobs:
       fail-fast: false
       matrix:
         ubuntu: ['22.04', '24.04', '26.04']
+        include:
+          # O 22.04 não tem gcc-14; o script do Sunshine o traz do repositório de testes do Ubuntu.
+          - ubuntu: '22.04'
+            extra: --ubuntu-test-repo
     runs-on: ubuntu-latest
     container: ubuntu:${{ matrix.ubuntu }}
     timeout-minutes: 150
@@ -23,13 +27,13 @@ jobs:
     env:
       DEBIAN_FRONTEND: noninteractive
     steps:
-      - run: apt-get update && apt-get install -y git ca-certificates sudo
+      - run: apt-get update && apt-get install -y git ca-certificates sudo software-properties-common
       - uses: actions/checkout@v4
       - name: Compilar
         # O script do Sunshine lê o ~/.bashrc, que o container não tem.
         run: |
           touch "$HOME/.bashrc"
-          bash engines/sunshine/build-linux.sh "$RUNNER_TEMP" --sudo-off
+          bash engines/sunshine/build-linux.sh "$RUNNER_TEMP" --sudo-off ${{ matrix.extra }}
       - name: Nomear o pacote pelo Ubuntu
         run: |
           deb=$(find "$RUNNER_TEMP/Sunshine" -maxdepth 3 -name '*.deb' | head -n1)

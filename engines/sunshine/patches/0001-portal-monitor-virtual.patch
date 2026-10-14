@@ -1,5 +1,21 @@
+diff --git a/src/platform/linux/pipewire.cpp b/src/platform/linux/pipewire.cpp
+index 6cfb0a0..ad70546 100644
+--- a/src/platform/linux/pipewire.cpp
++++ b/src/platform/linux/pipewire.cpp
+@@ -878,6 +878,11 @@ namespace pipewire {
+         BOOST_LOG(error) << "[pipewire] Could not find display with name: '"sv << display_name << "'";
+         return -1;
+       }
++      // Horizonte: fluxo sem tamanho (monitor virtual) é criado no tamanho que o cliente pediu.
++      if (width <= 0 || height <= 0) {
++        width = config.width;
++        height = config.height;
++      }
+       BOOST_LOG(info) << "[pipewire] Streaming display '"sv << display_name << "' offset: "sv << offset_x << "x"sv << offset_y << " resolution: "sv << width << "x"sv << height;
+ 
+       // Verify or update display parameters for streaming to ensure absolute touch inputs work as expected
 diff --git a/src/platform/linux/portalgrab.cpp b/src/platform/linux/portalgrab.cpp
-index 8e8c25d..c6190e9 100644
+index 8e8c25d..7761724 100644
 --- a/src/platform/linux/portalgrab.cpp
 +++ b/src/platform/linux/portalgrab.cpp
 @@ -1,3 +1,4 @@
@@ -29,3 +45,19 @@ index 8e8c25d..c6190e9 100644
        if (persist) {
          g_variant_builder_add(&builder, "{sv}", "persist_mode", g_variant_new_uint32(PERSIST_UNTIL_REVOKED));
          if (!restore_token_t::empty()) {
+@@ -580,8 +584,13 @@ namespace portal {
+         int out_height;
+         bool result = g_variant_lookup(value, "size", "(ii)", &out_width, &out_height, nullptr);
+         if (!result) {
+-          BOOST_LOG(warning) << "[portalgrab] Ignoring stream without proper resolution on pipewire node "sv << out_pipewire_node;
+-          continue;
++          // Horizonte: o monitor virtual só ganha tamanho na negociação do PipeWire, com o tamanho pedido pelo cliente.
++          if (std::getenv("SUNSHINE_PORTAL_VIRTUAL") == nullptr) {
++            BOOST_LOG(warning) << "[portalgrab] Ignoring stream without proper resolution on pipewire node "sv << out_pipewire_node;
++            continue;
++          }
++          out_width = 0;
++          out_height = 0;
+         }
+ 
+         int out_pos_x;
