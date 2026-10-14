@@ -23,6 +23,10 @@ for patch in "$here"/patches/*.patch; do
   git apply --whitespace=nowarn "$patch"
 done
 
+# Versão do pacote: a oficial com um "1" do Horizonte no fim (2026.914.2336131). Fica mais nova que a
+# oficial para o apt e sem o sufixo "-dirty" que os patches causariam.
+export BRANCH=master BUILD_VERSION="${TAG#v}1"
+
 bash scripts/linux_build.sh \
   --skip-cuda \
   --publisher-name=Horizonte \
