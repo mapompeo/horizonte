@@ -34,6 +34,10 @@ describe('buildStreamArgs', () => {
     expect(args).toEqual(expect.arrayContaining(['--bitrate', '40000']))
     expect(args).toEqual(expect.arrayContaining(['--video-codec', 'HEVC']))
   })
+
+  it('mantém o som no aparelho que envia a tela', () => {
+    expect(buildStreamArgs('192.168.1.3', DEFAULT_SETTINGS)).toContain('--audio-on-host')
+  })
 })
 
 describe('createMoonlightClient', () => {

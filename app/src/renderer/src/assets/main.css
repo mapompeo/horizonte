@@ -19,7 +19,6 @@
   --switch-on: #34c759;
   --danger-bg: #fdebea;
   --danger-fg: #c4160b;
-  --tile-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05);
   --font:
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable', 'Segoe UI', system-ui,
@@ -48,7 +47,6 @@
     --switch-on: #30d158;
     --danger-bg: rgba(255, 69, 58, 0.18);
     --danger-fg: #ff8a82;
-    --tile-shadow: none;
     --card-shadow: none;
   }
 }
@@ -233,6 +231,32 @@ input:focus-visible {
 
 .seg-wide {
   display: grid;
+}
+
+/* Opções com uma segunda linha (Qualidade: nome e Mbps). */
+.seg-tall {
+  border-radius: 18px;
+}
+.seg-tall .seg-thumb {
+  border-radius: 15px;
+}
+.seg-tall .seg-item {
+  height: 58px;
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 15px;
+}
+.seg-sub {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.75;
+}
+.seg-thumb-off {
+  opacity: 0;
 }
 
 .icon-btn {
@@ -574,38 +598,6 @@ input:focus-visible {
   letter-spacing: 0.02em;
 }
 
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.tile {
-  height: 84px;
-  border-radius: 16px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--fg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-
-.tile.on {
-  border: 2px solid var(--fg);
-  box-shadow: var(--tile-shadow);
-}
-.tile-name {
-  font-size: 16px;
-  font-weight: 600;
-}
-.tile-sub {
-  font-size: 13px;
-  color: var(--muted);
-}
-
 .card {
   background: var(--card);
   border: 1px solid var(--line-soft);
@@ -627,7 +619,9 @@ input:focus-visible {
   font-size: 16px;
 }
 
-.row + .row {
+.row + .row,
+/* O diálogo do diagnóstico fica entre duas linhas e não pode apagar a divisória. */
+dialog + .row {
   border-top: 1px solid var(--line-soft);
 }
 .row-value {
@@ -712,19 +706,138 @@ input[type='range'] {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
-.sheet-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
+/* Linhas que são botões (lista "Sobre"): ocupam a linha toda, com a seta à direita. */
+.row-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+.card > .row-button:first-child {
+  border-radius: 16px 16px 0 0;
+}
+.card > .row-button:last-child {
+  border-radius: 0 0 16px 16px;
+}
+.row-button::after {
+  content: '›';
   color: var(--faint);
+  font-size: 20px;
+}
+.row-button:hover {
+  background: var(--seg);
+}
+.row-button.danger {
+  color: var(--danger-fg);
+}
+.row-button.danger::after {
+  content: '';
+}
+.row-button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.row-note {
+  margin: 0;
+  padding: 0 18px 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .row-button {
+    transition: background 160ms ease;
+  }
 }
 
-.sheet-foot-actions {
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Fim dos Ajustes: o app, a versão e a atualização, centralizados como em "Sobre este Mac". */
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 20px;
+  text-align: center;
+}
+.about-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: linear-gradient(160deg, #5aa7ff, #0a62d0);
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+}
+.about-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+.about-line {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.bar-sm {
+  width: 160px;
+}
+.bar-xs {
+  width: 72px;
+}
+
+/* Rodapé da tela principal: a versão, e a atualização só quando há o que fazer. */
+.version-foot {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 10px;
+  min-height: 28px;
+  font-size: 12px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
 }
+.foot-link {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+
+.about-link {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.about-pill {
+  margin-top: 4px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .row-value {
   max-width: 60%;
   overflow: hidden;
@@ -732,13 +845,6 @@ input[type='range'] {
   white-space: nowrap;
   color: var(--muted);
   font-size: 15px;
-}
-.sheet-foot button {
-  height: 44px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 13px;
 }
 
 .btn:disabled {
@@ -790,7 +896,6 @@ input[type='range'] {
 }
 
 .btn,
-.tile,
 .icon-btn,
 .back {
   transition:
@@ -800,7 +905,6 @@ input[type='range'] {
 }
 
 .btn:active:not(:disabled),
-.tile:active,
 .icon-btn:active {
   transform: scale(0.97);
 }
