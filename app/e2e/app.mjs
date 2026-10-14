@@ -271,7 +271,9 @@ try {
         await app.click(/^Permitir$/)
         const text = await app.waitText(/Notebook conectado/, 30_000)
         if (!/Tela estendida/.test(text)) throw new Error('sem "Tela estendida"')
-        await app.shot('07-conectado')
+        // Conectado, o Horizonte sai da frente e fica nos ícones ocultos: sem janela, não há o que fotografar.
+        const hidden = await app.ev('document.visibilityState')
+        if (hidden !== 'hidden') throw new Error(`a janela continuou na frente (${hidden})`)
       }
     )
     await app.close()
