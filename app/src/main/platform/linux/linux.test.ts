@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createLinuxSetup,
   MIRROR_NOTE,
+  PORTAL_VIRTUAL_SCRIPT,
   shQuote,
   SUNSHINE_UNIT,
   VIRTUAL_MONITOR_SCRIPT,
@@ -90,6 +91,7 @@ function harness(
     responding?: boolean
     monitor?: boolean
     firewall?: boolean
+    portal?: boolean
     stored?: boolean
     env?: Record<string, string>
   } = {}
@@ -104,7 +106,8 @@ function harness(
       serviceActive: async () => options.active ?? false,
       sunshineResponding: async () => options.responding ?? false,
       monitorPresent: async () => options.monitor ?? false,
-      firewallReady: async () => options.firewall ?? true
+      firewallReady: async () => options.firewall ?? true,
+      portalVirtualSupported: async () => options.portal ?? false
     },
     vault: {
       load: async () =>
@@ -348,6 +351,32 @@ describe('createLinuxSetup', () => {
     const main = { ...fakeDisplay('eDP-1'), primary: true }
     expect(setup.display.isVirtual(main)).toBe(true)
     expect(setup.display.isVirtual({ ...fakeDisplay('HDMI-1'), originX: 1920 })).toBe(false)
+  })
+
+  it('Wayland com o Sunshine do Horizonte: liga o monitor virtual do portal em vez de espelhar', async () => {
+    const h = harness({ env: { XDG_SESSION_TYPE: 'wayland' }, portal: true })
+    const notes: string[] = []
+    const setup = createLinuxSetup(h.deps)
+    await setup.installer.ensureInstalled((p) => notes.push(p.note))
+    expect(h.user).toContain(PORTAL_VIRTUAL_SCRIPT)
+    expect(notes).not.toContain(MIRROR_NOTE)
+    expect(setup.display.config?.()).toEqual({ capture: 'portal' })
+    expect(setup.display.outputName?.()).toBe('0')
+  })
+
+  it('o ajuste do portal só reinicia o serviço quando é novo', () => {
+    expect(PORTAL_VIRTUAL_SCRIPT).toContain('if ! grep -qx "$line" "$file"')
+    expect(PORTAL_VIRTUAL_SCRIPT).toContain('Environment=SUNSHINE_PORTAL_VIRTUAL=1')
+    // O shell recebe "\n" escrito, e o printf transforma em quebra de linha.
+    expect(PORTAL_VIRTUAL_SCRIPT).toContain("printf '[Service]\\n%s\\n'")
+  })
+
+  it('Xorg não usa o portal: sem captura extra nem saída fixa', async () => {
+    const h = harness({ portal: true })
+    const setup = createLinuxSetup(h.deps)
+    await setup.installer.ensureInstalled()
+    expect(setup.display.config?.()).toEqual({})
+    expect(setup.display.outputName?.()).toBeNull()
   })
 
   it('Xorg que recusa o monitor virtual também cai no espelho, sem erro', async () => {
