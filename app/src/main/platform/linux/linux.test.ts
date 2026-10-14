@@ -100,6 +100,7 @@ function harness(
     monitor?: boolean
     firewall?: boolean
     portal?: boolean
+    virtual?: boolean
     stored?: boolean
     env?: Record<string, string>
   } = {}
@@ -115,7 +116,8 @@ function harness(
       sunshineResponding: async () => options.responding ?? false,
       monitorPresent: async () => options.monitor ?? false,
       firewallReady: async () => options.firewall ?? true,
-      portalVirtualSupported: async () => options.portal ?? false
+      sunshinePatched: async () => options.portal ?? false,
+      portalVirtualSupported: async () => options.virtual ?? true
     },
     vault: {
       load: async () =>
@@ -371,6 +373,16 @@ describe('createLinuxSetup', () => {
     expect(notes).not.toContain(MIRROR_NOTE)
     expect(setup.display.config?.()).toEqual({ capture: 'portal' })
     expect(setup.display.outputName?.()).toBe('0')
+  })
+
+  it('Wayland sem monitor virtual no portal (ex.: alguns ambientes): espelha, mesmo com o Sunshine do Horizonte', async () => {
+    const h = harness({ env: { XDG_SESSION_TYPE: 'wayland' }, portal: true, virtual: false })
+    const notes: string[] = []
+    const setup = createLinuxSetup(h.deps)
+    await setup.installer.ensureInstalled((p) => notes.push(p.note))
+    expect(notes).toContain(MIRROR_NOTE)
+    expect(h.user).not.toContain(PORTAL_VIRTUAL_SCRIPT)
+    expect(setup.display.config?.()).toEqual({})
   })
 
   it('o ajuste do portal só reinicia o serviço quando é novo', () => {

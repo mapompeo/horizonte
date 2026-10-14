@@ -32,6 +32,8 @@ export interface LinuxProbe {
   /** Sem firewall ativo, ou as portas do Sunshine já liberadas por este app. */
   firewallReady(): Promise<boolean>
   /** O Sunshine instalado é o do Horizonte, que sabe pedir um monitor virtual ao portal do Wayland. */
+  sunshinePatched(): Promise<boolean>
+  /** O portal do ambiente gráfico cria monitores virtuais (GNOME e KDE sim; outros podem não criar). */
   portalVirtualSupported(): Promise<boolean>
 }
 
@@ -145,7 +147,7 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
     )
     // Sunshine oficial onde existe o do Horizonte: troca, para a tela poder estender no Wayland.
     let upgrade = false
-    if (installed && !(await step(() => deps.probe.portalVirtualSupported()))) {
+    if (installed && !(await step(() => deps.probe.sunshinePatched()))) {
       try {
         upgrade = deps.packageForThisSystem().horizonte === true
       } catch {
@@ -234,7 +236,10 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
     mirror = false
     portal = false
     if (sessionKind(deps.env) === 'wayland') {
-      portal = await step(() => deps.probe.portalVirtualSupported())
+      portal = await step(
+        async () =>
+          (await deps.probe.sunshinePatched()) && (await deps.probe.portalVirtualSupported())
+      )
       if (portal) await step(() => deps.runUser(PORTAL_VIRTUAL_SCRIPT))
       else mirror = true
     } else if (!monitor) {
