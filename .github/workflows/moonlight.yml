@@ -1,6 +1,6 @@
 name: Moonlight do Horizonte
 
-# Compila o Moonlight com os patches de engines/moonlight (sem aviso ao parear, tela de início limpa). Numa tag
+# Compila o Moonlight (Windows e Linux) com os patches de engines/moonlight. Numa tag
 # moonlight-hz*, o zip portátil vai para uma release do próprio Horizonte, de onde o app o baixa.
 on:
   push:
@@ -54,3 +54,50 @@ jobs:
         with:
           prerelease: true
           files: out/*.zip
+
+  linux:
+    # Qt6, FFmpeg e SDL do próprio Ubuntu 24.04; o AppImage roda em distribuições com glibc 2.39 ou mais nova.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependências
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qt6-base-dev qt6-declarative-dev qt6-svg-dev qt6-wayland-dev             qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts             qml6-module-qtquick-window qml6-module-qtqml-workerscript qml6-module-qtquick-templates             qml6-module-qtquick-dialogs qt6-wayland libsdl2-dev libsdl2-ttf-dev libavcodec-dev libavformat-dev             libavutil-dev libswscale-dev libva-dev libvdpau-dev libopus-dev libssl-dev libdrm-dev libegl1-mesa-dev             libgl1-mesa-dev libplacebo-dev libvulkan-dev wayland-protocols libwayland-dev libxkbcommon-dev             libpulse-dev libasound2-dev libfuse2t64 file
+      - name: Baixar o Moonlight e aplicar os patches
+        run: |
+          git clone --depth 1 --branch "$MOONLIGHT_TAG" https://github.com/moonlight-stream/moonlight-qt.git ml
+          test "$(git -C ml rev-parse HEAD)" = "$MOONLIGHT_COMMIT"
+          git -C ml -c submodule.libs.update=none submodule update --init --recursive --depth 1
+          for patch in engines/moonlight/patches/*.patch; do git -C ml apply --whitespace=nowarn "../$patch"; done
+      - name: Compilar
+        working-directory: ml
+        run: |
+          qmake6 moonlight-qt.pro CONFIG+=release PREFIX=/usr
+          make -j"$(nproc)"
+          make install INSTALL_ROOT="$PWD/AppDir"
+      - name: Montar o AppImage
+        working-directory: ml
+        run: |
+          curl -fsSL -o linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20250213-2/linuxdeploy-x86_64.AppImage
+          curl -fsSL -o linuxdeploy-plugin-qt https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy linuxdeploy-plugin-qt
+          export QMAKE=qmake6 QML_SOURCES_PATHS="$PWD/app/gui" EXTRA_QT_MODULES=waylandcompositor EXTRA_PLATFORM_PLUGINS=libqwayland-egl.so
+          ./linuxdeploy --appdir AppDir --plugin qt --output appimage             --desktop-file AppDir/usr/share/applications/com.moonlight_stream.Moonlight.desktop
+          mkdir -p ../out
+          cp Moonlight*.AppImage ../out/Moonlight-horizonte-x86_64.AppImage
+          sha256sum ../out/*.AppImage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moonlight-linux-x86_64
+          path: out/*.AppImage
+      - name: Anexar à release
+        if: startsWith(github.ref, 'refs/tags/moonlight-hz')
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          files: out/*.AppImage
+
