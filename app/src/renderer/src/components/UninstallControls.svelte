@@ -27,39 +27,7 @@
   }
 </script>
 
-<section class="group" aria-labelledby="g-uninstall">
-  <h2 class="group-label" id="g-uninstall">Instalação</h2>
-  <div class="card">
-    <div class="row">
-      <span>Remover deste dispositivo</span>
-      <button onclick={uninstall} disabled={pending}
-        >{pending ? 'Abrindo…' : 'Desinstalar Horizonte'}</button
-      >
-    </div>
-  </div>
-  {#if message}<p class="adv-note" role="status">{message}</p>{/if}
-</section>
-
-<style>
-  button {
-    border: 0;
-    border-radius: 8px;
-    padding: 8px 10px;
-    background: transparent;
-    color: var(--danger-fg);
-    font-size: inherit;
-    transition: background 160ms ease;
-  }
-  button:hover {
-    background: var(--danger-bg);
-  }
-  button:disabled {
-    opacity: 0.5;
-    cursor: wait;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    button {
-      transition: none;
-    }
-  }
-</style>
+<button class="row row-button danger" onclick={uninstall} disabled={pending}
+  >{pending ? 'Abrindo…' : 'Desinstalar Horizonte'}</button
+>
+{#if message}<p class="row-note" role="status">{message}</p>{/if}

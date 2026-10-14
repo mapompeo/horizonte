@@ -170,15 +170,18 @@
       </div>
     </section>
 
-    <UpdateControls />
-    <UninstallControls />
-    <ReportButton />
-    <div class="sheet-foot">
-      <span>Horizonte</span>
-      <div class="sheet-foot-actions">
-        <button onclick={() => window.horizonte.openRepo()}>GitHub</button>
-        <CopyButton />
+    <section class="group" aria-labelledby="g-about">
+      <h2 class="group-label" id="g-about">Sobre</h2>
+      <div class="card">
+        <ReportButton class="row row-button" />
+        <CopyButton class="row row-button" />
+        <button class="row row-button" onclick={() => window.horizonte.openRepo()}
+          >Código no GitHub</button
+        >
+        <UninstallControls />
       </div>
-    </div>
+    </section>
+
+    <UpdateControls />
   </div>
 </div>
