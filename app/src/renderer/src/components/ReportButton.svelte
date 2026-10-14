@@ -1,4 +1,9 @@
 <script lang="ts">
+  interface Props {
+    class?: string
+  }
+
+  let { class: className = 'btn btn-ghost' }: Props = $props()
   let dialog: HTMLDialogElement
   let text = $state('')
   let includeHistory = $state(false)
@@ -37,7 +42,7 @@
   }
 </script>
 
-<button class="btn btn-ghost" onclick={review}>Enviar diagnóstico</button>
+<button class={className} onclick={review}>Enviar diagnóstico</button>
 <dialog bind:this={dialog} aria-labelledby="report-title">
   <h2 id="report-title">Revisar diagnóstico</h2>
   <p>
