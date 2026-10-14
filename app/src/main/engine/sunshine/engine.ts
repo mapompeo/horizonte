@@ -1,5 +1,5 @@
 import type { PinChannel } from '../pin-channel'
-import type { PrepProgress, PrepStep, Settings } from '../../../shared/types'
+import type { ExtendSide, PrepProgress, PrepStep, Settings } from '../../../shared/types'
 import {
   chooseEncoder,
   GPU_ENCODERS,
@@ -144,6 +144,9 @@ export class SunshineEngine implements ServerEngine {
     onStep('display')
     report('Procurando o monitor virtual', PROGRESS_AFTER_INSTALL)
     await this.deps.display.ensureVirtualDisplay(preparation.signal)
+    if (!alive()) return
+    // A posição é conforto: se o sistema recusar, a tela continua estendida onde estava.
+    await this.placeDisplay(settings.extendSide).catch(() => undefined)
     if (!alive()) return
     const restartAndRead = this.restarter(api)
     const displayId = await this.findVirtualDisplay(restartAndRead, alive)
@@ -395,6 +398,10 @@ export class SunshineEngine implements ServerEngine {
     } catch (cause) {
       throw friendly(cause)
     }
+  }
+
+  async placeDisplay(side: ExtendSide): Promise<void> {
+    await this.deps.display.place?.(side)
   }
 
   /** O Sunshine só lê o limite ao iniciar uma sessão; vale na próxima conexão. */

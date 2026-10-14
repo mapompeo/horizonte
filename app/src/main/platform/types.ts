@@ -1,4 +1,4 @@
-import type { PrepProgress } from '../../shared/types'
+import type { ExtendSide, PrepProgress } from '../../shared/types'
 import type { SunshineDisplay } from '../engine/sunshine/log'
 
 export interface SunshineCredentials {
@@ -17,4 +17,6 @@ export interface EngineInstaller {
 export interface VirtualDisplay {
   ensureVirtualDisplay(signal?: AbortSignal): Promise<void>
   isVirtual(display: SunshineDisplay): boolean
+  /** Põe a tela estendida à esquerda, à direita ou acima das telas deste aparelho. */
+  place?(side: ExtendSide): Promise<void>
 }

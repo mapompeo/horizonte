@@ -188,9 +188,11 @@ export async function createController({
     updateSettings(patch) {
       const update = settingsQueue.then(async () => {
         const next = parseSettings({ ...settings, ...patch })
+        const moved = next.extendSide !== settings.extendSide
         await store.save(next)
         settings = { ...next, mode: settings.mode }
         notify()
+        if (moved) await engine.placeDisplay?.(settings.extendSide).catch(() => undefined)
         if (state.screen === 'connected' || state.screen === 'receiving') {
           // Ajuste ao vivo é melhor esforço: se falhar, a conexão segue com o valor anterior.
           await engine.applyBitrate(settings.bitrate).catch(() => undefined)
