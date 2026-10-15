@@ -2,6 +2,7 @@
   import { isValidPin } from '../../../shared/pin'
   import { copyFor, safeName } from '../lib/copy'
   import { send } from '../lib/actions'
+  import Toggle from '../components/Toggle.svelte'
 
   interface Props {
     device: string
@@ -11,13 +12,15 @@
   let { device, pin }: Props = $props()
 
   let typed = $state('')
+  /** Marcado: da próxima vez este aparelho é aprovado sozinho. */
+  let trust = $state(true)
 
   const copy = $derived(copyFor({ screen: 'approve', mode: 'send', device, pairingId: '', pin }))
   const ready = $derived(isValidPin(pin ?? typed))
 
   function approve(): void {
     if (!ready) return
-    void send(pin === null ? { type: 'APPROVE', pin: typed } : { type: 'APPROVE' })
+    void send(pin === null ? { type: 'APPROVE', pin: typed, trust } : { type: 'APPROVE', trust })
   }
 </script>
 
@@ -59,6 +62,14 @@
     />
   </div>
 {/if}
+<div class="trust-row">
+  <span>Confiar neste aparelho</span>
+  <Toggle
+    label="Confiar neste aparelho"
+    checked={trust}
+    onChange={(checked) => (trust = checked)}
+  />
+</div>
 <div class="stack gap-xs">
   <button class="btn btn-primary" disabled={!ready} onclick={approve}>Permitir</button>
   <button class="btn btn-ghost" onclick={() => send({ type: 'DENY' })}>Recusar</button>

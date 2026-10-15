@@ -4,9 +4,11 @@ import type {
   Host,
   Settings,
   SettingsPatch,
-  Snapshot
+  Snapshot,
+  TrustedDevice
 } from '../../shared/types'
 import type { EnginePort } from '../engine/port'
+import { isValidPin } from '../../shared/pin'
 import { approvalPin, reduce } from './machine'
 import { parseSettings, type SettingsStore } from './settings'
 
@@ -113,6 +115,7 @@ export async function createController({
             .approve({ pairingId: prev.pairingId, pin, name: prev.device })
             .catch(failIfStill(next, 'Não consegui responder ao pedido.'))
         }
+        if (event.trust && prev.address) trust({ name: prev.device, address: prev.address })
       } else if (event.type === 'DENY') {
         engine.deny(prev.pairingId).catch(failIfStill(next, 'Não consegui responder ao pedido.'))
       }
@@ -159,8 +162,38 @@ export async function createController({
     }
   }
 
-  function onPairRequest(request: { device: string; pairingId: string; pin?: string }): void {
+  /** Lembra o aparelho; o próximo pedido dele com o mesmo nome e endereço é aprovado sozinho. */
+  function trust(device: TrustedDevice): void {
+    const others = settings.trusted.filter(
+      (known) => known.name !== device.name || known.address !== device.address
+    )
+    settings = {
+      ...parseSettings({ ...settings, trusted: [device, ...others] }),
+      mode: settings.mode
+    }
+    notify()
+    settingsQueue = settingsQueue.then(() => store.save(settings)).catch(() => undefined)
+  }
+
+  const isTrusted = (request: { device: string; address?: string }): boolean =>
+    settings.trusted.some(
+      (known) => known.name === request.device && known.address === request.address
+    )
+
+  function onPairRequest(request: {
+    device: string
+    pairingId: string
+    pin?: string
+    address?: string
+  }): void {
     const event = { type: 'PAIR_REQUEST', ...request } as const
+    // Aparelho confiável com o PIN do Horizonte: aprova sem mostrar o pedido. Se falhar, mostra como sempre.
+    if (state.screen === 'ready' && request.pin && isValidPin(request.pin) && isTrusted(request)) {
+      engine
+        .approve({ pairingId: request.pairingId, pin: request.pin, name: request.device })
+        .catch(() => dispatch(event))
+      return
+    }
     if (state.screen !== 'approve' && state.screen !== 'connected') return dispatch(event)
     // O vigia já marcou este pedido como conhecido e não o anuncia de novo: guardamos para a vez dele.
     const shown = state.screen === 'approve' && state.pairingId === request.pairingId

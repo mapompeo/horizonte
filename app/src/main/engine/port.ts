@@ -4,6 +4,7 @@ export interface PairRequest {
   device: string
   pairingId: string
   pin?: string
+  address?: string
 }
 
 export interface ApproveRequest {

@@ -16,7 +16,10 @@ export function isUiEvent(value: unknown): value is AppEvent {
     case 'RETRY':
       return true
     case 'APPROVE':
-      return candidate.pin === undefined || isValidPin(candidate.pin)
+      return (
+        (candidate.pin === undefined || isValidPin(candidate.pin)) &&
+        (candidate.trust === undefined || typeof candidate.trust === 'boolean')
+      )
     case 'CHOOSE':
       return candidate.mode === 'send' || candidate.mode === 'receive'
     case 'CONNECT':

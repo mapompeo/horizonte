@@ -24,7 +24,15 @@ export type AppState =
       progress?: PrepProgress
     }
   | { screen: 'ready'; mode: 'send' }
-  | { screen: 'approve'; mode: 'send'; device: string; pairingId: string; pin: string | null }
+  | {
+      screen: 'approve'
+      mode: 'send'
+      device: string
+      pairingId: string
+      pin: string | null
+      /** De onde veio o pedido; é o que permite confiar neste aparelho. */
+      address?: string
+    }
   | { screen: 'connected'; mode: 'send'; device: string }
   | { screen: 'discover'; mode: 'receive' }
   | { screen: 'receiving'; mode: 'receive'; host: string; name: string }
@@ -36,9 +44,9 @@ export type AppEvent =
   | { type: 'PREP_STEP'; step: PrepStep }
   | { type: 'PREP_PROGRESS'; progress: PrepProgress }
   | { type: 'PREP_DONE' }
-  | { type: 'PAIR_REQUEST'; device: string; pairingId: string; pin?: string }
+  | { type: 'PAIR_REQUEST'; device: string; pairingId: string; pin?: string; address?: string }
   | { type: 'PAIR_CANCELLED'; pairingId: string }
-  | { type: 'APPROVE'; pin?: string }
+  | { type: 'APPROVE'; pin?: string; trust?: boolean }
   | { type: 'DENY' }
   | { type: 'CLIENT_CONNECTED'; device: string }
   | { type: 'CLIENT_DISCONNECTED' }
@@ -57,6 +65,12 @@ export type Codec = 'h264' | 'hevc' | 'av1'
 /** Onde a tela estendida fica em relação às telas deste aparelho. */
 export type ExtendSide = 'left' | 'right' | 'above'
 
+/** Aparelho aprovado sozinho nos próximos pedidos: vale o nome e o endereço juntos. */
+export interface TrustedDevice {
+  name: string
+  address: string
+}
+
 export interface Settings {
   profile: ProfileId
   bitrate: number
@@ -67,6 +81,7 @@ export interface Settings {
   autostart: boolean
   deviceName: string
   extendSide: ExtendSide
+  trusted: TrustedDevice[]
   /** Último modo escolhido neste aparelho; null até a pessoa escolher pela primeira vez. */
   mode: Mode | null
 }
