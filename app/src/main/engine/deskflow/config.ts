@@ -1,12 +1,16 @@
-import type { ScreenSize } from '../../../shared/types'
+import type { MouseSide, ScreenSize } from '../../../shared/types'
 
-/** Onde o outro computador fica em relação a este, para o mouse passar de um para o outro pela borda. */
-export type MouseSide = 'left' | 'right' | 'above'
+export type { MouseSide }
 
 export const DESKFLOW_PORT = 24800
 
-const OPPOSITE: Record<MouseSide, string> = { left: 'right', right: 'left', above: 'down' }
-const EDGE: Record<MouseSide, string> = { left: 'left', right: 'right', above: 'up' }
+const EDGE: Record<MouseSide, string> = { left: 'left', right: 'right', above: 'up', below: 'down' }
+const OPPOSITE: Record<MouseSide, string> = {
+  left: 'right',
+  right: 'left',
+  above: 'down',
+  below: 'up'
+}
 
 /** Nomes do Deskflow não aceitam espaço nem caracteres especiais: troca por hífen e corta em 63. */
 export function computerName(name: string): string {
@@ -25,6 +29,8 @@ export interface EdgeRanges {
   peer: [number, number]
 }
 
+const horizontal = (side: MouseSide): boolean => side === 'above' || side === 'below'
+
 /**
  * Onde as bordas se encostam. `offset` é onde começa a borda do outro computador, em fração da borda deste
  * (0: alinhados no topo ou à esquerda; negativo: o outro começa antes). Sem `offset`, ficam centralizados.
@@ -36,8 +42,8 @@ export function edgeRanges(
   peer: ScreenSize,
   offset?: number
 ): EdgeRanges {
-  const ownEdge = side === 'above' ? own.width : own.height
-  const peerEdge = side === 'above' ? peer.width : peer.height
+  const ownEdge = horizontal(side) ? own.width : own.height
+  const peerEdge = horizontal(side) ? peer.width : peer.height
   const centered = (ownEdge - peerEdge) / 2
   const minimum = Math.min(ownEdge, peerEdge) * 0.05
   const start = Math.min(
@@ -57,34 +63,36 @@ export function edgeRanges(
 const range = ([from, to]: [number, number]): string =>
   from === 0 && to === 100 ? '' : `(${from},${to})`
 
+/** Um computador encostado neste: de que lado e em que trecho das bordas. */
+export interface DeskflowLink {
+  name: string
+  side: MouseSide
+  ranges?: EdgeRanges
+}
+
 /**
- * Layout do servidor (só as ligações; os computadores ficam nos ajustes desde o Deskflow 1.27). `side` diz onde
- * o outro computador fica: à direita, o mouse sai pela borda direita deste e entra pela esquerda do outro.
+ * Layout do servidor (só as ligações; os computadores ficam nos ajustes desde o Deskflow 1.27). Cada ligação diz
+ * onde o outro computador fica: à direita, o mouse sai pela borda direita deste e entra pela esquerda do outro.
  * `ranges` limita o trecho de cada borda que se encosta (o outro computador mais acima ou mais abaixo).
  */
-export function linksConfig(
-  server: string,
-  client: string,
-  side: MouseSide,
-  ranges: EdgeRanges = { own: [0, 100], peer: [0, 100] }
-): string {
-  const own = range(ranges.own)
-  const peer = range(ranges.peer)
-  return [
-    'section: links',
-    `\t${server}:`,
-    `\t\t${EDGE[side]}${own} = ${client}${peer}`,
-    `\t${client}:`,
-    `\t\t${OPPOSITE[side]}${peer} = ${server}${own}`,
-    'end',
-    ''
-  ].join('\n')
+export function linksConfig(server: string, links: DeskflowLink[]): string {
+  const full: EdgeRanges = { own: [0, 100], peer: [0, 100] }
+  const lines = ['section: links', `\t${server}:`]
+  for (const { name, side, ranges = full } of links)
+    lines.push(`\t\t${EDGE[side]}${range(ranges.own)} = ${name}${range(ranges.peer)}`)
+  for (const { name, side, ranges = full } of links)
+    lines.push(
+      `\t${name}:`,
+      `\t\t${OPPOSITE[side]}${range(ranges.peer)} = ${server}${range(ranges.own)}`
+    )
+  lines.push('end', '')
+  return lines.join('\n')
 }
 
 export interface ServerSettings {
   role: 'server'
   name: string
-  peerName: string
+  peerNames: string[]
   /** Caminho do arquivo de ligações, com barras normais (o Deskflow aceita no Windows também). */
   linksFile: string
 }
@@ -108,18 +116,14 @@ export function deskflowSettings(input: ServerSettings | ClientSettings): string
     'enableUpdateCheck=false'
   ]
   if (input.role === 'server') {
-    const self = computerName(input.name)
-    const peer = computerName(input.peerName)
     lines.push(
       '[server]',
       'externalConfig=true',
       `externalConfigFile=${input.linksFile.replace(/\\/g, '/')}`,
-      'enableClipboard=true',
-      `[computer_${self}]`,
-      `name=${self}`,
-      `[computer_${peer}]`,
-      `name=${peer}`
+      'enableClipboard=true'
     )
+    for (const name of [input.name, ...input.peerNames].map(computerName))
+      lines.push(`[computer_${name}]`, `name=${name}`)
   } else {
     lines.push('[client]', `remoteHost=${input.serverAddress}`)
   }

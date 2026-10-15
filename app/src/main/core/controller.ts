@@ -7,7 +7,7 @@ import type {
   Snapshot,
   TrustedDevice
 } from '../../shared/types'
-import type { EnginePort, MouseEngine } from '../engine/port'
+import type { EnginePort, MouseEngine, MousePlacement } from '../engine/port'
 import { isValidPin } from '../../shared/pin'
 import { approvalPin, reduce } from './machine'
 import { parseSettings, type SettingsStore } from './settings'
@@ -82,6 +82,17 @@ export async function createController({
     }
   }
 
+  /** Computadores com quem este PC está compartilhando o mouse (para mudar a posição durante o uso). */
+  let sharingWith: Host[] = []
+
+  /** Onde cada um fica, pelos ajustes (sem lado salvo: à direita). */
+  const placementsFor = (hosts: Host[]): MousePlacement[] =>
+    hosts.map((host) => ({
+      host,
+      side: settings.mouseSides[host.name] ?? 'right',
+      offset: settings.mouseOffsets[host.name]
+    }))
+
   function runMouseEffects(prev: AppState, next: AppState, event: AppEvent): void {
     const wasMouse = 'mode' in prev && prev.mode === 'mouse'
     const isMouse = 'mode' in next && next.mode === 'mouse'
@@ -95,14 +106,10 @@ export async function createController({
     }
     if (wasMouse && !isMouse) mouse.stop().catch(() => undefined)
     if (next.screen === 'mouse-active' && prev.screen === 'mouse' && event.type === 'MOUSE_SHARE') {
+      sharingWith = event.peers
       mouse
-        .share(
-          { name: event.name, address: event.host },
-          settings.deviceName,
-          settings.mouseSides[event.name] ?? 'right',
-          settings.mouseOffsets[event.name]
-        )
-        .catch(failIfStill(next, 'Não consegui compartilhar o mouse com esse computador.'))
+        .share(placementsFor(event.peers), settings.deviceName)
+        .catch(failIfStill(next, 'Não consegui compartilhar o mouse.'))
     }
     if (prev.screen === 'mouse-request') {
       if (event.type === 'MOUSE_ACCEPT') {
@@ -271,20 +278,19 @@ export async function createController({
       const update = settingsQueue.then(async () => {
         const next = parseSettings({ ...settings, ...patch })
         const moved = next.extendSide !== settings.extendSide
-        const sharing =
-          state.screen === 'mouse-active' && state.role === 'share' ? state.device : null
+        const sharing = state.screen === 'mouse-active' && state.role === 'share'
         const mouseMoved =
-          sharing !== null &&
-          (next.mouseSides[sharing] !== settings.mouseSides[sharing] ||
-            next.mouseOffsets[sharing] !== settings.mouseOffsets[sharing])
+          sharing &&
+          sharingWith.some(
+            ({ name }) =>
+              next.mouseSides[name] !== settings.mouseSides[name] ||
+              next.mouseOffsets[name] !== settings.mouseOffsets[name]
+          )
         await store.save(next)
         settings = { ...next, mode: settings.mode }
         notify()
         if (moved) await engine.placeDisplay?.(settings.extendSide).catch(() => undefined)
-        if (mouseMoved)
-          await mouse
-            ?.setLayout(settings.mouseSides[sharing] ?? 'right', settings.mouseOffsets[sharing])
-            .catch(() => undefined)
+        if (mouseMoved) await mouse?.setLayout(placementsFor(sharingWith)).catch(() => undefined)
         if (state.screen === 'connected' || state.screen === 'receiving') {
           // Ajuste ao vivo é melhor esforço: se falhar, a conexão segue com o valor anterior.
           await engine.applyBitrate(settings.bitrate).catch(() => undefined)

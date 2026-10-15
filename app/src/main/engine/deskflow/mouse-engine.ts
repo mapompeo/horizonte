@@ -1,7 +1,7 @@
-import type { ExtendSide, Host, ScreenSize } from '../../../shared/types'
-import { edgeRanges, type EdgeRanges } from './config'
+import type { Host, ScreenSize } from '../../../shared/types'
 import { cleanName } from '../../../shared/names'
-import type { MouseEngine } from '../port'
+import type { MouseEngine, MousePlacement } from '../port'
+import { edgeRanges, type DeskflowLink } from './config'
 import type { createFileClipboard, OfferedFile } from './files'
 import type { MouseShare } from './session'
 
@@ -29,12 +29,12 @@ export interface MouseEngineDeps {
   browse(): Promise<Host[]>
   /** Copiar e colar arquivos entre os PCs; sem ele, só o texto copiado vai junto (pelo Deskflow). */
   files?: ReturnType<typeof createFileClipboard>
+  /** Área de trabalho deste computador (todas as telas juntas), para acertar onde as bordas se encostam. */
+  ownScreen?: () => ScreenSize
   /**
    * Texto copiado que o Deskflow não leva (no GNOME antes do 51, do Linux para o outro PC não vai): `start` avisa
    * cada texto copiado aqui, `write` põe na área de transferência o que veio do outro.
    */
-  /** Área de trabalho deste computador (todas as telas juntas), para acertar onde as bordas se encostam. */
-  ownScreen?: () => ScreenSize
   text?: { start(onCopied: (text: string) => void): void; stop(): void; write(text: string): void }
 }
 
@@ -49,30 +49,35 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
   let pending: Host | null = null
   /** Nome com que o servidor do outro lado espera este PC (o Deskflow recusa nomes desconhecidos). */
   let pendingAs = ''
-  /** O outro lado do compartilhamento em andamento. */
-  let peer: Host | null = null
-  /** Compartilhamento em que este PC é o servidor: dá para trocar o lado sem encerrar. */
-  let serving: { name: string; peerName: string; screen?: ScreenSize } | null = null
+  /** Os outros lados do compartilhamento em andamento, pelo endereço (aqui servidor: vários; aqui controlado: um). */
+  const peers = new Map<string, Host>()
+  /** Compartilhamento em que este PC é o servidor: onde cada um fica, para refazer sem encerrar. */
+  let serving: { name: string; placements: MousePlacement[] } | null = null
   /** Tamanho da tela que cada computador anunciou na última procura, pelo endereço. */
   const screens = new Map<string, ScreenSize>()
-
-  /** Trechos das bordas para o lado e a posição escolhidos; sem saber o tamanho daqui, a borda inteira. */
-  const rangesFor = (
-    side: ExtendSide,
-    screen: ScreenSize | undefined,
-    offset?: number
-  ): EdgeRanges | undefined => {
-    const own = deps.ownScreen?.()
-    return own ? edgeRanges(side, own, screen ?? own, offset) : undefined
-  }
   const requestListeners = new Set<(request: { device: string; address: string }) => void>()
   const endedListeners = new Set<() => void>()
 
-  function startClipboards(other: Host): void {
-    deps.files?.start(other.address)
+  /** Ligações do Deskflow; sem saber o tamanho daqui, cada um encosta na borda inteira. */
+  function linksFor(placements: MousePlacement[]): DeskflowLink[] {
+    const own = deps.ownScreen?.()
+    return placements.map(({ host, side, offset }) => {
+      const screen = host.screen ?? screens.get(host.address)
+      return {
+        name: host.name,
+        side,
+        ...(own ? { ranges: edgeRanges(side, own, screen ?? own, offset) } : {})
+      }
+    })
+  }
+
+  function startClipboards(): void {
+    const addresses = [...peers.keys()]
+    deps.files?.start(addresses)
     deps.text?.start((text) => {
-      if (peer?.address === other.address && text.length <= MAX_TEXT_CHARS)
-        void deps.channel.send(other.address, '/mouse/text', { text }).catch(() => undefined)
+      if (text.length > MAX_TEXT_CHARS) return
+      for (const address of peers.keys())
+        void deps.channel.send(address, '/mouse/text', { text }).catch(() => undefined)
     })
   }
 
@@ -83,6 +88,33 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
 
   const notifyEnded = (): void => {
     for (const listener of [...endedListeners]) listener()
+  }
+
+  /** Encerra tudo; `tell` avisa os outros lados (quem encerrou do lado de lá não precisa). */
+  async function finish(tell: boolean): Promise<void> {
+    deps.share.stop()
+    stopClipboards()
+    const others = [...peers.keys()]
+    peers.clear()
+    serving = null
+    if (tell)
+      await Promise.all(
+        others.map((address) => deps.channel.send(address, '/mouse/end', {}).catch(() => undefined))
+      )
+  }
+
+  /** Um dos computadores saiu: segue com os outros; sem ninguém, encerra. */
+  async function leave(address: string): Promise<void> {
+    if (!serving) return
+    peers.delete(address)
+    serving.placements = serving.placements.filter((p) => p.host.address !== address)
+    if (serving.placements.length === 0) {
+      await finish(false)
+      notifyEnded()
+      return
+    }
+    await deps.share.share({ name: serving.name, links: linksFor(serving.placements) })
+    startClipboards()
   }
 
   function onMessage(path: string, body: unknown, from: string): boolean {
@@ -111,28 +143,25 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
               Number.isFinite((file as OfferedFile).size)
           )
         : []
-      if (files.length === 0 || peer?.address !== address) return false
+      if (files.length === 0 || !peers.has(address)) return false
       void deps.files?.receive(files, address).catch(() => undefined)
       return true
     }
     if (path === '/mouse/text') {
       const text =
         typeof body === 'object' && body !== null ? (body as { text?: unknown }).text : null
-      if (typeof text !== 'string' || text.length > MAX_TEXT_CHARS || peer?.address !== address)
+      if (typeof text !== 'string' || text.length > MAX_TEXT_CHARS || !peers.has(address))
         return false
       deps.text?.write(text)
       return true
     }
     if (path === '/mouse/end') {
-      // Só o outro lado da conversa pode encerrar: um terceiro na rede não derruba nada.
-      if (peer?.address === address || pending?.address === address) {
-        const wasActive = peer !== null || pending !== null
-        deps.share.stop()
-        stopClipboards()
-        peer = null
-        serving = null
+      // Só quem está na conversa pode sair dela: um terceiro na rede não derruba nada.
+      if (serving && peers.has(address)) {
+        void leave(address).catch(() => undefined)
+      } else if (peers.has(address) || pending?.address === address) {
         pending = null
-        if (wasActive) notifyEnded()
+        void finish(false).then(notifyEnded)
       }
       return true
     }
@@ -140,22 +169,8 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
   }
 
   deps.share.onEnded(() => {
-    stopClipboards()
-    const other = peer
-    peer = null
-    serving = null
-    if (other) void deps.channel.send(other.address, '/mouse/end', {}).catch(() => undefined)
-    notifyEnded()
+    void finish(true).then(notifyEnded)
   })
-
-  async function end(): Promise<void> {
-    deps.share.stop()
-    stopClipboards()
-    const other = peer
-    peer = null
-    serving = null
-    if (other) await deps.channel.send(other.address, '/mouse/end', {}).catch(() => undefined)
-  }
 
   return {
     async start(name) {
@@ -167,7 +182,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       unadvertise = deps.advertise(name)
     },
     async stop() {
-      await end()
+      await finish(true)
       pending = null
       unadvertise?.()
       unadvertise = null
@@ -178,36 +193,40 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       for (const host of found) if (host.screen) screens.set(host.address, host.screen)
       return found
     },
-    async share(other, ownName, side, offset) {
-      const screen = other.screen ?? screens.get(other.address)
-      // O servidor sobe antes do pedido: quando o outro aceitar, já há onde se conectar.
-      await deps.share.share({
-        name: ownName,
-        peerName: other.name,
-        side,
-        ranges: rangesFor(side, screen, offset)
-      })
-      serving = { name: ownName, peerName: other.name, screen }
-      peer = other
-      startClipboards(other)
-      try {
-        await deps.channel.send(other.address, '/mouse/request', {
-          device: ownName,
-          as: other.name
-        })
-      } catch {
-        await end()
+    async share(placements, ownName) {
+      if (placements.length === 0) throw new Error('Arraste um computador para perto deste.')
+      // O servidor sobe antes dos pedidos: quando cada um aceitar, já há onde se conectar.
+      await deps.share.share({ name: ownName, links: linksFor(placements) })
+      serving = { name: ownName, placements: [...placements] }
+      for (const { host } of placements) peers.set(host.address, host)
+      startClipboards()
+      const answers = await Promise.all(
+        placements.map(({ host }) =>
+          deps.channel
+            .send(host.address, '/mouse/request', { device: ownName, as: host.name })
+            .then(() => true)
+            .catch(() => false)
+        )
+      )
+      const silent = placements.filter((_, index) => !answers[index])
+      if (silent.length === placements.length) {
+        await finish(false)
         throw new Error(
-          'O outro computador não respondeu. Confira se o Horizonte está aberto no modo Mouse lá.'
+          silent.length === 1
+            ? 'O outro computador não respondeu. Confira se o Horizonte está aberto no modo Mouse lá.'
+            : 'Nenhum computador respondeu. Confira se o Horizonte está aberto no modo Mouse neles.'
         )
       }
+      // Quem não respondeu fica de fora; os outros seguem.
+      for (const { host } of silent) await leave(host.address)
     },
     async accept(ownName) {
       const other = pending
       if (!other) throw new Error('O pedido já não está mais valendo.')
       pending = null
-      peer = other
-      startClipboards(other)
+      peers.clear()
+      peers.set(other.address, other)
+      startClipboards()
       // Entra com o nome que o servidor espera: adicionado pelo IP, ele só conhece o endereço.
       await deps.share.follow({ name: pendingAs || ownName, serverAddress: other.address })
     },
@@ -216,12 +235,16 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       pending = null
       if (other) await deps.channel.send(other.address, '/mouse/end', {}).catch(() => undefined)
     },
-    async setLayout(side: ExtendSide, offset?: number) {
-      if (!serving || !peer) return
-      const { name, peerName, screen } = serving
-      await deps.share.share({ name, peerName, side, ranges: rangesFor(side, screen, offset) })
+    async setLayout(placements) {
+      if (!serving) return
+      // Só muda a posição de quem já está no compartilhamento.
+      const current = serving.placements.map(
+        (p) => placements.find((next) => next.host.address === p.host.address) ?? p
+      )
+      serving.placements = current
+      await deps.share.share({ name: serving.name, links: linksFor(current) })
     },
-    end,
+    end: () => finish(true),
     onRequest(callback) {
       requestListeners.add(callback)
       return () => requestListeners.delete(callback)

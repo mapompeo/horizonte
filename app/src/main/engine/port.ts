@@ -1,4 +1,11 @@
-import type { ExtendSide, Host, PrepProgress, PrepStep, Settings } from '../../shared/types'
+import type {
+  ExtendSide,
+  Host,
+  MouseSide,
+  PrepProgress,
+  PrepStep,
+  Settings
+} from '../../shared/types'
 
 export interface PairRequest {
   device: string
@@ -14,19 +21,26 @@ export interface ApproveRequest {
 }
 
 /** Compartilhar mouse e teclado com outro PC (Deskflow), pela rede local. */
+/** Um computador encostado neste no modo Mouse: o lado e onde começa a borda dele (fração da borda deste). */
+export interface MousePlacement {
+  host: Host
+  side: MouseSide
+  /** Sem valor: centralizado. */
+  offset?: number
+}
+
 export interface MouseEngine {
   /** Entra no modo: anuncia este PC na rede e passa a escutar pedidos. */
   start(name: string): Promise<void>
   stop(): Promise<void>
   listPeers(): Promise<Host[]>
-  /** Este PC empresta o mouse: sobe o servidor e pede ao outro que se conecte. */
   /**
-   * Empresta o mouse ao `peer`, que fica do lado `side` deste computador; `offset` é onde a borda dele começa,
-   * em fração da borda deste (sem valor, centralizado).
+   * Este PC empresta o mouse aos computadores encostados nele: sobe o servidor e pede a cada um que se conecte.
+   * Quem não responde fica de fora; se ninguém responder, falha.
    */
-  share(peer: Host, ownName: string, side: ExtendSide, offset?: number): Promise<void>
-  /** Muda onde o outro fica, sem encerrar o compartilhamento (o outro reconecta sozinho). */
-  setLayout(side: ExtendSide, offset?: number): Promise<void>
+  share(placements: MousePlacement[], ownName: string): Promise<void>
+  /** Muda onde cada um fica, sem encerrar o compartilhamento (eles reconectam sozinhos). */
+  setLayout(placements: MousePlacement[]): Promise<void>
   /** Aceita o pedido pendente: este PC passa a ser controlado. */
   accept(ownName: string): Promise<void>
   deny(): Promise<void>

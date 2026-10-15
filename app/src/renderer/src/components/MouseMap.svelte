@@ -1,135 +1,220 @@
 <script lang="ts">
-  import type { ExtendSide, ScreenSize } from '../../../shared/types'
+  import type { Host, MouseSide, ScreenSize } from '../../../shared/types'
+  import { safeName } from '../lib/copy'
 
   interface Props {
-    name: string
     own: ScreenSize
-    peer: ScreenSize
-    side: ExtendSide
-    /** Onde começa a borda do outro, em fração da borda deste; sem valor, centralizado. */
-    offset: number | undefined
-    onChange: (side: ExtendSide, offset: number) => void
+    hosts: Host[]
+    sides: Record<string, MouseSide>
+    offsets: Record<string, number>
+    /** Solto perto deste computador (`side`), ou na faixa de baixo (null: fica fora). */
+    onPlace: (name: string, place: { side: MouseSide; offset: number } | null) => void
   }
 
-  let { name, own, peer, side, offset, onChange }: Props = $props()
+  let { own, hosts, sides, offsets, onPlace }: Props = $props()
 
-  const WIDTH = 440
-  const HEIGHT = 150
-  let map = $state<HTMLDivElement | null>(null)
-  /** Enquanto arrasta, a posição fica aqui; ao soltar, vai para os ajustes. */
-  let draft = $state<{ side: ExtendSide; offset: number } | null>(null)
+  const DOCK = 64
+  let width = $state(560)
+  const height = 320
+  const area = height - DOCK
 
-  // Escala única para as duas telas, com espaço para o outro em qualquer lado.
+  /** Enquanto arrasta, o computador segue o mouse solto; só encaixa ao soltar. */
+  let drag = $state<{ name: string; x: number; y: number; dx: number; dy: number } | null>(null)
+
+  const sizeOf = (host: Host): ScreenSize => host.screen ?? own
+  const biggest = $derived(
+    hosts.reduce(
+      (max, host) => ({
+        width: Math.max(max.width, sizeOf(host).width),
+        height: Math.max(max.height, sizeOf(host).height)
+      }),
+      { width: 1, height: 1 }
+    )
+  )
+  // Escala única para todas as telas, com espaço para um computador em cada lado.
   const scale = $derived(
     Math.min(
-      (WIDTH * 0.92) / (own.width + 2 * peer.width),
-      (HEIGHT * 0.92) / (own.height + 2 * peer.height)
+      (width * 0.94) / (own.width + 2 * biggest.width),
+      (area * 0.94) / (own.height + 2 * biggest.height)
     )
   )
   const me = $derived({
     w: own.width * scale,
     h: own.height * scale,
-    x: (WIDTH - own.width * scale) / 2,
-    y: (HEIGHT - own.height * scale) / 2
+    x: (width - own.width * scale) / 2,
+    y: (area - own.height * scale) / 2
   })
-  const other = $derived({ w: peer.width * scale, h: peer.height * scale })
 
-  const edgeOf = (s: ExtendSide): { own: number; peer: number } =>
-    s === 'above' ? { own: own.width, peer: peer.width } : { own: own.height, peer: peer.height }
+  const horizontal = (side: MouseSide): boolean => side === 'above' || side === 'below'
 
   /** Mesmo limite do Deskflow: sempre sobra um pedaço encostado para o mouse passar. */
-  function clamp(s: ExtendSide, value: number): number {
-    const edge = edgeOf(s)
-    const minimum = Math.min(edge.own, edge.peer) * 0.05
-    const start = Math.min(Math.max(value * edge.own, minimum - edge.peer), edge.own - minimum)
-    return start / edge.own
+  function clamp(side: MouseSide, peer: ScreenSize, value: number): number {
+    const ownEdge = horizontal(side) ? own.width : own.height
+    const peerEdge = horizontal(side) ? peer.width : peer.height
+    const minimum = Math.min(ownEdge, peerEdge) * 0.05
+    return Math.min(Math.max(value * ownEdge, minimum - peerEdge), ownEdge - minimum) / ownEdge
   }
 
-  const current = $derived.by(() => {
-    if (draft) return draft
-    const edge = edgeOf(side)
-    return { side, offset: clamp(side, offset ?? (edge.own - edge.peer) / 2 / edge.own) }
-  })
-
-  const box = $derived.by(() => {
-    const { side: s, offset: o } = current
-    if (s === 'above') return { x: me.x + o * me.w, y: me.y - other.h }
-    return { x: s === 'left' ? me.x - other.w : me.x + me.w, y: me.y + o * me.h }
-  })
-
-  /** Encaixa na borda mais perto do ponto (o centro do outro computador). */
-  function snap(cx: number, cy: number): { side: ExtendSide; offset: number } {
-    const toLeft = Math.abs(cx - me.x)
-    const toRight = Math.abs(cx - (me.x + me.w))
-    const toTop = Math.abs(cy - me.y)
-    const s: ExtendSide =
-      cy < me.y && toTop < Math.min(toLeft, toRight)
-        ? 'above'
-        : toLeft <= toRight
-          ? 'left'
-          : 'right'
-    const o = s === 'above' ? (cx - other.w / 2 - me.x) / me.w : (cy - other.h / 2 - me.y) / me.h
-    return { side: s, offset: clamp(s, o) }
+  function boxFor(
+    host: Host,
+    side: MouseSide,
+    offset: number | undefined
+  ): { x: number; y: number } {
+    const size = sizeOf(host)
+    const w = size.width * scale
+    const h = size.height * scale
+    const edge = horizontal(side) ? [own.width, size.width] : [own.height, size.height]
+    const o = clamp(side, size, offset ?? (edge[0]! - edge[1]!) / 2 / edge[0]!)
+    if (side === 'left') return { x: me.x - w, y: me.y + o * me.h }
+    if (side === 'right') return { x: me.x + me.w, y: me.y + o * me.h }
+    if (side === 'above') return { x: me.x + o * me.w, y: me.y - h }
+    return { x: me.x + o * me.w, y: me.y + me.h }
   }
 
-  let grab: { dx: number; dy: number } | null = null
+  /** Posição de cada um: arrastando, solto; encostado, na borda; fora, enfileirado na faixa de baixo. */
+  const boxes = $derived.by(() => {
+    let dockX = 16
+    return hosts.map((host) => {
+      const name = safeName(host.name)
+      const size = sizeOf(host)
+      const w = size.width * scale
+      const h = size.height * scale
+      const side = sides[name]
+      let x: number
+      let y: number
+      if (drag?.name === name) {
+        x = drag.x - drag.dx
+        y = drag.y - drag.dy
+      } else if (side) {
+        ;({ x, y } = boxFor(host, side, offsets[name]))
+      } else {
+        // Na faixa de baixo, menores, para caberem vários.
+        const dw = Math.min(w, 90)
+        const dh = (dw / w) * h
+        x = dockX
+        y = area + (DOCK - dh) / 2
+        dockX += dw + 12
+        return { host, name, x, y, w: dw, h: dh, side: undefined }
+      }
+      return { host, name, x, y, w, h, side }
+    })
+  })
 
-  function down(event: PointerEvent): void {
-    const rect = map!.getBoundingClientRect()
-    grab = {
-      dx: event.clientX - rect.left - (box.x + other.w / 2),
-      dy: event.clientY - rect.top - (box.y + other.h / 2)
+  /** Encaixa na borda mais perto do centro solto; na faixa de baixo, fica fora. */
+  function snap(host: Host, cx: number, cy: number): { side: MouseSide; offset: number } | null {
+    if (cy > area) return null
+    const size = sizeOf(host)
+    const w = size.width * scale
+    const h = size.height * scale
+    const insideX = cx > me.x && cx < me.x + me.w
+    const insideY = cy > me.y && cy < me.y + me.h
+    let side: MouseSide
+    if (insideX && !insideY) side = cy < me.y + me.h / 2 ? 'above' : 'below'
+    else if (insideY && !insideX) side = cx < me.x + me.w / 2 ? 'left' : 'right'
+    else {
+      // Na diagonal: a borda com a menor distância.
+      const distance = {
+        left: Math.abs(cx - me.x),
+        right: Math.abs(cx - (me.x + me.w)),
+        above: Math.abs(cy - me.y),
+        below: Math.abs(cy - (me.y + me.h))
+      }
+      side = (Object.keys(distance) as MouseSide[]).reduce((a, b) =>
+        distance[a] <= distance[b] ? a : b
+      )
     }
+    const raw = horizontal(side) ? (cx - w / 2 - me.x) / me.w : (cy - h / 2 - me.y) / me.h
+    return { side, offset: clamp(side, size, raw) }
+  }
+
+  let map = $state<HTMLDivElement | null>(null)
+
+  function point(event: PointerEvent): { x: number; y: number } {
+    const rect = map!.getBoundingClientRect()
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top }
+  }
+
+  function down(event: PointerEvent, name: string, x: number, y: number): void {
+    const p = point(event)
+    drag = { name, x: p.x, y: p.y, dx: p.x - x, dy: p.y - y }
     ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
   }
 
   function move(event: PointerEvent): void {
-    if (!grab || !map) return
-    const rect = map.getBoundingClientRect()
-    draft = snap(event.clientX - rect.left - grab.dx, event.clientY - rect.top - grab.dy)
+    if (!drag) return
+    const p = point(event)
+    drag = { ...drag, x: p.x, y: p.y }
   }
 
-  function up(): void {
-    if (!grab) return
-    grab = null
-    if (draft) onChange(draft.side, draft.offset)
-    draft = null
+  function up(host: Host, w: number, h: number): void {
+    if (!drag) return
+    const cx = drag.x - drag.dx + w / 2
+    const cy = drag.y - drag.dy + h / 2
+    const name = drag.name
+    drag = null
+    onPlace(name, snap(host, cx, cy))
   }
 
-  function key(event: KeyboardEvent): void {
-    const step = { ArrowLeft: [-8, 0], ArrowRight: [8, 0], ArrowUp: [0, -4], ArrowDown: [0, 4] }[
-      event.key
-    ]
-    if (!step) return
+  function key(event: KeyboardEvent, host: Host, name: string): void {
+    const order: MouseSide[] = ['right', 'below', 'left', 'above']
+    const side = sides[name]
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault()
+      onPlace(name, null)
+      return
+    }
+    if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
-    const next = snap(box.x + other.w / 2 + step[0]!, box.y + other.h / 2 + step[1]!)
-    onChange(next.side, next.offset)
+    // Enter: passa para o próximo lado (fora → direita → embaixo → esquerda → acima → fora).
+    const next = side ? order[order.indexOf(side) + 1] : order[0]
+    if (!next) return onPlace(name, null)
+    const size = sizeOf(host)
+    const edge = horizontal(next) ? [own.width, size.width] : [own.height, size.height]
+    onPlace(name, { side: next, offset: (edge[0]! - edge[1]!) / 2 / edge[0]! })
   }
 
-  const label = $derived({ left: 'à esquerda', right: 'à direita', above: 'acima' }[current.side])
+  const SIDE_TEXT: Record<MouseSide, string> = {
+    left: 'à esquerda',
+    right: 'à direita',
+    above: 'acima',
+    below: 'embaixo'
+  }
 </script>
 
-<div class="mouse-map" bind:this={map} style="--w: {WIDTH}px; --h: {HEIGHT}px">
+<div
+  class="mouse-map"
+  bind:this={map}
+  bind:clientWidth={width}
+  style="--h: {height}px; --dock: {DOCK}px"
+>
   <div
     class="map-screen map-own"
     style="left: {me.x}px; top: {me.y}px; width: {me.w}px; height: {me.h}px"
   >
     Este computador
   </div>
-  <div
-    class="map-screen map-peer"
-    role="slider"
-    tabindex="0"
-    aria-label="Posição de {name}: arraste ou use as setas"
-    aria-valuetext="{name} {label}"
-    aria-valuenow={Math.round(current.offset * 100)}
-    style="left: {box.x}px; top: {box.y}px; width: {other.w}px; height: {other.h}px"
-    onpointerdown={down}
-    onpointermove={move}
-    onpointerup={up}
-    onpointercancel={up}
-    onkeydown={key}
-  >
-    {name}
+  <div class="map-dock">
+    {#if boxes.every((box) => box.side)}<span>Solte aqui para deixar de fora</span>{/if}
   </div>
+  {#each boxes as box (box.host.address)}
+    <div
+      class="map-screen map-peer"
+      class:map-out={!box.side && drag?.name !== box.name}
+      class:map-dragging={drag?.name === box.name}
+      role="button"
+      tabindex="0"
+      aria-label="{box.name}, {box.side
+        ? SIDE_TEXT[box.side]
+        : 'fora'}. Arraste até a borda deste computador. Enter troca o lado, Delete deixa de fora."
+      style="left: {box.x}px; top: {box.y}px; width: {box.w}px; height: {box.h}px"
+      onpointerdown={(event) => down(event, box.name, box.x, box.y)}
+      onpointermove={move}
+      onpointerup={() =>
+        up(box.host, sizeOf(box.host).width * scale, sizeOf(box.host).height * scale)}
+      onpointercancel={() => (drag = null)}
+      onkeydown={(event) => key(event, box.host, box.name)}
+    >
+      {box.name}
+    </div>
+  {/each}
 </div>

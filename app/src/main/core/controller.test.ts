@@ -674,12 +674,18 @@ describe('modo Mouse', () => {
       start: async (name) => void calls.push(`start:${name}`),
       stop: async () => void calls.push('stop'),
       listPeers: async () => [{ name: 'Notebook', address: '192.168.1.6' }],
-      share: async (peer, _own, side) =>
+      share: async (placements) =>
         void calls.push(
-          side === 'right' ? `share:${peer.address}` : `share:${peer.address}:${side}`
+          ...placements.map(({ host, side }) =>
+            side === 'right' ? `share:${host.address}` : `share:${host.address}:${side}`
+          )
         ),
-      setLayout: async (side, offset) =>
-        void calls.push(offset === undefined ? `side:${side}` : `side:${side}:${offset}`),
+      setLayout: async (placements) =>
+        void calls.push(
+          ...placements.map(({ side, offset }) =>
+            offset === undefined ? `side:${side}` : `side:${side}:${offset}`
+          )
+        ),
       accept: async () => void calls.push('accept'),
       deny: async () => void calls.push('deny'),
       end: async () => void calls.push('end'),
@@ -715,7 +721,10 @@ describe('modo Mouse', () => {
     const { controller, mouse } = await mouseSetup()
     controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
     expect(screen(controller)).toBe('mouse')
-    controller.dispatch({ type: 'MOUSE_SHARE', host: '192.168.1.6', name: 'Notebook' })
+    controller.dispatch({
+      type: 'MOUSE_SHARE',
+      peers: [{ name: 'Notebook', address: '192.168.1.6' }]
+    })
     expect(screen(controller)).toBe('mouse-active')
     controller.dispatch({ type: 'STOP' })
     expect(screen(controller)).toBe('mouse')
@@ -751,7 +760,10 @@ describe('modo Mouse', () => {
     const { controller, mouse } = await mouseSetup()
     await controller.updateSettings({ mouseSides: { Notebook: 'left' } })
     controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
-    controller.dispatch({ type: 'MOUSE_SHARE', host: '192.168.1.6', name: 'Notebook' })
+    controller.dispatch({
+      type: 'MOUSE_SHARE',
+      peers: [{ name: 'Notebook', address: '192.168.1.6' }]
+    })
     await controller.updateSettings({ mouseSides: { Notebook: 'above' } })
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(mouse.calls).toContain('share:192.168.1.6:left')

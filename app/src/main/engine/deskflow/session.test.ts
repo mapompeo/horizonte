@@ -44,7 +44,10 @@ function harness(command = { command: 'deskflow-core.exe', prefix: [] as string[
 describe('createMouseShare', () => {
   it('emprestar o mouse grava as ligações e os ajustes e sobe o servidor', async () => {
     const h = harness()
-    await createMouseShare(h.deps).share({ name: 'Desktop', peerName: 'Notebook', side: 'right' })
+    await createMouseShare(h.deps).share({
+      name: 'Desktop',
+      links: [{ name: 'Notebook', side: 'right' }]
+    })
     expect(h.files.get('/dados/deskflow/links.conf')).toContain('right = Notebook')
     expect(h.files.get('/dados/deskflow/server.conf')).toContain('coreMode=2')
     expect(h.spawned[0]?.args).toEqual([
@@ -76,7 +79,7 @@ describe('createMouseShare', () => {
     const share = createMouseShare(h.deps)
     const ended = vi.fn()
     share.onEnded(ended)
-    await share.share({ name: 'Desktop', peerName: 'Notebook', side: 'left' })
+    await share.share({ name: 'Desktop', links: [{ name: 'Notebook', side: 'left' }] })
     await share.follow({ name: 'Desktop', serverAddress: '10.0.0.2' })
     expect(h.spawned[0]?.proc.killed).toBe(true)
     share.stop()

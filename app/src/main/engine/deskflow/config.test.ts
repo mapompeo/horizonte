@@ -11,21 +11,34 @@ describe('computerName', () => {
 
 describe('linksConfig', () => {
   it('à direita: sai pela borda direita deste e entra pela esquerda do outro', () => {
-    expect(linksConfig('Desktop', 'Notebook', 'right')).toBe(
+    expect(linksConfig('Desktop', [{ name: 'Notebook', side: 'right' }])).toBe(
       'section: links\n\tDesktop:\n\t\tright = Notebook\n\tNotebook:\n\t\tleft = Desktop\nend\n'
     )
   })
 
   it('acima: sai pela borda de cima e volta por baixo do outro', () => {
-    const links = linksConfig('Desktop', 'Notebook', 'above')
+    const links = linksConfig('Desktop', [{ name: 'Notebook', side: 'above' }])
     expect(links).toContain('\t\tup = Notebook')
     expect(links).toContain('\t\tdown = Desktop')
   })
 
   it('com trecho: só aquele pedaço de cada borda se encosta, nos dois sentidos', () => {
-    const links = linksConfig('Desktop', 'Suntrans', 'left', { own: [20, 80], peer: [0, 100] })
+    const links = linksConfig('Desktop', [
+      { name: 'Suntrans', side: 'left', ranges: { own: [20, 80], peer: [0, 100] } }
+    ])
     expect(links).toContain('\t\tleft(20,80) = Suntrans')
     expect(links).toContain('\t\tright = Desktop(20,80)')
+  })
+
+  it('vários computadores, inclusive embaixo: cada um na sua borda, e cada um volta para este', () => {
+    const links = linksConfig('Desktop', [
+      { name: 'Suntrans', side: 'left' },
+      { name: 'Notebook', side: 'below' }
+    ])
+    expect(links).toBe(
+      'section: links\n\tDesktop:\n\t\tleft = Suntrans\n\t\tdown = Notebook\n' +
+        '\tSuntrans:\n\t\tright = Desktop\n\tNotebook:\n\t\tup = Desktop\nend\n'
+    )
   })
 })
 
@@ -62,13 +75,14 @@ describe('deskflowSettings', () => {
     const ini = deskflowSettings({
       role: 'server',
       name: 'Desktop',
-      peerName: 'Notebook da Ana',
+      peerNames: ['Notebook da Ana', 'Suntrans'],
       linksFile: 'C:\\Users\\ana\\links.conf'
     })
     expect(ini).toContain('coreMode=2')
     expect(ini).toContain('externalConfigFile=C:/Users/ana/links.conf')
     expect(ini).toContain('[computer_Desktop]\nname=Desktop')
     expect(ini).toContain('[computer_Notebook-da-Ana]\nname=Notebook-da-Ana')
+    expect(ini).toContain('[computer_Suntrans]\nname=Suntrans')
     expect(ini).toContain('enableClipboard=true')
   })
 
