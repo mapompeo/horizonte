@@ -26,14 +26,14 @@ export const VIRTUAL_DISPLAY_DRIVER: PinnedArtifact = {
 }
 
 /**
- * Moonlight Qt 6.1.0, versão portátil (zip, sem instalador nem administrador). A API não publica hash;
- * este foi calculado em 03/10/2026 sobre o arquivo baixado.
+ * Moonlight 6.1.0 do Horizonte (engines/moonlight), versão portátil: pareia sem avisos e abre sem o texto de início.
+ * Compilado pelo CI do projeto e publicado na release motores-hz1; hash publicado pela API do GitHub.
  */
 export const MOONLIGHT: PinnedArtifact = {
-  version: '6.1.0',
-  fileName: 'MoonlightPortable-x64-6.1.0.zip',
-  url: 'https://github.com/moonlight-stream/moonlight-qt/releases/download/v6.1.0/MoonlightPortable-x64-6.1.0.zip',
-  sha256: '95f4d0853a31c7fced4b6d233ddf55ee41720963f2e2620a9cb49a21d112aed1'
+  version: '6.1.0-hz1',
+  fileName: 'MoonlightPortable-horizonte-x64.zip',
+  url: 'https://github.com/mapompeo/horizonte/releases/download/motores-hz1/MoonlightPortable-horizonte-x64.zip',
+  sha256: '48322a9ebbc0cd7449d474917687b0614524d99299edb7207516f8c1c2d20853'
 }
 
 /**

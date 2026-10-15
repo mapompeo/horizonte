@@ -470,6 +470,14 @@ describe('ajustes e assinantes', () => {
     expect(seen).toEqual([33])
   })
 
+  it('mudar a posição da tela estendida reposiciona na hora; outro ajuste não mexe nela', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    await controller.updateSettings({ bitrate: 40 })
+    expect(engine.calls.some((call) => call.startsWith('place:'))).toBe(false)
+    await controller.updateSettings({ extendSide: 'left' })
+    expect(engine.calls).toContain('place:left')
+  })
+
   it('o perfil não pode ser forçado pelo patch', async () => {
     const { controller } = await setup({ screen: 'ready', mode: 'send' })
     const next = await controller.updateSettings({ profile: 'maximo', bitrate: 10 } as never)

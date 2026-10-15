@@ -1,4 +1,4 @@
-import type { PrepProgress } from '../../shared/types'
+import type { ExtendSide, PrepProgress } from '../../shared/types'
 import type { SunshineDisplay } from '../engine/sunshine/log'
 
 export interface SunshineCredentials {
@@ -17,4 +17,10 @@ export interface EngineInstaller {
 export interface VirtualDisplay {
   ensureVirtualDisplay(signal?: AbortSignal): Promise<void>
   isVirtual(display: SunshineDisplay): boolean
+  /** Põe a tela estendida à esquerda, à direita ou acima das telas deste aparelho. */
+  place?(side: ExtendSide): Promise<void>
+  /** Chaves extras do Sunshine para esta tela (no Wayland: captura pelo portal). */
+  config?(): Record<string, string>
+  /** Saída já conhecida, sem procurar na lista do Sunshine (o portal cria o monitor só ao transmitir). */
+  outputName?(): string | null
 }

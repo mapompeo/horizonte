@@ -1,4 +1,4 @@
-import type { Host, PrepStep } from '../../shared/types'
+import type { Host, PrepStep, ExtendSide } from '../../shared/types'
 import type { ApproveRequest, EnginePort, PairRequest } from './port'
 
 type Callback<A extends unknown[]> = (...args: A) => void
@@ -107,6 +107,10 @@ export class FakeEngine implements EnginePort {
 
   async applyBitrate(mbps: number): Promise<void> {
     this.calls.push(`bitrate:${mbps}`)
+  }
+
+  async placeDisplay(side: ExtendSide): Promise<void> {
+    this.calls.push(`place:${side}`)
   }
 
   onPairRequest(callback: (request: PairRequest) => void): () => void {

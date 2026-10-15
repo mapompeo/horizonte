@@ -1,5 +1,5 @@
 import type { PinChannel } from '../pin-channel'
-import type { PrepProgress, PrepStep, Settings } from '../../../shared/types'
+import type { ExtendSide, PrepProgress, PrepStep, Settings } from '../../../shared/types'
 import {
   chooseEncoder,
   GPU_ENCODERS,
@@ -145,6 +145,9 @@ export class SunshineEngine implements ServerEngine {
     report('Procurando o monitor virtual', PROGRESS_AFTER_INSTALL)
     await this.deps.display.ensureVirtualDisplay(preparation.signal)
     if (!alive()) return
+    // A posição é conforto: se o sistema recusar, a tela continua estendida onde estava.
+    await this.placeDisplay(settings.extendSide).catch(() => undefined)
+    if (!alive()) return
     const restartAndRead = this.restarter(api)
     const displayId = await this.findVirtualDisplay(restartAndRead, alive)
     if (!alive()) return
@@ -206,6 +209,8 @@ export class SunshineEngine implements ServerEngine {
   ): Promise<string> {
     const find = (log: string): string | null =>
       parseDisplays(log).find((display) => this.deps.display.isVirtual(display))?.deviceId ?? null
+    const known = this.deps.display.outputName?.()
+    if (known != null) return known
 
     let id = find(await this.deps.readLog())
     if (!alive()) return ''
@@ -266,7 +271,11 @@ export class SunshineEngine implements ServerEngine {
     displayId: string,
     chosen: ChosenEncoder | null
   ): Record<string, string> {
-    const base = { sunshine_name: settings.deviceName, output_name: displayId }
+    const base = {
+      sunshine_name: settings.deviceName,
+      output_name: displayId,
+      ...this.deps.display.config?.()
+    }
     if (settings.encoding === 'cpu') return { ...base, encoder: 'software' }
     // Sem confirmação de GPU deixamos o Sunshine decidir sozinho (ele cai para software se precisar).
     const candidate = chosen?.candidate ?? GPU_ENCODERS[0]!
@@ -395,6 +404,10 @@ export class SunshineEngine implements ServerEngine {
     } catch (cause) {
       throw friendly(cause)
     }
+  }
+
+  async placeDisplay(side: ExtendSide): Promise<void> {
+    await this.deps.display.place?.(side)
   }
 
   /** O Sunshine só lê o limite ao iniciar uma sessão; vale na próxima conexão. */

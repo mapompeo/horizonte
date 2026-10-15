@@ -34,7 +34,13 @@ export const createProbe = (): LinuxProbe => ({
   sunshineResponding: () => succeeds('ss -ltn | grep -q ":47990 "'),
   monitorPresent: () => succeeds(`xrandr --listmonitors | grep -q ${MONITOR_NAME}`),
   firewallReady: () =>
-    succeeds('! systemctl is-active --quiet ufw || test -e ~/.config/horizonte/firewall-ok-v2')
+    succeeds('! systemctl is-active --quiet ufw || test -e ~/.config/horizonte/firewall-ok-v2'),
+  sunshinePatched: () => succeeds('grep -q -a SUNSHINE_PORTAL_VIRTUAL "$(command -v sunshine)"'),
+  // AvailableSourceTypes é um bitmask: 4 = monitor virtual.
+  portalVirtualSupported: () =>
+    succeeds(
+      't=$(busctl --user get-property org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop org.freedesktop.portal.ScreenCast AvailableSourceTypes | cut -d" " -f2) && [ $((t & 4)) -ne 0 ]'
+    )
 })
 
 /** Devolve o caminho do Moonlight no Linux, baixando o AppImage na primeira vez (sem administrador). */

@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { cleanName } from '../../shared/names'
 import { clampBitrate, profileFor } from '../../shared/quality'
-import type { Codec, Encoding, Fps, Resolution, Settings } from '../../shared/types'
+import type { Codec, Encoding, ExtendSide, Fps, Resolution, Settings } from '../../shared/types'
 
 export const DEFAULT_SETTINGS: Settings = {
   profile: 'equilibrado',
@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: Settings = {
   codec: 'h264',
   autostart: true,
   deviceName: 'Dispositivo',
+  extendSide: 'right',
   mode: null
 }
 
@@ -46,6 +47,11 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
     encoding: oneOf<Encoding>(input.encoding, ['auto', 'gpu', 'cpu'], DEFAULT_SETTINGS.encoding),
     codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
     autostart: typeof input.autostart === 'boolean' ? input.autostart : DEFAULT_SETTINGS.autostart,
+    extendSide: oneOf<ExtendSide>(
+      input.extendSide,
+      ['left', 'right', 'above'],
+      DEFAULT_SETTINGS.extendSide
+    ),
     deviceName: name || defaultName,
     mode:
       input.mode === 'send' || input.mode === 'receive' || input.mode === 'mouse'

@@ -111,6 +111,56 @@ describe('preparar: caminho feliz', () => {
     expect(t.mem.box.value).toEqual({ encoder: 'gpu-lowlatency_high_quality' })
   })
 
+  it('saída já conhecida (portal do Wayland): não procura monitor no log e grava as chaves extras', async () => {
+    const process = new FakeSunshineProcess() // sem nenhum monitor na lista
+    process.rebuildLog()
+    const engine = new SunshineEngine({
+      installer: { ensureInstalled: async () => undefined },
+      display: {
+        ensureVirtualDisplay: async () => undefined,
+        isVirtual: () => false,
+        outputName: () => '0',
+        config: () => ({ capture: 'portal' })
+      },
+      memory: memory().api,
+      credentials: async () => ({ username: 'horizonte', password: PASSWORD, port: 47989 }),
+      createApi: () => process,
+      readLog: () => process.readLog(),
+      sleep: async () => process.tick(),
+      timing: { reachableTimeoutMs: 5000, restartTimeoutMs: 10_000, pollMs: 500 }
+    })
+    await engine.prepare(() => undefined, DEFAULT_SETTINGS)
+    expect(process.config.output_name).toBe('0')
+    expect(process.config.capture).toBe('portal')
+  })
+
+  it('põe a tela estendida na posição escolhida, e uma recusa do sistema não derruba a preparação', async () => {
+    const process = new FakeSunshineProcess()
+    process.displays.push(VIRTUAL)
+    process.rebuildLog()
+    const placed: string[] = []
+    const engine = new SunshineEngine({
+      installer: { ensureInstalled: async () => undefined },
+      display: {
+        ensureVirtualDisplay: async () => undefined,
+        isVirtual: (display) => display.friendlyName === 'VDD by MTT',
+        place: async (side) => {
+          placed.push(side)
+          throw new Error('o sistema recusou')
+        }
+      },
+      memory: memory().api,
+      credentials: async () => ({ username: 'horizonte', password: PASSWORD, port: 47989 }),
+      createApi: () => process,
+      readLog: () => process.readLog(),
+      sleep: async () => process.tick(),
+      timing: { reachableTimeoutMs: 5000, restartTimeoutMs: 10_000, pollMs: 500 }
+    })
+    await engine.prepare(() => undefined, { ...DEFAULT_SETTINGS, extendSide: 'above' })
+    expect(placed).toEqual(['above'])
+    expect(process.config.output_name).toBe('{vdd}')
+  })
+
   it('o caso da RX 580: lowlatency falha, transcoding passa e fica gravado', async () => {
     const t = setup()
     t.process.hardwareWorksWith = new Set(['transcoding'])

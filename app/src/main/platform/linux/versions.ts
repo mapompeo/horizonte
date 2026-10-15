@@ -3,7 +3,8 @@ import type { PinnedArtifact } from '../windows/versions'
 export type PackageKind = 'deb' | 'rpm-dnf' | 'rpm-zypper' | 'pacman'
 
 /** Pacote do motor de transmissão, com o gerenciador que sabe instalá-lo. */
-export type LinuxPackage = PinnedArtifact & { kind: PackageKind }
+/** `horizonte`: o Sunshine do Horizonte (engines/sunshine), que estende a tela no Wayland. */
+export type LinuxPackage = PinnedArtifact & { kind: PackageKind; horizonte?: true }
 
 /**
  * Sunshine 2026.914.233613 (x64) para as famílias Debian, Fedora, openSUSE e Arch. O hash é o `digest` que a
@@ -26,10 +27,35 @@ const fedora = (release: string, sha256: string): LinuxPackage =>
 const suse = (flavor: string, sha256: string): LinuxPackage =>
   pin('rpm-zypper', `Sunshine-${VERSION}-1.suse.${flavor}.x86_64.rpm`, sha256)
 
+/**
+ * Sunshine do Horizonte (2026.914.233613 + patches de engines/sunshine), compilado pelo CI do projeto e publicado
+ * na release motores-hz1. Hash publicado pela API do GitHub.
+ */
+const horizonteDeb = (ubuntu: string, sha256: string): LinuxPackage => {
+  const fileName = `sunshine-horizonte-ubuntu${ubuntu}-amd64.deb`
+  return {
+    kind: 'deb',
+    horizonte: true,
+    version: '2026.914.2336131',
+    fileName,
+    url: `https://github.com/mapompeo/horizonte/releases/download/motores-hz1/${fileName}`,
+    sha256
+  }
+}
+
 const UBUNTU: Record<string, LinuxPackage> = {
-  '22.04': deb('ubuntu22.04', 'c7645396027b0601a09d49de89674b80b3c9ac7a3dffe0d52703738dab072f1c'),
-  '24.04': deb('ubuntu24.04', 'c38e9c705f650f8705f61702717e99bec34044c5028fcb8f23a08fe041292c21'),
-  '26.04': deb('ubuntu26.04', 'b8a8ceeeb2b3f30a18a994ad268c94e0c91170f33a864c7aad31eed927ad7d47'),
+  '22.04': horizonteDeb(
+    '22.04',
+    '94894e6e31b0e2aaacbb67ee99bdf62cdd7cdf82f952396478fcfefbd94e5d23'
+  ),
+  '24.04': horizonteDeb(
+    '24.04',
+    '9bcd26121324f0683deb3d5e20ecbf1e90bfc76dae93a063f58736615414b248'
+  ),
+  '26.04': horizonteDeb(
+    '26.04',
+    '3aafe5ae4a481fc443928cf9948d7dad8bf4906f62fb781ed1c1a7e63794add2'
+  ),
   '26.10': deb('ubuntu26.10', '1cedccbf3ce7836f1e83a74c23dd8dd7b49e2a0d341198f5b3ca47145244aedd')
 }
 /** Derivados do Ubuntu (Mint, Pop!_OS, Zorin...) trazem o VERSION_ID próprio; o codinome do Ubuntu base é o que vale. */
@@ -103,12 +129,12 @@ export function sunshinePackageFor(osRelease: string, arch: string): LinuxPackag
 }
 
 /**
- * Moonlight 6.1.0 (AppImage) para receber a tela. A API do GitHub não publica o hash deste arquivo: o SHA-256
- * foi calculado baixando o arquivo em 07/10/2026 e fica fixo aqui; qualquer outro conteúdo é recusado.
+ * Moonlight 6.1.0 do Horizonte (AppImage, engines/moonlight) para receber a tela. Compilado pelo CI do projeto
+ * e publicado na release motores-hz1; hash publicado pela API do GitHub.
  */
 export const MOONLIGHT_LINUX_APPIMAGE: PinnedArtifact = {
-  version: '6.1.0',
-  fileName: 'Moonlight-6.1.0-x86_64.AppImage',
-  url: 'https://github.com/moonlight-stream/moonlight-qt/releases/download/v6.1.0/Moonlight-6.1.0-x86_64.AppImage',
-  sha256: '0e855ffd22d407e18ab5fdb575fed5f01ca119a3f91993c5f0213f15ac80b400'
+  version: '6.1.0-hz1',
+  fileName: 'Moonlight-horizonte-x86_64.AppImage',
+  url: 'https://github.com/mapompeo/horizonte/releases/download/motores-hz1/Moonlight-horizonte-x86_64.AppImage',
+  sha256: '1e6e0fdd004a60953710f531ad4d5c403614ded7814eccea56c9d825bbf07b4f'
 }

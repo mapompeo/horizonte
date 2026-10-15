@@ -5,6 +5,7 @@ import { SunshineApi } from '../../engine/sunshine/api'
 import type { SunshineCredentials } from '../types'
 import { downloadVerified } from './download'
 import { createElevation, runWithUac } from './elevation'
+import { placementScript } from './placement'
 import { createProbe, runPowerShell } from './probes'
 import { createCredentialVault, type Cipher } from './secrets'
 import { createWindowsSetup } from './setup'
@@ -93,6 +94,12 @@ export function createWindowsPlatform(deps: {
 
   return {
     ...setup,
+    display: {
+      ...setup.display,
+      place: async (side) => {
+        await runPowerShell(placementScript(side), 30_000)
+      }
+    },
     restart,
     createApi,
     credentials: async (): Promise<SunshineCredentials> => {

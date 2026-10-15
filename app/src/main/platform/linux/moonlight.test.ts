@@ -17,7 +17,7 @@ function setup(installed = false): {
   const files = new Set<string>()
   const downloads: string[] = []
   const scripts: string[] = []
-  if (installed) files.add('/home/ana/.config/horizonte/moonlight/Moonlight.AppImage')
+  if (installed) files.add('/home/ana/.config/horizonte/moonlight/Moonlight-6.1.0.AppImage')
   return {
     files,
     downloads,
@@ -57,7 +57,7 @@ describe('ensureMoonlightLinux', () => {
   it('baixa o AppImage para a pasta do Horizonte, deixa executável e devolve o caminho', async () => {
     const { deps, downloads, scripts } = setup()
     const path = await ensureMoonlightLinux(deps)
-    expect(path).toBe('/home/ana/.config/horizonte/moonlight/Moonlight.AppImage')
+    expect(path).toBe('/home/ana/.config/horizonte/moonlight/Moonlight-6.1.0.AppImage')
     expect(downloads).toHaveLength(1)
     expect(scripts.join('\n')).toContain('chmod +x')
   })
@@ -80,5 +80,15 @@ describe('ensureMoonlightLinux', () => {
     const seen: number[] = []
     await ensureMoonlightLinux(deps, (f) => seen.push(f))
     expect(seen.at(-1)).toBe(1)
+  })
+})
+
+describe('troca de versão', () => {
+  it('versão nova do Moonlight baixa de novo, mesmo com a antiga na pasta', async () => {
+    const { deps, downloads } = setup(true)
+    await ensureMoonlightLinux({ ...deps, artifact: { ...ARTIFACT, version: '6.1.0-hz1' } })
+    expect(downloads).toEqual([
+      '/home/ana/.config/horizonte/moonlight/Moonlight-6.1.0-hz1.AppImage'
+    ])
   })
 })

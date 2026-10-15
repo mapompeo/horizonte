@@ -1,6 +1,13 @@
 <script lang="ts">
   import { PROFILES } from '../../../shared/quality'
-  import type { Codec, Encoding, Fps, Resolution, Settings } from '../../../shared/types'
+  import type {
+    Codec,
+    Encoding,
+    ExtendSide,
+    Fps,
+    Resolution,
+    Settings
+  } from '../../../shared/types'
   import { closeSettings, patchSettings } from '../lib/actions'
   import CopyButton from '../components/CopyButton.svelte'
   import ReportButton from '../components/ReportButton.svelte'
@@ -102,6 +109,21 @@
             onChange={(checked) => patchSettings({ autostart: checked })}
           />
         </div>
+        {#if window.horizonte.platform !== 'darwin'}
+          <div class="adv-block">
+            <span class="adv-label">Posição da tela estendida</span>
+            <Segmented
+              label="Posição da tela estendida"
+              value={settings.extendSide}
+              options={[
+                { value: 'left', text: 'Esquerda' },
+                { value: 'above', text: 'Acima' },
+                { value: 'right', text: 'Direita' }
+              ]}
+              onSelect={(value) => patchSettings({ extendSide: value as ExtendSide })}
+            />
+          </div>
+        {/if}
         <div class="row">
           <span>Nome deste dispositivo</span>
           <span class="row-value">{settings.deviceName}</span>

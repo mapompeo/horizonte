@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createLinuxSetup,
   MIRROR_NOTE,
+  PORTAL_VIRTUAL_SCRIPT,
   shQuote,
   SUNSHINE_UNIT,
   VIRTUAL_MONITOR_SCRIPT,
@@ -12,14 +13,22 @@ import { sessionKind } from './session'
 import { sunshinePackageFor } from './versions'
 
 const UBUNTU_2404 = 'NAME="Ubuntu"\nVERSION_ID="24.04"\nID=ubuntu\n'
+const DEBIAN_13 = 'ID=debian\nVERSION_ID="13"\n'
 
 describe('sunshinePackageFor', () => {
   it('escolhe o pacote do Ubuntu da pessoa, com hash fixo', () => {
     const pkg = sunshinePackageFor(UBUNTU_2404, 'x64')
     expect(pkg.kind).toBe('deb')
-    expect(pkg.fileName).toBe('sunshine_2026.914.233613-1+ubuntu24.04_amd64.deb')
-    expect(pkg.url).toContain('%2B') // o "+" do nome vai codificado na URL
+    expect(pkg.fileName).toBe('sunshine-horizonte-ubuntu24.04-amd64.deb')
+    expect(pkg.horizonte).toBe(true)
+    expect(pkg.url).toBe(
+      'https://github.com/mapompeo/horizonte/releases/download/motores-hz1/sunshine-horizonte-ubuntu24.04-amd64.deb'
+    )
     expect(pkg.sha256).toMatch(/^[0-9a-f]{64}$/)
+    // O 26.10 ainda usa o Sunshine oficial (sem patch): o "+" do nome vai codificado na URL.
+    const official = sunshinePackageFor('ID=ubuntu\nVERSION_ID="26.10"\n', 'x64')
+    expect(official.horizonte).toBeUndefined()
+    expect(official.url).toContain('%2B')
   })
 
   const pick = (text: string): string => sunshinePackageFor(text, 'x64').fileName
@@ -90,6 +99,8 @@ function harness(
     responding?: boolean
     monitor?: boolean
     firewall?: boolean
+    portal?: boolean
+    virtual?: boolean
     stored?: boolean
     env?: Record<string, string>
   } = {}
@@ -104,7 +115,9 @@ function harness(
       serviceActive: async () => options.active ?? false,
       sunshineResponding: async () => options.responding ?? false,
       monitorPresent: async () => options.monitor ?? false,
-      firewallReady: async () => options.firewall ?? true
+      firewallReady: async () => options.firewall ?? true,
+      sunshinePatched: async () => options.portal ?? false,
+      portalVirtualSupported: async () => options.virtual ?? true
     },
     vault: {
       load: async () =>
@@ -114,7 +127,8 @@ function harness(
     download,
     runPrivileged: async (script) => void privileged.push(script),
     runUser: async (script) => void user.push(script),
-    packageForThisSystem: () => sunshinePackageFor(UBUNTU_2404, 'x64'),
+    // Debian 13 usa o Sunshine oficial: os testes de "já instalado" não disparam a troca pelo do Horizonte.
+    packageForThisSystem: () => sunshinePackageFor(DEBIAN_13, 'x64'),
     env: options.env ?? { XDG_SESSION_TYPE: 'x11' },
     waitForApi: async () => undefined,
     generatePassword: () => 'senha-nova',
@@ -350,6 +364,42 @@ describe('createLinuxSetup', () => {
     expect(setup.display.isVirtual({ ...fakeDisplay('HDMI-1'), originX: 1920 })).toBe(false)
   })
 
+  it('Wayland com o Sunshine do Horizonte: liga o monitor virtual do portal em vez de espelhar', async () => {
+    const h = harness({ env: { XDG_SESSION_TYPE: 'wayland' }, portal: true })
+    const notes: string[] = []
+    const setup = createLinuxSetup(h.deps)
+    await setup.installer.ensureInstalled((p) => notes.push(p.note))
+    expect(h.user).toContain(PORTAL_VIRTUAL_SCRIPT)
+    expect(notes).not.toContain(MIRROR_NOTE)
+    expect(setup.display.config?.()).toEqual({ capture: 'portal' })
+    expect(setup.display.outputName?.()).toBe('0')
+  })
+
+  it('Wayland sem monitor virtual no portal (ex.: alguns ambientes): espelha, mesmo com o Sunshine do Horizonte', async () => {
+    const h = harness({ env: { XDG_SESSION_TYPE: 'wayland' }, portal: true, virtual: false })
+    const notes: string[] = []
+    const setup = createLinuxSetup(h.deps)
+    await setup.installer.ensureInstalled((p) => notes.push(p.note))
+    expect(notes).toContain(MIRROR_NOTE)
+    expect(h.user).not.toContain(PORTAL_VIRTUAL_SCRIPT)
+    expect(setup.display.config?.()).toEqual({})
+  })
+
+  it('o ajuste do portal só reinicia o serviço quando é novo', () => {
+    expect(PORTAL_VIRTUAL_SCRIPT).toContain('if ! grep -qx "$line" "$file"')
+    expect(PORTAL_VIRTUAL_SCRIPT).toContain('Environment=SUNSHINE_PORTAL_VIRTUAL=1')
+    // O shell recebe "\n" escrito, e o printf transforma em quebra de linha.
+    expect(PORTAL_VIRTUAL_SCRIPT).toContain("printf '[Service]\\n%s\\n'")
+  })
+
+  it('Xorg não usa o portal: sem captura extra nem saída fixa', async () => {
+    const h = harness({ portal: true })
+    const setup = createLinuxSetup(h.deps)
+    await setup.installer.ensureInstalled()
+    expect(setup.display.config?.()).toEqual({})
+    expect(setup.display.outputName?.()).toBeNull()
+  })
+
   it('Xorg que recusa o monitor virtual também cai no espelho, sem erro', async () => {
     const h = harness({ installed: true, active: true, responding: true, stored: true })
     h.deps.runUser = async (script) => {
@@ -416,6 +466,29 @@ describe('createLinuxSetup', () => {
   it('firewall já tratado: nenhum aviso extra', async () => {
     const h = harness({ installed: true, active: true, responding: true, stored: true })
     await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.privileged).toEqual([])
+  })
+
+  it('Sunshine oficial no Ubuntu: troca pelo do Horizonte, num só aviso de administrador', async () => {
+    const h = harness({ installed: true, active: true, responding: true, stored: true })
+    h.deps.packageForThisSystem = () => sunshinePackageFor(UBUNTU_2404, 'x64')
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.download).toHaveBeenCalledOnce()
+    expect(h.privileged).toHaveLength(1)
+    expect(h.privileged[0]).toContain('sunshine-horizonte-ubuntu24.04-amd64.deb')
+  })
+
+  it('Sunshine do Horizonte já instalado: não troca nada', async () => {
+    const h = harness({
+      installed: true,
+      active: true,
+      responding: true,
+      stored: true,
+      portal: true
+    })
+    h.deps.packageForThisSystem = () => sunshinePackageFor(UBUNTU_2404, 'x64')
+    await createLinuxSetup(h.deps).installer.ensureInstalled()
+    expect(h.download).not.toHaveBeenCalled()
     expect(h.privileged).toEqual([])
   })
 

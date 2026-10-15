@@ -27,9 +27,16 @@ describe('parseSettings', () => {
       encoding: 'gpu',
       codec: 'hevc',
       autostart: false,
-      deviceName: 'Notebook'
+      deviceName: 'Notebook',
+      extendSide: 'left'
     }
     expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null })
+  })
+
+  it('posição da tela estendida: só esquerda, direita ou acima; padrão à direita', () => {
+    expect(parseSettings({ extendSide: 'above' }).extendSide).toBe('above')
+    expect(parseSettings({ extendSide: 'below' }).extendSide).toBe('right')
+    expect(parseSettings({}).extendSide).toBe('right')
   })
 
   it('corrige valores inválidos campo a campo', () => {

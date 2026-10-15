@@ -249,7 +249,8 @@ async function boot(): Promise<void> {
         )
   })
   // O Moonlight portátil é baixado na primeira vez que a pessoa conecta (versão fixa, hash conferido).
-  const moonlightDir = join(app.getPath('userData'), 'moonlight')
+  // Uma pasta por versão: a troca para um Moonlight novo baixa sozinha, sem depender do que já estava lá.
+  const moonlightDir = join(app.getPath('userData'), 'moonlight', MOONLIGHT.version)
   const windowsMoonlightExe = (): Promise<string> =>
     ensureMoonlight({
       dir: moonlightDir,

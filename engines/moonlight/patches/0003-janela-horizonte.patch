@@ -1,0 +1,38 @@
+diff --git a/app/gui/main.qml b/app/gui/main.qml
+index 508f67b..0b34765 100644
+--- a/app/gui/main.qml
++++ b/app/gui/main.qml
+@@ -19,6 +19,7 @@ ApplicationWindow {
+     property bool clearOnBack: false
+ 
+     id: window
++    title: "Horizonte"
+     width: 1280
+     height: 600
+ 
+@@ -26,9 +27,8 @@ ApplicationWindow {
+         // Override the background color to Material 2 colors for Qt 6.5+
+         // in order to improve contrast between GFE's placeholder box art
+         // and the background of the app grid.
+-        if (SystemProperties.usesMaterial3Theme) {
+-            Material.background = "#303030"
+-        }
++        // Horizonte: fundo preto, para a abertura da transmissão não aparecer como uma janela cinza.
++        Material.background = "#000000"
+ 
+         // Show the window according to the user's preferences
+         if (SystemProperties.hasDesktopEnvironment) {
+diff --git a/app/streaming/session.cpp b/app/streaming/session.cpp
+index 80fb921..805e7bc 100644
+--- a/app/streaming/session.cpp
++++ b/app/streaming/session.cpp
+@@ -1815,7 +1815,8 @@ void Session::execInternal()
+ #ifdef Q_OS_DARWIN
+     std::string windowName = QString(m_Computer->name).toStdString();
+ #else
+-    std::string windowName = QString(m_Computer->name + " - Moonlight").toStdString();
++    // Horizonte: a janela da transmissão leva o nome do Horizonte, não o do Moonlight.
++    std::string windowName = QString(m_Computer->name + " - Horizonte").toStdString();
+ #endif
+ 
+     m_Window = SDL_CreateWindow(windowName.c_str(),
