@@ -1,12 +1,16 @@
 import { execFile, spawn } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { createReadStream, createWriteStream, existsSync, readdirSync, readFileSync } from 'node:fs'
+import { mkdir, rm, stat, writeFile } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
 import { networkInterfaces, tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+import type { ReadableStream as WebReadableStream } from 'node:stream/web'
 import { Bonjour } from 'bonjour-service'
 import type { Host } from '../../../shared/types'
 import type { MouseEngine } from '../port'
+import { createFileClipboard, type FileClipboardDeps } from './files'
 import { createMouseEngine, MOUSE_CHANNEL_PORT, type MouseChannel } from './mouse-engine'
 import { createMouseShare, type DeskflowCommand } from './session'
 import { downloadVerified } from '../../platform/windows/download'
@@ -20,9 +24,18 @@ const MAX_BODY = 2048
 function createChannel(): MouseChannel {
   let server: Server | null = null
   return {
-    async listen(onMessage) {
+    async listen(onMessage, serve) {
       if (server) return
       const created = createServer((request, response) => {
+        if (request.method === 'GET') {
+          // Arquivo copiado, só para o outro lado da conversa (quem decide é o `serve`).
+          const file = serve?.(request.url ?? '', request.socket.remoteAddress ?? '') ?? null
+          if (!file) return void response.writeHead(404).end()
+          response.writeHead(200, { 'Content-Type': 'application/octet-stream' })
+          return void createReadStream(file)
+            .on('error', () => response.destroy())
+            .pipe(response)
+        }
         if (request.method !== 'POST') return void response.writeHead(405).end()
         let raw = ''
         request.on('data', (chunk: Buffer) => {
@@ -152,10 +165,61 @@ function deskflowCommand(deps: {
   }
 }
 
+/**
+ * Windows: um PowerShell leve avisa quando a lista de arquivos copiados muda (só enquanto o mouse está
+ * compartilhado) e o Set-Clipboard -Path deixa os arquivos recebidos prontos para colar no Explorer.
+ */
+const WATCH_SCRIPT = [
+  "$last = ''",
+  'while ($true) {',
+  "  $files = ''",
+  "  try { $files = @((Get-Clipboard -Format FileDropList -ErrorAction SilentlyContinue).FullName) -join '|' } catch { }",
+  '  if ($files -ne $last) { [Console]::Out.WriteLine($files); [Console]::Out.Flush(); $last = $files }',
+  '  Start-Sleep -Milliseconds 800',
+  '}'
+].join('\n')
+
+function windowsClipboard(
+  runPowerShell: (script: string) => Promise<unknown>
+): Pick<FileClipboardDeps, 'watch' | 'setClipboard'> {
+  if (process.platform !== 'win32') {
+    // Linux: só o texto copiado vai junto por enquanto (pelo próprio Deskflow).
+    return { watch: () => () => undefined, setClipboard: async () => undefined }
+  }
+  return {
+    watch(onChange) {
+      const child = spawn(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-STA', '-Command', WATCH_SCRIPT],
+        {
+          stdio: ['ignore', 'pipe', 'ignore'],
+          windowsHide: true
+        }
+      )
+      let buffer = ''
+      child.stdout.on('data', (chunk: Buffer) => {
+        buffer += chunk.toString('utf8')
+        let line: number
+        while ((line = buffer.indexOf('\n')) >= 0) {
+          const text = buffer.slice(0, line).trim()
+          buffer = buffer.slice(line + 1)
+          onChange(text ? text.split('|') : [])
+        }
+      })
+      return () => void child.kill()
+    },
+    async setClipboard(paths) {
+      const list = paths.map((path) => `'${path.replace(/'/g, "''")}'`).join(',')
+      await runPowerShell(`Set-Clipboard -Path ${list}`)
+    }
+  }
+}
+
 export function createRealMouseEngine(deps: {
   userData: string
   download(zip: string): Promise<void>
   extract(zip: string, into: string): Promise<void>
+  runPowerShell(script: string): Promise<unknown>
 }): MouseEngine {
   const dir = join(deps.userData, 'deskflow')
   const share = createMouseShare({
@@ -178,5 +242,33 @@ export function createRealMouseEngine(deps: {
       }
     }
   })
-  return createMouseEngine({ share, channel: createChannel(), advertise, browse })
+  const channel = createChannel()
+  const files = createFileClipboard({
+    ...windowsClipboard(deps.runPowerShell),
+    sizeOf: async (path) => {
+      const info = await stat(path).catch(() => null)
+      return info?.isFile() ? info.size : null
+    },
+    baseName: (path) => basename(path),
+    newInbox: async () => {
+      const inbox = join(dir, 'recebidos', String(Date.now()))
+      await mkdir(inbox, { recursive: true })
+      return inbox
+    },
+    join,
+    download: async (from, file, dest) => {
+      const host = from.includes(':') ? `[${from}]` : from
+      const response = await fetch(`http://${host}:${MOUSE_CHANNEL_PORT}/mouse/file/${file.id}`)
+      if (!response.ok || !response.body)
+        throw new Error(`o outro computador respondeu ${response.status}`)
+      await pipeline(Readable.fromWeb(response.body as WebReadableStream), createWriteStream(dest))
+      // Arquivo cortado no meio não fica para colar.
+      if ((await stat(dest)).size !== file.size) {
+        await rm(dest, { force: true })
+        throw new Error('O arquivo chegou incompleto.')
+      }
+    },
+    offer: (to, offered) => channel.send(to, '/mouse/files', { files: offered })
+  })
+  return createMouseEngine({ share, channel, advertise, browse, files })
 }

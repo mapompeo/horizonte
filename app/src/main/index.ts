@@ -419,7 +419,8 @@ async function boot(): Promise<void> {
               `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(into)} -Force`,
               120_000
             )
-          }
+          },
+          runPowerShell: (script) => runPowerShell(script, 30_000)
         })
   if (mouse) app.on('before-quit', () => void mouse.stop().catch(() => undefined))
   const controller = await createController({ engine, mouse, store })
