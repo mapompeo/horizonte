@@ -206,6 +206,8 @@ export class SunshineEngine implements ServerEngine {
   ): Promise<string> {
     const find = (log: string): string | null =>
       parseDisplays(log).find((display) => this.deps.display.isVirtual(display))?.deviceId ?? null
+    const known = this.deps.display.outputName?.()
+    if (known != null) return known
 
     let id = find(await this.deps.readLog())
     if (!alive()) return ''
@@ -266,7 +268,11 @@ export class SunshineEngine implements ServerEngine {
     displayId: string,
     chosen: ChosenEncoder | null
   ): Record<string, string> {
-    const base = { sunshine_name: settings.deviceName, output_name: displayId }
+    const base = {
+      sunshine_name: settings.deviceName,
+      output_name: displayId,
+      ...this.deps.display.config?.()
+    }
     if (settings.encoding === 'cpu') return { ...base, encoder: 'software' }
     // Sem confirmação de GPU deixamos o Sunshine decidir sozinho (ele cai para software se precisar).
     const candidate = chosen?.candidate ?? GPU_ENCODERS[0]!

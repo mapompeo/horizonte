@@ -17,4 +17,8 @@ export interface EngineInstaller {
 export interface VirtualDisplay {
   ensureVirtualDisplay(signal?: AbortSignal): Promise<void>
   isVirtual(display: SunshineDisplay): boolean
+  /** Chaves extras do Sunshine para esta tela (no Wayland: captura pelo portal). */
+  config?(): Record<string, string>
+  /** Saída já conhecida, sem procurar na lista do Sunshine (o portal cria o monitor só ao transmitir). */
+  outputName?(): string | null
 }

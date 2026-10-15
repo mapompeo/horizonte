@@ -31,6 +31,10 @@ export interface LinuxProbe {
   monitorPresent(): Promise<boolean>
   /** Sem firewall ativo, ou as portas do Sunshine já liberadas por este app. */
   firewallReady(): Promise<boolean>
+  /** O Sunshine instalado é o do Horizonte, que sabe pedir um monitor virtual ao portal do Wayland. */
+  sunshinePatched(): Promise<boolean>
+  /** O portal do ambiente gráfico cria monitores virtuais (GNOME e KDE sim; outros podem não criar). */
+  portalVirtualSupported(): Promise<boolean>
 }
 
 export interface LinuxSetupDeps {
@@ -82,6 +86,22 @@ export const FIREWALL_SCRIPT = [
 /** Marca que o firewall já foi tratado, para não pedir administrador de novo a cada abertura. */
 export const MARK_FIREWALL = 'mkdir -p ~/.config/horizonte && touch ~/.config/horizonte/firewall-ok'
 
+/**
+ * Liga o monitor virtual do portal no serviço do Sunshine (variável lida pelo patch do Horizonte). Só reinicia o
+ * serviço quando o ajuste é novo.
+ */
+export const PORTAL_VIRTUAL_SCRIPT = [
+  `dir=~/.config/systemd/user/${SUNSHINE_UNIT}.d`,
+  'file="$dir/horizonte.conf"',
+  "line='Environment=SUNSHINE_PORTAL_VIRTUAL=1'",
+  'if ! grep -qx "$line" "$file" 2>/dev/null; then',
+  '  mkdir -p "$dir"',
+  `  printf '[Service]\\n%s\\n' "$line" > "$file"`,
+  '  systemctl --user daemon-reload',
+  `  systemctl --user try-restart ${SUNSHINE_UNIT}`,
+  'fi'
+].join('\n')
+
 export const MIRROR_NOTE =
   'Sem monitor extra neste sistema: vou espelhar a tela principal no outro dispositivo.'
 
@@ -105,6 +125,8 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
 } {
   /** Verdadeiro quando não há monitor virtual e a transmissão usa a tela principal (espelho). */
   let mirror = false
+  /** Wayland com o Sunshine do Horizonte: o portal cria um monitor novo, que estende a tela. */
+  let portal = false
 
   async function run(
     report: (progress: PrepProgress) => void,
@@ -123,7 +145,16 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
         deps.probe.firewallReady()
       ])
     )
-    const needInstall = !installed
+    // Sunshine oficial onde existe o do Horizonte: troca, para a tela poder estender no Wayland.
+    let upgrade = false
+    if (installed && !(await step(() => deps.probe.sunshinePatched()))) {
+      try {
+        upgrade = deps.packageForThisSystem().horizonte === true
+      } catch {
+        // Distribuição sem pacote do Horizonte: segue com o Sunshine que já está instalado.
+      }
+    }
+    const needInstall = !installed || upgrade
     const needCredentials = needInstall || stored === null
     const needStart = !active || !responding
 
@@ -203,8 +234,15 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
     }
 
     mirror = false
-    if (sessionKind(deps.env) === 'wayland') mirror = true
-    else if (!monitor) {
+    portal = false
+    if (sessionKind(deps.env) === 'wayland') {
+      portal = await step(
+        async () =>
+          (await deps.probe.sunshinePatched()) && (await deps.probe.portalVirtualSupported())
+      )
+      if (portal) await step(() => deps.runUser(PORTAL_VIRTUAL_SCRIPT))
+      else mirror = true
+    } else if (!monitor) {
       try {
         await step(() => deps.runUser(VIRTUAL_MONITOR_SCRIPT))
       } catch {
@@ -222,6 +260,9 @@ export function createLinuxSetup(deps: LinuxSetupDeps): {
     display: {
       ensureVirtualDisplay: (signal) => ensure(undefined, signal),
       // No espelho, a "tela virtual" é a principal: a que está na origem do desktop.
+      config: (): Record<string, string> => (portal ? { capture: 'portal' } : {}),
+      // O portal ignora o número da saída e usa o monitor que ele mesmo criou.
+      outputName: () => (portal ? '0' : null),
       isVirtual: (display: SunshineDisplay) =>
         mirror
           ? display.primary || display.originX === 0
