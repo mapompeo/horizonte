@@ -7,6 +7,7 @@ import type {
   Codec,
   Encoding,
   ExtendSide,
+  MouseSide,
   Fps,
   Resolution,
   Settings,
@@ -36,13 +37,13 @@ function oneOf<T extends string | number>(value: unknown, allowed: readonly T[],
 }
 
 /** Até 20 computadores, cada um com um lado válido; o resto é descartado. */
-function parseMouseSides(raw: unknown): Record<string, ExtendSide> {
+function parseMouseSides(raw: unknown): Record<string, MouseSide> {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
   const entries = Object.entries(raw as Record<string, unknown>).filter(
-    (entry): entry is [string, ExtendSide] =>
+    (entry): entry is [string, MouseSide] =>
       entry[0].length > 0 &&
       entry[0].length <= 200 &&
-      (entry[1] === 'left' || entry[1] === 'right' || entry[1] === 'above')
+      ['left', 'right', 'above', 'below'].includes(entry[1] as string)
   )
   return Object.fromEntries(entries.slice(0, 20))
 }

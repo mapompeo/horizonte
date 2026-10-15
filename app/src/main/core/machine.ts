@@ -101,7 +101,12 @@ export function reduce(state: AppState, event: AppEvent): AppState {
         : state
     case 'mouse':
       if (event.type === 'MOUSE_SHARE')
-        return { screen: 'mouse-active', mode: 'mouse', device: event.name, role: 'share' }
+        return {
+          screen: 'mouse-active',
+          mode: 'mouse',
+          device: event.peers.map((peer) => peer.name).join(' e '),
+          role: 'share'
+        }
       if (event.type === 'MOUSE_REQUEST')
         return {
           screen: 'mouse-request',

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import type { ExtendSide, Host, ScreenSize } from '../../../shared/types'
+  import type { Host, MouseSide, ScreenSize } from '../../../shared/types'
   import { copyFor, safeName } from '../lib/copy'
   import { patchSettings, send } from '../lib/actions'
   import MouseMap from '../components/MouseMap.svelte'
@@ -8,8 +8,8 @@
   import { isHostAddress } from '../../../shared/address'
 
   interface Props {
-    /** De que lado fica cada computador, pelo nome (o mouse passa pela borda desse lado). */
-    sides: Record<string, ExtendSide>
+    /** De que lado fica cada computador, pelo nome; sem lado, fica fora do compartilhamento. */
+    sides: Record<string, MouseSide>
     /** Onde começa a borda de cada computador, em fração da borda deste. */
     offsets: Record<string, number>
   }
@@ -18,8 +18,15 @@
   let ownScreen = $state<ScreenSize | null>(null)
 
   const copy = copyFor({ screen: 'mouse', mode: 'mouse' })
-  let hosts = $state<Host[]>([])
+  let found = $state<Host[]>([])
+  /** Adicionados pelo IP nesta tela (não aparecem na procura). */
+  let added = $state<Host[]>([])
   let searching = $state(true)
+  const hosts = $derived([
+    ...found,
+    ...added.filter((host) => !found.some((other) => other.address === host.address))
+  ])
+  const placed = $derived(hosts.filter((host) => sides[safeName(host.name)]))
 
   let manual = $state(false)
   let address = $state('')
@@ -31,67 +38,58 @@
       .ownScreen()
       .then((size) => (ownScreen = size))
       .catch(() => undefined)
-    return pollHosts(window.horizonte.listMousePeers, (found, stillSearching) => {
-      hosts = found
+    return pollHosts(window.horizonte.listMousePeers, (list, stillSearching) => {
+      found = list
       searching = stillSearching
     })
   })
 
-  function connectByAddress(): void {
+  function addByAddress(): void {
     const host = address.trim()
-    if (isHostAddress(host)) send({ type: 'MOUSE_SHARE', host, name: host })
+    if (!isHostAddress(host)) return
+    if (!hosts.some((other) => other.address === host))
+      added = [...added, { name: host, address: host }]
+    address = ''
+    manual = false
+  }
+
+  function place(name: string, where: { side: MouseSide; offset: number } | null): void {
+    const otherSides = Object.fromEntries(Object.entries(sides).filter(([key]) => key !== name))
+    const otherOffsets = Object.fromEntries(Object.entries(offsets).filter(([key]) => key !== name))
+    void patchSettings(
+      where
+        ? {
+            mouseSides: { ...otherSides, [name]: where.side },
+            mouseOffsets: { ...otherOffsets, [name]: where.offset }
+          }
+        : { mouseSides: otherSides, mouseOffsets: otherOffsets }
+    )
   }
 </script>
 
-<div class="hosts">
+<div class="hosts hosts-wide">
   <h1 class="title title-md">{copy.title}</h1>
   <p class="subtitle">{copy.subtitle}</p>
-  {#each hosts as host (host.address)}
-    {@const name = safeName(host.name)}
-    <div class="host-group">
-      <div class="host">
-        <div class="host-icon" aria-hidden="true">
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 48 48"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="6" y="8" width="36" height="24" rx="4" /><path d="M16 40h16M24 32v8" />
-          </svg>
-        </div>
-        <div class="host-body">
-          <span class="host-name">{safeName(host.name)}</span>
-          <span class="host-addr">{host.address} · pronto</span>
-        </div>
-        <button
-          class="btn btn-primary btn-sm"
-          onclick={() => send({ type: 'MOUSE_SHARE', host: host.address, name })}
-          >Usar meu mouse</button
-        >
-      </div>
-      {#if ownScreen}
-        <MouseMap
-          {name}
-          own={ownScreen}
-          peer={host.screen ?? ownScreen}
-          side={sides[name] ?? 'right'}
-          offset={offsets[name]}
-          onChange={(side, offset) =>
-            patchSettings({
-              mouseSides: { ...sides, [name]: side },
-              mouseOffsets: { ...offsets, [name]: offset }
-            })}
-        />
-      {/if}
-    </div>
-  {/each}
-  <div class="stack gap-xs">
-    {#if searching}
+  {#if ownScreen && hosts.length > 0}
+    <MouseMap own={ownScreen} {hosts} {sides} {offsets} onPlace={place} />
+  {/if}
+  <div class="stack gap-xs mouse-actions">
+    {#if hosts.length > 0}
+      <button
+        class="btn btn-primary"
+        disabled={placed.length === 0}
+        onclick={() =>
+          send({
+            type: 'MOUSE_SHARE',
+            peers: placed.map((host) => ({ name: safeName(host.name), address: host.address }))
+          })}>Usar meu mouse</button
+      >
+      <span class="searching">
+        {placed.length === 0
+          ? 'Arraste um computador até a borda deste.'
+          : `Vai usar o mouse em ${placed.map((host) => safeName(host.name)).join(' e ')}.`}
+      </span>
+    {:else if searching}
       <span class="searching">Procurando outros computadores com o Horizonte no modo Mouse…</span>
     {/if}
     {#if manual}
@@ -99,20 +97,18 @@
         class="manual"
         onsubmit={(event) => {
           event.preventDefault()
-          connectByAddress()
+          addByAddress()
         }}
       >
         <input
           class="text-input manual-input"
-          aria-label="Endereço do outro dispositivo"
+          aria-label="Endereço do outro computador"
           placeholder="192.168.1.5"
           autocomplete="off"
           spellcheck="false"
           bind:value={address}
         />
-        <button class="btn btn-primary btn-sm" type="submit" disabled={!valid}
-          >Usar meu mouse</button
-        >
+        <button class="btn btn-primary btn-sm" type="submit" disabled={!valid}>Adicionar</button>
       </form>
     {:else}
       <button class="link" onclick={() => (manual = true)}>Não aparece? Adicionar pelo IP</button>

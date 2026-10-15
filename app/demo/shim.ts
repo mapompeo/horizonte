@@ -88,7 +88,8 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
       start: async () => undefined,
       stop: async () => undefined,
       listPeers: async () => [
-        { name: 'Notebook', address: '192.168.1.6', screen: { width: 1366, height: 768 } }
+        { name: 'Notebook', address: '192.168.1.6', screen: { width: 1920, height: 1080 } },
+        { name: 'Suntrans', address: '192.168.1.7', screen: { width: 1366, height: 768 } }
       ],
       share: async () => undefined,
       setLayout: async () => undefined,

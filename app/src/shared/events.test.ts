@@ -15,7 +15,14 @@ describe('isUiEvent', () => {
     { type: 'RETRY' },
     { type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' },
     { type: 'CONNECT', host: 'desktop.local', name: 'Desktop' },
-    { type: 'CONNECT', host: 'fe80::1', name: 'Desktop' }
+    { type: 'CONNECT', host: 'fe80::1', name: 'Desktop' },
+    {
+      type: 'MOUSE_SHARE',
+      peers: [
+        { name: 'Suntrans', address: '192.168.1.7' },
+        { name: 'Notebook', address: '192.168.1.6' }
+      ]
+    }
   ])('aceita %o', (event) => {
     expect(isUiEvent(event)).toBe(true)
   })
@@ -36,6 +43,9 @@ describe('isUiEvent', () => {
     { type: 'FAIL', error: { message: 'x' } },
     { type: 'CHOOSE' },
     { type: 'CHOOSE', mode: 'qualquer' },
+    { type: 'MOUSE_SHARE', peers: [] },
+    { type: 'MOUSE_SHARE', peers: [{ name: 'X', address: 'não é endereço!' }] },
+    { type: 'MOUSE_SHARE', peers: 'Suntrans' },
     { type: 'CONNECT' },
     { type: 'CONNECT', host: '' },
     { type: 'CONNECT', host: '--fullscreen', name: 'x' },

@@ -55,7 +55,7 @@ describe.runIf(process.platform === 'win32')('Deskflow de verdade', () => {
     const server = createMouseShare(deps(mkdtempSync(join(work, 'srv-'))))
     const client = createMouseShare(deps(mkdtempSync(join(work, 'cli-'))))
     try {
-      await server.share({ name: 'Desktop', peerName: 'Notebook', side: 'right' })
+      await server.share({ name: 'Desktop', links: [{ name: 'Notebook', side: 'right' }] })
       await waitForPort(DESKFLOW_PORT, 20_000)
       await client.follow({ name: 'Notebook', serverAddress: '127.0.0.1' })
       // O cliente com nome conhecido fica conectado; um nome desconhecido seria derrubado pelo servidor.

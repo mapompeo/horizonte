@@ -59,7 +59,8 @@ export type AppEvent =
   | { type: 'STREAM_ENDED' }
   | { type: 'FAIL'; error: AppError }
   | { type: 'RETRY' }
-  | { type: 'MOUSE_SHARE'; host: string; name: string }
+  /** Empresta o mouse a estes computadores (os encostados no mapa). */
+  | { type: 'MOUSE_SHARE'; peers: Host[] }
   | { type: 'MOUSE_REQUEST'; device: string; address: string }
   | { type: 'MOUSE_ACCEPT' }
   | { type: 'MOUSE_DENY' }
@@ -73,6 +74,9 @@ export type Codec = 'h264' | 'hevc' | 'av1'
 
 /** Onde a tela estendida fica em relação às telas deste aparelho. */
 export type ExtendSide = 'left' | 'right' | 'above'
+
+/** Modo Mouse: de que lado deste computador o outro fica (o mouse passa pela borda desse lado). */
+export type MouseSide = 'left' | 'right' | 'above' | 'below'
 
 /** Aparelho aprovado sozinho nos próximos pedidos: vale o nome e o endereço juntos. */
 export interface TrustedDevice {
@@ -91,7 +95,7 @@ export interface Settings {
   deviceName: string
   extendSide: ExtendSide
   /** Modo Mouse: de que lado fica cada outro computador (pelo nome), para o mouse passar pela borda certa. */
-  mouseSides: Record<string, ExtendSide>
+  mouseSides: Record<string, MouseSide>
   /** Modo Mouse: onde começa a borda de cada outro computador, em fração da borda deste; sem valor, centralizado. */
   mouseOffsets: Record<string, number>
   trusted: TrustedDevice[]

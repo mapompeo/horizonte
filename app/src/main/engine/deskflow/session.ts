@@ -1,10 +1,4 @@
-import {
-  deskflowSettings,
-  linksConfig,
-  computerName,
-  type EdgeRanges,
-  type MouseSide
-} from './config'
+import { deskflowSettings, linksConfig, computerName, type DeskflowLink } from './config'
 
 /** O pedaço do processo filho que importa; `child_process.spawn` de verdade entra no wire. */
 export interface DeskflowProcess {
@@ -29,13 +23,8 @@ export interface MouseShareDeps {
 }
 
 export interface MouseShare {
-  /** Este computador empresta o mouse e o teclado; o outro fica do lado `side`. */
-  share(options: {
-    name: string
-    peerName: string
-    side: MouseSide
-    ranges?: EdgeRanges
-  }): Promise<void>
+  /** Este computador empresta o mouse e o teclado aos computadores encostados nele (`links`). */
+  share(options: { name: string; links: DeskflowLink[] }): Promise<void>
   /** Este computador passa a ser controlado pelo mouse do outro. */
   follow(options: { name: string; serverAddress: string }): Promise<void>
   stop(): void
@@ -68,13 +57,17 @@ export function createMouseShare(deps: MouseShareDeps): MouseShare {
   }
 
   return {
-    async share({ name, peerName, side, ranges }) {
+    async share({ name, links }) {
       const linksFile = deps.join(deps.dir, 'links.conf')
       await deps.writeFile(
         linksFile,
-        linksConfig(computerName(name), computerName(peerName), side, ranges)
+        linksConfig(
+          computerName(name),
+          links.map((link) => ({ ...link, name: computerName(link.name) }))
+        )
       )
-      await run('server', deskflowSettings({ role: 'server', name, peerName, linksFile }))
+      const peerNames = links.map((link) => link.name)
+      await run('server', deskflowSettings({ role: 'server', name, peerNames, linksFile }))
     },
     async follow({ name, serverAddress }) {
       await run('client', deskflowSettings({ role: 'client', name, serverAddress }))

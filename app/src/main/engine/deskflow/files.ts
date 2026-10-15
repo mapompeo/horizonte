@@ -31,21 +31,22 @@ export interface FileClipboardDeps {
  * deixa pronto para colar. Os arquivos que este lado pôs na área de transferência não voltam como oferta nova.
  */
 export function createFileClipboard(deps: FileClipboardDeps): {
-  start(peerAddress: string): void
+  /** Passa a observar o que é copiado aqui e oferece a estes computadores. */
+  start(peerAddresses: string[]): void
   stop(): void
-  /** Caminho de um arquivo oferecido, só para o PC que recebeu a oferta. */
+  /** Caminho de um arquivo oferecido, só para os PCs que receberam a oferta. */
   served(id: string, from: string): string | null
   /** Oferta que chegou do outro PC. */
   receive(files: OfferedFile[], from: string): Promise<void>
 } {
-  let peer: string | null = null
+  let peers: string[] = []
   let unwatch: (() => void) | null = null
   let offered = new Map<string, string>()
   let placedByUs = ''
 
   async function onCopied(paths: string[]): Promise<void> {
     const key = paths.join('\n')
-    if (!peer || paths.length === 0 || key === placedByUs) return
+    if (peers.length === 0 || paths.length === 0 || key === placedByUs) return
     const files: OfferedFile[] = []
     const next = new Map<string, string>()
     let total = 0
@@ -60,26 +61,26 @@ export function createFileClipboard(deps: FileClipboardDeps): {
     }
     if (files.length === 0) return
     offered = next
-    await deps.offer(peer, files).catch(() => undefined)
+    await Promise.all(peers.map((to) => deps.offer(to, files).catch(() => undefined)))
   }
 
   return {
-    start(peerAddress) {
-      peer = peerAddress
+    start(peerAddresses) {
+      peers = [...peerAddresses]
       unwatch?.()
       unwatch = deps.watch((paths) => void onCopied(paths))
     },
     stop() {
-      peer = null
+      peers = []
       unwatch?.()
       unwatch = null
       offered = new Map()
     },
     served(id, from) {
-      return from === peer ? (offered.get(id) ?? null) : null
+      return peers.includes(from) ? (offered.get(id) ?? null) : null
     },
     async receive(files, from) {
-      if (from !== peer || files.length === 0) return
+      if (!peers.includes(from) || files.length === 0) return
       const inbox = await deps.newInbox()
       const paths: string[] = []
       for (const file of files) {
