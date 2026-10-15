@@ -69,11 +69,7 @@
       <Segmented
         label="Qualidade"
         value={settings.profile}
-        options={tiles.map((tile) => ({
-          value: tile.id,
-          text: tile.name,
-          sub: `${tile.mbps} Mbps`
-        }))}
+        options={tiles.map((tile) => ({ value: tile.id, text: tile.name }))}
         onSelect={(id) => {
           const tile = tiles.find((option) => option.id === id)
           if (tile) void patchSettings({ bitrate: tile.mbps })
