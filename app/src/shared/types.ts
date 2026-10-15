@@ -92,6 +92,8 @@ export interface Settings {
   extendSide: ExtendSide
   /** Modo Mouse: de que lado fica cada outro computador (pelo nome), para o mouse passar pela borda certa. */
   mouseSides: Record<string, ExtendSide>
+  /** Modo Mouse: onde começa a borda de cada outro computador, em fração da borda deste; sem valor, centralizado. */
+  mouseOffsets: Record<string, number>
   trusted: TrustedDevice[]
   /** Último modo escolhido neste aparelho; null até a pessoa escolher pela primeira vez. */
   mode: Mode | null
@@ -100,9 +102,16 @@ export interface Settings {
 /** O perfil é sempre derivado do bitrate, por isso não pode ser alterado diretamente. */
 export type SettingsPatch = Partial<Omit<Settings, 'profile' | 'mode'>>
 
+export interface ScreenSize {
+  width: number
+  height: number
+}
+
 export interface Host {
   name: string
   address: string
+  /** Área de trabalho do outro computador (todas as telas juntas), quando ele anuncia; usado no modo Mouse. */
+  screen?: ScreenSize
 }
 
 export interface Snapshot {

@@ -16,6 +16,7 @@ const current: Snapshot = {
     deviceName: 'Desktop',
     extendSide: 'right',
     mouseSides: {},
+    mouseOffsets: {},
     trusted: [],
     mode: 'send'
   }

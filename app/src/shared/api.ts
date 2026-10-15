@@ -1,4 +1,12 @@
-import type { AppEvent, Host, Settings, SettingsPatch, Snapshot, WebAccess } from './types'
+import type {
+  AppEvent,
+  Host,
+  ScreenSize,
+  Settings,
+  SettingsPatch,
+  Snapshot,
+  WebAccess
+} from './types'
 import type { UpdateAction, UpdateStatus } from './updates'
 
 export const CHANNELS = {
@@ -7,6 +15,7 @@ export const CHANNELS = {
   updateSettings: 'horizonte:update-settings',
   hosts: 'horizonte:hosts',
   mousePeers: 'horizonte:mouse-peers',
+  mouseScreen: 'horizonte:mouse-screen',
   webAccess: 'horizonte:web-access',
   setWebAccess: 'horizonte:set-web-access',
   openRepo: 'horizonte:open-repo',
@@ -33,6 +42,8 @@ export interface HorizonteApi {
   listHosts(): Promise<Host[]>
   /** Outros PCs com o Horizonte no modo Mouse. */
   listMousePeers(): Promise<Host[]>
+  /** Área de trabalho deste computador (todas as telas juntas), para o mapa do modo Mouse. */
+  ownScreen(): Promise<ScreenSize>
   getWebAccess(): Promise<WebAccess>
   setWebAccess(on: boolean): Promise<WebAccess>
   /** Abre a página do projeto no navegador padrão. */

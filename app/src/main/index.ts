@@ -8,6 +8,7 @@ import {
   nativeImage,
   nativeTheme,
   safeStorage,
+  screen,
   session,
   shell,
   Tray
@@ -24,7 +25,7 @@ import icon from '../../resources/icon.png?asset'
 import { CHANNELS, REPO_URL } from '../shared/api'
 import { isUiEvent } from '../shared/events'
 import { cleanName } from '../shared/names'
-import type { SettingsPatch } from '../shared/types'
+import type { ScreenSize, SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
 import { createTrayFollower } from './core/tray'
@@ -83,6 +84,25 @@ const PAIR_TIMEOUT_MS = 60_000
 const LIST_TIMEOUT_MS = 20_000
 
 /** Os botões de janela ficam por cima da interface, na cor do fundo e discretos. */
+/** Área de trabalho em pixels de verdade, com todas as telas juntas (é o que o Deskflow enxerga). */
+function desktopSize(): ScreenSize {
+  const boxes = screen.getAllDisplays().map(({ bounds, scaleFactor }) => ({
+    left: bounds.x * scaleFactor,
+    top: bounds.y * scaleFactor,
+    right: (bounds.x + bounds.width) * scaleFactor,
+    bottom: (bounds.y + bounds.height) * scaleFactor
+  }))
+  if (boxes.length === 0) return { width: 1920, height: 1080 }
+  return {
+    width: Math.round(
+      Math.max(...boxes.map((b) => b.right)) - Math.min(...boxes.map((b) => b.left))
+    ),
+    height: Math.round(
+      Math.max(...boxes.map((b) => b.bottom)) - Math.min(...boxes.map((b) => b.top))
+    )
+  }
+}
+
 function overlayFor(): { color: string; symbolColor: string; height: number } {
   const dark = nativeTheme.shouldUseDarkColors
   return {
@@ -421,6 +441,7 @@ async function boot(): Promise<void> {
             )
           },
           runPowerShell: (script) => runPowerShell(script, 30_000),
+          ownScreen: desktopSize,
           writeText: (text) => clipboard.writeText(text),
           readText: () => clipboard.readText()
         })
@@ -533,6 +554,7 @@ async function boot(): Promise<void> {
   )
   ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
   ipcMain.handle(CHANNELS.mousePeers, () => controller.listMousePeers())
+  ipcMain.handle(CHANNELS.mouseScreen, () => desktopSize())
   ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
   const reports = createDiagnosticReporter({
     text: async (includeHistory) => {

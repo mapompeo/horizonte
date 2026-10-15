@@ -30,6 +30,7 @@ describe('parseSettings', () => {
       deviceName: 'Notebook',
       extendSide: 'left',
       mouseSides: { Suntrans: 'left' },
+      mouseOffsets: { Suntrans: 0.25 },
       trusted: [{ name: 'Desktop', address: '192.168.1.4' }]
     }
     expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null })

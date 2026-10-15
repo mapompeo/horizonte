@@ -678,7 +678,8 @@ describe('modo Mouse', () => {
         void calls.push(
           side === 'right' ? `share:${peer.address}` : `share:${peer.address}:${side}`
         ),
-      setSide: async (side) => void calls.push(`side:${side}`),
+      setLayout: async (side, offset) =>
+        void calls.push(offset === undefined ? `side:${side}` : `side:${side}:${offset}`),
       accept: async () => void calls.push('accept'),
       deny: async () => void calls.push('deny'),
       end: async () => void calls.push('end'),

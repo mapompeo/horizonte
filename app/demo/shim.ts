@@ -87,9 +87,11 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     const mouse: MouseEngine = {
       start: async () => undefined,
       stop: async () => undefined,
-      listPeers: async () => [{ name: 'Notebook', address: '192.168.1.6' }],
+      listPeers: async () => [
+        { name: 'Notebook', address: '192.168.1.6', screen: { width: 1366, height: 768 } }
+      ],
       share: async () => undefined,
-      setSide: async () => undefined,
+      setLayout: async () => undefined,
       accept: async () => undefined,
       deny: async () => undefined,
       end: async () => undefined,
@@ -120,6 +122,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     updateSettings: (patch) => controller.updateSettings(patch),
     listHosts: () => controller.listHosts(),
     listMousePeers: () => controller.listMousePeers(),
+    ownScreen: async () => ({ width: 3840, height: 1080 }),
     getWebAccess: async () => web,
     setWebAccess: async (on) => {
       web = on

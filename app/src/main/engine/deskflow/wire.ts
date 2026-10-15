@@ -8,7 +8,7 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { ReadableStream as WebReadableStream } from 'node:stream/web'
 import { Bonjour } from 'bonjour-service'
-import type { Host } from '../../../shared/types'
+import type { Host, ScreenSize } from '../../../shared/types'
 import type { MouseEngine } from '../port'
 import { createFileClipboard, type FileClipboardDeps } from './files'
 import { LINUX_TEXT_SCRIPT } from './linux-text'
@@ -115,7 +115,15 @@ async function browse(): Promise<Host[]> {
       const address = [service.referer?.address ?? '', ...(service.addresses ?? [])].find(
         (candidate) => /^\d+\.\d+\.\d+\.\d+$/.test(candidate) && !own.has(candidate)
       )
-      if (address) found.set(address, { name: service.name, address })
+      if (!address) return
+      // Tamanho da área de trabalho anunciado pelo outro (para desenhar e encaixar as bordas).
+      const width = Number(service.txt?.w)
+      const height = Number(service.txt?.h)
+      const screen =
+        width > 0 && height > 0 && width < 100_000 && height < 100_000
+          ? { width, height }
+          : undefined
+      found.set(address, { name: service.name, address, ...(screen ? { screen } : {}) })
     })
   )
   await new Promise((resolve) => setTimeout(resolve, 1500))
@@ -124,11 +132,12 @@ async function browse(): Promise<Host[]> {
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name))
 }
 
-function advertise(name: string): () => void {
+function advertise(name: string, screen?: ScreenSize): () => void {
+  const txt = screen ? { w: String(screen.width), h: String(screen.height) } : undefined
   const instances = perInterface()
   const services = instances.map((bonjour) =>
     // Sem sondagem: os anúncios das outras interfaces deste PC contariam como "nome já em uso".
-    bonjour.publish({ name, type: SERVICE_TYPE, port: MOUSE_CHANNEL_PORT, probe: false })
+    bonjour.publish({ name, type: SERVICE_TYPE, port: MOUSE_CHANNEL_PORT, probe: false, txt })
   )
   return () => {
     services.forEach((service) => service.stop?.())
@@ -303,6 +312,8 @@ export function createRealMouseEngine(deps: {
   runPowerShell(script: string): Promise<unknown>
   writeText(text: string): void
   readText(): Promise<string> | string
+  /** Área de trabalho deste computador (todas as telas juntas). */
+  ownScreen(): ScreenSize
 }): MouseEngine {
   const dir = join(deps.userData, 'deskflow')
   const share = createMouseShare({
@@ -361,5 +372,13 @@ export function createRealMouseEngine(deps: {
     offer: (to, offered) => channel.send(to, '/mouse/files', { files: offered })
   })
   const text = textClipboard(deps)
-  return createMouseEngine({ share, channel, advertise, browse, files, text })
+  return createMouseEngine({
+    share,
+    channel,
+    advertise: (name) => advertise(name, deps.ownScreen()),
+    browse,
+    files,
+    text,
+    ownScreen: deps.ownScreen
+  })
 }

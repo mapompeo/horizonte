@@ -95,7 +95,7 @@
           {:else if state.screen === 'receiving'}
             <Receiving host={state.host} name={state.name} bitrate={settings.bitrate} />
           {:else if state.screen === 'mouse'}
-            <Mouse sides={settings.mouseSides} />
+            <Mouse sides={settings.mouseSides} offsets={settings.mouseOffsets} />
           {:else if state.screen === 'mouse-request'}
             <MouseRequest device={state.device} address={state.address} />
           {:else if state.screen === 'mouse-active'}
