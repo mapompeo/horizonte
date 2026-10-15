@@ -28,7 +28,7 @@ function fakeShare(): MouseShare & {
   return {
     calls,
     share: async ({ peerName }) => void calls.push(`share:${peerName}`),
-    follow: async ({ serverAddress }) => void calls.push(`follow:${serverAddress}`),
+    follow: async ({ name, serverAddress }) => void calls.push(`follow:${serverAddress}:${name}`),
     stop: () => void calls.push('stop'),
     onEnded: (listener) => {
       ended.add(listener)
@@ -74,7 +74,19 @@ describe('modo Mouse entre dois PCs', () => {
     expect(notebook.requests).toEqual([{ device: 'Desktop', address: '192.168.1.4' }])
 
     await notebook.engine.accept('Notebook')
-    expect(notebook.share.calls).toEqual(['follow:192.168.1.4'])
+    expect(notebook.share.calls).toEqual(['follow:192.168.1.4:Notebook'])
+  })
+
+  it('adicionado pelo IP: o outro entra com o nome que o servidor conhece, senão o Deskflow recusa', async () => {
+    const net = network()
+    const desktop = pc(net, '192.168.1.4')
+    const linux = pc(net, '192.168.1.7')
+    await desktop.engine.start('Desktop')
+    await linux.engine.start('Suntrans')
+    await desktop.engine.share({ name: '192.168.1.7', address: '192.168.1.7' }, 'Desktop')
+    await linux.engine.accept('Suntrans')
+    expect(desktop.share.calls).toEqual(['share:192.168.1.7'])
+    expect(linux.share.calls).toEqual(['follow:192.168.1.4:192.168.1.7'])
   })
 
   it('recusar avisa quem pediu, que desliga o servidor', async () => {
