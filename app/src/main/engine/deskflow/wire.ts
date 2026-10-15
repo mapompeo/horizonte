@@ -251,7 +251,14 @@ export function createRealMouseEngine(deps: {
     },
     join,
     spawn: async (command, args) => {
-      const child = spawn(command, args, { stdio: 'ignore', windowsHide: true })
+      // A saída do Deskflow vai para um log da última sessão, para entender quando não conecta.
+      await mkdir(dir, { recursive: true })
+      const log = createWriteStream(
+        join(dir, `${args.includes('server') ? 'server' : 'client'}.log`)
+      )
+      const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+      child.stdout?.pipe(log)
+      child.stderr?.pipe(log)
       await new Promise<void>((resolve, reject) => {
         child.once('spawn', resolve)
         child.once('error', reject)
