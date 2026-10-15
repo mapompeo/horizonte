@@ -23,7 +23,8 @@ function harness(options: {
     download: vi.fn(async (_pkg, dest: string) => void downloads.push(dest)),
     runPrivileged: async (script) => void privileged.push(script),
     runUser: async (script) => void user.push(script),
-    workDir: '/tmp'
+    workDir: '/tmp',
+    configDir: '/home/ana/.config/horizonte/deskflow'
   }
 }
 
@@ -40,6 +41,8 @@ describe('ensureDeskflowLinux', () => {
     const command = await ensureDeskflowLinux(h)
     expect(command.command).toBe('flatpak')
     expect(command.prefix).toContain('--command=deskflow-core')
+    // Sem isso o Flatpak não lê os ajustes que o Horizonte escreve.
+    expect(command.prefix).toContain('--filesystem=/home/ana/.config/horizonte/deskflow')
   })
 
   it('distribuição com pacote nativo: baixa, confere o hash de novo e instala num só aviso', async () => {
