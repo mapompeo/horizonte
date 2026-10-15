@@ -36,6 +36,8 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
   let unadvertise: (() => void) | null = null
   /** Quem pediu para usar o mouse dele aqui e ainda não teve resposta. */
   let pending: Host | null = null
+  /** Nome com que o servidor do outro lado espera este PC (o Deskflow recusa nomes desconhecidos). */
+  let pendingAs = ''
   /** O outro lado do compartilhamento em andamento. */
   let peer: Host | null = null
   const requestListeners = new Set<(request: { device: string; address: string }) => void>()
@@ -54,6 +56,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
           : ''
       if (!device) return false
       pending = { name: device, address }
+      pendingAs = cleanName(String((body as Record<string, unknown>).as ?? ''))
       for (const listener of [...requestListeners]) listener({ device, address })
       return true
     }
@@ -128,7 +131,10 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       peer = other
       deps.files?.start(other.address)
       try {
-        await deps.channel.send(other.address, '/mouse/request', { device: ownName })
+        await deps.channel.send(other.address, '/mouse/request', {
+          device: ownName,
+          as: other.name
+        })
       } catch {
         await end()
         throw new Error(
@@ -142,7 +148,8 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       pending = null
       peer = other
       deps.files?.start(other.address)
-      await deps.share.follow({ name: ownName, serverAddress: other.address })
+      // Entra com o nome que o servidor espera: adicionado pelo IP, ele só conhece o endereço.
+      await deps.share.follow({ name: pendingAs || ownName, serverAddress: other.address })
     },
     async deny() {
       const other = pending
