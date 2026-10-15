@@ -420,7 +420,9 @@ async function boot(): Promise<void> {
               120_000
             )
           },
-          runPowerShell: (script) => runPowerShell(script, 30_000)
+          runPowerShell: (script) => runPowerShell(script, 30_000),
+          writeText: (text) => clipboard.writeText(text),
+          readText: () => clipboard.readText()
         })
   if (mouse) app.on('before-quit', () => void mouse.stop().catch(() => undefined))
   const controller = await createController({ engine, mouse, store })

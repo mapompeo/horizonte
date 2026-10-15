@@ -11,14 +11,22 @@ import { Bonjour } from 'bonjour-service'
 import type { Host } from '../../../shared/types'
 import type { MouseEngine } from '../port'
 import { createFileClipboard, type FileClipboardDeps } from './files'
-import { createMouseEngine, MOUSE_CHANNEL_PORT, type MouseChannel } from './mouse-engine'
+import { LINUX_TEXT_SCRIPT } from './linux-text'
+import {
+  createMouseEngine,
+  MAX_TEXT_CHARS,
+  MOUSE_CHANNEL_PORT,
+  type MouseChannel,
+  type MouseEngineDeps
+} from './mouse-engine'
 import { createMouseShare, type DeskflowCommand } from './session'
 import { downloadVerified } from '../../platform/windows/download'
 import { ensureDeskflowLinux, FLATPAK_APP } from './linux-install'
 import { DESKFLOW_WINDOWS, deskflowLinuxFor } from './versions'
 
 const SERVICE_TYPE = 'horizonte-mouse'
-const MAX_BODY = 2048
+/** Cabe um texto copiado inteiro (até MAX_TEXT_CHARS, em UTF-8 e com escapes do JSON). */
+const MAX_BODY = 2_000_000
 
 /** Canal HTTP do modo Mouse: só aceita POST com JSON pequeno; o resto é recusado. */
 function createChannel(): MouseChannel {
@@ -235,11 +243,66 @@ function windowsClipboard(
   }
 }
 
+/**
+ * Texto copiado que o Deskflow não leva. Linux (GNOME): um observador do Mutter avisa cada texto copiado aqui;
+ * o que vem do outro PC o próprio Deskflow já põe no Linux. Windows: o texto que vem do Linux vai para a área de
+ * transferência (o que sai do Windows o Deskflow leva).
+ */
+function textClipboard(deps: {
+  writeText(text: string): void
+  readText(): Promise<string> | string
+}): NonNullable<MouseEngineDeps['text']> {
+  if (process.platform !== 'linux') {
+    return {
+      start: () => undefined,
+      stop: () => undefined,
+      // Igual ao que já está: não escreve de novo, senão o Deskflow manda de volta a cada troca de tela.
+      write: (text) =>
+        void Promise.resolve(deps.readText())
+          .then((current) => current !== text && deps.writeText(text))
+          .catch(() => undefined)
+    }
+  }
+  let child: ReturnType<typeof spawn> | null = null
+  return {
+    start(onCopied) {
+      child?.kill()
+      const current = spawn('python3', ['-c', LINUX_TEXT_SCRIPT, String(MAX_TEXT_CHARS)], {
+        stdio: ['pipe', 'pipe', 'ignore']
+      })
+      current.on('error', () => undefined)
+      let buffer = ''
+      current.stdout?.on('data', (chunk: Buffer) => {
+        buffer += chunk.toString('utf8')
+        let line: number
+        while ((line = buffer.indexOf('\n')) >= 0) {
+          const raw = buffer.slice(0, line)
+          buffer = buffer.slice(line + 1)
+          try {
+            const { text } = JSON.parse(raw) as { text?: unknown }
+            if (typeof text === 'string') onCopied(text)
+          } catch {
+            // Linha que não é JSON: ignora.
+          }
+        }
+      })
+      child = current
+    },
+    stop() {
+      child?.kill()
+      child = null
+    },
+    write: () => undefined
+  }
+}
+
 export function createRealMouseEngine(deps: {
   userData: string
   download(zip: string): Promise<void>
   extract(zip: string, into: string): Promise<void>
   runPowerShell(script: string): Promise<unknown>
+  writeText(text: string): void
+  readText(): Promise<string> | string
 }): MouseEngine {
   const dir = join(deps.userData, 'deskflow')
   const share = createMouseShare({
@@ -297,5 +360,6 @@ export function createRealMouseEngine(deps: {
     },
     offer: (to, offered) => channel.send(to, '/mouse/files', { files: offered })
   })
-  return createMouseEngine({ share, channel, advertise, browse, files })
+  const text = textClipboard(deps)
+  return createMouseEngine({ share, channel, advertise, browse, files, text })
 }
