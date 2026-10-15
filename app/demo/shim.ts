@@ -89,6 +89,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
       stop: async () => undefined,
       listPeers: async () => [{ name: 'Notebook', address: '192.168.1.6' }],
       share: async () => undefined,
+      setSide: async () => undefined,
       accept: async () => undefined,
       deny: async () => undefined,
       end: async () => undefined,

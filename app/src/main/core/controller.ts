@@ -96,7 +96,11 @@ export async function createController({
     if (wasMouse && !isMouse) mouse.stop().catch(() => undefined)
     if (next.screen === 'mouse-active' && prev.screen === 'mouse' && event.type === 'MOUSE_SHARE') {
       mouse
-        .share({ name: event.name, address: event.host }, settings.deviceName)
+        .share(
+          { name: event.name, address: event.host },
+          settings.deviceName,
+          settings.mouseSides[event.name] ?? 'right'
+        )
         .catch(failIfStill(next, 'Não consegui compartilhar o mouse com esse computador.'))
     }
     if (prev.screen === 'mouse-request') {
@@ -266,10 +270,16 @@ export async function createController({
       const update = settingsQueue.then(async () => {
         const next = parseSettings({ ...settings, ...patch })
         const moved = next.extendSide !== settings.extendSide
+        const sharing =
+          state.screen === 'mouse-active' && state.role === 'share' ? state.device : null
+        const mouseMoved =
+          sharing !== null && next.mouseSides[sharing] !== settings.mouseSides[sharing]
         await store.save(next)
         settings = { ...next, mode: settings.mode }
         notify()
         if (moved) await engine.placeDisplay?.(settings.extendSide).catch(() => undefined)
+        if (mouseMoved)
+          await mouse?.setSide(settings.mouseSides[sharing] ?? 'right').catch(() => undefined)
         if (state.screen === 'connected' || state.screen === 'receiving') {
           // Ajuste ao vivo é melhor esforço: se falhar, a conexão segue com o valor anterior.
           await engine.applyBitrate(settings.bitrate).catch(() => undefined)
