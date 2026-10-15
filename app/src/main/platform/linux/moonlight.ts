@@ -21,7 +21,8 @@ export async function ensureMoonlightLinux(
   deps: LinuxMoonlightDeps,
   onProgress?: (fraction: number) => void
 ): Promise<string> {
-  const target = join(deps.dir, 'Moonlight.AppImage')
+  // O nome leva a versão: um Moonlight novo baixa sozinho em vez de reaproveitar o antigo.
+  const target = join(deps.dir, `Moonlight-${deps.artifact.version}.AppImage`)
   if (!(await deps.exists(target))) {
     await deps.run(`mkdir -p ${shQuote(deps.dir)}`)
     await deps.download(deps.artifact, target, (f) => onProgress?.(f * 0.95))
