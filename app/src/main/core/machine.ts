@@ -11,6 +11,7 @@ export function approvalPin(state: ApproveState, event: ApproveEvent): string | 
 }
 
 function startFor(mode: Mode): AppState {
+  if (mode === 'mouse') return { screen: 'mouse', mode: 'mouse' }
   return mode === 'send'
     ? { screen: 'preparing', mode: 'send', step: 'engine' }
     : { screen: 'discover', mode: 'receive' }
@@ -96,6 +97,27 @@ export function reduce(state: AppState, event: AppEvent): AppState {
     case 'receiving':
       return event.type === 'STREAM_ENDED' || event.type === 'STOP'
         ? { screen: 'discover', mode: 'receive' }
+        : state
+    case 'mouse':
+      if (event.type === 'MOUSE_SHARE')
+        return { screen: 'mouse-active', mode: 'mouse', device: event.name, role: 'share' }
+      if (event.type === 'MOUSE_REQUEST')
+        return {
+          screen: 'mouse-request',
+          mode: 'mouse',
+          device: event.device,
+          address: event.address
+        }
+      return state
+    case 'mouse-request':
+      if (event.type === 'MOUSE_ACCEPT')
+        return { screen: 'mouse-active', mode: 'mouse', device: state.device, role: 'follow' }
+      return event.type === 'MOUSE_DENY' || event.type === 'MOUSE_ENDED'
+        ? { screen: 'mouse', mode: 'mouse' }
+        : state
+    case 'mouse-active':
+      return event.type === 'STOP' || event.type === 'MOUSE_ENDED'
+        ? { screen: 'mouse', mode: 'mouse' }
         : state
     case 'error':
       return event.type === 'RETRY' ? startFor(state.mode) : state

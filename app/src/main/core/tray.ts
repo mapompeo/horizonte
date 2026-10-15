@@ -2,7 +2,7 @@ import type { AppState } from '../../shared/types'
 
 /** Conectado (enviando ou recebendo), o Horizonte sai da frente e fica só nos ícones ocultos. */
 export const belongsInTray = (state: AppState): boolean =>
-  state.screen === 'connected' || state.screen === 'receiving'
+  state.screen === 'connected' || state.screen === 'receiving' || state.screen === 'mouse-active'
 
 /**
  * Decide a janela a cada mudança de estado: some ao conectar e volta ao desconectar. Abrir pelo ícone durante a

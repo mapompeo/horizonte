@@ -38,7 +38,8 @@
     value={mode}
     options={[
       { value: 'send', text: 'Enviar' },
-      { value: 'receive', text: 'Mostrar' }
+      { value: 'receive', text: 'Mostrar' },
+      { value: 'mouse', text: 'Mouse' }
     ]}
     onSelect={(value) => chooseMode(value as Mode)}
   />

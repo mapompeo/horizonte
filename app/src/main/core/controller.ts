@@ -6,12 +6,14 @@ import type {
   SettingsPatch,
   Snapshot
 } from '../../shared/types'
-import type { EnginePort } from '../engine/port'
+import type { EnginePort, MouseEngine } from '../engine/port'
 import { approvalPin, reduce } from './machine'
 import { parseSettings, type SettingsStore } from './settings'
 
 export interface ControllerDeps {
   engine: EnginePort
+  /** Sem ele, o modo Mouse mostra que não está disponível neste sistema. */
+  mouse?: MouseEngine
   store: SettingsStore
   initial?: AppState
 }
@@ -21,6 +23,7 @@ export interface Controller {
   dispatch(event: AppEvent): void
   updateSettings(patch: SettingsPatch): Promise<Settings>
   listHosts(): Promise<Host[]>
+  listMousePeers(): Promise<Host[]>
   subscribe(listener: (snapshot: Snapshot) => void): () => void
 }
 
@@ -33,6 +36,7 @@ const isSendLive = (state: AppState): boolean => isSendIdle(state) || state.scre
 function startFor(mode: Settings['mode']): AppState {
   if (mode === 'send') return { screen: 'preparing', mode: 'send', step: 'engine' }
   if (mode === 'receive') return { screen: 'discover', mode: 'receive' }
+  if (mode === 'mouse') return { screen: 'mouse', mode: 'mouse' }
   return { screen: 'install' }
 }
 
@@ -42,6 +46,7 @@ function describeError(cause: unknown): string {
 
 export async function createController({
   engine,
+  mouse,
   store,
   initial
 }: ControllerDeps): Promise<Controller> {
@@ -75,7 +80,41 @@ export async function createController({
     }
   }
 
+  function runMouseEffects(prev: AppState, next: AppState, event: AppEvent): void {
+    const wasMouse = 'mode' in prev && prev.mode === 'mouse'
+    const isMouse = 'mode' in next && next.mode === 'mouse'
+    if (!mouse) {
+      if (isMouse && !wasMouse)
+        fail('O compartilhamento de mouse ainda não está disponível neste sistema.', '')
+      return
+    }
+    if (isMouse && !wasMouse) {
+      mouse.start(settings.deviceName).catch(failIfStill(next, 'Não consegui ligar o modo Mouse.'))
+    }
+    if (wasMouse && !isMouse) mouse.stop().catch(() => undefined)
+    if (next.screen === 'mouse-active' && prev.screen === 'mouse' && event.type === 'MOUSE_SHARE') {
+      mouse
+        .share({ name: event.name, address: event.host }, settings.deviceName)
+        .catch(failIfStill(next, 'Não consegui compartilhar o mouse com esse computador.'))
+    }
+    if (prev.screen === 'mouse-request') {
+      if (event.type === 'MOUSE_ACCEPT') {
+        mouse
+          .accept(settings.deviceName)
+          .catch(failIfStill(next, 'Não consegui me conectar ao mouse do outro computador.'))
+      } else if (event.type === 'MOUSE_DENY') mouse.deny().catch(() => undefined)
+    }
+    if (
+      prev.screen === 'mouse-active' &&
+      next.screen !== 'mouse-active' &&
+      event.type !== 'MOUSE_ENDED'
+    ) {
+      mouse.end().catch(() => undefined)
+    }
+  }
+
   function runEffects(prev: AppState, next: AppState, event: AppEvent): void {
+    runMouseEffects(prev, next, event)
     // Sair da preparação por qualquer caminho abandona a execução em andamento.
     if (prev.screen === 'preparing' && next.screen !== 'preparing') prepareRun++
 
@@ -177,10 +216,15 @@ export async function createController({
   engine.onClientConnected((device) => dispatch({ type: 'CLIENT_CONNECTED', device }))
   engine.onClientDisconnected(() => dispatch({ type: 'CLIENT_DISCONNECTED' }))
   engine.onStreamEnded(() => dispatch({ type: 'STREAM_ENDED' }))
+  mouse?.onRequest((request) => dispatch({ type: 'MOUSE_REQUEST', ...request }))
+  mouse?.onEnded(() => dispatch({ type: 'MOUSE_ENDED' }))
 
   // Abrindo direto em enviar não há transição para disparar a preparação: começa aqui.
   if (state.screen === 'preparing')
     runEffects({ screen: 'choose' }, state, { type: 'CHOOSE', mode: 'send' })
+  // Abrindo direto no modo Mouse, o mesmo: anuncia este PC e escuta pedidos.
+  if (state.screen === 'mouse')
+    runEffects({ screen: 'choose' }, state, { type: 'CHOOSE', mode: 'mouse' })
 
   return {
     getSnapshot: snapshot,
@@ -201,6 +245,7 @@ export async function createController({
       return update
     },
     listHosts: () => engine.listHosts(),
+    listMousePeers: async () => (mouse ? mouse.listPeers() : []),
     subscribe(listener) {
       listeners.add(listener)
       return () => {

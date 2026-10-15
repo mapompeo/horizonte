@@ -12,6 +12,23 @@ export interface ApproveRequest {
   name: string
 }
 
+/** Compartilhar mouse e teclado com outro PC (Deskflow), pela rede local. */
+export interface MouseEngine {
+  /** Entra no modo: anuncia este PC na rede e passa a escutar pedidos. */
+  start(name: string): Promise<void>
+  stop(): Promise<void>
+  listPeers(): Promise<Host[]>
+  /** Este PC empresta o mouse: sobe o servidor e pede ao outro que se conecte. */
+  share(peer: Host, ownName: string): Promise<void>
+  /** Aceita o pedido pendente: este PC passa a ser controlado. */
+  accept(ownName: string): Promise<void>
+  deny(): Promise<void>
+  /** Encerra o compartilhamento e avisa o outro PC. */
+  end(): Promise<void>
+  onRequest(callback: (request: { device: string; address: string }) => void): () => void
+  onEnded(callback: () => void): () => void
+}
+
 /** Papel de quem envia a tela (Sunshine). */
 export interface ServerEngine {
   prepare(

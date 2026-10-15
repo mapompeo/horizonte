@@ -1,4 +1,4 @@
-export type Mode = 'send' | 'receive'
+export type Mode = 'send' | 'receive' | 'mouse'
 export type PrepStep = 'engine' | 'display' | 'encoder'
 
 /** O que a preparação está fazendo agora, em palavras, e quanto do caminho todo já foi (0 a 1). */
@@ -28,6 +28,10 @@ export type AppState =
   | { screen: 'connected'; mode: 'send'; device: string }
   | { screen: 'discover'; mode: 'receive' }
   | { screen: 'receiving'; mode: 'receive'; host: string; name: string }
+  | { screen: 'mouse'; mode: 'mouse' }
+  | { screen: 'mouse-request'; mode: 'mouse'; device: string; address: string }
+  /** `share`: o mouse deste PC passa para o outro; `follow`: este PC é controlado pelo mouse do outro. */
+  | { screen: 'mouse-active'; mode: 'mouse'; device: string; role: 'share' | 'follow' }
   | { screen: 'error'; mode: Mode; error: AppError }
 
 export type AppEvent =
@@ -47,6 +51,11 @@ export type AppEvent =
   | { type: 'STREAM_ENDED' }
   | { type: 'FAIL'; error: AppError }
   | { type: 'RETRY' }
+  | { type: 'MOUSE_SHARE'; host: string; name: string }
+  | { type: 'MOUSE_REQUEST'; device: string; address: string }
+  | { type: 'MOUSE_ACCEPT' }
+  | { type: 'MOUSE_DENY' }
+  | { type: 'MOUSE_ENDED' }
 
 export type ProfileId = 'economico' | 'equilibrado' | 'maximo' | 'custom'
 export type Resolution = '720p' | '1080p' | '1440p'

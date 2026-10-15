@@ -6,6 +6,7 @@ export const CHANNELS = {
   dispatch: 'horizonte:dispatch',
   updateSettings: 'horizonte:update-settings',
   hosts: 'horizonte:hosts',
+  mousePeers: 'horizonte:mouse-peers',
   webAccess: 'horizonte:web-access',
   setWebAccess: 'horizonte:set-web-access',
   openRepo: 'horizonte:open-repo',
@@ -30,6 +31,8 @@ export interface HorizonteApi {
   dispatch(event: AppEvent): Promise<void>
   updateSettings(patch: SettingsPatch): Promise<Settings>
   listHosts(): Promise<Host[]>
+  /** Outros PCs com o Horizonte no modo Mouse. */
+  listMousePeers(): Promise<Host[]>
   getWebAccess(): Promise<WebAccess>
   setWebAccess(on: boolean): Promise<WebAccess>
   /** Abre a página do projeto no navegador padrão. */

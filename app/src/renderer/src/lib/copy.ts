@@ -39,6 +39,28 @@ export function copyFor(state: AppState): ScreenCopy {
       return { title: 'Na sua rede' }
     case 'receiving':
       return { title: 'Recebendo a tela.', pill: { tone: 'ok', text: safeName(state.name) } }
+    case 'mouse':
+      return {
+        title: 'Um mouse, dois computadores.',
+        subtitle: 'Escolha o outro computador e passe o mouse pela borda da tela.'
+      }
+    case 'mouse-request':
+      return {
+        title: `Usar o mouse do ${safeName(state.device)}?`,
+        subtitle: 'O mouse e o teclado dele vão controlar este computador também.'
+      }
+    case 'mouse-active':
+      return state.role === 'share'
+        ? {
+            title: 'Mouse compartilhado.',
+            subtitle: `Passe o mouse pela borda para usar o ${safeName(state.device)}.`,
+            pill: { tone: 'ok', text: safeName(state.device) }
+          }
+        : {
+            title: 'Controlado pelo outro mouse.',
+            subtitle: `O mouse do ${safeName(state.device)} também funciona aqui.`,
+            pill: { tone: 'ok', text: safeName(state.device) }
+          }
     case 'error':
       return { title: state.error.message, subtitle: state.error.detail }
   }

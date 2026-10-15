@@ -17,8 +17,18 @@ export function isUiEvent(value: unknown): value is AppEvent {
       return true
     case 'APPROVE':
       return candidate.pin === undefined || isValidPin(candidate.pin)
+    case 'MOUSE_ACCEPT':
+    case 'MOUSE_DENY':
+      return true
+    case 'MOUSE_SHARE':
+      return (
+        typeof candidate.host === 'string' &&
+        isHostAddress(candidate.host) &&
+        typeof candidate.name === 'string' &&
+        candidate.name.length <= 200
+      )
     case 'CHOOSE':
-      return candidate.mode === 'send' || candidate.mode === 'receive'
+      return candidate.mode === 'send' || candidate.mode === 'receive' || candidate.mode === 'mouse'
     case 'CONNECT':
       return (
         typeof candidate.host === 'string' &&

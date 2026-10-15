@@ -8,6 +8,7 @@ const api: HorizonteApi = {
   dispatch: (event) => ipcRenderer.invoke(CHANNELS.dispatch, event),
   updateSettings: (patch) => ipcRenderer.invoke(CHANNELS.updateSettings, patch),
   listHosts: () => ipcRenderer.invoke(CHANNELS.hosts),
+  listMousePeers: () => ipcRenderer.invoke(CHANNELS.mousePeers),
   getWebAccess: () => ipcRenderer.invoke(CHANNELS.webAccess),
   setWebAccess: (on) => ipcRenderer.invoke(CHANNELS.setWebAccess, on),
   openRepo: () => ipcRenderer.invoke(CHANNELS.openRepo),
