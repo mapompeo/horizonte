@@ -12,6 +12,9 @@
   import Connected from './screens/Connected.svelte'
   import Discover from './screens/Discover.svelte'
   import Receiving from './screens/Receiving.svelte'
+  import Mouse from './screens/Mouse.svelte'
+  import MouseRequest from './screens/MouseRequest.svelte'
+  import MouseActive from './screens/MouseActive.svelte'
   import ErrorScreen from './screens/ErrorScreen.svelte'
   import SettingsPage from './screens/SettingsPage.svelte'
 
@@ -25,6 +28,10 @@
       case 'discover':
       case 'receiving':
         return 'receive'
+      case 'mouse':
+      case 'mouse-request':
+      case 'mouse-active':
+        return 'mouse'
       case 'error':
         return state.mode
       default:
@@ -87,6 +94,12 @@
             <Discover />
           {:else if state.screen === 'receiving'}
             <Receiving host={state.host} name={state.name} bitrate={settings.bitrate} />
+          {:else if state.screen === 'mouse'}
+            <Mouse />
+          {:else if state.screen === 'mouse-request'}
+            <MouseRequest device={state.device} address={state.address} />
+          {:else if state.screen === 'mouse-active'}
+            <MouseActive device={state.device} role={state.role} />
           {:else if state.screen === 'error'}
             <ErrorScreen error={state.error} />
           {/if}

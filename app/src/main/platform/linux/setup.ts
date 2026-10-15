@@ -71,20 +71,21 @@ const INSTALL_COMMAND: Record<PackageKind, string> = {
 }
 
 /**
- * Com o firewall do Ubuntu (ufw) ligado, o outro dispositivo não alcança o Sunshine. Libera só as portas dele e só
+ * Com o firewall do Ubuntu (ufw) ligado, o outro dispositivo não alcança o Sunshine nem o Deskflow (24800, 47901). Libera só as portas dele e só
  * para as redes privadas (casa e escritório), nunca para a internet. Sem ufw ativo, não faz nada.
  */
 export const FIREWALL_SCRIPT = [
   'if command -v ufw >/dev/null && systemctl is-active --quiet ufw; then',
   '  for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12; do',
-  '    ufw allow from "$net" to any port 47900,47984,47989,48010 proto tcp',
+  '    ufw allow from "$net" to any port 24800,47900,47901,47984,47989,48010 proto tcp',
   '    ufw allow from "$net" to any port 47998,47999,48000,48002,48010 proto udp',
   '  done',
   'fi'
 ].join('\n')
 
 /** Marca que o firewall já foi tratado, para não pedir administrador de novo a cada abertura. */
-export const MARK_FIREWALL = 'mkdir -p ~/.config/horizonte && touch ~/.config/horizonte/firewall-ok'
+export const MARK_FIREWALL =
+  'mkdir -p ~/.config/horizonte && touch ~/.config/horizonte/firewall-ok-v2'
 
 /**
  * Liga o monitor virtual do portal no serviço do Sunshine (variável lida pelo patch do Horizonte). Só reinicia o

@@ -34,7 +34,7 @@ export const createProbe = (): LinuxProbe => ({
   sunshineResponding: () => succeeds('ss -ltn | grep -q ":47990 "'),
   monitorPresent: () => succeeds(`xrandr --listmonitors | grep -q ${MONITOR_NAME}`),
   firewallReady: () =>
-    succeeds('! systemctl is-active --quiet ufw || test -e ~/.config/horizonte/firewall-ok'),
+    succeeds('! systemctl is-active --quiet ufw || test -e ~/.config/horizonte/firewall-ok-v2'),
   sunshinePatched: () => succeeds('grep -q -a SUNSHINE_PORTAL_VIRTUAL "$(command -v sunshine)"'),
   // AvailableSourceTypes é um bitmask: 4 = monitor virtual.
   portalVirtualSupported: () =>

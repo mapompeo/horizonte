@@ -444,9 +444,9 @@ describe('createLinuxSetup', () => {
     await createLinuxSetup(h.deps).installer.ensureInstalled()
     expect(h.privileged).toHaveLength(1)
     expect(h.privileged[0]).toContain(
-      'ufw allow from "$net" to any port 47900,47984,47989,48010 proto tcp'
+      'ufw allow from "$net" to any port 24800,47900,47901,47984,47989,48010 proto tcp'
     )
-    expect(h.user.some((script) => script.includes('firewall-ok'))).toBe(true)
+    expect(h.user.some((script) => script.includes('firewall-ok-v2'))).toBe(true)
   })
 
   it('motor já instalado e firewall pendente: só um aviso para liberar as portas', async () => {

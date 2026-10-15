@@ -38,6 +38,8 @@ import { finishStartup, runStartup } from './startup'
 import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
+import { createRealMouseEngine } from './engine/deskflow/wire'
+import { DESKFLOW_WINDOWS } from './engine/deskflow/versions'
 import { createPinChannel, sendPin } from './engine/pin-channel'
 import { FakeEngine } from './engine/fake'
 import { waitForExit } from './engine/moonlight/run'
@@ -405,7 +407,23 @@ async function boot(): Promise<void> {
       receiver
     )
   }
-  const controller = await createController({ engine, store })
+  // Mouse e teclado compartilhados (Deskflow): Windows e Linux; no Mac ainda não.
+  const mouse =
+    process.platform === 'darwin'
+      ? undefined
+      : createRealMouseEngine({
+          userData: app.getPath('userData'),
+          download: (zip) => downloadVerified(DESKFLOW_WINDOWS, zip),
+          extract: async (zip, into) => {
+            await runPowerShell(
+              `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(into)} -Force`,
+              120_000
+            )
+          },
+          runPowerShell: (script) => runPowerShell(script, 30_000)
+        })
+  if (mouse) app.on('before-quit', () => void mouse.stop().catch(() => undefined))
+  const controller = await createController({ engine, mouse, store })
   const diagnosticEnv = {
     version: app.getVersion(),
     platform: process.platform,
@@ -512,6 +530,7 @@ async function boot(): Promise<void> {
     )
   )
   ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
+  ipcMain.handle(CHANNELS.mousePeers, () => controller.listMousePeers())
   ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
   const reports = createDiagnosticReporter({
     text: async (includeHistory) => {

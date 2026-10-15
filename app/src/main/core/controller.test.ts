@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createController, type Controller } from './controller'
 import { DEFAULT_SETTINGS, type SettingsStore } from './settings'
 import { FakeEngine } from '../engine/fake'
+import type { MouseEngine } from '../engine/port'
 import type { AppState, Settings } from '../../shared/types'
 
 function memoryStore(): { store: SettingsStore; saved: Settings[] } {
@@ -656,6 +657,108 @@ describe('persistencia concorrente de modo e ajustes', () => {
     } finally {
       process.off('unhandledRejection', onUnhandled)
     }
+  })
+})
+
+describe('modo Mouse', () => {
+  function fakeMouse(): MouseEngine & {
+    calls: string[]
+    request(device: string, address: string): void
+    endItself(): void
+  } {
+    const calls: string[] = []
+    let onRequest: ((r: { device: string; address: string }) => void) | null = null
+    let onEnded: (() => void) | null = null
+    return {
+      calls,
+      start: async (name) => void calls.push(`start:${name}`),
+      stop: async () => void calls.push('stop'),
+      listPeers: async () => [{ name: 'Notebook', address: '192.168.1.6' }],
+      share: async (peer) => void calls.push(`share:${peer.address}`),
+      accept: async () => void calls.push('accept'),
+      deny: async () => void calls.push('deny'),
+      end: async () => void calls.push('end'),
+      onRequest: (callback) => {
+        onRequest = callback
+        return () => undefined
+      },
+      onEnded: (callback) => {
+        onEnded = callback
+        return () => undefined
+      },
+      request: (device, address) => onRequest?.({ device, address }),
+      endItself: () => onEnded?.()
+    }
+  }
+
+  async function mouseSetup(): Promise<{
+    controller: Controller
+    mouse: ReturnType<typeof fakeMouse>
+  }> {
+    const mouse = fakeMouse()
+    const { store } = memoryStore()
+    const controller = await createController({
+      engine: new FakeEngine(0),
+      mouse,
+      store,
+      initial: { screen: 'discover', mode: 'receive' }
+    })
+    return { controller, mouse }
+  }
+
+  it('entrar no modo anuncia este PC; emprestar o mouse pede ao outro; parar encerra', async () => {
+    const { controller, mouse } = await mouseSetup()
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    expect(screen(controller)).toBe('mouse')
+    controller.dispatch({ type: 'MOUSE_SHARE', host: '192.168.1.6', name: 'Notebook' })
+    expect(screen(controller)).toBe('mouse-active')
+    controller.dispatch({ type: 'STOP' })
+    expect(screen(controller)).toBe('mouse')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mouse.calls).toEqual(['start:Dispositivo', 'share:192.168.1.6', 'end'])
+  })
+
+  it('pedido do outro PC: aceitar passa a ser controlado; recusar volta à lista', async () => {
+    const { controller, mouse } = await mouseSetup()
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    mouse.request('Desktop', '192.168.1.4')
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'mouse-request',
+      mode: 'mouse',
+      device: 'Desktop',
+      address: '192.168.1.4'
+    })
+    controller.dispatch({ type: 'MOUSE_ACCEPT' })
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'mouse-active', role: 'follow' })
+    mouse.endItself()
+    expect(screen(controller)).toBe('mouse')
+
+    mouse.request('Desktop', '192.168.1.4')
+    controller.dispatch({ type: 'MOUSE_DENY' })
+    expect(screen(controller)).toBe('mouse')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mouse.calls).toContain('accept')
+    expect(mouse.calls).toContain('deny')
+    expect(mouse.calls).not.toContain('end') // o fim veio do outro lado: não precisa avisar de volta
+  })
+
+  it('sair do modo Mouse desliga o anúncio', async () => {
+    const { controller, mouse } = await mouseSetup()
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mouse.calls).toContain('stop')
+  })
+
+  it('sistema sem o motor do Mouse mostra um aviso claro', async () => {
+    const { store } = memoryStore()
+    const controller = await createController({
+      engine: new FakeEngine(0),
+      store,
+      initial: { screen: 'discover', mode: 'receive' }
+    })
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'error', mode: 'mouse' })
   })
 })
 

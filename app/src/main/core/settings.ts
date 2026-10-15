@@ -79,7 +79,10 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
       DEFAULT_SETTINGS.extendSide
     ),
     deviceName: name || defaultName,
-    mode: input.mode === 'send' || input.mode === 'receive' ? input.mode : null
+    mode:
+      input.mode === 'send' || input.mode === 'receive' || input.mode === 'mouse'
+        ? input.mode
+        : null
   }
 }
 

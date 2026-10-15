@@ -1,3 +1,4 @@
+import type { MouseEngine } from '../src/main/engine/port'
 import { createController, type Controller } from '../src/main/core/controller'
 import { version } from '../package.json'
 import { DEFAULT_SETTINGS, type SettingsStore } from '../src/main/core/settings'
@@ -82,7 +83,19 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     stopForwarding()
     const nextEngine = new FakeEngine(450)
     nextEngine.hosts = [{ name: 'Desktop', address: '192.168.1.5' }]
-    const nextController = await createController({ engine: nextEngine, store, initial })
+    // Modo Mouse de mentira: um PC na lista; emprestar o mouse funciona e "Parar" volta à lista.
+    const mouse: MouseEngine = {
+      start: async () => undefined,
+      stop: async () => undefined,
+      listPeers: async () => [{ name: 'Notebook', address: '192.168.1.6' }],
+      share: async () => undefined,
+      accept: async () => undefined,
+      deny: async () => undefined,
+      end: async () => undefined,
+      onRequest: () => () => undefined,
+      onEnded: () => () => undefined
+    }
+    const nextController = await createController({ engine: nextEngine, mouse, store, initial })
     if (run !== generation) return
     engine = nextEngine
     controller = nextController
@@ -105,6 +118,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     dispatch: async (event) => controller.dispatch(event),
     updateSettings: (patch) => controller.updateSettings(patch),
     listHosts: () => controller.listHosts(),
+    listMousePeers: () => controller.listMousePeers(),
     getWebAccess: async () => web,
     setWebAccess: async (on) => {
       web = on
