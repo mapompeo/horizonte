@@ -109,23 +109,22 @@
     const size = sizeOf(host)
     const w = size.width * scale
     const h = size.height * scale
-    const insideX = cx > me.x && cx < me.x + me.w
-    const insideY = cy > me.y && cy < me.y + me.h
-    let side: MouseSide
-    if (insideX && !insideY) side = cy < me.y + me.h / 2 ? 'above' : 'below'
-    else if (insideY && !insideX) side = cx < me.x + me.w / 2 ? 'left' : 'right'
-    else {
-      // Na diagonal: a borda com a menor distância.
-      const distance = {
-        left: Math.abs(cx - me.x),
-        right: Math.abs(cx - (me.x + me.w)),
-        above: Math.abs(cy - me.y),
-        below: Math.abs(cy - (me.y + me.h))
-      }
-      side = (Object.keys(distance) as MouseSide[]).reduce((a, b) =>
-        distance[a] <= distance[b] ? a : b
-      )
-    }
+    // Folga entre a tela solta e este computador em cada eixo (negativa: uma passa por cima da outra nesse eixo).
+    const gapX = Math.max(me.x - (cx + w / 2), cx - w / 2 - (me.x + me.w))
+    const gapY = Math.max(me.y - (cy + h / 2), cy - h / 2 - (me.y + me.h))
+    // Encosta pelo eixo em que ela ficou de fora: se passa por baixo deste (cruzando na horizontal), fica
+    // embaixo, mesmo puxada para um canto. Na diagonal pura, vale o eixo com a folga maior.
+    const vertical =
+      gapX < 0 && gapY < 0
+        ? Math.abs(cy - (me.y + me.h / 2)) / me.h > Math.abs(cx - (me.x + me.w / 2)) / me.w
+        : gapX < 0 || (gapY >= 0 && gapY >= gapX)
+    const side: MouseSide = vertical
+      ? cy < me.y + me.h / 2
+        ? 'above'
+        : 'below'
+      : cx < me.x + me.w / 2
+        ? 'left'
+        : 'right'
     const raw = horizontal(side) ? (cx - w / 2 - me.x) / me.w : (cy - h / 2 - me.y) / me.h
     return { side, offset: clamp(side, size, raw) }
   }
