@@ -1,4 +1,4 @@
-import type { Host, PrepProgress, PrepStep, Settings } from '../../shared/types'
+import type { ExtendSide, Host, PrepProgress, PrepStep, Settings } from '../../shared/types'
 
 export interface PairRequest {
   device: string
@@ -28,6 +28,8 @@ export interface ServerEngine {
   deny(pairingId: string): Promise<void>
   stopSending(): Promise<void>
   applyBitrate(mbps: number): Promise<void>
+  /** Muda a posição da tela estendida sem preparar tudo de novo. */
+  placeDisplay?(side: ExtendSide): Promise<void>
   onPairRequest(callback: (request: PairRequest) => void): () => void
   onPairCancelled(callback: (pairingId: string) => void): () => void
   onClientConnected(callback: (device: string) => void): () => void

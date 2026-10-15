@@ -11,6 +11,9 @@ export function composeEngine(server: ServerEngine, client: ClientEngine): Engin
     applyBitrate: async (mbps) => {
       await Promise.allSettled([server.applyBitrate(mbps), client.applyBitrate(mbps)])
     },
+    placeDisplay: async (side) => {
+      await server.placeDisplay?.(side)
+    },
     onPairRequest: (callback) => server.onPairRequest(callback),
     onPairCancelled: (callback) => server.onPairCancelled(callback),
     onClientConnected: (callback) => server.onClientConnected(callback),

@@ -14,6 +14,7 @@ const current: Snapshot = {
     codec: 'h264',
     autostart: false,
     deviceName: 'Desktop',
+    extendSide: 'right',
     mode: 'send'
   }
 }

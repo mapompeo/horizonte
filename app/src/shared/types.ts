@@ -54,6 +54,9 @@ export type Fps = 30 | 60 | 120
 export type Encoding = 'auto' | 'gpu' | 'cpu'
 export type Codec = 'h264' | 'hevc' | 'av1'
 
+/** Onde a tela estendida fica em relação às telas deste aparelho. */
+export type ExtendSide = 'left' | 'right' | 'above'
+
 export interface Settings {
   profile: ProfileId
   bitrate: number
@@ -63,6 +66,7 @@ export interface Settings {
   codec: Codec
   autostart: boolean
   deviceName: string
+  extendSide: ExtendSide
   /** Último modo escolhido neste aparelho; null até a pessoa escolher pela primeira vez. */
   mode: Mode | null
 }
