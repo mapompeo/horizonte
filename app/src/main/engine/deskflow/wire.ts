@@ -1,15 +1,17 @@
 import { execFile, spawn } from 'node:child_process'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
-import { networkInterfaces } from 'node:os'
+import { networkInterfaces, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Bonjour } from 'bonjour-service'
 import type { Host } from '../../../shared/types'
 import type { MouseEngine } from '../port'
 import { createMouseEngine, MOUSE_CHANNEL_PORT, type MouseChannel } from './mouse-engine'
 import { createMouseShare, type DeskflowCommand } from './session'
-import { DESKFLOW_WINDOWS } from './versions'
+import { downloadVerified } from '../../platform/windows/download'
+import { ensureDeskflowLinux, FLATPAK_APP } from './linux-install'
+import { DESKFLOW_WINDOWS, deskflowLinuxFor } from './versions'
 
 const SERVICE_TYPE = 'horizonte-mouse'
 const MAX_BODY = 2048
@@ -94,12 +96,20 @@ function advertise(name: string): () => void {
   }
 }
 
+/** Roda e rejeita com a mensagem de erro do processo. */
+const run = (command: string, args: string[], timeout: number): Promise<void> =>
+  new Promise((resolve, reject) =>
+    execFile(command, args, { timeout }, (error, _out, stderr) =>
+      error ? reject(new Error(String(stderr).trim() || error.message)) : resolve()
+    )
+  )
+
 const succeeds = (command: string, args: string[]): Promise<boolean> =>
   new Promise((resolve) => execFile(command, args, { timeout: 15_000 }, (error) => resolve(!error)))
 
 /**
  * Como chamar o `deskflow-core`. Windows: zip portátil baixado e conferido, numa pasta por versão. Linux: o
- * Deskflow instalado (nativo ou Flatpak).
+ * Deskflow instalado, ou instalado agora (pacote nativo, ou o Flatpak onde não há pacote).
  */
 function deskflowCommand(deps: {
   dir: string
@@ -128,16 +138,17 @@ function deskflowCommand(deps: {
       if (!exe) throw new Error('O pacote do Deskflow veio sem o deskflow-core.exe.')
       return { command: exe, prefix: [] }
     }
-    if (await succeeds('sh', ['-c', 'command -v deskflow-core'])) {
-      return { command: 'deskflow-core', prefix: [] }
-    }
-    if (await succeeds('flatpak', ['info', 'org.deskflow.deskflow'])) {
-      return {
-        command: 'flatpak',
-        prefix: ['run', '--command=deskflow-core', 'org.deskflow.deskflow']
-      }
-    }
-    throw new Error('Instale o Deskflow neste computador para usar o modo Mouse.')
+    return ensureDeskflowLinux({
+      has: (command) => succeeds('sh', ['-c', `command -v ${command}`]),
+      flatpakHasApp: () => succeeds('flatpak', ['info', FLATPAK_APP]),
+      // Lido só na hora de instalar: o arquivo existe apenas no Linux.
+      pkg: () => deskflowLinuxFor(readFileSync('/etc/os-release', 'utf8'), process.arch),
+      download: (pkg, dest) => downloadVerified(pkg, dest),
+      // O pkexec mostra o aviso de senha do sistema (polkit) uma única vez.
+      runPrivileged: (script) => run('pkexec', ['sh', '-c', script], 600_000),
+      runUser: (script) => run('sh', ['-c', script], 600_000),
+      workDir: tmpdir()
+    })
   }
 }
 
