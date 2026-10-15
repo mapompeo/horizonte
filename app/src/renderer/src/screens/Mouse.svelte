@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import type { Host, MouseSide, ScreenSize } from '../../../shared/types'
+  import type { DeviceKind } from '../../../shared/device'
   import { copyFor, safeName } from '../lib/copy'
   import { patchSettings, send } from '../lib/actions'
   import MouseMap from '../components/MouseMap.svelte'
@@ -16,6 +17,7 @@
 
   let { sides, offsets }: Props = $props()
   let ownScreen = $state<ScreenSize | null>(null)
+  let ownKind = $state<DeviceKind>('desktop')
 
   const copy = copyFor({ screen: 'mouse', mode: 'mouse' })
   let found = $state<Host[]>([])
@@ -37,6 +39,10 @@
     void window.horizonte
       .ownScreen()
       .then((size) => (ownScreen = size))
+      .catch(() => undefined)
+    void window.horizonte
+      .deviceKind()
+      .then((kind) => (ownKind = kind))
       .catch(() => undefined)
     return pollHosts(window.horizonte.listMousePeers, (list, stillSearching) => {
       found = list
@@ -71,7 +77,7 @@
   <h1 class="title title-md">{copy.title}</h1>
   <p class="subtitle">{copy.subtitle}</p>
   {#if ownScreen && hosts.length > 0}
-    <MouseMap own={ownScreen} {hosts} {sides} {offsets} onPlace={place} />
+    <MouseMap own={ownScreen} {ownKind} {hosts} {sides} {offsets} onPlace={place} />
   {/if}
   <div class="stack gap-xs mouse-actions">
     {#if hosts.length > 0}

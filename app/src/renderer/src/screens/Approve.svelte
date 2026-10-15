@@ -1,4 +1,6 @@
 <script lang="ts">
+  import DeviceIcon from '../components/DeviceIcon.svelte'
+  import { guessKind, type DeviceKind } from '../../../shared/device'
   import { isValidPin } from '../../../shared/pin'
   import { copyFor, safeName } from '../lib/copy'
   import { send } from '../lib/actions'
@@ -7,9 +9,20 @@
   interface Props {
     device: string
     pin: string | null
+    address?: string
   }
 
-  let { device, pin }: Props = $props()
+  let { device, pin, address }: Props = $props()
+
+  /** Palpite pelo nome na hora; o que o aparelho anuncia na rede chega logo depois. */
+  let announced = $state<DeviceKind | null>(null)
+  const kind = $derived(announced ?? guessKind(device))
+  $effect(() => {
+    void window.horizonte
+      .deviceKind(address, device)
+      .then((value) => (announced = value))
+      .catch(() => undefined)
+  })
 
   let typed = $state('')
   /** Marcado: da próxima vez este aparelho é aprovado sozinho. */
@@ -24,19 +37,8 @@
   }
 </script>
 
-<div class="badge" aria-hidden="true">
-  <svg
-    width="36"
-    height="36"
-    viewBox="0 0 48 48"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2.4"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  >
-    <rect x="9" y="10" width="30" height="21" rx="3.5" /><path d="M4 37h40" />
-  </svg>
+<div class="badge">
+  <DeviceIcon {kind} size={36} />
 </div>
 <div class="stack gap-sm">
   <h1 class="title title-md">{copy.title}</h1>

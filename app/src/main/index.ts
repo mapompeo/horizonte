@@ -13,9 +13,10 @@ import {
   shell,
   Tray
 } from 'electron'
-import { spawn } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { randomInt } from 'node:crypto'
 import { existsSync } from 'node:fs'
+import { readdir, readFile } from 'node:fs/promises'
 import { homedir, hostname, networkInterfaces, release as osRelease } from 'node:os'
 import { join } from 'node:path'
 import { Bonjour } from 'bonjour-service'
@@ -40,6 +41,10 @@ import { runDevDemo } from './dev-demo'
 import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
 import { createRealMouseEngine } from './engine/deskflow/wire'
+import { advertiseService, browseService } from './engine/lan'
+import { createPresence } from './engine/presence'
+import { detectDeviceKind } from './platform/device-kind'
+import type { DeviceKind } from '../shared/device'
 import { DESKFLOW_WINDOWS } from './engine/deskflow/versions'
 import { createPinChannel, sendPin } from './engine/pin-channel'
 import { FakeEngine } from './engine/fake'
@@ -427,6 +432,21 @@ async function boot(): Promise<void> {
       receiver
     )
   }
+  // Tipo deste aparelho (ícone nos outros PCs): descoberto uma vez; até lá, computador de mesa.
+  let ownKind: DeviceKind = 'desktop'
+  const presence = createPresence({ advertise: advertiseService, browse: browseService })
+  const kindReady = detectDeviceKind({
+    platform: process.platform,
+    runPowerShell: (script) => runPowerShell(script, 20_000),
+    readText: (path) => readFile(path, 'utf8').catch(() => null),
+    listDir: (path) => readdir(path),
+    run: (command, args) =>
+      new Promise((resolve) =>
+        execFile(command, args, { timeout: 5000 }, (error, out) => resolve(error ? null : out))
+      )
+  }).then((kind) => (ownKind = kind))
+  app.on('before-quit', () => presence.stop())
+
   // Mouse e teclado compartilhados (Deskflow): Windows e Linux; no Mac ainda não.
   const mouse =
     process.platform === 'darwin'
@@ -442,11 +462,16 @@ async function boot(): Promise<void> {
           },
           runPowerShell: (script) => runPowerShell(script, 30_000),
           ownScreen: desktopSize,
+          ownKind: () => ownKind,
           writeText: (text) => clipboard.writeText(text),
           readText: () => clipboard.readText()
         })
   if (mouse) app.on('before-quit', () => void mouse.stop().catch(() => undefined))
   const controller = await createController({ engine, mouse, store })
+  // Todo Horizonte aberto anuncia o próprio tipo, em qualquer modo (o ícone certo nas listas dos outros).
+  void kindReady.then((kind) =>
+    presence.announce(controller.getSnapshot().settings.deviceName, kind)
+  )
   const diagnosticEnv = {
     version: app.getVersion(),
     platform: process.platform,
@@ -552,9 +577,28 @@ async function boot(): Promise<void> {
       (typeof patch === 'object' && patch !== null ? patch : {}) as SettingsPatch
     )
   )
-  ipcMain.handle(CHANNELS.hosts, () => controller.listHosts())
-  ipcMain.handle(CHANNELS.mousePeers, () => controller.listMousePeers())
+  // As listas trazem o tipo de cada aparelho: o que ele anuncia, ou um palpite pelo nome.
+  ipcMain.handle(CHANNELS.hosts, async () => {
+    const [hosts] = await Promise.all([
+      controller.listHosts(),
+      presence.refresh().catch(() => undefined)
+    ])
+    return presence.withKinds(hosts)
+  })
+  ipcMain.handle(CHANNELS.mousePeers, async () => {
+    const [peers] = await Promise.all([
+      controller.listMousePeers(),
+      presence.refresh().catch(() => undefined)
+    ])
+    return presence.withKinds(peers)
+  })
   ipcMain.handle(CHANNELS.mouseScreen, () => desktopSize())
+  ipcMain.handle(CHANNELS.deviceKind, async (_event, address: unknown, name: unknown) => {
+    if (typeof name !== 'string') return kindReady
+    const where = typeof address === 'string' ? address : undefined
+    if (where) await presence.refresh().catch(() => undefined)
+    return presence.kindOf(where, name)
+  })
   ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
   const reports = createDiagnosticReporter({
     text: async (includeHistory) => {

@@ -1,9 +1,12 @@
 <script lang="ts">
   import type { Host, MouseSide, ScreenSize } from '../../../shared/types'
   import { safeName } from '../lib/copy'
+  import { guessKind, type DeviceKind } from '../../../shared/device'
+  import DeviceIcon from './DeviceIcon.svelte'
 
   interface Props {
     own: ScreenSize
+    ownKind: DeviceKind
     hosts: Host[]
     sides: Record<string, MouseSide>
     offsets: Record<string, number>
@@ -11,7 +14,7 @@
     onPlace: (name: string, place: { side: MouseSide; offset: number } | null) => void
   }
 
-  let { own, hosts, sides, offsets, onPlace }: Props = $props()
+  let { own, ownKind, hosts, sides, offsets, onPlace }: Props = $props()
 
   const DOCK = 64
   let width = $state(560)
@@ -106,23 +109,22 @@
     const size = sizeOf(host)
     const w = size.width * scale
     const h = size.height * scale
-    const insideX = cx > me.x && cx < me.x + me.w
-    const insideY = cy > me.y && cy < me.y + me.h
-    let side: MouseSide
-    if (insideX && !insideY) side = cy < me.y + me.h / 2 ? 'above' : 'below'
-    else if (insideY && !insideX) side = cx < me.x + me.w / 2 ? 'left' : 'right'
-    else {
-      // Na diagonal: a borda com a menor distância.
-      const distance = {
-        left: Math.abs(cx - me.x),
-        right: Math.abs(cx - (me.x + me.w)),
-        above: Math.abs(cy - me.y),
-        below: Math.abs(cy - (me.y + me.h))
-      }
-      side = (Object.keys(distance) as MouseSide[]).reduce((a, b) =>
-        distance[a] <= distance[b] ? a : b
-      )
-    }
+    // Folga entre a tela solta e este computador em cada eixo (negativa: uma passa por cima da outra nesse eixo).
+    const gapX = Math.max(me.x - (cx + w / 2), cx - w / 2 - (me.x + me.w))
+    const gapY = Math.max(me.y - (cy + h / 2), cy - h / 2 - (me.y + me.h))
+    // Encosta pelo eixo em que ela ficou de fora: se passa por baixo deste (cruzando na horizontal), fica
+    // embaixo, mesmo puxada para um canto. Na diagonal pura, vale o eixo com a folga maior.
+    const vertical =
+      gapX < 0 && gapY < 0
+        ? Math.abs(cy - (me.y + me.h / 2)) / me.h > Math.abs(cx - (me.x + me.w / 2)) / me.w
+        : gapX < 0 || (gapY >= 0 && gapY >= gapX)
+    const side: MouseSide = vertical
+      ? cy < me.y + me.h / 2
+        ? 'above'
+        : 'below'
+      : cx < me.x + me.w / 2
+        ? 'left'
+        : 'right'
     const raw = horizontal(side) ? (cx - w / 2 - me.x) / me.w : (cy - h / 2 - me.y) / me.h
     return { side, offset: clamp(side, size, raw) }
   }
@@ -191,7 +193,8 @@
     class="map-screen map-own"
     style="left: {me.x}px; top: {me.y}px; width: {me.w}px; height: {me.h}px"
   >
-    Este computador
+    <DeviceIcon kind={ownKind} size={16} />
+    <span>Este computador</span>
   </div>
   <div class="map-dock">
     {#if boxes.every((box) => box.side)}<span>Solte aqui para deixar de fora</span>{/if}
@@ -214,7 +217,8 @@
       onpointercancel={() => (drag = null)}
       onkeydown={(event) => key(event, box.host, box.name)}
     >
-      {box.name}
+      <DeviceIcon kind={box.host.kind ?? guessKind(box.host.name)} size={16} />
+      <span>{box.name}</span>
     </div>
   {/each}
 </div>

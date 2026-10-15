@@ -6,6 +6,7 @@ import { route } from '../src/renderer/src/lib/store'
 import { FakeEngine } from '../src/main/engine/fake'
 import { REPO_URL, type HorizonteApi } from '../src/shared/api'
 import type { AppState, Settings, Snapshot, WebAccess } from '../src/shared/types'
+import { guessKind } from '../src/shared/device'
 
 export interface DemoControl {
   /** Recomeça o app numa tela (ou no modo salvo, se vazio). Usado pela página para dirigir o app. */
@@ -88,8 +89,18 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
       start: async () => undefined,
       stop: async () => undefined,
       listPeers: async () => [
-        { name: 'Notebook', address: '192.168.1.6', screen: { width: 1920, height: 1080 } },
-        { name: 'Suntrans', address: '192.168.1.7', screen: { width: 1366, height: 768 } }
+        {
+          name: 'Notebook',
+          address: '192.168.1.6',
+          screen: { width: 1920, height: 1080 },
+          kind: 'laptop'
+        },
+        {
+          name: 'Suntrans',
+          address: '192.168.1.7',
+          screen: { width: 1366, height: 768 },
+          kind: 'laptop'
+        }
       ],
       share: async () => undefined,
       setLayout: async () => undefined,
@@ -124,6 +135,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     listHosts: () => controller.listHosts(),
     listMousePeers: () => controller.listMousePeers(),
     ownScreen: async () => ({ width: 3840, height: 1080 }),
+    deviceKind: async (_address, name) => (name ? guessKind(name) : 'desktop'),
     getWebAccess: async () => web,
     setWebAccess: async (on) => {
       web = on
