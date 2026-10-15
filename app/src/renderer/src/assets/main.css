@@ -233,28 +233,6 @@ input:focus-visible {
   display: grid;
 }
 
-/* Opções com uma segunda linha (Qualidade: nome e Mbps). */
-.seg-tall {
-  border-radius: 18px;
-}
-.seg-tall .seg-thumb {
-  border-radius: 15px;
-}
-.seg-tall .seg-item {
-  height: 58px;
-  border-radius: 15px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  font-size: 15px;
-}
-.seg-sub {
-  font-size: 12px;
-  font-weight: 500;
-  opacity: 0.75;
-}
 .seg-thumb-off {
   opacity: 0;
 }
@@ -958,4 +936,15 @@ input,
 }
 .manual-input {
   text-align: left;
+}
+
+/* Pedido de pareamento: confiar no aparelho para aprovar sozinho da próxima vez. */
+.trust-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(320px, 100%);
+  font-size: 15px;
+  color: var(--muted);
 }

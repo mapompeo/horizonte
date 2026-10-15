@@ -69,11 +69,7 @@
       <Segmented
         label="Qualidade"
         value={settings.profile}
-        options={tiles.map((tile) => ({
-          value: tile.id,
-          text: tile.name,
-          sub: `${tile.mbps} Mbps`
-        }))}
+        options={tiles.map((tile) => ({ value: tile.id, text: tile.name }))}
         onSelect={(id) => {
           const tile = tiles.find((option) => option.id === id)
           if (tile) void patchSettings({ bitrate: tile.mbps })
@@ -124,6 +120,20 @@
             />
           </div>
         {/if}
+        {#each settings.trusted as device (device.name + device.address)}
+          <div class="row">
+            <span>{device.name} <span class="row-value">· confiável</span></span>
+            <button
+              class="foot-link"
+              onclick={() =>
+                patchSettings({
+                  trusted: settings.trusted.filter(
+                    (known) => known.name !== device.name || known.address !== device.address
+                  )
+                })}>Esquecer</button
+            >
+          </div>
+        {/each}
         <div class="row">
           <span>Nome deste dispositivo</span>
           <span class="row-value">{settings.deviceName}</span>

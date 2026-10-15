@@ -86,7 +86,9 @@ describe('pareamento', () => {
     t.process.acceptPin = '4321'
     t.process.pairings.push({ id: 'p1', name: 'roth', address: '192.168.1.6' })
     await vi.advanceTimersByTimeAsync(250)
-    expect(t.requests).toEqual([{ device: 'Notebook', pairingId: 'p1', pin: '4321' }])
+    expect(t.requests).toEqual([
+      { device: 'Notebook', pairingId: 'p1', pin: '4321', address: '192.168.1.6' }
+    ])
     await t.engine.approve({ pairingId: 'p1', pin: '4321', name: 'Notebook' })
     expect(t.process.calls).toContain('submitPin:p1:4321:Notebook')
   })
@@ -94,7 +96,7 @@ describe('pareamento', () => {
     const t = await ready()
     t.process.pairings.push({ id: 'p1', name: 'Notebook', address: '192.168.1.2' })
     await vi.advanceTimersByTimeAsync(250)
-    expect(t.requests).toEqual([{ device: 'Notebook', pairingId: 'p1' }])
+    expect(t.requests).toEqual([{ device: 'Notebook', pairingId: 'p1', address: '192.168.1.2' }])
   })
 
   it('o PIN que o outro dispositivo mandou pelo canal vem junto do pedido, e o canal só abre ao esperar', async () => {

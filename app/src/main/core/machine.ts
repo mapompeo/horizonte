@@ -71,7 +71,8 @@ export function reduce(state: AppState, event: AppEvent): AppState {
           mode: 'send',
           device: event.device,
           pairingId: event.pairingId,
-          pin
+          pin,
+          ...(event.address ? { address: event.address } : {})
         }
       }
       if (event.type === 'CLIENT_CONNECTED')

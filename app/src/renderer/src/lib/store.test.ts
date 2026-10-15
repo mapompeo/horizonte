@@ -15,6 +15,7 @@ const current: Snapshot = {
     autostart: false,
     deviceName: 'Desktop',
     extendSide: 'right',
+    trusted: [],
     mode: 'send'
   }
 }
