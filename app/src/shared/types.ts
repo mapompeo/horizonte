@@ -90,6 +90,8 @@ export interface Settings {
   autostart: boolean
   deviceName: string
   extendSide: ExtendSide
+  /** Modo Mouse: de que lado fica cada outro computador (pelo nome), para o mouse passar pela borda certa. */
+  mouseSides: Record<string, ExtendSide>
   trusted: TrustedDevice[]
   /** Último modo escolhido neste aparelho; null até a pessoa escolher pela primeira vez. */
   mode: Mode | null

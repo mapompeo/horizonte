@@ -20,7 +20,10 @@ export interface MouseEngine {
   stop(): Promise<void>
   listPeers(): Promise<Host[]>
   /** Este PC empresta o mouse: sobe o servidor e pede ao outro que se conecte. */
-  share(peer: Host, ownName: string): Promise<void>
+  /** Empresta o mouse ao `peer`, que fica do lado `side` deste computador. */
+  share(peer: Host, ownName: string, side: ExtendSide): Promise<void>
+  /** Muda de que lado o outro fica, sem encerrar o compartilhamento (o outro reconecta sozinho). */
+  setSide(side: ExtendSide): Promise<void>
   /** Aceita o pedido pendente: este PC passa a ser controlado. */
   accept(ownName: string): Promise<void>
   deny(): Promise<void>

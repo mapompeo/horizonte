@@ -674,7 +674,11 @@ describe('modo Mouse', () => {
       start: async (name) => void calls.push(`start:${name}`),
       stop: async () => void calls.push('stop'),
       listPeers: async () => [{ name: 'Notebook', address: '192.168.1.6' }],
-      share: async (peer) => void calls.push(`share:${peer.address}`),
+      share: async (peer, _own, side) =>
+        void calls.push(
+          side === 'right' ? `share:${peer.address}` : `share:${peer.address}:${side}`
+        ),
+      setSide: async (side) => void calls.push(`side:${side}`),
       accept: async () => void calls.push('accept'),
       deny: async () => void calls.push('deny'),
       end: async () => void calls.push('end'),
@@ -740,6 +744,17 @@ describe('modo Mouse', () => {
     expect(mouse.calls).toContain('accept')
     expect(mouse.calls).toContain('deny')
     expect(mouse.calls).not.toContain('end') // o fim veio do outro lado: não precisa avisar de volta
+  })
+
+  it('usa o lado salvo de cada computador e troca ao vivo enquanto compartilha', async () => {
+    const { controller, mouse } = await mouseSetup()
+    await controller.updateSettings({ mouseSides: { Notebook: 'left' } })
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    controller.dispatch({ type: 'MOUSE_SHARE', host: '192.168.1.6', name: 'Notebook' })
+    await controller.updateSettings({ mouseSides: { Notebook: 'above' } })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mouse.calls).toContain('share:192.168.1.6:left')
+    expect(mouse.calls).toContain('side:above')
   })
 
   it('sair do modo Mouse desliga o anúncio', async () => {

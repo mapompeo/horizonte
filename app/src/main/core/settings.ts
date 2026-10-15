@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: true,
   deviceName: 'Dispositivo',
   extendSide: 'right',
+  mouseSides: {},
   trusted: [],
   mode: null
 }
@@ -31,6 +32,18 @@ const LEGACY_DEFAULT_NAMES = ['Computador']
 
 function oneOf<T extends string | number>(value: unknown, allowed: readonly T[], fallback: T): T {
   return allowed.includes(value as T) ? (value as T) : fallback
+}
+
+/** Até 20 computadores, cada um com um lado válido; o resto é descartado. */
+function parseMouseSides(raw: unknown): Record<string, ExtendSide> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
+  const entries = Object.entries(raw as Record<string, unknown>).filter(
+    (entry): entry is [string, ExtendSide] =>
+      entry[0].length > 0 &&
+      entry[0].length <= 200 &&
+      (entry[1] === 'left' || entry[1] === 'right' || entry[1] === 'above')
+  )
+  return Object.fromEntries(entries.slice(0, 20))
 }
 
 /** Até 20 aparelhos, cada um com nome limpo e endereço de verdade; o resto é descartado. */
@@ -78,6 +91,7 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
       ['left', 'right', 'above'],
       DEFAULT_SETTINGS.extendSide
     ),
+    mouseSides: parseMouseSides(input.mouseSides),
     deviceName: name || defaultName,
     mode:
       input.mode === 'send' || input.mode === 'receive' || input.mode === 'mouse'

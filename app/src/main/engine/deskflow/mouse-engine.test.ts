@@ -27,7 +27,8 @@ function fakeShare(): MouseShare & {
   const calls: string[] = []
   return {
     calls,
-    share: async ({ peerName }) => void calls.push(`share:${peerName}`),
+    share: async ({ peerName, side }) =>
+      void calls.push(side === 'right' ? `share:${peerName}` : `share:${peerName}:${side}`),
     follow: async ({ name, serverAddress }) => void calls.push(`follow:${serverAddress}:${name}`),
     stop: () => void calls.push('stop'),
     onEnded: (listener) => {
@@ -69,7 +70,7 @@ describe('modo Mouse entre dois PCs', () => {
     const notebook = pc(net, '192.168.1.6')
     await desktop.engine.start('Desktop')
     await notebook.engine.start('Notebook')
-    await desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop')
+    await desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop', 'right')
     expect(desktop.share.calls).toEqual(['share:Notebook'])
     expect(notebook.requests).toEqual([{ device: 'Desktop', address: '192.168.1.4' }])
 
@@ -83,7 +84,7 @@ describe('modo Mouse entre dois PCs', () => {
     const linux = pc(net, '192.168.1.7')
     await desktop.engine.start('Desktop')
     await linux.engine.start('Suntrans')
-    await desktop.engine.share({ name: '192.168.1.7', address: '192.168.1.7' }, 'Desktop')
+    await desktop.engine.share({ name: '192.168.1.7', address: '192.168.1.7' }, 'Desktop', 'right')
     await linux.engine.accept('Suntrans')
     expect(desktop.share.calls).toEqual(['share:192.168.1.7'])
     expect(linux.share.calls).toEqual(['follow:192.168.1.4:192.168.1.7'])
@@ -95,7 +96,7 @@ describe('modo Mouse entre dois PCs', () => {
     const notebook = pc(net, '192.168.1.6')
     await desktop.engine.start('Desktop')
     await notebook.engine.start('Notebook')
-    await desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop')
+    await desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop', 'right')
     await notebook.engine.deny()
     expect(desktop.share.calls).toContain('stop')
     expect(desktop.ended).toHaveBeenCalledOnce()
@@ -107,7 +108,7 @@ describe('modo Mouse entre dois PCs', () => {
     const notebook = pc(net, '192.168.1.6')
     await desktop.engine.start('Desktop')
     await notebook.engine.start('Notebook')
-    await desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop')
+    await desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop', 'right')
     await notebook.engine.accept('Notebook')
     await desktop.engine.end()
     expect(notebook.share.calls).toContain('stop')
@@ -123,7 +124,7 @@ describe('modo Mouse entre dois PCs', () => {
     await desktop.engine.start('Desktop')
     await notebook.engine.start('Notebook')
     await intruso.engine.start('Intruso')
-    await desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop')
+    await desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop', 'right')
     await notebook.engine.accept('Notebook')
     await net.channel('192.168.1.66').send('192.168.1.6', '/mouse/end', {})
     expect(notebook.ended).not.toHaveBeenCalled()
@@ -134,7 +135,7 @@ describe('modo Mouse entre dois PCs', () => {
     const desktop = pc(net, '192.168.1.4')
     await desktop.engine.start('Desktop')
     await expect(
-      desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop')
+      desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop', 'right')
     ).rejects.toThrow(/modo Mouse/)
     expect(desktop.share.calls).toEqual(['share:Notebook', 'stop'])
   })
@@ -145,7 +146,7 @@ describe('modo Mouse entre dois PCs', () => {
     const notebook = pc(net, '192.168.1.6')
     await desktop.engine.start('Desktop')
     await notebook.engine.start('Notebook')
-    await desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop')
+    await desktop.engine.share({ name: 'Notebook', address: '192.168.1.6' }, 'Desktop', 'right')
     await notebook.engine.accept('Notebook')
     desktop.share.endItself()
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -159,5 +160,18 @@ describe('modo Mouse entre dois PCs', () => {
     await notebook.engine.start('Notebook')
     await net.channel('192.168.1.4').send('192.168.1.6', '/mouse/request', { device: '' })
     expect(notebook.requests).toEqual([])
+  })
+
+  it('trocar o lado refaz o servidor com o lado novo; sem compartilhar, não faz nada', async () => {
+    const net = network()
+    const desktop = pc(net, '192.168.1.4')
+    const linux = pc(net, '192.168.1.7')
+    await desktop.engine.start('Desktop')
+    await linux.engine.start('Suntrans')
+    await desktop.engine.setSide('left')
+    expect(desktop.share.calls).toEqual([])
+    await desktop.engine.share({ name: 'Suntrans', address: '192.168.1.7' }, 'Desktop', 'left')
+    await desktop.engine.setSide('above')
+    expect(desktop.share.calls).toEqual(['share:Suntrans:left', 'share:Suntrans:above'])
   })
 })

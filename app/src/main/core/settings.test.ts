@@ -29,9 +29,19 @@ describe('parseSettings', () => {
       autostart: false,
       deviceName: 'Notebook',
       extendSide: 'left',
+      mouseSides: { Suntrans: 'left' },
       trusted: [{ name: 'Desktop', address: '192.168.1.4' }]
     }
     expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null })
+  })
+
+  it('lado de cada computador no modo Mouse: só lados válidos, no máximo 20', () => {
+    const many = Object.fromEntries(Array.from({ length: 25 }, (_, i) => [`PC${i}`, 'left']))
+    expect(Object.keys(parseSettings({ mouseSides: many }).mouseSides)).toHaveLength(20)
+    expect(
+      parseSettings({ mouseSides: { Suntrans: 'left', Outro: 'embaixo', '': 'right' } }).mouseSides
+    ).toEqual({ Suntrans: 'left' })
+    expect(parseSettings({ mouseSides: ['left'] }).mouseSides).toEqual({})
   })
 
   it('aparelhos confiáveis: nome limpo e endereço válido, no máximo 20; o resto some', () => {

@@ -1,4 +1,4 @@
-import type { Host } from '../../../shared/types'
+import type { ExtendSide, Host } from '../../../shared/types'
 import { cleanName } from '../../../shared/names'
 import type { MouseEngine } from '../port'
 import type { createFileClipboard, OfferedFile } from './files'
@@ -40,6 +40,8 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
   let pendingAs = ''
   /** O outro lado do compartilhamento em andamento. */
   let peer: Host | null = null
+  /** Compartilhamento em que este PC é o servidor: dá para trocar o lado sem encerrar. */
+  let serving: { name: string; peerName: string } | null = null
   const requestListeners = new Set<(request: { device: string; address: string }) => void>()
   const endedListeners = new Set<() => void>()
 
@@ -84,6 +86,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
         deps.share.stop()
         deps.files?.stop()
         peer = null
+        serving = null
         pending = null
         if (wasActive) notifyEnded()
       }
@@ -96,6 +99,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
     deps.files?.stop()
     const other = peer
     peer = null
+    serving = null
     if (other) void deps.channel.send(other.address, '/mouse/end', {}).catch(() => undefined)
     notifyEnded()
   })
@@ -105,6 +109,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
     deps.files?.stop()
     const other = peer
     peer = null
+    serving = null
     if (other) await deps.channel.send(other.address, '/mouse/end', {}).catch(() => undefined)
   }
 
@@ -125,9 +130,10 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       await deps.channel.close()
     },
     listPeers: () => deps.browse(),
-    async share(other, ownName) {
+    async share(other, ownName, side) {
       // O servidor sobe antes do pedido: quando o outro aceitar, já há onde se conectar.
-      await deps.share.share({ name: ownName, peerName: other.name, side: 'right' })
+      await deps.share.share({ name: ownName, peerName: other.name, side })
+      serving = { name: ownName, peerName: other.name }
       peer = other
       deps.files?.start(other.address)
       try {
@@ -155,6 +161,9 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       const other = pending
       pending = null
       if (other) await deps.channel.send(other.address, '/mouse/end', {}).catch(() => undefined)
+    },
+    async setSide(side: ExtendSide) {
+      if (serving && peer) await deps.share.share({ ...serving, side })
     },
     end,
     onRequest(callback) {
