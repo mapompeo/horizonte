@@ -1,4 +1,5 @@
-import type { ExtendSide, Host } from '../../../shared/types'
+import type { ExtendSide, Host, ScreenSize } from '../../../shared/types'
+import { edgeRanges, type EdgeRanges } from './config'
 import { cleanName } from '../../../shared/names'
 import type { MouseEngine } from '../port'
 import type { createFileClipboard, OfferedFile } from './files'
@@ -32,6 +33,8 @@ export interface MouseEngineDeps {
    * Texto copiado que o Deskflow não leva (no GNOME antes do 51, do Linux para o outro PC não vai): `start` avisa
    * cada texto copiado aqui, `write` põe na área de transferência o que veio do outro.
    */
+  /** Área de trabalho deste computador (todas as telas juntas), para acertar onde as bordas se encostam. */
+  ownScreen?: () => ScreenSize
   text?: { start(onCopied: (text: string) => void): void; stop(): void; write(text: string): void }
 }
 
@@ -49,7 +52,19 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
   /** O outro lado do compartilhamento em andamento. */
   let peer: Host | null = null
   /** Compartilhamento em que este PC é o servidor: dá para trocar o lado sem encerrar. */
-  let serving: { name: string; peerName: string } | null = null
+  let serving: { name: string; peerName: string; screen?: ScreenSize } | null = null
+  /** Tamanho da tela que cada computador anunciou na última procura, pelo endereço. */
+  const screens = new Map<string, ScreenSize>()
+
+  /** Trechos das bordas para o lado e a posição escolhidos; sem saber o tamanho daqui, a borda inteira. */
+  const rangesFor = (
+    side: ExtendSide,
+    screen: ScreenSize | undefined,
+    offset?: number
+  ): EdgeRanges | undefined => {
+    const own = deps.ownScreen?.()
+    return own ? edgeRanges(side, own, screen ?? own, offset) : undefined
+  }
   const requestListeners = new Set<(request: { device: string; address: string }) => void>()
   const endedListeners = new Set<() => void>()
 
@@ -158,11 +173,21 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       unadvertise = null
       await deps.channel.close()
     },
-    listPeers: () => deps.browse(),
-    async share(other, ownName, side) {
+    async listPeers() {
+      const found = await deps.browse()
+      for (const host of found) if (host.screen) screens.set(host.address, host.screen)
+      return found
+    },
+    async share(other, ownName, side, offset) {
+      const screen = other.screen ?? screens.get(other.address)
       // O servidor sobe antes do pedido: quando o outro aceitar, já há onde se conectar.
-      await deps.share.share({ name: ownName, peerName: other.name, side })
-      serving = { name: ownName, peerName: other.name }
+      await deps.share.share({
+        name: ownName,
+        peerName: other.name,
+        side,
+        ranges: rangesFor(side, screen, offset)
+      })
+      serving = { name: ownName, peerName: other.name, screen }
       peer = other
       startClipboards(other)
       try {
@@ -191,8 +216,10 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       pending = null
       if (other) await deps.channel.send(other.address, '/mouse/end', {}).catch(() => undefined)
     },
-    async setSide(side: ExtendSide) {
-      if (serving && peer) await deps.share.share({ ...serving, side })
+    async setLayout(side: ExtendSide, offset?: number) {
+      if (!serving || !peer) return
+      const { name, peerName, screen } = serving
+      await deps.share.share({ name, peerName, side, ranges: rangesFor(side, screen, offset) })
     },
     end,
     onRequest(callback) {

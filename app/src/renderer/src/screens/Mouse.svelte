@@ -1,18 +1,21 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import type { ExtendSide, Host } from '../../../shared/types'
+  import type { ExtendSide, Host, ScreenSize } from '../../../shared/types'
   import { copyFor, safeName } from '../lib/copy'
   import { patchSettings, send } from '../lib/actions'
-  import Segmented from '../components/Segmented.svelte'
+  import MouseMap from '../components/MouseMap.svelte'
   import { pollHosts } from '../lib/hosts'
   import { isHostAddress } from '../../../shared/address'
 
   interface Props {
     /** De que lado fica cada computador, pelo nome (o mouse passa pela borda desse lado). */
     sides: Record<string, ExtendSide>
+    /** Onde começa a borda de cada computador, em fração da borda deste. */
+    offsets: Record<string, number>
   }
 
-  let { sides }: Props = $props()
+  let { sides, offsets }: Props = $props()
+  let ownScreen = $state<ScreenSize | null>(null)
 
   const copy = copyFor({ screen: 'mouse', mode: 'mouse' })
   let hosts = $state<Host[]>([])
@@ -23,12 +26,16 @@
   const valid = $derived(isHostAddress(address.trim()))
 
   // Procura de novo a cada poucos segundos: uma busca só deixava a lista vazia para sempre se falhasse.
-  onMount(() =>
-    pollHosts(window.horizonte.listMousePeers, (found, stillSearching) => {
+  onMount(() => {
+    void window.horizonte
+      .ownScreen()
+      .then((size) => (ownScreen = size))
+      .catch(() => undefined)
+    return pollHosts(window.horizonte.listMousePeers, (found, stillSearching) => {
       hosts = found
       searching = stillSearching
     })
-  )
+  })
 
   function connectByAddress(): void {
     const host = address.trim()
@@ -67,21 +74,20 @@
           >Usar meu mouse</button
         >
       </div>
-      <div class="host-side">
-        <span>{name} fica à</span>
-        <Segmented
-          compact
-          label="De que lado fica {name}"
-          value={sides[name] ?? 'right'}
-          options={[
-            { value: 'left', text: 'Esquerda' },
-            { value: 'above', text: 'Acima' },
-            { value: 'right', text: 'Direita' }
-          ]}
-          onSelect={(value) =>
-            patchSettings({ mouseSides: { ...sides, [name]: value as ExtendSide } })}
+      {#if ownScreen}
+        <MouseMap
+          {name}
+          own={ownScreen}
+          peer={host.screen ?? ownScreen}
+          side={sides[name] ?? 'right'}
+          offset={offsets[name]}
+          onChange={(side, offset) =>
+            patchSettings({
+              mouseSides: { ...sides, [name]: side },
+              mouseOffsets: { ...offsets, [name]: offset }
+            })}
         />
-      </div>
+      {/if}
     </div>
   {/each}
   <div class="stack gap-xs">

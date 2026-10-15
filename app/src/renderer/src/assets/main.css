@@ -496,14 +496,44 @@ input:focus-visible {
   flex-direction: column;
   gap: 10px;
 }
-.host-side {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 4px;
+.mouse-map {
+  position: relative;
+  width: var(--w);
+  max-width: 100%;
+  height: var(--h);
+  border-radius: 14px;
+  border: 1px dashed var(--line);
+  overflow: hidden;
+}
+.map-screen {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+}
+.map-own {
+  background: var(--seg);
+  border: 2px solid var(--line);
   color: var(--muted);
-  font-size: 14px;
+}
+.map-peer {
+  background: var(--card);
+  border: 2px solid var(--accent);
+  color: var(--fg);
+  cursor: grab;
+  touch-action: none;
+}
+.map-peer:active {
+  cursor: grabbing;
+}
+.map-peer:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .host-body {

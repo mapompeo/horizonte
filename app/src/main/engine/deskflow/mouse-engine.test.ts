@@ -181,11 +181,35 @@ describe('modo Mouse entre dois PCs', () => {
     const linux = pc(net, '192.168.1.7')
     await desktop.engine.start('Desktop')
     await linux.engine.start('Suntrans')
-    await desktop.engine.setSide('left')
+    await desktop.engine.setLayout('left')
     expect(desktop.share.calls).toEqual([])
     await desktop.engine.share({ name: 'Suntrans', address: '192.168.1.7' }, 'Desktop', 'left')
-    await desktop.engine.setSide('above')
+    await desktop.engine.setLayout('above')
     expect(desktop.share.calls).toEqual(['share:Suntrans:left', 'share:Suntrans:above'])
+  })
+
+  it('com os tamanhos das telas, manda ao Deskflow só o trecho da borda onde o outro encosta', async () => {
+    const net = network()
+    const ranges: unknown[] = []
+    const engine = createMouseEngine({
+      share: { ...fakeShare(), share: async (options) => void ranges.push(options.ranges) },
+      channel: net.channel('192.168.1.4'),
+      advertise: () => () => undefined,
+      browse: async () => [
+        { name: 'Suntrans', address: '192.168.1.7', screen: { width: 1366, height: 768 } }
+      ],
+      ownScreen: () => ({ width: 3840, height: 1080 })
+    })
+    await pc(net, '192.168.1.7').engine.start('Suntrans')
+    await engine.start('Desktop')
+    const [suntrans] = await engine.listPeers()
+    await engine.share({ name: 'Suntrans', address: '192.168.1.7' }, 'Desktop', 'right', 0.7)
+    await engine.setLayout('left')
+    expect(suntrans?.screen).toEqual({ width: 1366, height: 768 })
+    expect(ranges).toEqual([
+      { own: [70, 100], peer: [0, 42] },
+      { own: [14, 86], peer: [0, 100] }
+    ])
   })
 
   it('texto copiado no Linux vai para o outro lado; um terceiro na rede não escreve nada', async () => {
