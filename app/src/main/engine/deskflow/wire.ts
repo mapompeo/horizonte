@@ -83,29 +83,48 @@ const ownAddresses = (): Set<string> =>
       .map((info) => info?.address ?? '')
   )
 
+/** A rota multicast padrão pode ser a do WSL, Docker ou VirtualBox: anuncia e procura em cada interface IPv4. */
+const lanInterfaces = (): string[] =>
+  Object.values(networkInterfaces())
+    .flat()
+    .flatMap((info) => (info && info.family === 'IPv4' && !info.internal ? [info.address] : []))
+
+const perInterface = (): Bonjour[] =>
+  lanInterfaces().map((address) => {
+    // Opções do multicast-dns por baixo (o tipo do bonjour-service não lista todas).
+    const options = { port: 5353, bind: '0.0.0.0', interface: address }
+    return new Bonjour(options)
+  })
+
 /** Procura outros Horizontes no modo Mouse por 1,5 s, sem contar este PC. */
 async function browse(): Promise<Host[]> {
-  const bonjour = new Bonjour()
   const own = ownAddresses()
   const found = new Map<string, Host>()
-  const browser = bonjour.find({ type: SERVICE_TYPE }, (service) => {
-    const address = [...(service.addresses ?? []), service.referer?.address ?? ''].find(
-      (candidate) => /^\d+\.\d+\.\d+\.\d+$/.test(candidate) && !own.has(candidate)
-    )
-    if (address) found.set(address, { name: service.name, address })
-  })
+  const instances = perInterface()
+  const browsers = instances.map((bonjour) =>
+    bonjour.find({ type: SERVICE_TYPE }, (service) => {
+      // Primeiro o endereço de onde o anúncio veio de fato; a lista pode trazer Docker ou VPN na frente.
+      const address = [service.referer?.address ?? '', ...(service.addresses ?? [])].find(
+        (candidate) => /^\d+\.\d+\.\d+\.\d+$/.test(candidate) && !own.has(candidate)
+      )
+      if (address) found.set(address, { name: service.name, address })
+    })
+  )
   await new Promise((resolve) => setTimeout(resolve, 1500))
-  browser.stop()
-  bonjour.destroy()
+  browsers.forEach((browser) => browser.stop())
+  instances.forEach((bonjour) => bonjour.destroy())
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name))
 }
 
 function advertise(name: string): () => void {
-  const bonjour = new Bonjour()
-  const service = bonjour.publish({ name, type: SERVICE_TYPE, port: MOUSE_CHANNEL_PORT })
+  const instances = perInterface()
+  const services = instances.map((bonjour) =>
+    // Sem sondagem: os anúncios das outras interfaces deste PC contariam como "nome já em uso".
+    bonjour.publish({ name, type: SERVICE_TYPE, port: MOUSE_CHANNEL_PORT, probe: false })
+  )
   return () => {
-    service.stop?.()
-    bonjour.destroy()
+    services.forEach((service) => service.stop?.())
+    instances.forEach((bonjour) => bonjour.destroy())
   }
 }
 
