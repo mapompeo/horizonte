@@ -28,7 +28,15 @@ export interface MouseEngineDeps {
   browse(): Promise<Host[]>
   /** Copiar e colar arquivos entre os PCs; sem ele, só o texto copiado vai junto (pelo Deskflow). */
   files?: ReturnType<typeof createFileClipboard>
+  /**
+   * Texto copiado que o Deskflow não leva (no GNOME antes do 51, do Linux para o outro PC não vai): `start` avisa
+   * cada texto copiado aqui, `write` põe na área de transferência o que veio do outro.
+   */
+  text?: { start(onCopied: (text: string) => void): void; stop(): void; write(text: string): void }
 }
+
+/** Texto copiado vai em uma mensagem só; acima disso fica de fora. */
+export const MAX_TEXT_CHARS = 200_000
 
 const normalize = (address: string): string => address.replace(/^::ffff:/i, '')
 
@@ -44,6 +52,19 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
   let serving: { name: string; peerName: string } | null = null
   const requestListeners = new Set<(request: { device: string; address: string }) => void>()
   const endedListeners = new Set<() => void>()
+
+  function startClipboards(other: Host): void {
+    deps.files?.start(other.address)
+    deps.text?.start((text) => {
+      if (peer?.address === other.address && text.length <= MAX_TEXT_CHARS)
+        void deps.channel.send(other.address, '/mouse/text', { text }).catch(() => undefined)
+    })
+  }
+
+  function stopClipboards(): void {
+    deps.files?.stop()
+    deps.text?.stop()
+  }
 
   const notifyEnded = (): void => {
     for (const listener of [...endedListeners]) listener()
@@ -79,12 +100,20 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       void deps.files?.receive(files, address).catch(() => undefined)
       return true
     }
+    if (path === '/mouse/text') {
+      const text =
+        typeof body === 'object' && body !== null ? (body as { text?: unknown }).text : null
+      if (typeof text !== 'string' || text.length > MAX_TEXT_CHARS || peer?.address !== address)
+        return false
+      deps.text?.write(text)
+      return true
+    }
     if (path === '/mouse/end') {
       // Só o outro lado da conversa pode encerrar: um terceiro na rede não derruba nada.
       if (peer?.address === address || pending?.address === address) {
         const wasActive = peer !== null || pending !== null
         deps.share.stop()
-        deps.files?.stop()
+        stopClipboards()
         peer = null
         serving = null
         pending = null
@@ -96,7 +125,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
   }
 
   deps.share.onEnded(() => {
-    deps.files?.stop()
+    stopClipboards()
     const other = peer
     peer = null
     serving = null
@@ -106,7 +135,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
 
   async function end(): Promise<void> {
     deps.share.stop()
-    deps.files?.stop()
+    stopClipboards()
     const other = peer
     peer = null
     serving = null
@@ -135,7 +164,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       await deps.share.share({ name: ownName, peerName: other.name, side })
       serving = { name: ownName, peerName: other.name }
       peer = other
-      deps.files?.start(other.address)
+      startClipboards(other)
       try {
         await deps.channel.send(other.address, '/mouse/request', {
           device: ownName,
@@ -153,7 +182,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       if (!other) throw new Error('O pedido já não está mais valendo.')
       pending = null
       peer = other
-      deps.files?.start(other.address)
+      startClipboards(other)
       // Entra com o nome que o servidor espera: adicionado pelo IP, ele só conhece o endereço.
       await deps.share.follow({ name: pendingAs || ownName, serverAddress: other.address })
     },

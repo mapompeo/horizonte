@@ -48,19 +48,32 @@ function pc(
   share: ReturnType<typeof fakeShare>
   requests: { device: string; address: string }[]
   ended: ReturnType<typeof vi.fn>
+  text: { written: string[]; copy(text: string): void; watching(): boolean }
 } {
   const share = fakeShare()
+  let onCopied: ((text: string) => void) | null = null
+  const written: string[] = []
+  const text = {
+    written,
+    copy: (value: string) => onCopied?.(value),
+    watching: () => onCopied !== null
+  }
   const engine = createMouseEngine({
     share,
     channel: net.channel(address),
     advertise: () => () => undefined,
-    browse: async () => peers
+    browse: async () => peers,
+    text: {
+      start: (listener) => void (onCopied = listener),
+      stop: () => void (onCopied = null),
+      write: (value) => void written.push(value)
+    }
   })
   const requests: { device: string; address: string }[] = []
   const ended = vi.fn()
   engine.onRequest((request) => requests.push(request))
   engine.onEnded(ended)
-  return { engine, share, requests, ended }
+  return { engine, share, requests, ended, text }
 }
 
 describe('modo Mouse entre dois PCs', () => {
@@ -173,5 +186,26 @@ describe('modo Mouse entre dois PCs', () => {
     await desktop.engine.share({ name: 'Suntrans', address: '192.168.1.7' }, 'Desktop', 'left')
     await desktop.engine.setSide('above')
     expect(desktop.share.calls).toEqual(['share:Suntrans:left', 'share:Suntrans:above'])
+  })
+
+  it('texto copiado no Linux vai para o outro lado; um terceiro na rede não escreve nada', async () => {
+    const net = network()
+    const desktop = pc(net, '192.168.1.4')
+    const linux = pc(net, '192.168.1.7')
+    const intruso = pc(net, '192.168.1.66')
+    await desktop.engine.start('Desktop')
+    await linux.engine.start('Suntrans')
+    await intruso.engine.start('Intruso')
+    await desktop.engine.share({ name: 'Suntrans', address: '192.168.1.7' }, 'Desktop', 'left')
+    await linux.engine.accept('Suntrans')
+    linux.text.copy('copiado no linux')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(desktop.text.written).toEqual(['copiado no linux'])
+
+    await net.channel('192.168.1.66').send('192.168.1.4', '/mouse/text', { text: 'invasão' })
+    expect(desktop.text.written).toEqual(['copiado no linux'])
+
+    await desktop.engine.end()
+    expect(desktop.text.watching()).toBe(false)
   })
 })
