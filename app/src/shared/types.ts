@@ -1,3 +1,5 @@
+import type { DeviceKind } from './device'
+
 export type Mode = 'send' | 'receive' | 'mouse'
 export type PrepStep = 'engine' | 'display' | 'encoder'
 
@@ -116,6 +118,8 @@ export interface Host {
   address: string
   /** Área de trabalho do outro computador (todas as telas juntas), quando ele anuncia; usado no modo Mouse. */
   screen?: ScreenSize
+  /** Tipo de aparelho, quando ele anuncia (Horizonte); sem isso, o ícone vem de um palpite pelo nome. */
+  kind?: DeviceKind
 }
 
 export interface Snapshot {

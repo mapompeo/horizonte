@@ -1,3 +1,4 @@
+import type { DeviceKind } from './device'
 import type {
   AppEvent,
   Host,
@@ -16,6 +17,7 @@ export const CHANNELS = {
   hosts: 'horizonte:hosts',
   mousePeers: 'horizonte:mouse-peers',
   mouseScreen: 'horizonte:mouse-screen',
+  deviceKind: 'horizonte:device-kind',
   webAccess: 'horizonte:web-access',
   setWebAccess: 'horizonte:set-web-access',
   openRepo: 'horizonte:open-repo',
@@ -44,6 +46,11 @@ export interface HorizonteApi {
   listMousePeers(): Promise<Host[]>
   /** Área de trabalho deste computador (todas as telas juntas), para o mapa do modo Mouse. */
   ownScreen(): Promise<ScreenSize>
+  /**
+   * Tipo de um aparelho para o ícone: o que ele anuncia na rede, ou um palpite pelo nome. Sem argumentos, o tipo
+   * deste aparelho.
+   */
+  deviceKind(address?: string, name?: string): Promise<DeviceKind>
   getWebAccess(): Promise<WebAccess>
   setWebAccess(on: boolean): Promise<WebAccess>
   /** Abre a página do projeto no navegador padrão. */

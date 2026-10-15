@@ -1,9 +1,12 @@
 <script lang="ts">
   import type { Host, MouseSide, ScreenSize } from '../../../shared/types'
   import { safeName } from '../lib/copy'
+  import { guessKind, type DeviceKind } from '../../../shared/device'
+  import DeviceIcon from './DeviceIcon.svelte'
 
   interface Props {
     own: ScreenSize
+    ownKind: DeviceKind
     hosts: Host[]
     sides: Record<string, MouseSide>
     offsets: Record<string, number>
@@ -11,7 +14,7 @@
     onPlace: (name: string, place: { side: MouseSide; offset: number } | null) => void
   }
 
-  let { own, hosts, sides, offsets, onPlace }: Props = $props()
+  let { own, ownKind, hosts, sides, offsets, onPlace }: Props = $props()
 
   const DOCK = 64
   let width = $state(560)
@@ -191,7 +194,8 @@
     class="map-screen map-own"
     style="left: {me.x}px; top: {me.y}px; width: {me.w}px; height: {me.h}px"
   >
-    Este computador
+    <DeviceIcon kind={ownKind} size={16} />
+    <span>Este computador</span>
   </div>
   <div class="map-dock">
     {#if boxes.every((box) => box.side)}<span>Solte aqui para deixar de fora</span>{/if}
@@ -214,7 +218,8 @@
       onpointercancel={() => (drag = null)}
       onkeydown={(event) => key(event, box.host, box.name)}
     >
-      {box.name}
+      <DeviceIcon kind={box.host.kind ?? guessKind(box.host.name)} size={16} />
+      <span>{box.name}</span>
     </div>
   {/each}
 </div>

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import DeviceIcon from '../components/DeviceIcon.svelte'
+  import { guessKind } from '../../../shared/device'
   import { onMount } from 'svelte'
   import type { Host } from '../../../shared/types'
   import { copyFor, safeName } from '../lib/copy'
@@ -32,19 +34,8 @@
   <h1 class="title title-md">{copy.title}</h1>
   {#each hosts as host (host.address)}
     <div class="host">
-      <div class="host-icon" aria-hidden="true">
-        <svg
-          width="26"
-          height="26"
-          viewBox="0 0 48 48"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.4"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect x="6" y="8" width="36" height="24" rx="4" /><path d="M16 40h16M24 32v8" />
-        </svg>
+      <div class="host-icon">
+        <DeviceIcon kind={host.kind ?? guessKind(host.name)} />
       </div>
       <div class="host-body">
         <span class="host-name">{safeName(host.name)}</span>

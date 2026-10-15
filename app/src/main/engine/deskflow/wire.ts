@@ -2,12 +2,13 @@ import { execFile, spawn } from 'node:child_process'
 import { createReadStream, createWriteStream, existsSync, readdirSync, readFileSync } from 'node:fs'
 import { mkdir, rm, stat, writeFile } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
-import { networkInterfaces, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { ReadableStream as WebReadableStream } from 'node:stream/web'
-import { Bonjour } from 'bonjour-service'
+import { advertiseService, browseService } from '../lan'
+import { isDeviceKind, type DeviceKind } from '../../../shared/device'
 import type { Host, ScreenSize } from '../../../shared/types'
 import type { MouseEngine } from '../port'
 import { createFileClipboard, type FileClipboardDeps } from './files'
@@ -84,65 +85,29 @@ function createChannel(): MouseChannel {
   }
 }
 
-const ownAddresses = (): Set<string> =>
-  new Set(
-    Object.values(networkInterfaces())
-      .flat()
-      .map((info) => info?.address ?? '')
-  )
-
-/** A rota multicast padrão pode ser a do WSL, Docker ou VirtualBox: anuncia e procura em cada interface IPv4. */
-const lanInterfaces = (): string[] =>
-  Object.values(networkInterfaces())
-    .flat()
-    .flatMap((info) => (info && info.family === 'IPv4' && !info.internal ? [info.address] : []))
-
-const perInterface = (): Bonjour[] =>
-  lanInterfaces().map((address) => {
-    // Opções do multicast-dns por baixo (o tipo do bonjour-service não lista todas).
-    const options = { port: 5353, bind: '0.0.0.0', interface: address }
-    return new Bonjour(options)
-  })
-
-/** Procura outros Horizontes no modo Mouse por 1,5 s, sem contar este PC. */
+/** Procura outros Horizontes no modo Mouse, com o tamanho da tela e o tipo de aparelho que eles anunciam. */
 async function browse(): Promise<Host[]> {
-  const own = ownAddresses()
-  const found = new Map<string, Host>()
-  const instances = perInterface()
-  const browsers = instances.map((bonjour) =>
-    bonjour.find({ type: SERVICE_TYPE }, (service) => {
-      // Primeiro o endereço de onde o anúncio veio de fato; a lista pode trazer Docker ou VPN na frente.
-      const address = [service.referer?.address ?? '', ...(service.addresses ?? [])].find(
-        (candidate) => /^\d+\.\d+\.\d+\.\d+$/.test(candidate) && !own.has(candidate)
-      )
-      if (!address) return
-      // Tamanho da área de trabalho anunciado pelo outro (para desenhar e encaixar as bordas).
-      const width = Number(service.txt?.w)
-      const height = Number(service.txt?.h)
-      const screen =
-        width > 0 && height > 0 && width < 100_000 && height < 100_000
-          ? { width, height }
-          : undefined
-      found.set(address, { name: service.name, address, ...(screen ? { screen } : {}) })
-    })
-  )
-  await new Promise((resolve) => setTimeout(resolve, 1500))
-  browsers.forEach((browser) => browser.stop())
-  instances.forEach((bonjour) => bonjour.destroy())
-  return [...found.values()].sort((a, b) => a.name.localeCompare(b.name))
+  const found = await browseService(SERVICE_TYPE)
+  return found.map(({ name, address, txt }) => {
+    const width = Number(txt.w)
+    const height = Number(txt.h)
+    const screen =
+      width > 0 && height > 0 && width < 100_000 && height < 100_000 ? { width, height } : undefined
+    return {
+      name,
+      address,
+      ...(screen ? { screen } : {}),
+      ...(isDeviceKind(txt.k) ? { kind: txt.k } : {})
+    }
+  })
 }
 
-function advertise(name: string, screen?: ScreenSize): () => void {
-  const txt = screen ? { w: String(screen.width), h: String(screen.height) } : undefined
-  const instances = perInterface()
-  const services = instances.map((bonjour) =>
-    // Sem sondagem: os anúncios das outras interfaces deste PC contariam como "nome já em uso".
-    bonjour.publish({ name, type: SERVICE_TYPE, port: MOUSE_CHANNEL_PORT, probe: false, txt })
-  )
-  return () => {
-    services.forEach((service) => service.stop?.())
-    instances.forEach((bonjour) => bonjour.destroy())
-  }
+function advertise(name: string, screen: ScreenSize, kind: DeviceKind): () => void {
+  return advertiseService(name, SERVICE_TYPE, MOUSE_CHANNEL_PORT, {
+    w: String(screen.width),
+    h: String(screen.height),
+    k: kind
+  })
 }
 
 /** Roda e rejeita com a mensagem de erro do processo. */
@@ -314,6 +279,8 @@ export function createRealMouseEngine(deps: {
   readText(): Promise<string> | string
   /** Área de trabalho deste computador (todas as telas juntas). */
   ownScreen(): ScreenSize
+  /** Tipo deste aparelho, anunciado junto (o ícone nos outros PCs). */
+  ownKind(): DeviceKind
 }): MouseEngine {
   const dir = join(deps.userData, 'deskflow')
   const share = createMouseShare({
@@ -375,7 +342,7 @@ export function createRealMouseEngine(deps: {
   return createMouseEngine({
     share,
     channel,
-    advertise: (name) => advertise(name, deps.ownScreen()),
+    advertise: (name) => advertise(name, deps.ownScreen(), deps.ownKind()),
     browse,
     files,
     text,
