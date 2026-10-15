@@ -8,6 +8,7 @@ import { downloadVerified } from '../windows/download'
 import { createCredentialVault, type Cipher } from '../windows/secrets'
 import { generatePassword, waitForApi } from '../windows/wire'
 import { ensureMoonlightLinux } from './moonlight'
+import { createGnomePlacer } from './placement'
 import { createLinuxSetup, MONITOR_NAME, shQuote, SUNSHINE_UNIT, type LinuxProbe } from './setup'
 import { MOONLIGHT_LINUX_APPIMAGE, sunshinePackageFor } from './versions'
 
@@ -96,6 +97,7 @@ export function createLinuxPlatform(deps: {
 
   return {
     ...setup,
+    display: { ...setup.display, place: createGnomePlacer(process.env) },
     restart: () => sh('systemctl', ['--user', 'restart', SUNSHINE_UNIT], 90_000),
     createApi,
     credentials: async () => {
