@@ -2,10 +2,11 @@ import type { DeskflowCommand } from './session'
 import type { DeskflowLinuxKind, DeskflowLinuxPackage } from './versions'
 
 export const FLATPAK_APP = 'org.deskflow.deskflow'
-const FLATPAK: DeskflowCommand = {
+/** O Flatpak só enxerga a pasta dos ajustes do Horizonte se ela for liberada na hora de rodar. */
+const flatpak = (configDir: string): DeskflowCommand => ({
   command: 'flatpak',
-  prefix: ['run', '--command=deskflow-core', FLATPAK_APP]
-}
+  prefix: ['run', `--filesystem=${configDir}`, '--command=deskflow-core', FLATPAK_APP]
+})
 const NATIVE: DeskflowCommand = { command: 'deskflow-core', prefix: [] }
 
 /** Literal de texto do shell: nada é interpretado dentro de aspas simples. */
@@ -40,12 +41,14 @@ export interface LinuxDeskflowDeps {
   /** Roda como a própria pessoa, sem aviso. */
   runUser(script: string): Promise<void>
   workDir: string
+  /** Pasta onde o Horizonte escreve os ajustes do Deskflow. */
+  configDir: string
 }
 
 /** Garante o Deskflow no Linux e diz como chamá-lo. Cada caminho pede a senha do sistema no máximo uma vez. */
 export async function ensureDeskflowLinux(deps: LinuxDeskflowDeps): Promise<DeskflowCommand> {
   if (await deps.has('deskflow-core')) return NATIVE
-  if ((await deps.has('flatpak')) && (await deps.flatpakHasApp())) return FLATPAK
+  if ((await deps.has('flatpak')) && (await deps.flatpakHasApp())) return flatpak(deps.configDir)
 
   const pkg = deps.pkg()
   const file = `${deps.workDir}/${pkg.fileName}`
@@ -77,5 +80,5 @@ export async function ensureDeskflowLinux(deps: LinuxDeskflowDeps): Promise<Desk
       `flatpak install --user -y --noninteractive ${q(file)}`
     ].join('\n')
   )
-  return FLATPAK
+  return flatpak(deps.configDir)
 }

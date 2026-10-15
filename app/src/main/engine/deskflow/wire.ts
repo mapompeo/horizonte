@@ -160,7 +160,8 @@ function deskflowCommand(deps: {
       // O pkexec mostra o aviso de senha do sistema (polkit) uma única vez.
       runPrivileged: (script) => run('pkexec', ['sh', '-c', script], 600_000),
       runUser: (script) => run('sh', ['-c', script], 600_000),
-      workDir: tmpdir()
+      workDir: tmpdir(),
+      configDir: deps.dir
     })
   }
 }
