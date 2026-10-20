@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "horizonte-demo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--prefix", "app", "vite", "-c", "app/vite.demo.config.ts", "--port", "4249", "--strictPort"],
+      "port": 4249
+    }
+  ]
+}
