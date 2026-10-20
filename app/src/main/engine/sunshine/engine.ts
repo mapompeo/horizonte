@@ -25,6 +25,7 @@ const GENERIC_DEVICE = 'Outro computador'
 const PROGRESS_AFTER_INSTALL = 0.55
 
 export interface SunshineEngineDeps {
+  onDisplayLost?(cause: Error): void
   installer: EngineInstaller
   display: VirtualDisplay
   memory: EngineMemory
@@ -76,7 +77,16 @@ export class SunshineEngine implements ServerEngine {
   protected readonly connectedListeners: Listeners<[string]> = new Set()
   protected readonly disconnectedListeners: Listeners<[]> = new Set()
 
-  constructor(protected readonly deps: SunshineEngineDeps) {}
+  private displayInvalidated = false
+
+  constructor(protected readonly deps: SunshineEngineDeps) {
+    deps.display.onLost?.((cause) => {
+      this.known = null
+      this.displayInvalidated = true
+      void this.abort()
+      deps.onDisplayLost?.(cause)
+    })
+  }
 
   private get timing(): Required<NonNullable<SunshineEngineDeps['timing']>> {
     const t = this.deps.timing ?? {}
@@ -162,6 +172,7 @@ export class SunshineEngine implements ServerEngine {
     if (changed) await restartAndRead(alive)
     if (!alive()) return
 
+    this.displayInvalidated = false
     this.known = { displayId, chosen, encoding: settings.encoding }
     this.startWatchers(api)
   }
@@ -207,7 +218,8 @@ export class SunshineEngine implements ServerEngine {
     const find = (log: string): string | null =>
       parseDisplays(log).find((display) => this.deps.display.isVirtual(display))?.deviceId ?? null
 
-    let id = find(await this.deps.readLog())
+    const log = this.displayInvalidated ? await restartAndRead(alive) : await this.deps.readLog()
+    let id = find(log)
     if (!alive()) return ''
     if (id === null) {
       // O log atual pode ser de uma execução que não listou os monitores: reinicia para ver a lista.

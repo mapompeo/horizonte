@@ -15,6 +15,8 @@ export interface EngineInstaller {
 
 /** Garante que existe um monitor virtual e sabe reconhecê-lo na lista do Sunshine. */
 export interface VirtualDisplay {
+  /** Notifica perda inesperada de uma tela criada pelo aplicativo. */
+  onLost?(callback: (cause: Error) => void): () => void
   ensureVirtualDisplay(signal?: AbortSignal): Promise<void>
   isVirtual(display: SunshineDisplay): boolean
 }

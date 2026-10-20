@@ -84,6 +84,62 @@ export function createMacPlatform(deps: {
   // O auxiliar também encerra sozinho se o app morrer (ele confere o processo pai); isto cobre o fim normal.
   process.on('exit', () => monitor?.stop())
 
+  let monitorRun = 0
+  let starting: Promise<void> | null = null
+  let startingRun = 0
+  let startingChild: ReturnType<typeof spawn> | null = null
+  const lostListeners = new Set<(cause: Error) => void>()
+  const startVirtualDisplay = async (): Promise<void> => {
+    if (monitor) return
+    if (starting) {
+      if (startingRun === monitorRun) return starting
+      await starting.catch(() => undefined)
+      return startVirtualDisplay()
+    }
+    const run = ++monitorRun
+    startingRun = run
+    let lost: Error | null = null
+    const task = (async () => {
+      const running = await startDisplayHelper(
+        () => {
+          const child = spawn(helperPath!, [], { stdio: ['ignore', 'pipe', 'pipe'] })
+          startingChild = child
+          return {
+            onError: (cb) => void child.on('error', cb),
+            onStdout: (cb) => void child.stdout.on('data', (chunk: Buffer) => cb(chunk.toString())),
+            onStderr: (cb) => void child.stderr.on('data', (chunk: Buffer) => cb(chunk.toString())),
+            onExit: (cb) => void child.on('exit', cb),
+            kill: () => void child.kill('SIGTERM')
+          }
+        },
+        20_000,
+        (cause) => {
+          lost = cause
+          if (run !== monitorRun) return
+          monitor = null
+          for (const listener of [...lostListeners]) listener(cause)
+        }
+      )
+      if (lost || run !== monitorRun) {
+        running.stop()
+        throw lost ?? new Error('Criacao do monitor virtual cancelada.')
+      }
+      monitor = running
+    })().catch((cause: unknown) => {
+      if (run !== monitorRun) throw new Error('Criacao do monitor virtual cancelada.')
+      throw cause
+    })
+    starting = task
+    try {
+      await task
+    } finally {
+      if (starting === task) {
+        starting = null
+        startingChild = null
+      }
+    }
+  }
+
   const setup = createMacSetup({
     probe: createProbe(helperPath),
     vault,
@@ -97,27 +153,7 @@ export function createMacPlatform(deps: {
     },
     generatePassword,
     sleep: deps.sleep,
-    startVirtualDisplay: helperPath
-      ? async () => {
-          if (monitor) return
-          monitor = await startDisplayHelper(() => {
-            const child = spawn(helperPath, [], { stdio: ['ignore', 'pipe', 'pipe'] })
-            return {
-              onError: (cb) => void child.on('error', cb),
-              onStdout: (cb) =>
-                void child.stdout.on('data', (chunk: Buffer) => cb(chunk.toString())),
-              onStderr: (cb) =>
-                void child.stderr.on('data', (chunk: Buffer) => cb(chunk.toString())),
-              onExit: (cb) =>
-                void child.on('exit', (code) => {
-                  monitor = null
-                  cb(code)
-                }),
-              kill: () => void child.kill('SIGTERM')
-            }
-          })
-        }
-      : undefined,
+    startVirtualDisplay: helperPath ? startVirtualDisplay : undefined,
     workDir: tmpdir(),
     appsDir: APPS_DIR,
     port: PORT
@@ -125,12 +161,24 @@ export function createMacPlatform(deps: {
 
   return {
     ...setup,
+    display: {
+      ...setup.display,
+      onLost(callback) {
+        lostListeners.add(callback)
+        return () => {
+          lostListeners.delete(callback)
+        }
+      }
+    },
     restart: async () => {
       await sh(
         `pkill -x ${SUNSHINE_PROCESS} || true\nopen ${shQuote(join(APPS_DIR, 'Sunshine.app'))}`
       )
     },
     stopVirtualDisplay: () => {
+      monitorRun++
+      startingChild?.kill('SIGTERM')
+      startingChild = null
       monitor?.stop()
       monitor = null
     },

@@ -1,3 +1,4 @@
+import { reportDisplayLoss } from './core/display-loss'
 import {
   app,
   BrowserWindow,
@@ -251,6 +252,10 @@ async function boot(): Promise<void> {
       }
     }
   })
+  let pendingDisplayLoss: Error | null = null
+  let onDisplayLost = (cause: Error): void => {
+    pendingDisplayLoss = cause
+  }
   let engine: EnginePort = fake
   if (dev) {
     engine = composeEngine(
@@ -340,6 +345,7 @@ async function boot(): Promise<void> {
     app.on('before-quit', () => platform.stopVirtualDisplay())
     engine = composeEngine(
       new SunshineEngine({
+        onDisplayLost: (cause) => onDisplayLost(cause),
         installer: platform.installer,
         display: platform.display,
         memory,
@@ -355,6 +361,8 @@ async function boot(): Promise<void> {
     )
   }
   const controller = await createController({ engine, store })
+  onDisplayLost = (cause) => reportDisplayLoss(controller, cause)
+  if (pendingDisplayLoss) onDisplayLost(pendingDisplayLoss)
   const diagnosticEnv = {
     version: app.getVersion(),
     platform: process.platform,

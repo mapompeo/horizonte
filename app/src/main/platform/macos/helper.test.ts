@@ -121,3 +121,39 @@ describe('startDisplayHelper', () => {
     expect(() => helper.die(0)).not.toThrow()
   })
 })
+
+it('notifica perda inesperada depois de DISPLAY_ID com detalhe do auxiliar', async () => {
+  const helper = fakeHelper()
+  const lost = vi.fn()
+  const started = startDisplayHelper(() => helper, 20000, lost)
+  helper.say('DISPLAY_ID 7\n')
+  await started
+  helper.complain('monitor removido pelo macOS')
+  helper.die(3)
+  helper.die(3)
+  expect(lost).toHaveBeenCalledOnce()
+  expect(lost.mock.calls[0][0].message).toContain('monitor removido pelo macOS')
+})
+
+it('stop intencional nao notifica perda', async () => {
+  const helper = fakeHelper()
+  const lost = vi.fn()
+  const started = startDisplayHelper(() => helper, 20000, lost)
+  helper.say('DISPLAY_ID 7\n')
+  const running = await started
+  running.stop()
+  helper.die(0)
+  expect(lost).not.toHaveBeenCalled()
+})
+
+it('erro do processo depois de pronto notifica uma unica perda', async () => {
+  const helper = fakeHelper()
+  const lost = vi.fn()
+  const started = startDisplayHelper(() => helper, 20000, lost)
+  helper.say('DISPLAY_ID 7\n')
+  await started
+  helper.fail(new Error('falha no processo'))
+  helper.die(1)
+  expect(lost).toHaveBeenCalledOnce()
+  expect(helper.killed()).toBe(true)
+})

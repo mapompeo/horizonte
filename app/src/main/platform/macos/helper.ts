@@ -2,7 +2,7 @@
 export interface HelperProcess {
   onStdout(callback: (text: string) => void): void
   onStderr(callback: (text: string) => void): void
-  onExit(callback: (code: number | null) => void): void
+  onExit(callback: (code: number | null, signal?: NodeJS.Signals | null) => void): void
   onError(callback: (error: Error) => void): void
   kill(): void
 }
@@ -18,7 +18,8 @@ export interface RunningDisplay {
  */
 export function startDisplayHelper(
   spawn: () => HelperProcess,
-  timeoutMs = 20_000
+  timeoutMs = 20_000,
+  onUnexpectedExit?: (cause: Error) => void
 ): Promise<RunningDisplay> {
   return new Promise((resolve, reject) => {
     const child = spawn()
@@ -33,7 +34,12 @@ export function startDisplayHelper(
       child.kill()
     }
     const fail = (message: string): void => {
-      if (settled) return
+      if (settled) {
+        if (stopped) return
+        stop()
+        onUnexpectedExit?.(new Error(message))
+        return
+      }
       settled = true
       clearTimeout(timer)
       stop()
@@ -62,12 +68,16 @@ export function startDisplayHelper(
       clearTimeout(timer)
       resolve({ displayId: Number(found[1]), stop })
     })
-    child.onExit((code) => {
+    child.onExit((code, signal) => {
+      const intentional = stopped
       stopped = true
-      fail(
-        stderr.trim() ||
-          `o auxiliar do monitor virtual encerrou com código ${code ?? 'desconhecido'}`
-      )
+      const reason = `o auxiliar do monitor virtual encerrou com ${signal ? `sinal ${signal}` : `c\u00f3digo ${code ?? 'desconhecido'}`}`
+      const message = stderr.trim() ? `${reason}: ${stderr.trim()}` : reason
+      if (settled) {
+        if (!intentional) onUnexpectedExit?.(new Error(message))
+        return
+      }
+      fail(message)
     })
   })
 }
