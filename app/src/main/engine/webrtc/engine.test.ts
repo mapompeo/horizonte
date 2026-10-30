@@ -127,7 +127,7 @@ function pair(): {
   const signaling = { port: 0, host: '127.0.0.1', pingMs: 0 }
   const sender = new WebRtcEngine({
     windows: sendWindows,
-    presence: { setSending: (port) => announced.push(port), hosts: async () => [] },
+    presence: { setSending: (info) => announced.push(info?.port ?? null), hosts: async () => [] },
     virtualScreen: screen,
     frames: '/run/user/1000/horizonte.sock',
     deviceName: () => 'Desktop',

@@ -40,6 +40,7 @@ import { finishStartup, runStartup } from './startup'
 import { runDevDemo } from './dev-demo'
 import { MOTOR_USAGE, parseMotorArgs, type MotorArgs } from './motor/args'
 import { prepareMotorSwitches, runMotorBench } from './motor/bench'
+import { createAppWebRtcEngine } from './engine/webrtc/wire'
 import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
 import { createRealMouseEngine } from './engine/deskflow/wire'
@@ -331,8 +332,15 @@ async function boot(): Promise<void> {
       }
     }
   })
+  const presence = createPresence({ advertise: advertiseService, browse: browseService })
+  // Tipo deste aparelho (ícone nos outros PCs): descoberto uma vez; até lá, computador de mesa.
+  let ownKind: DeviceKind = 'desktop'
+  /** Nome deste aparelho nos outros: o dos ajustes, assim que o núcleo existir. */
+  let ownName = (): string => cleanName(hostname()) || 'Computador'
   let engine: EnginePort = fake
-  if (dev) {
+  if (USE_WEBRTC) {
+    engine = createAppWebRtcEngine({ presence, deviceName: () => ownName(), kind: () => ownKind })
+  } else if (dev) {
     engine = composeEngine(
       new SunshineEngine({
         installer: existingInstaller(),
@@ -434,9 +442,6 @@ async function boot(): Promise<void> {
       receiver
     )
   }
-  // Tipo deste aparelho (ícone nos outros PCs): descoberto uma vez; até lá, computador de mesa.
-  let ownKind: DeviceKind = 'desktop'
-  const presence = createPresence({ advertise: advertiseService, browse: browseService })
   const kindReady = detectDeviceKind({
     platform: process.platform,
     runPowerShell: (script) => runPowerShell(script, 20_000),
@@ -470,6 +475,7 @@ async function boot(): Promise<void> {
         })
   if (mouse) app.on('before-quit', () => void mouse.stop().catch(() => undefined))
   const controller = await createController({ engine, mouse, store })
+  ownName = () => controller.getSnapshot().settings.deviceName
   // Todo Horizonte aberto anuncia o próprio tipo, em qualquer modo (o ícone certo nas listas dos outros).
   void kindReady.then((kind) =>
     presence.announce(controller.getSnapshot().settings.deviceName, kind)
@@ -568,7 +574,7 @@ async function boot(): Promise<void> {
       return updates.perform(action)
     return updates.status()
   })
-  if (!dev && !real && !app.isPackaged) runDevDemo(controller, fake)
+  if (engine === fake && !app.isPackaged) runDevDemo(controller, fake)
 
   ipcMain.handle(CHANNELS.snapshot, () => controller.getSnapshot())
   ipcMain.handle(CHANNELS.dispatch, (_event, payload: unknown) => {
@@ -676,6 +682,14 @@ function readMotorArgs(): MotorArgs | null | 'invalid' {
 }
 const motor = readMotorArgs()
 
+/**
+ * Motor próprio (WebRTC): o padrão no Linux. No Windows e no Mac, só com HORIZONTE_ENGINE=webrtc até ser testado
+ * nesses sistemas; HORIZONTE_ENGINE=sunshine volta ao motor antigo no Linux.
+ */
+const USE_WEBRTC =
+  process.env['HORIZONTE_ENGINE'] === 'webrtc' ||
+  (process.platform === 'linux' && process.env['HORIZONTE_ENGINE'] !== 'sunshine')
+
 if (motor === 'invalid') {
   app.exit(2)
 } else if (motor) {
@@ -690,6 +704,7 @@ else if (!app.isPackaged || app.requestSingleInstanceLock()) {
     if (window.isMinimized()) window.restore()
     window.focus()
   })
+  if (USE_WEBRTC) prepareMotorSwitches()
   void runStartup(boot, (error) => {
     console.error(error)
     try {

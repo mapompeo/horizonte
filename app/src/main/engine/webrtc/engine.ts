@@ -20,8 +20,8 @@ export interface WebRtcHost extends Host {
 
 /** Anúncio e busca na rede local (`_horizonte._tcp`). */
 export interface LanPresence {
-  /** Com porta: este aparelho anuncia que está pronto para enviar; null: deixa de anunciar. */
-  setSending(port: number | null): void
+  /** Com dados: este aparelho anuncia que está pronto para enviar; null: deixa de anunciar. */
+  setSending(info: { port: number; id: string; fp: string } | null): void
   hosts(): Promise<WebRtcHost[]>
 }
 
@@ -59,6 +59,8 @@ export interface WebRtcEngineDeps {
   deviceName(): string
   kind(): DeviceKind
   screenSize(): ScreenSize
+  /** Preparo do sistema antes de escutar (no Linux, liberar o firewall). */
+  prepareSystem?(): Promise<void>
   /** Ajustes da sinalização (nos testes: porta 0 em 127.0.0.1, sem ping). */
   signaling?: Pick<SenderOptions, 'port' | 'host' | 'pingMs' | 'helloTimeoutMs'>
   log?(...parts: unknown[]): void
@@ -145,12 +147,14 @@ export class WebRtcEngine implements EnginePort {
     onStep('engine')
     onProgress?.({ note: 'Abrindo o motor de transmissão', fraction: 0.2 })
     const identity = await this.ownIdentity()
+    onProgress?.({ note: 'Conferindo o firewall', fraction: 0.35 })
+    await this.deps.prepareSystem?.()
     onStep('display')
     onProgress?.({ note: 'Preparando a tela estendida', fraction: 0.5 })
     onStep('encoder')
     onProgress?.({ note: 'Esperando conexão', fraction: 0.9 })
     const sender = await this.listen(identity)
-    this.deps.presence.setSending(sender.port)
+    this.deps.presence.setSending({ port: sender.port, id: identity.id, fp: identity.fp })
   }
 
   private listen(identity: { id: string; fp: string }): Promise<Sender> {
