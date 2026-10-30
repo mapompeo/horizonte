@@ -33,6 +33,44 @@ async function probeCodecs(want: Want): Promise<CodecProbe[]> {
   )
 }
 
+/**
+ * Vídeo feito das imagens que o auxiliar do Linux manda (a tela estendida do GNOME), sem passar pelo portal de captura
+ * e o seletor dele. Se uma imagem chega enquanto a anterior ainda está sendo entregue, ela é descartada.
+ */
+function framesStream(
+  path: string,
+  onClose: (reason: string) => void
+): { stream: MediaStream; stop(): void } {
+  const frames = window.motorFrames
+  if (!frames) throw new Error('Esta janela não lê as imagens da tela estendida.')
+  const generator = new MediaStreamTrackGenerator({ kind: 'video' })
+  const writer = generator.writable.getWriter()
+  let busy = false
+  const stop = frames.open(
+    path,
+    (raw) => {
+      if (busy) return
+      busy = true
+      const frame = new VideoFrame(raw.data, {
+        format: raw.format,
+        codedWidth: raw.width,
+        codedHeight: raw.height,
+        layout: [{ offset: 0, stride: raw.stride }],
+        timestamp: Math.round(performance.now() * 1000)
+      })
+      writer
+        .write(frame)
+        .catch(() => undefined)
+        .finally(() => {
+          frame.close()
+          busy = false
+        })
+    },
+    onClose
+  )
+  return { stream: new MediaStream([generator]), stop }
+}
+
 async function capture(want: Want, synthetic: boolean): Promise<MediaStream> {
   if (synthetic)
     return syntheticStream(Math.min(want.width, 1280), Math.min(want.height, 720), want.fps)
@@ -56,6 +94,7 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
   let statsTimer: ReturnType<typeof setInterval> | null = null
   let rampTimer: ReturnType<typeof setInterval> | null = null
   let targetMbps = 0
+  let stopFrames: (() => void) | null = null
 
   async function setBitrate(mbps: number, fps?: number): Promise<void> {
     if (!sender) return
@@ -75,7 +114,7 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
     }
   }
 
-  async function start(want: Want): Promise<void> {
+  async function start(want: Want, frames?: string): Promise<void> {
     stop()
     const send = (message: MediaMessage): void => api.signal(message)
     pc = createPeer(identity.certificate)
@@ -85,7 +124,13 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
       console.log('[motor] conexão:', pc?.connectionState)
     )
 
-    stream = await capture(want, synthetic)
+    if (frames) {
+      const source = framesStream(frames, (reason) =>
+        console.warn('[motor] imagens da tela:', reason)
+      )
+      stream = source.stream
+      stopFrames = source.stop
+    } else stream = await capture(want, synthetic)
     const [track] = stream.getVideoTracks()
     track.contentHint = 'detail'
     const transceiver = pc.addTransceiver(track, { direction: 'sendonly', streams: [stream] })
@@ -139,6 +184,8 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
     if (statsTimer) clearInterval(statsTimer)
     if (rampTimer) clearInterval(rampTimer)
     statsTimer = rampTimer = null
+    stopFrames?.()
+    stopFrames = null
     for (const track of stream?.getTracks() ?? []) track.stop()
     pc?.close()
     pc = stream = sender = ice = null

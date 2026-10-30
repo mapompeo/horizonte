@@ -76,6 +76,9 @@ function motorWindow(
   config: MotorConfig,
   options: Electron.BrowserWindowConstructorOptions
 ): BrowserWindow {
+  // A janela de envio lê as imagens do auxiliar do Linux por um socket: precisa do Node no preload, e fica sem
+  // isolamento de contexto para as imagens não serem copiadas de novo. Ela só carrega a página local do motor.
+  const sending = config.role === 'send'
   const window = new BrowserWindow({
     title: 'Horizonte',
     backgroundColor: '#000000',
@@ -83,8 +86,8 @@ function motorWindow(
     ...options,
     webPreferences: {
       preload: join(__dirname, '../preload/motor.js'),
-      contextIsolation: true,
-      sandbox: true,
+      contextIsolation: !sending,
+      sandbox: !sending,
       nodeIntegration: false,
       // A janela que envia fica oculta e precisa continuar a todo vapor.
       backgroundThrottling: false
@@ -133,7 +136,7 @@ function listenReports(
  */
 function windowMedia(
   window: BrowserWindow,
-  hooks: { beforeStart?(want: Want): Promise<void>; afterStop?(): void } = {}
+  hooks: { beforeStart?(want: Want): Promise<{ frames?: string } | void>; afterStop?(): void } = {}
 ): MediaSide {
   const id = window.webContents.id
   let run = 0
@@ -145,7 +148,7 @@ function windowMedia(
       const mine = ++run
       signalTargets.set(id, send)
       void (hooks.beforeStart?.(want) ?? Promise.resolve()).then(
-        () => mine === run && push({ t: 'start', want }),
+        (extra) => mine === run && push({ t: 'start', want, ...(extra ?? {}) }),
         (error: unknown) =>
           log('não consegui preparar a tela:', error instanceof Error ? error.message : error)
       )
@@ -167,7 +170,21 @@ function linuxHelperPath(): string {
     : join(app.getAppPath(), 'native', 'linux', 'build', 'horizonte-display')
 }
 
-function createVirtualScreen(): VirtualScreen {
+/** Onde o auxiliar do GNOME publica as imagens da tela estendida (pasta do usuário, só ele acessa). */
+function framesSocket(): string {
+  return join(
+    process.env.XDG_RUNTIME_DIR ?? app.getPath('temp'),
+    `horizonte-tela-${process.pid}.sock`
+  )
+}
+
+/** GNOME no Wayland: as imagens vêm do auxiliar, sem o portal de captura (e sem o seletor dele). */
+const gnomeFrames = (): boolean =>
+  process.platform === 'linux' &&
+  Boolean(process.env.WAYLAND_DISPLAY) &&
+  /gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? '')
+
+function createVirtualScreen(frames: string | null): VirtualScreen {
   if (process.platform !== 'linux')
     throw new Error('O modo estender do teste ainda só existe no Linux com GNOME.')
   return createGnomeDisplay({
@@ -180,7 +197,8 @@ function createVirtualScreen(): VirtualScreen {
             '--height',
             String(request.height),
             '--refresh',
-            String(request.fps)
+            String(request.fps),
+            ...(frames ? ['--frames', frames] : [])
           ])
           return {
             onStdout: (callback) => child.stdout.on('data', (chunk) => callback(String(chunk))),
@@ -260,7 +278,8 @@ function recorder(role: MotorRole): {
 }
 
 async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void> {
-  const virtual = args.extend ? createVirtualScreen() : null
+  const frames = args.extend && gnomeFrames() ? framesSocket() : null
+  const virtual = args.extend ? createVirtualScreen(frames) : null
   /** A tela que a janela captura: a do monitor virtual, quando estende; senão a principal. */
   let target: number | null = null
   const wayland = process.platform === 'linux' && Boolean(process.env.WAYLAND_DISPLAY)
@@ -268,7 +287,8 @@ async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void
   // A captura pede a tela ao processo principal. Fora do Wayland, escolhemos aqui, sem seletor; no Wayland, o
   // sistema mostra o seletor dele (uma vez por execução).
   electronSession.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
-    if (wayland && virtual) log('no seletor do GNOME, escolha a tela "MetaVendor" (a tela nova).')
+    if (wayland && virtual && !frames)
+      log('no seletor do GNOME, escolha a tela "MetaVendor" (a tela nova).')
     void desktopCapturer
       .getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
       .then((sources) => {
@@ -319,6 +339,7 @@ async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void
           if (!virtual) return
           target = await virtual.ensure({ width: want.width, height: want.height, fps: want.fps })
           log(`tela estendida criada: ${want.width}x${want.height}`)
+          return frames ? { frames } : undefined
         },
         afterStop: () => {
           target = null

@@ -3,7 +3,7 @@ import type { MediaMessage } from '../../../shared/motor'
 
 /** Um lado da sessão dentro da janela: o que envia ou o que mostra. */
 export interface MotorSide {
-  start(want: Want): Promise<void> | void
+  start(want: Want, frames?: string): Promise<void> | void
   deliver(message: MediaMessage): Promise<void>
   stop(): void
 }
