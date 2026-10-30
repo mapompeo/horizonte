@@ -15,6 +15,11 @@
  * Cada imagem vai com um cabeçalho de 24 bytes (inteiros de 32 bits, little-endian): "HZF1", largura, altura, bytes
  * por linha, formato (0 = BGRX, 1 = RGBX) e tamanho dos dados; depois os dados.
  *
+ * Posição: pela entrada padrão, uma linha por pedido, "place <left|right|above|below> [início]". O início é onde a
+ * tela estendida começa ao longo da borda das outras telas, em fração dessa borda; sem ele, fica centralizada. A
+ * disposição é aplicada como temporária (sem o aviso "manter alterações" do GNOME) e responde "PLACED" ou, no erro
+ * padrão, o motivo.
+ *
  * Uso: horizonte-display [--width 1920] [--height 1080] [--refresh 60] [--frames /run/user/1000/horizonte.sock]
  * Saída 2: argumentos ou ambiente; 3: o Mutter recusou ou encerrou a sessão; 4: o PipeWire falhou; 5: o socket.
  */
@@ -38,6 +43,8 @@
 #include <unistd.h>
 
 #define MUTTER "org.gnome.Mutter.ScreenCast"
+#define DISPLAY_CONFIG "org.gnome.Mutter.DisplayConfig"
+#define DISPLAY_CONFIG_PATH "/org/gnome/Mutter/DisplayConfig"
 #define FRAME_MAGIC 0x31465A48u /* "HZF1" */
 #define REPEAT_MS 1000
 
@@ -57,6 +64,8 @@ struct app {
   int refresh;
   int exit_code;
   gboolean ready;
+  /* Monitores virtuais (Meta-N) que já existiam antes deste: o nosso é o que aparecer de novo. */
+  GPtrArray *virtual_before;
 
   /* Envio das imagens (--frames). A thread do PipeWire copia a imagem nova para `frame` quando o envio está livre;
    * a thread de envio manda e libera. Se o envio ainda está ocupado, a imagem é descartada: vale a mais recente. */
@@ -360,6 +369,210 @@ static int start_mutter(struct app *app) {
   return 0;
 }
 
+/* ---------- posição (Mutter DisplayConfig) ---------- */
+
+struct logical {
+  int x, y, w, h;
+  double scale;
+  guint32 transform;
+  gboolean primary;
+  char *connector;
+  char *mode;
+};
+
+static GVariant *display_config(struct app *app, const char *method, GVariant *args, const char *reply,
+                                GError **error) {
+  return g_dbus_connection_call_sync(app->bus, DISPLAY_CONFIG, DISPLAY_CONFIG_PATH, DISPLAY_CONFIG, method, args,
+                                     reply ? G_VARIANT_TYPE(reply) : NULL, G_DBUS_CALL_FLAGS_NONE, 5000, NULL, error);
+}
+
+/* Lê o estado atual: cada tela lógica com o seu conector, o modo em uso e o tamanho em coordenadas da área de
+ * trabalho. Devolve a quantidade (0 se falhou). */
+static int read_layout(struct app *app, guint32 *serial, struct logical *out, int max) {
+  GVariant *state = display_config(app, "GetCurrentState", NULL, "(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv})", NULL);
+  if (!state) return 0;
+  GVariant *monitors = g_variant_get_child_value(state, 1);
+  GVariant *logicals = g_variant_get_child_value(state, 2);
+  GVariant *props = g_variant_get_child_value(state, 3);
+  g_variant_get_child(state, 0, "u", serial);
+  guint32 layout_mode = 1;
+  g_variant_lookup(props, "layout-mode", "u", &layout_mode);
+
+  int count = 0;
+  for (gsize i = 0; i < g_variant_n_children(logicals) && count < max; i++) {
+    GVariant *l = g_variant_get_child_value(logicals, i);
+    struct logical *item = &out[count];
+    memset(item, 0, sizeof(*item));
+    g_variant_get_child(l, 0, "i", &item->x);
+    g_variant_get_child(l, 1, "i", &item->y);
+    g_variant_get_child(l, 2, "d", &item->scale);
+    g_variant_get_child(l, 3, "u", &item->transform);
+    g_variant_get_child(l, 4, "b", &item->primary);
+    GVariant *specs = g_variant_get_child_value(l, 5);
+    if (g_variant_n_children(specs) > 0) g_variant_get_child(specs, 0, "(ssss)", &item->connector, NULL, NULL, NULL);
+    g_variant_unref(specs);
+    g_variant_unref(l);
+    if (!item->connector) continue;
+    /* Modo em uso deste conector, e o tamanho dele. */
+    for (gsize m = 0; m < g_variant_n_children(monitors); m++) {
+      GVariant *monitor = g_variant_get_child_value(monitors, m);
+      char *connector = NULL;
+      GVariant *spec = g_variant_get_child_value(monitor, 0);
+      g_variant_get_child(spec, 0, "s", &connector);
+      g_variant_unref(spec);
+      if (g_strcmp0(connector, item->connector) == 0) {
+        GVariant *modes = g_variant_get_child_value(monitor, 1);
+        for (gsize k = 0; k < g_variant_n_children(modes); k++) {
+          GVariant *mode = g_variant_get_child_value(modes, k);
+          GVariant *mode_props = g_variant_get_child_value(mode, 6);
+          gboolean current = FALSE;
+          g_variant_lookup(mode_props, "is-current", "b", &current);
+          if (current) {
+            int w = 0, h = 0;
+            g_variant_get_child(mode, 0, "s", &item->mode);
+            g_variant_get_child(mode, 1, "i", &w);
+            g_variant_get_child(mode, 2, "i", &h);
+            /* Com o layout lógico (o padrão do GNOME), a área de trabalho conta em pixels lógicos. */
+            const gboolean rotated = item->transform % 2 == 1;
+            const double div = layout_mode == 1 && item->scale > 0 ? item->scale : 1;
+            item->w = (int)((rotated ? h : w) / div + 0.5);
+            item->h = (int)((rotated ? w : h) / div + 0.5);
+          }
+          g_variant_unref(mode_props);
+          g_variant_unref(mode);
+        }
+        g_variant_unref(modes);
+      }
+      g_free(connector);
+      g_variant_unref(monitor);
+    }
+    if (item->mode) count++;
+    else g_free(item->connector);
+  }
+  g_variant_unref(props);
+  g_variant_unref(logicals);
+  g_variant_unref(monitors);
+  g_variant_unref(state);
+  return count;
+}
+
+static void free_layout(struct logical *items, int count) {
+  for (int i = 0; i < count; i++) {
+    g_free(items[i].connector);
+    g_free(items[i].mode);
+  }
+}
+
+static gboolean was_virtual_before(struct app *app, const char *connector) {
+  for (guint i = 0; app->virtual_before && i < app->virtual_before->len; i++)
+    if (g_strcmp0(g_ptr_array_index(app->virtual_before, i), connector) == 0) return TRUE;
+  return FALSE;
+}
+
+static void remember_virtual_monitors(struct app *app) {
+  struct logical items[16];
+  guint32 serial = 0;
+  int count = read_layout(app, &serial, items, 16);
+  app->virtual_before = g_ptr_array_new_with_free_func(g_free);
+  for (int i = 0; i < count; i++)
+    if (g_str_has_prefix(items[i].connector, "Meta-")) g_ptr_array_add(app->virtual_before, g_strdup(items[i].connector));
+  free_layout(items, count);
+}
+
+/* Põe a tela estendida no lado pedido das outras telas. `start` < -1 (sem início): centralizada na borda. */
+static gboolean place(struct app *app, const char *side, double start, char **why) {
+  struct logical items[16];
+  guint32 serial = 0;
+  int count = read_layout(app, &serial, items, 16);
+  int mine = -1;
+  for (int i = count - 1; i >= 0; i--)
+    if (g_str_has_prefix(items[i].connector, "Meta-") && !was_virtual_before(app, items[i].connector)) mine = i;
+  if (mine < 0 || count < 2) {
+    free_layout(items, count);
+    *why = g_strdup("a tela estendida ainda não apareceu");
+    return FALSE;
+  }
+
+  /* Caixa das outras telas. */
+  int left = G_MAXINT, top = G_MAXINT, right = G_MININT, bottom = G_MININT;
+  for (int i = 0; i < count; i++) {
+    if (i == mine) continue;
+    left = MIN(left, items[i].x);
+    top = MIN(top, items[i].y);
+    right = MAX(right, items[i].x + items[i].w);
+    bottom = MAX(bottom, items[i].y + items[i].h);
+  }
+  struct logical *v = &items[mine];
+  const gboolean along_x = !g_strcmp0(side, "above") || !g_strcmp0(side, "below");
+  const int edge = along_x ? right - left : bottom - top;
+  const int peer = along_x ? v->w : v->h;
+  const int at = start < -1 ? (edge - peer) / 2 : (int)(start * edge);
+  if (!g_strcmp0(side, "left")) { v->x = left - v->w; v->y = top + at; }
+  else if (!g_strcmp0(side, "right")) { v->x = right; v->y = top + at; }
+  else if (!g_strcmp0(side, "above")) { v->x = left + at; v->y = top - v->h; }
+  else { v->x = left + at; v->y = bottom; }
+
+  /* O GNOME quer a área de trabalho começando em (0, 0). */
+  int ox = G_MAXINT, oy = G_MAXINT;
+  for (int i = 0; i < count; i++) {
+    ox = MIN(ox, items[i].x);
+    oy = MIN(oy, items[i].y);
+  }
+  GVariantBuilder logical;
+  g_variant_builder_init(&logical, G_VARIANT_TYPE("a(iiduba(ssa{sv}))"));
+  for (int i = 0; i < count; i++) {
+    GVariantBuilder monitors;
+    g_variant_builder_init(&monitors, G_VARIANT_TYPE("a(ssa{sv})"));
+    g_variant_builder_add(&monitors, "(ss@a{sv})", items[i].connector, items[i].mode,
+                          g_variant_new_array(G_VARIANT_TYPE("{sv}"), NULL, 0));
+    g_variant_builder_add(&logical, "(iidub@a(ssa{sv}))", items[i].x - ox, items[i].y - oy, items[i].scale,
+                          items[i].transform, items[i].primary, g_variant_builder_end(&monitors));
+  }
+  GVariantBuilder props;
+  g_variant_builder_init(&props, G_VARIANT_TYPE_VARDICT);
+  GError *error = NULL;
+  /* Método 1: temporário. Some quando a sessão acaba, e o GNOME não pergunta se é para manter. */
+  GVariant *result = display_config(app, "ApplyMonitorsConfig",
+                                    g_variant_new("(uu@a(iiduba(ssa{sv}))@a{sv})", serial, 1,
+                                                  g_variant_builder_end(&logical), g_variant_builder_end(&props)),
+                                    NULL, &error);
+  free_layout(items, count);
+  if (!result) {
+    *why = g_strdup(error->message);
+    g_error_free(error);
+    return FALSE;
+  }
+  g_variant_unref(result);
+  return TRUE;
+}
+
+static gboolean on_command(GIOChannel *channel, GIOCondition condition, gpointer data) {
+  struct app *app = data;
+  if (condition & (G_IO_HUP | G_IO_ERR)) return G_SOURCE_REMOVE;
+  char *line = NULL;
+  if (g_io_channel_read_line(channel, &line, NULL, NULL, NULL) != G_IO_STATUS_NORMAL || !line) return G_SOURCE_CONTINUE;
+  char side[16] = "";
+  char start_text[32] = "";
+  const int fields = sscanf(line, "place %15s %31s", side, start_text);
+  g_free(line);
+  if (fields < 1 || (strcmp(side, "left") && strcmp(side, "right") && strcmp(side, "above") && strcmp(side, "below"))) {
+    fprintf(stderr, "pedido de posição inválido\n");
+    return G_SOURCE_CONTINUE;
+  }
+  char *end = NULL;
+  double start = fields == 2 ? g_ascii_strtod(start_text, &end) : -2;
+  if (fields == 2 && (!end || *end || start < -1 || start > 1)) start = -2;
+  char *why = NULL;
+  if (place(app, side, start, &why)) {
+    printf("PLACED %s\n", side);
+    fflush(stdout);
+  } else {
+    fprintf(stderr, "não consegui posicionar a tela estendida: %s\n", why);
+    g_free(why);
+  }
+  return G_SOURCE_CONTINUE;
+}
+
 static gboolean debug_tick(gpointer data) {
   struct app *app = data;
   fprintf(stderr, "quadros do Mutter %u, imagens enviadas %u\n", app->frames_in, app->frames_sent);
@@ -425,7 +638,10 @@ int main(int argc, char **argv) {
   app.loop = g_main_loop_new(NULL, FALSE);
   g_unix_signal_add(SIGTERM, on_signal, &app);
   g_unix_signal_add(SIGINT, on_signal, &app);
+  remember_virtual_monitors(&app);
   if (start_mutter(&app) < 0) return 3;
+  GIOChannel *commands = g_io_channel_unix_new(STDIN_FILENO);
+  g_io_add_watch(commands, G_IO_IN | G_IO_HUP | G_IO_ERR, on_command, &app);
   if (getenv("HZ_DEBUG")) g_timeout_add_seconds(2, debug_tick, &app);
 
   g_main_loop_run(app.loop);
