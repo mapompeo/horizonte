@@ -6,6 +6,7 @@ export type StatEntry = Record<string, unknown> & { id: string; type: string; ti
 const num = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null
 const str = (value: unknown): string | null => (typeof value === 'string' ? value : null)
+const bool = (value: unknown): boolean | null => (typeof value === 'boolean' ? value : null)
 
 function find(entries: StatEntry[], type: string): StatEntry | undefined {
   return entries.find((e) => e.type === type && (e.kind ?? e.mediaType) === 'video')
@@ -70,6 +71,7 @@ export function summarize(
         : null,
     latencyMs: timing.latencyMs !== null ? Math.round(timing.latencyMs) : null,
     displayMs: timing.displayMs !== null ? Math.round(timing.displayMs) : null,
-    qualityLimitation: sending ? str(rtp.qualityLimitationReason) : null
+    qualityLimitation: sending ? str(rtp.qualityLimitationReason) : null,
+    hardware: bool(sending ? rtp.powerEfficientEncoder : rtp.powerEfficientDecoder)
   }
 }

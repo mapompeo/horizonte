@@ -1,21 +1,57 @@
 import type { Want } from '../../../main/engine/webrtc/protocol'
 import type { MediaMessage } from '../../../shared/motor'
+import { parameterSetsFirst } from './h264'
 
 /** Um lado da sessão dentro da janela: o que envia ou o que mostra. */
 export interface MotorSide {
-  start(want: Want): Promise<void> | void
+  start(want: Want, frames?: string): Promise<void> | void
   deliver(message: MediaMessage): Promise<void>
   stop(): void
 }
 
-/** Nada sai da rede local: sem STUN nem TURN. */
-export function createPeer(certificate: RTCCertificate): RTCPeerConnection {
+/**
+ * Nada sai da rede local: sem STUN nem TURN. `sending` liga o acesso aos quadros codificados (ver `fixKeyFrames`), o
+ * que obriga a passar todo vídeo enviado por ele.
+ */
+export function createPeer(certificate: RTCCertificate, sending = false): RTCPeerConnection {
   return new RTCPeerConnection({
     iceServers: [],
     iceTransportPolicy: 'all',
     bundlePolicy: 'max-bundle',
-    certificates: [certificate]
+    certificates: [certificate],
+    ...(sending ? { encodedInsertableStreams: true } : {})
+  } as RTCConfiguration)
+}
+
+type EncodedSender = RTCRtpSender & {
+  createEncodedStreams(): { readable: ReadableStream; writable: WritableStream }
+}
+
+/**
+ * Passa cada quadro codificado antes de ele sair: nos quadros-chave H.264, põe os parâmetros (SPS e PPS) antes da
+ * imagem. A VA-API da Mesa numa Radeon RX 580 entrega a imagem primeiro, e quem recebe nunca conseguia começar a
+ * decodificar. Nos outros quadros e codecs, nada muda.
+ */
+export function fixKeyFrames(sender: RTCRtpSender): void {
+  const { readable, writable } = (sender as EncodedSender).createEncodedStreams()
+  const transform = new TransformStream<RTCEncodedVideoFrame, RTCEncodedVideoFrame>({
+    transform(frame, controller) {
+      if (frame.type === 'key') {
+        const mime = (frame.getMetadata() as { mimeType?: string }).mimeType
+        if (!mime || /h264/i.test(mime)) {
+          const fixed = parameterSetsFirst(new Uint8Array(frame.data))
+          if (fixed) frame.data = fixed.buffer as ArrayBuffer
+        }
+      }
+      controller.enqueue(frame)
+    }
   })
+  readable
+    .pipeThrough(transform)
+    .pipeTo(writable)
+    .catch((error: unknown) => {
+      console.warn('[motor] quadros codificados:', error)
+    })
 }
 
 /**

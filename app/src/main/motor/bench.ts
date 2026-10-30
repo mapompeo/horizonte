@@ -9,6 +9,7 @@ import {
   type WebContents
 } from 'electron'
 import { is } from '@electron-toolkit/utils'
+import { spawn } from 'node:child_process'
 import { appendFile } from 'node:fs/promises'
 import { hostname, networkInterfaces } from 'node:os'
 import { join } from 'node:path'
@@ -23,8 +24,11 @@ import {
 } from '../../shared/motor'
 import { cleanName } from '../../shared/names'
 import { percentiles } from '../../shared/percentiles'
+import type { VirtualScreen } from '../engine/webrtc/display'
 import { PROTOCOL_VERSION, SIGNALING_PORT, type Hello, type Want } from '../engine/webrtc/protocol'
 import { connect, startSender, type MediaSide } from '../engine/webrtc/session'
+import { createGnomeDisplay } from '../platform/linux/gnome-display'
+import { startDisplayHelper } from '../platform/macos/helper'
 import type { MotorArgs } from './args'
 
 /** Teste de ponta a ponta: tempo máximo até o quadro de teste ser conferido. */
@@ -36,8 +40,10 @@ const log = (...parts: unknown[]): void => console.log('[motor]', ...parts)
 export function prepareMotorSwitches(): void {
   // Sem isso, o Chromium troca o IP local dos candidatos por um nome .local que o outro lado nem sempre resolve.
   app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns')
-  // Não liga a VA-API do Linux à força: com ela (Wayland, 30/10/2026) o primeiro quadro-chave do H.264 se perdia e o
-  // vídeo levava ~25 s para aparecer. O Chromium escolhe sozinho; o `encoderImplementation` mostra o resultado.
+  // Codificação pela placa de vídeo no Linux (VA-API): sem estas, o Chromium codifica por software. A decodificação
+  // pela placa já vem ligada; forçar a dela (`VaapiVideoDecodeLinuxGL`) fazia o primeiro quadro levar ~25 s.
+  if (process.platform === 'linux')
+    app.commandLine.appendSwitch('enable-features', 'AcceleratedVideoEncoder,VaapiVideoEncoder')
 }
 
 const lanAddresses = (): string[] =>
@@ -72,6 +78,9 @@ function motorWindow(
   config: MotorConfig,
   options: Electron.BrowserWindowConstructorOptions
 ): BrowserWindow {
+  // A janela de envio lê as imagens do auxiliar do Linux por um socket: precisa do Node no preload, e fica sem
+  // isolamento de contexto para as imagens não serem copiadas de novo. Ela só carrega a página local do motor.
+  const sending = config.role === 'send'
   const window = new BrowserWindow({
     title: 'Horizonte',
     backgroundColor: '#000000',
@@ -79,8 +88,8 @@ function motorWindow(
     ...options,
     webPreferences: {
       preload: join(__dirname, '../preload/motor.js'),
-      contextIsolation: true,
-      sandbox: true,
+      contextIsolation: !sending,
+      sandbox: !sending,
       nodeIntegration: false,
       // A janela que envia fica oculta e precisa continuar a todo vapor.
       backgroundThrottling: false
@@ -123,22 +132,90 @@ function listenReports(
   }
 }
 
-function windowMedia(window: BrowserWindow): MediaSide {
+/**
+ * Liga a sessão à janela. `beforeStart` roda antes de a janela começar a capturar (é onde o monitor virtual é criado
+ * no tamanho que quem mostra pediu).
+ */
+function windowMedia(
+  window: BrowserWindow,
+  hooks: { beforeStart?(want: Want): Promise<{ frames?: string } | void>; afterStop?(): void } = {}
+): MediaSide {
   const id = window.webContents.id
+  let run = 0
   const push = (message: unknown): void => {
     if (!window.isDestroyed()) window.webContents.send(MOTOR_CHANNELS.push, message)
   }
   return {
     start(send, want) {
+      const mine = ++run
       signalTargets.set(id, send)
-      push({ t: 'start', want })
+      void (hooks.beforeStart?.(want) ?? Promise.resolve()).then(
+        (extra) => mine === run && push({ t: 'start', want, ...(extra ?? {}) }),
+        (error: unknown) =>
+          log('não consegui preparar a tela:', error instanceof Error ? error.message : error)
+      )
     },
     deliver: (message) => push(message),
     stop() {
+      run += 1
       signalTargets.delete(id)
       push({ t: 'stop' })
+      hooks.afterStop?.()
     }
   }
+}
+
+/** O auxiliar do monitor virtual: dentro do app empacotado, ou compilado em native/linux/build. */
+function linuxHelperPath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, 'horizonte-display')
+    : join(app.getAppPath(), 'native', 'linux', 'build', 'horizonte-display')
+}
+
+/** Onde o auxiliar do GNOME publica as imagens da tela estendida (pasta do usuário, só ele acessa). */
+function framesSocket(): string {
+  return join(
+    process.env.XDG_RUNTIME_DIR ?? app.getPath('temp'),
+    `horizonte-tela-${process.pid}.sock`
+  )
+}
+
+/** GNOME no Wayland: as imagens vêm do auxiliar, sem o portal de captura (e sem o seletor dele). */
+const gnomeFrames = (): boolean =>
+  process.platform === 'linux' &&
+  Boolean(process.env.WAYLAND_DISPLAY) &&
+  /gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? '')
+
+function createVirtualScreen(frames: string | null): VirtualScreen {
+  if (process.platform !== 'linux')
+    throw new Error('O modo estender do teste ainda só existe no Linux com GNOME.')
+  return createGnomeDisplay({
+    startHelper: (request) =>
+      startDisplayHelper(
+        () => {
+          const child = spawn(linuxHelperPath(), [
+            '--width',
+            String(request.width),
+            '--height',
+            String(request.height),
+            '--refresh',
+            String(request.fps),
+            ...(frames ? ['--frames', frames] : [])
+          ])
+          return {
+            onStdout: (callback) => child.stdout.on('data', (chunk) => callback(String(chunk))),
+            onStderr: (callback) => child.stderr.on('data', (chunk) => callback(String(chunk))),
+            onExit: (callback) => child.on('exit', callback),
+            onError: (callback) => child.on('error', callback),
+            kill: () => child.kill('SIGTERM')
+          }
+        },
+        10_000,
+        /^READY /m
+      ),
+    displays: () => screen.getAllDisplays().map((d) => d.id),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+  })
 }
 
 function hello(identity: { id: string; fp: string }): Hello {
@@ -171,7 +248,8 @@ function recorder(role: MotorRole): {
       if (stats.at - lastLog >= 5000) {
         lastLog = stats.at
         log(
-          `${stats.width}x${stats.height} ${stats.fps} fps ${stats.mbps} Mbps ${stats.codec} (${stats.implementation})` +
+          `${stats.width}x${stats.height} ${stats.fps} fps ${stats.mbps} Mbps ${stats.codec} (${stats.implementation}` +
+            `${stats.hardware === null ? '' : stats.hardware ? ', placa de vídeo' : ', software'})` +
             ` ida e volta ${stats.rttMs ?? '?'} ms` +
             (stats.displayMs !== null ? ` recebido até a tela ${stats.displayMs} ms` : '') +
             (stats.latencyMs !== null ? ` captura até a tela ${stats.latencyMs} ms` : '') +
@@ -203,13 +281,22 @@ function recorder(role: MotorRole): {
 }
 
 async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void> {
-  // A captura pede a tela ao processo principal: aqui escolhemos a principal, sem seletor.
+  const frames = args.extend && gnomeFrames() ? framesSocket() : null
+  const virtual = args.extend ? createVirtualScreen(frames) : null
+  /** A tela que a janela captura: a do monitor virtual, quando estende; senão a principal. */
+  let target: number | null = null
+  const wayland = process.platform === 'linux' && Boolean(process.env.WAYLAND_DISPLAY)
+
+  // A captura pede a tela ao processo principal. Fora do Wayland, escolhemos aqui, sem seletor; no Wayland, o
+  // sistema mostra o seletor dele (uma vez por execução).
   electronSession.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    if (wayland && virtual && !frames)
+      log('no seletor do GNOME, escolha a tela "MetaVendor" (a tela nova).')
     void desktopCapturer
       .getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
       .then((sources) => {
-        const primary = String(screen.getPrimaryDisplay().id)
-        const source = sources.find((s) => s.display_id === primary) ?? sources[0]
+        const wanted = String(target ?? screen.getPrimaryDisplay().id)
+        const source = sources.find((s) => s.display_id === wanted) ?? sources[0]
         if (!source) throw new Error('Nenhuma tela para capturar.')
         log(`capturando ${source.name}`)
         callback({ video: source })
@@ -249,7 +336,19 @@ async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void
       log(`${peer.name} (${address}) pediu para ver a tela: aceito sem perguntar (teste do motor).`)
       return true
     },
-    media: () => windowMedia(window),
+    media: () =>
+      windowMedia(window, {
+        beforeStart: async (want) => {
+          if (!virtual) return
+          target = await virtual.ensure({ width: want.width, height: want.height, fps: want.fps })
+          log(`tela estendida criada: ${want.width}x${want.height}`)
+          return frames ? { frames } : undefined
+        },
+        afterStop: () => {
+          target = null
+          void virtual?.release()
+        }
+      }),
     onSession(session, address) {
       log(`mostrando a tela para ${session.peer.name} (${address})`)
       session.onEnded((reason) => log(`sessão encerrada: ${reason}\n  ${records.summary()}`))
@@ -260,6 +359,7 @@ async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void
   app.once('before-quit', () => {
     powerSaveBlocker.stop(blocker)
     void sender.stop()
+    void virtual?.release()
   })
 
   const addresses = lanAddresses()

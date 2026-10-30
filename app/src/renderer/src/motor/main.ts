@@ -35,7 +35,7 @@ async function boot(): Promise<void> {
 
   api.onMessage((message) => {
     const run = async (): Promise<void> => {
-      if (message.t === 'start') await side.start(message.want)
+      if (message.t === 'start') await side.start(message.want, message.frames)
       else if (message.t === 'stop') side.stop()
       else await side.deliver(message)
     }

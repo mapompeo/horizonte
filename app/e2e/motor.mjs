@@ -23,7 +23,10 @@ function launch(label, extra) {
   ]
   if (process.platform === 'linux') args.push('--no-sandbox')
   const log = createWriteStream(join(OUT, `motor-${label}.log`))
-  const child = spawn(electronPath, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+  const child = spawn(electronPath, args, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, ELECTRON_ENABLE_LOGGING: '1' }
+  })
   for (const stream of [child.stdout, child.stderr])
     stream.on('data', (chunk) => {
       log.write(chunk)

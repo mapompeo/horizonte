@@ -7,6 +7,8 @@ export type MotorArgs =
       port?: number
       synthetic: boolean
       clock: boolean
+      /** Cria um monitor virtual e envia só ele (tela estendida), em vez da tela principal. */
+      extend: boolean
     }
   | {
       role: 'receive'
@@ -21,6 +23,7 @@ export type MotorArgs =
 export const MOTOR_USAGE = [
   'Teste do motor novo (sem a interface do app):',
   '  --motor-send                   envia a tela principal',
+  '      [--motor-extend]           cria uma tela extra e envia só ela (estender, em vez de espelhar)',
   '      [--motor-clock]            abre um relógio em milissegundos (medição de atraso por foto)',
   '      [--motor-synthetic]        envia um quadro de teste no lugar da tela',
   '      [--motor-port=47910]',
@@ -64,7 +67,8 @@ export function parseMotorArgs(argv: string[]): MotorArgs | null {
       role: 'send',
       ...(port !== undefined ? { port } : {}),
       synthetic: flag(argv, 'motor-synthetic') !== undefined,
-      clock: flag(argv, 'motor-clock') !== undefined
+      clock: flag(argv, 'motor-clock') !== undefined,
+      extend: flag(argv, 'motor-extend') !== undefined
     }
 
   if (typeof receive !== 'string')

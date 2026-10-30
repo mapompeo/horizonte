@@ -59,6 +59,9 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - run: npm ci
+      - name: Bibliotecas do auxiliar do monitor virtual (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-dev libglib2.0-dev
       - name: Conferir que a tag bate com a versão do app
         shell: bash
         run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"

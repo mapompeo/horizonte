@@ -61,7 +61,8 @@ describe('summarize', () => {
       jitterBufferMs: 15,
       latencyMs: 32,
       displayMs: 6,
-      qualityLimitation: null
+      qualityLimitation: null,
+      hardware: null
     })
   })
 
@@ -75,6 +76,7 @@ describe('summarize', () => {
       framesEncoded: 0,
       framesPerSecond: 59,
       encoderImplementation: 'MediaFoundationVideoEncodeAccelerator',
+      powerEfficientEncoder: true,
       qualityLimitationReason: 'bandwidth'
     })
     const result = summarize([entry(0, 0)], [entry(500, 1_250_000)])
@@ -83,6 +85,7 @@ describe('summarize', () => {
       mbps: 20,
       implementation: 'MediaFoundationVideoEncodeAccelerator',
       qualityLimitation: 'bandwidth',
+      hardware: true,
       rttMs: null
     })
   })
