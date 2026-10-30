@@ -38,22 +38,24 @@
 <h1 class="title">{copy.title}</h1>
 <p class="subtitle">{readySubtitle(deviceName)}</p>
 
-<div class="stack gap-sm">
-  <button class="btn btn-outline btn-sm" onclick={toggle} disabled={busy}>
-    {busy
-      ? web.on
-        ? 'Desligando…'
-        : 'Ligando…'
-      : web.on
-        ? 'Parar de receber pelo navegador'
-        : 'Receber pelo navegador (sem instalar nada)'}
-  </button>
-  {#if web.on}
-    <p class="hint">
-      No outro dispositivo, abra
-      {#if web.url}<strong>{web.url}</strong>{:else}o endereço deste dispositivo na porta 8080{/if}
-      e entre com o usuário <strong>{web.user}</strong> e o código <strong>{web.code}</strong>.
-    </p>
-  {/if}
-  {#if web.error}<p class="hint hint-faint">{web.error}</p>{/if}
-</div>
+{#if window.horizonte.engine === 'sunshine'}
+  <div class="stack gap-sm">
+    <button class="btn btn-outline btn-sm" onclick={toggle} disabled={busy}>
+      {busy
+        ? web.on
+          ? 'Desligando…'
+          : 'Ligando…'
+        : web.on
+          ? 'Parar de receber pelo navegador'
+          : 'Receber pelo navegador (sem instalar nada)'}
+    </button>
+    {#if web.on}
+      <p class="hint">
+        No outro dispositivo, abra
+        {#if web.url}<strong>{web.url}</strong>{:else}o endereço deste dispositivo na porta 8080{/if}
+        e entre com o usuário <strong>{web.user}</strong> e o código <strong>{web.code}</strong>.
+      </p>
+    {/if}
+    {#if web.error}<p class="hint hint-faint">{web.error}</p>{/if}
+  </div>
+{/if}

@@ -838,4 +838,58 @@ describe('aparelhos confiáveis', () => {
     controller.dispatch({ type: 'APPROVE', trust: false })
     expect(controller.getSnapshot().settings.trusted).toHaveLength(1)
   })
+
+  const FP = 'AB:'.repeat(31) + 'CD'
+  const OTHER = 'EF:'.repeat(31) + '01'
+
+  it('motor próprio: o pedido não pede PIN e "Permitir" aprova sem ele', async () => {
+    const { controller, engine } = await trustedSetup([])
+    engine.simulateVerifiedRequest('Notebook', FP)
+    expect(controller.getSnapshot().state).toMatchObject({
+      screen: 'approve',
+      pin: null,
+      fingerprint: FP
+    })
+    controller.dispatch({ type: 'APPROVE', trust: false })
+    expect(screen(controller)).toBe('ready')
+    expect(engine.lastApprove).toEqual({ pairingId: 'p1', name: 'Notebook' })
+  })
+
+  it('motor próprio: confiar guarda o certificado, e o próximo pedido dele passa sozinho', async () => {
+    const { controller, engine } = await trustedSetup([])
+    engine.simulateVerifiedRequest('Notebook', FP, 'p1', '192.168.1.6')
+    controller.dispatch({ type: 'APPROVE', trust: true })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(controller.getSnapshot().settings.trusted).toEqual([
+      { name: 'Notebook', address: '192.168.1.6', fingerprint: FP, deviceId: '0f8fad5b-d9cb-469f' }
+    ])
+
+    // Outro endereço (o DHCP mudou) e outro nome: vale o certificado.
+    engine.simulateVerifiedRequest('Notebook novo', FP, 'p2', '192.168.1.50')
+    expect(screen(controller)).toBe('ready')
+    expect(engine.lastApprove).toEqual({ pairingId: 'p2', name: 'Notebook novo' })
+  })
+
+  it('motor próprio: outro certificado com o mesmo nome e endereço pede aprovação', async () => {
+    const { controller, engine } = await trustedSetup([
+      { name: 'Notebook', address: '192.168.1.6', fingerprint: FP }
+    ])
+    engine.simulateVerifiedRequest('Notebook', OTHER, 'p1', '192.168.1.6')
+    expect(screen(controller)).toBe('approve')
+    expect(engine.calls).not.toContain('approve')
+  })
+
+  it('motor próprio: confiável só pelo nome e endereço (motor antigo) ainda pergunta uma vez', async () => {
+    const { controller, engine } = await trustedSetup([
+      { name: 'Notebook', address: '192.168.1.6' }
+    ])
+    engine.simulateVerifiedRequest('Notebook', FP, 'p1', '192.168.1.6')
+    expect(screen(controller)).toBe('approve')
+    controller.dispatch({ type: 'APPROVE', trust: true })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    // A entrada antiga dá lugar à nova, com o certificado.
+    expect(controller.getSnapshot().settings.trusted).toEqual([
+      { name: 'Notebook', address: '192.168.1.6', fingerprint: FP, deviceId: '0f8fad5b-d9cb-469f' }
+    ])
+  })
 })

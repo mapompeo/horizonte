@@ -87,7 +87,12 @@
           {:else if state.screen === 'ready'}
             <Ready deviceName={settings.deviceName} />
           {:else if state.screen === 'approve'}
-            <Approve device={state.device} pin={state.pin} address={state.address} />
+            <Approve
+              device={state.device}
+              pin={state.pin}
+              address={state.address}
+              fingerprint={state.fingerprint}
+            />
           {:else if state.screen === 'connected'}
             <Connected device={state.device} bitrate={settings.bitrate} />
           {:else if state.screen === 'discover'}

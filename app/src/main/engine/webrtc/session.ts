@@ -26,6 +26,8 @@ export interface MediaSide {
 
 export interface Session {
   readonly peer: Hello
+  /** Manda uma mensagem de mídia ao outro lado (o ajuste de bitrate de quem mostra, por exemplo). */
+  send(message: MediaMessage): void
   /** Encerra avisando o outro lado. */
   end(reason?: ByeReason): void
   onEnded(callback: (reason: string) => void): () => void
@@ -66,6 +68,9 @@ export function bridge(link: Link, peer: Hello, media: MediaSide, want: Want): S
 
   return {
     peer,
+    send(message) {
+      if (!ended) link.send(message)
+    },
     end(reason = 'user') {
       if (ended) return
       link.send({ t: 'bye', reason })
@@ -135,16 +140,16 @@ export async function startSender(options: SenderOptions): Promise<Sender> {
       return link.close('recusado')
     }
     link.send({ t: 'accepted', trusted: false })
-    const want = await new Promise<Want | null>((resolve) => {
+    // A sessão nasce dentro do aviso do `want`: o que vier logo atrás dele na mesma leitura já a encontra ligada.
+    const session = await new Promise<Session | null>((resolve) => {
       const stop = link.onMessage((message) => {
         if (message.t !== 'want') return
         stop()
-        resolve(message)
+        resolve(bridge(link, peer, options.media(), message))
       })
       link.onClose(() => resolve(null))
     })
-    if (!want) return
-    const session = bridge(link, peer, options.media(), want)
+    if (!session) return
     current = session
     session.onEnded(() => {
       current = null

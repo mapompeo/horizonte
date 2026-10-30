@@ -126,6 +126,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
 
   const api: HorizonteApi = {
     platform: 'win32',
+    engine: 'webrtc',
     getUpdateStatus: async () => ({ phase: 'unavailable', currentVersion: version }),
     update: async () => ({ phase: 'unavailable', currentVersion: version }),
     onUpdate: () => () => undefined,

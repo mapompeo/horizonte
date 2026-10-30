@@ -72,7 +72,9 @@ export function reduce(state: AppState, event: AppEvent): AppState {
           device: event.device,
           pairingId: event.pairingId,
           pin,
-          ...(event.address ? { address: event.address } : {})
+          ...(event.address ? { address: event.address } : {}),
+          ...(event.fingerprint ? { fingerprint: event.fingerprint } : {}),
+          ...(event.deviceId ? { deviceId: event.deviceId } : {})
         }
       }
       if (event.type === 'CLIENT_CONNECTED')
@@ -80,6 +82,8 @@ export function reduce(state: AppState, event: AppEvent): AppState {
       return state
     case 'approve':
       if (event.type === 'APPROVE') {
+        // Motor próprio: sem PIN, a identidade vem pelo certificado.
+        if (state.fingerprint) return { screen: 'ready', mode: 'send' }
         return approvalPin(state, event) === null ? state : { screen: 'ready', mode: 'send' }
       }
       if (event.type === 'DENY') return { screen: 'ready', mode: 'send' }

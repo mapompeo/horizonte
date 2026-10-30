@@ -34,6 +34,12 @@ export type AppState =
       pin: string | null
       /** De onde veio o pedido; é o que permite confiar neste aparelho. */
       address?: string
+      /**
+       * Motor próprio: impressão digital do certificado do outro aparelho. Com ela não há PIN: a identidade já vem
+       * conferida pelo DTLS, e é nela que vale a confiança.
+       */
+      fingerprint?: string
+      deviceId?: string
     }
   | { screen: 'connected'; mode: 'send'; device: string }
   | { screen: 'discover'; mode: 'receive' }
@@ -50,7 +56,15 @@ export type AppEvent =
   | { type: 'PREP_STEP'; step: PrepStep }
   | { type: 'PREP_PROGRESS'; progress: PrepProgress }
   | { type: 'PREP_DONE' }
-  | { type: 'PAIR_REQUEST'; device: string; pairingId: string; pin?: string; address?: string }
+  | {
+      type: 'PAIR_REQUEST'
+      device: string
+      pairingId: string
+      pin?: string
+      address?: string
+      fingerprint?: string
+      deviceId?: string
+    }
   | { type: 'PAIR_CANCELLED'; pairingId: string }
   | { type: 'APPROVE'; pin?: string; trust?: boolean }
   | { type: 'DENY' }
@@ -80,10 +94,15 @@ export type ExtendSide = 'left' | 'right' | 'above'
 /** Modo Mouse: de que lado deste computador o outro fica (o mouse passa pela borda desse lado). */
 export type MouseSide = 'left' | 'right' | 'above' | 'below'
 
-/** Aparelho aprovado sozinho nos próximos pedidos: vale o nome e o endereço juntos. */
+/**
+ * Aparelho aprovado sozinho nos próximos pedidos. Com `fingerprint` (motor próprio), vale o certificado, seja qual
+ * for o nome ou o endereço; sem ela (motor antigo), valem o nome e o endereço juntos.
+ */
 export interface TrustedDevice {
   name: string
   address: string
+  fingerprint?: string
+  deviceId?: string
 }
 
 export interface Settings {

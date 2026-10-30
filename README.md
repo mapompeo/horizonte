@@ -28,7 +28,11 @@ No Mac, o primeiro "Abrir" pode ser recusado ("danificado" ou "desenvolvedor nã
 2. Em um, escolha Enviar. No outro, Mostrar.
 3. Clique em Estender.
 
-Por baixo, o Horizonte instala e configura o [Sunshine](https://github.com/LizardByte/Sunshine), o [Moonlight](https://github.com/moonlight-stream/moonlight-qt) e o [Virtual Display Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver). Tudo fica na sua rede local, sem conta e sem nuvem.
+Tudo fica na sua rede local, sem conta e sem nuvem.
+
+No Linux, o Horizonte transmite sozinho: WebRTC entre os dois aparelhos, sem instalar nada além dele. No GNOME, a tela estendida é um monitor virtual de verdade, criado sem nenhum diálogo. Use a placa de vídeo nos dois lados; em Intel, instale o `intel-media-va-driver`.
+
+No Windows e no Mac, por enquanto, o Horizonte ainda instala e configura o [Sunshine](https://github.com/LizardByte/Sunshine), o [Moonlight](https://github.com/moonlight-stream/moonlight-qt) e o [Virtual Display Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver). O motor próprio chega a eles depois de testado nesses sistemas.
 
 ## Desenvolver
 
