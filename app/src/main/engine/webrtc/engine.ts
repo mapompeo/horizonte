@@ -262,7 +262,7 @@ export class WebRtcEngine implements EnginePort {
   async listHosts(): Promise<Host[]> {
     const hosts = await this.deps.presence.hosts()
     for (const host of hosts) this.ports.set(host.address, host.port)
-    return hosts.map(({ port: _port, ...host }) => host)
+    return hosts.map((host) => ({ name: host.name, address: host.address, kind: host.kind }))
   }
 
   async connect(host: string, settings: Settings): Promise<void> {
