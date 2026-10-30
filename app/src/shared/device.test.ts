@@ -28,7 +28,7 @@ describe('guessKind', () => {
     ['MacBook Pro', 'laptop'],
     ['Notebook', 'laptop'],
     ['Desktop', 'desktop'],
-    ['Suntrans', 'desktop']
+    ['Trabalho', 'desktop']
   ] as const)('%s é %s', (name, kind) => {
     expect(guessKind(name)).toBe(kind)
   })

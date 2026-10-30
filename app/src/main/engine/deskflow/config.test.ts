@@ -24,20 +24,20 @@ describe('linksConfig', () => {
 
   it('com trecho: só aquele pedaço de cada borda se encosta, nos dois sentidos', () => {
     const links = linksConfig('Desktop', [
-      { name: 'Suntrans', side: 'left', ranges: { own: [20, 80], peer: [0, 100] } }
+      { name: 'Trabalho', side: 'left', ranges: { own: [20, 80], peer: [0, 100] } }
     ])
-    expect(links).toContain('\t\tleft(20,80) = Suntrans')
+    expect(links).toContain('\t\tleft(20,80) = Trabalho')
     expect(links).toContain('\t\tright = Desktop(20,80)')
   })
 
   it('vários computadores, inclusive embaixo: cada um na sua borda, e cada um volta para este', () => {
     const links = linksConfig('Desktop', [
-      { name: 'Suntrans', side: 'left' },
+      { name: 'Trabalho', side: 'left' },
       { name: 'Notebook', side: 'below' }
     ])
     expect(links).toBe(
-      'section: links\n\tDesktop:\n\t\tleft = Suntrans\n\t\tdown = Notebook\n' +
-        '\tSuntrans:\n\t\tright = Desktop\n\tNotebook:\n\t\tup = Desktop\nend\n'
+      'section: links\n\tDesktop:\n\t\tleft = Trabalho\n\t\tdown = Notebook\n' +
+        '\tTrabalho:\n\t\tright = Desktop\n\tNotebook:\n\t\tup = Desktop\nend\n'
     )
   })
 })
@@ -75,14 +75,14 @@ describe('deskflowSettings', () => {
     const ini = deskflowSettings({
       role: 'server',
       name: 'Desktop',
-      peerNames: ['Notebook da Ana', 'Suntrans'],
+      peerNames: ['Notebook da Ana', 'Trabalho'],
       linksFile: 'C:\\Users\\ana\\links.conf'
     })
     expect(ini).toContain('coreMode=2')
     expect(ini).toContain('externalConfigFile=C:/Users/ana/links.conf')
     expect(ini).toContain('[computer_Desktop]\nname=Desktop')
     expect(ini).toContain('[computer_Notebook-da-Ana]\nname=Notebook-da-Ana')
-    expect(ini).toContain('[computer_Suntrans]\nname=Suntrans')
+    expect(ini).toContain('[computer_Trabalho]\nname=Trabalho')
     expect(ini).toContain('enableClipboard=true')
   })
 

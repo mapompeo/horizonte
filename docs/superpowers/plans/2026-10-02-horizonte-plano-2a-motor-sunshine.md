@@ -3962,13 +3962,13 @@ describe('readDevEngineConfig', () => {
   it('lê usuário, senha, porta e caminho do log', () => {
     const config = readDevEngineConfig({
       HORIZONTE_ENGINE: 'sunshine',
-      HORIZONTE_SUNSHINE_USER: 'matheus',
+      HORIZONTE_SUNSHINE_USER: 'horizonte',
       HORIZONTE_SUNSHINE_PASSWORD: 'segredo',
       HORIZONTE_SUNSHINE_PORT: '48989',
       HORIZONTE_SUNSHINE_LOG: 'D:\\logs\\sunshine.log'
     })
     expect(config).toEqual({
-      credentials: { username: 'matheus', password: 'segredo', port: 48989 },
+      credentials: { username: 'horizonte', password: 'segredo', port: 48989 },
       logPath: 'D:\\logs\\sunshine.log'
     })
   })

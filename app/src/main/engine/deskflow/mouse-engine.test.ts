@@ -108,9 +108,9 @@ describe('modo Mouse entre dois PCs', () => {
     const desktop = pc(net, '192.168.1.4')
     const linux = pc(net, '192.168.1.7')
     await desktop.engine.start('Desktop')
-    await linux.engine.start('Suntrans')
+    await linux.engine.start('Trabalho')
     await desktop.engine.share(one('192.168.1.7', '192.168.1.7', 'right'), 'Desktop')
-    await linux.engine.accept('Suntrans')
+    await linux.engine.accept('Trabalho')
     expect(desktop.share.calls).toEqual(['share:192.168.1.7'])
     expect(linux.share.calls).toEqual(['follow:192.168.1.4:192.168.1.7'])
   })
@@ -192,12 +192,12 @@ describe('modo Mouse entre dois PCs', () => {
     const desktop = pc(net, '192.168.1.4')
     const linux = pc(net, '192.168.1.7')
     await desktop.engine.start('Desktop')
-    await linux.engine.start('Suntrans')
-    await desktop.engine.setLayout(one('Suntrans', '192.168.1.7', 'left'))
+    await linux.engine.start('Trabalho')
+    await desktop.engine.setLayout(one('Trabalho', '192.168.1.7', 'left'))
     expect(desktop.share.calls).toEqual([])
-    await desktop.engine.share(one('Suntrans', '192.168.1.7', 'left'), 'Desktop')
-    await desktop.engine.setLayout(one('Suntrans', '192.168.1.7', 'above'))
-    expect(desktop.share.calls).toEqual(['share:Suntrans:left', 'share:Suntrans:above'])
+    await desktop.engine.share(one('Trabalho', '192.168.1.7', 'left'), 'Desktop')
+    await desktop.engine.setLayout(one('Trabalho', '192.168.1.7', 'above'))
+    expect(desktop.share.calls).toEqual(['share:Trabalho:left', 'share:Trabalho:above'])
   })
 
   it('com os tamanhos das telas, manda ao Deskflow só o trecho da borda onde o outro encosta', async () => {
@@ -211,16 +211,16 @@ describe('modo Mouse entre dois PCs', () => {
       channel: net.channel('192.168.1.4'),
       advertise: () => () => undefined,
       browse: async () => [
-        { name: 'Suntrans', address: '192.168.1.7', screen: { width: 1366, height: 768 } }
+        { name: 'Trabalho', address: '192.168.1.7', screen: { width: 1366, height: 768 } }
       ],
       ownScreen: () => ({ width: 3840, height: 1080 })
     })
-    await pc(net, '192.168.1.7').engine.start('Suntrans')
+    await pc(net, '192.168.1.7').engine.start('Trabalho')
     await engine.start('Desktop')
-    const [suntrans] = await engine.listPeers()
-    await engine.share(one('Suntrans', '192.168.1.7', 'right', 0.7), 'Desktop')
-    await engine.setLayout(one('Suntrans', '192.168.1.7', 'left'))
-    expect(suntrans?.screen).toEqual({ width: 1366, height: 768 })
+    const [trabalho] = await engine.listPeers()
+    await engine.share(one('Trabalho', '192.168.1.7', 'right', 0.7), 'Desktop')
+    await engine.setLayout(one('Trabalho', '192.168.1.7', 'left'))
+    expect(trabalho?.screen).toEqual({ width: 1366, height: 768 })
     expect(ranges).toEqual([
       { own: [70, 100], peer: [0, 42] },
       { own: [14, 86], peer: [0, 100] }
@@ -233,10 +233,10 @@ describe('modo Mouse entre dois PCs', () => {
     const linux = pc(net, '192.168.1.7')
     const intruso = pc(net, '192.168.1.66')
     await desktop.engine.start('Desktop')
-    await linux.engine.start('Suntrans')
+    await linux.engine.start('Trabalho')
     await intruso.engine.start('Intruso')
-    await desktop.engine.share(one('Suntrans', '192.168.1.7', 'left'), 'Desktop')
-    await linux.engine.accept('Suntrans')
+    await desktop.engine.share(one('Trabalho', '192.168.1.7', 'left'), 'Desktop')
+    await linux.engine.accept('Trabalho')
     linux.text.copy('copiado no linux')
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(desktop.text.written).toEqual(['copiado no linux'])
@@ -254,19 +254,19 @@ describe('modo Mouse entre dois PCs', () => {
     const linux = pc(net, '192.168.1.7')
     const notebook = pc(net, '192.168.1.6')
     await desktop.engine.start('Desktop')
-    await linux.engine.start('Suntrans')
+    await linux.engine.start('Trabalho')
     await notebook.engine.start('Notebook')
     await desktop.engine.share(
       [
-        { host: { name: 'Suntrans', address: '192.168.1.7' }, side: 'left' },
+        { host: { name: 'Trabalho', address: '192.168.1.7' }, side: 'left' },
         { host: { name: 'Notebook', address: '192.168.1.6' }, side: 'below' }
       ],
       'Desktop'
     )
-    expect(desktop.share.calls).toEqual(['share:Suntrans:left,Notebook:below'])
+    expect(desktop.share.calls).toEqual(['share:Trabalho:left,Notebook:below'])
     expect(linux.requests).toHaveLength(1)
     expect(notebook.requests).toHaveLength(1)
-    await linux.engine.accept('Suntrans')
+    await linux.engine.accept('Trabalho')
     await notebook.engine.accept('Notebook')
     desktop.text.copy('copiado no desktop')
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -280,18 +280,18 @@ describe('modo Mouse entre dois PCs', () => {
     const linux = pc(net, '192.168.1.7')
     const notebook = pc(net, '192.168.1.6')
     await desktop.engine.start('Desktop')
-    await linux.engine.start('Suntrans')
+    await linux.engine.start('Trabalho')
     await notebook.engine.start('Notebook')
     await desktop.engine.share(
       [
-        { host: { name: 'Suntrans', address: '192.168.1.7' }, side: 'left' },
+        { host: { name: 'Trabalho', address: '192.168.1.7' }, side: 'left' },
         { host: { name: 'Notebook', address: '192.168.1.6' }, side: 'right' }
       ],
       'Desktop'
     )
     await notebook.engine.deny()
     await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(desktop.share.calls).toEqual(['share:Suntrans:left,Notebook', 'share:Suntrans:left'])
+    expect(desktop.share.calls).toEqual(['share:Trabalho:left,Notebook', 'share:Trabalho:left'])
     expect(desktop.ended).not.toHaveBeenCalled()
     await linux.engine.deny()
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -304,15 +304,15 @@ describe('modo Mouse entre dois PCs', () => {
     const desktop = pc(net, '192.168.1.4')
     const linux = pc(net, '192.168.1.7')
     await desktop.engine.start('Desktop')
-    await linux.engine.start('Suntrans')
+    await linux.engine.start('Trabalho')
     await desktop.engine.share(
       [
-        { host: { name: 'Suntrans', address: '192.168.1.7' }, side: 'left' },
+        { host: { name: 'Trabalho', address: '192.168.1.7' }, side: 'left' },
         { host: { name: 'Desligado', address: '192.168.1.99' }, side: 'right' }
       ],
       'Desktop'
     )
-    expect(desktop.share.calls).toEqual(['share:Suntrans:left,Desligado', 'share:Suntrans:left'])
+    expect(desktop.share.calls).toEqual(['share:Trabalho:left,Desligado', 'share:Trabalho:left'])
     expect(desktop.ended).not.toHaveBeenCalled()
   })
 })

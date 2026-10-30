@@ -54,7 +54,7 @@ linux:
   target:
     - AppImage
     - deb
-  maintainer: Matheus Pompeo <matheuspompeo13@gmail.com>
+  maintainer: Horizonte
   category: Utility
 appImage:
   artifactName: Horizonte-${version}.${ext}

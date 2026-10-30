@@ -8,7 +8,7 @@ const receiving: AppState = {
   screen: 'receiving',
   mode: 'receive',
   host: '192.168.1.7',
-  name: 'Suntrans'
+  name: 'Trabalho'
 }
 
 function harness(): { follow: (state: AppState) => void; log: string[] } {
