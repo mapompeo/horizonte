@@ -42,6 +42,8 @@
     { id: 'equilibrado', name: 'Equilibrado', mbps: PROFILES.equilibrado },
     { id: 'maximo', name: 'Máximo', mbps: PROFILES.maximo }
   ] as const
+  /** Tamanho de quem ainda não conectou desde que passou a ser guardado: o real chega na próxima conexão. */
+  const UNKNOWN_SCREEN = { width: 1920, height: 1080 }
   /** Aparelho com o mapa de posição aberto (pela impressão digital). */
   let placing = $state<string | null>(null)
   /** Motor próprio: sem os ajustes que só valiam para o Sunshine. */
@@ -128,7 +130,7 @@
         {#each settings.trusted as device (device.name + device.address)}
           <div class="row">
             <span>{device.name} <span class="row-value">· confiável</span></span>
-            {#if webrtc && device.fingerprint && device.screen}
+            {#if webrtc && device.fingerprint}
               <button
                 class="foot-link"
                 aria-expanded={placing === device.fingerprint}
@@ -147,12 +149,12 @@
                 })}>Esquecer</button
             >
           </div>
-          {#if placing && placing === device.fingerprint && device.screen}
+          {#if placing && placing === device.fingerprint}
             <div class="adv-block">
               <PlacementMap
                 device={device.name}
                 fingerprint={placing}
-                peerScreen={device.screen}
+                peerScreen={device.screen ?? UNKNOWN_SCREEN}
                 placements={settings.screenPlacements}
                 fallback={settings.extendSide}
                 height={200}
