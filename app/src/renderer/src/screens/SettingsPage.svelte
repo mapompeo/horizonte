@@ -10,6 +10,7 @@
   } from '../../../shared/types'
   import { closeSettings, patchSettings } from '../lib/actions'
   import CopyButton from '../components/CopyButton.svelte'
+  import PlacementMap from '../components/PlacementMap.svelte'
   import ReportButton from '../components/ReportButton.svelte'
   import Segmented from '../components/Segmented.svelte'
   import Toggle from '../components/Toggle.svelte'
@@ -41,6 +42,10 @@
     { id: 'equilibrado', name: 'Equilibrado', mbps: PROFILES.equilibrado },
     { id: 'maximo', name: 'Máximo', mbps: PROFILES.maximo }
   ] as const
+  /** Tamanho de quem ainda não conectou desde que passou a ser guardado: o real chega na próxima conexão. */
+  const UNKNOWN_SCREEN = { width: 1920, height: 1080 }
+  /** Aparelho com o mapa de posição aberto (pela impressão digital). */
+  let placing = $state<string | null>(null)
   /** Motor próprio: sem os ajustes que só valiam para o Sunshine. */
   const webrtc = window.horizonte.engine === 'webrtc'
 </script>
@@ -107,7 +112,7 @@
             onChange={(checked) => patchSettings({ autostart: checked })}
           />
         </div>
-        {#if window.horizonte.platform !== 'darwin'}
+        {#if window.horizonte.platform !== 'darwin' && !webrtc}
           <div class="adv-block">
             <span class="adv-label">Posição da tela estendida</span>
             <Segmented
@@ -125,6 +130,15 @@
         {#each settings.trusted as device (device.name + device.address)}
           <div class="row">
             <span>{device.name} <span class="row-value">· confiável</span></span>
+            {#if webrtc && device.fingerprint}
+              <button
+                class="foot-link"
+                aria-expanded={placing === device.fingerprint}
+                onclick={() =>
+                  (placing = placing === device.fingerprint ? null : (device.fingerprint ?? null))}
+                >{placing === device.fingerprint ? 'Pronto' : 'Posição'}</button
+              >
+            {/if}
             <button
               class="foot-link"
               onclick={() =>
@@ -135,6 +149,22 @@
                 })}>Esquecer</button
             >
           </div>
+          {#if placing && placing === device.fingerprint}
+            <div class="adv-block">
+              <PlacementMap
+                device={device.name}
+                fingerprint={placing}
+                peerScreen={device.screen ?? UNKNOWN_SCREEN}
+                placements={settings.screenPlacements}
+                fallback={settings.extendSide}
+                height={200}
+              />
+              <p class="adv-note">
+                Arraste a tela do {device.name} para onde ela fica na sua mesa. Vale na próxima conexão
+                (ou na hora, se ele estiver conectado).
+              </p>
+            </div>
+          {/if}
         {/each}
         <div class="row">
           <span>Nome deste dispositivo</span>

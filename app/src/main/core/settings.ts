@@ -12,7 +12,8 @@ import type {
   Fps,
   Resolution,
   Settings,
-  TrustedDevice
+  TrustedDevice,
+  ScreenPlacement
 } from '../../shared/types'
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -28,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mouseSides: {},
   mouseOffsets: {},
   trusted: [],
+  screenPlacements: {},
   mode: null
 }
 
@@ -45,6 +47,21 @@ function parseMouseSides(raw: unknown): Record<string, MouseSide> {
       entry[0].length > 0 &&
       entry[0].length <= 200 &&
       ['left', 'right', 'above', 'below'].includes(entry[1] as string)
+  )
+  return Object.fromEntries(entries.slice(0, 20))
+}
+
+/** Até 20 aparelhos (pela impressão digital), cada um com um lado válido e um início entre -4 e 4. */
+function parseScreenPlacements(raw: unknown): Record<string, ScreenPlacement> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
+  const entries = Object.entries(raw as Record<string, unknown>).flatMap(
+    ([key, value]): [string, ScreenPlacement][] => {
+      if (!isFingerprint(key) || typeof value !== 'object' || value === null) return []
+      const { side, offset } = value as Record<string, unknown>
+      if (!['left', 'right', 'above', 'below'].includes(side as string)) return []
+      const valid = typeof offset === 'number' && Number.isFinite(offset) && Math.abs(offset) <= 4
+      return [[key, { side: side as MouseSide, ...(valid ? { offset } : {}) }]]
+    }
   )
   return Object.fromEntries(entries.slice(0, 20))
 }
@@ -69,7 +86,16 @@ function parseTrusted(raw: unknown): TrustedDevice[] {
   return raw
     .flatMap((item: unknown): TrustedDevice[] => {
       if (typeof item !== 'object' || item === null) return []
-      const { name, address, fingerprint, deviceId } = item as Record<string, unknown>
+      const { name, address, fingerprint, deviceId, screen } = item as Record<string, unknown>
+      const size = screen as { width?: unknown; height?: unknown } | null | undefined
+      const validSize =
+        !!size &&
+        Number.isInteger(size.width) &&
+        Number.isInteger(size.height) &&
+        (size.width as number) > 0 &&
+        (size.height as number) > 0 &&
+        (size.width as number) <= 32768 &&
+        (size.height as number) <= 32768
       const clean = typeof name === 'string' ? cleanName(name) : ''
       if (!clean || typeof address !== 'string' || !isHostAddress(address)) return []
       return [
@@ -79,6 +105,9 @@ function parseTrusted(raw: unknown): TrustedDevice[] {
           ...(isFingerprint(fingerprint) ? { fingerprint } : {}),
           ...(typeof deviceId === 'string' && /^[0-9a-f-]{8,64}$/.test(deviceId)
             ? { deviceId }
+            : {}),
+          ...(validSize
+            ? { screen: { width: size.width as number, height: size.height as number } }
             : {})
         }
       ]
@@ -111,6 +140,7 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
     codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
     autostart: typeof input.autostart === 'boolean' ? input.autostart : DEFAULT_SETTINGS.autostart,
     trusted: parseTrusted(input.trusted),
+    screenPlacements: parseScreenPlacements(input.screenPlacements),
     extendSide: oneOf<ExtendSide>(
       input.extendSide,
       ['left', 'right', 'above'],

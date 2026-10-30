@@ -26,7 +26,7 @@ import icon from '../../resources/icon.png?asset'
 import { CHANNELS, REPO_URL } from '../shared/api'
 import { isUiEvent } from '../shared/events'
 import { cleanName } from '../shared/names'
-import type { ScreenSize, SettingsPatch } from '../shared/types'
+import type { ScreenSize, Settings, SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
 import { createTrayFollower } from './core/tray'
@@ -93,13 +93,16 @@ const LIST_TIMEOUT_MS = 20_000
 
 /** Os botões de janela ficam por cima da interface, na cor do fundo e discretos. */
 /** Área de trabalho em pixels de verdade, com todas as telas juntas (é o que o Deskflow enxerga). */
-function desktopSize(): ScreenSize {
-  const boxes = screen.getAllDisplays().map(({ bounds, scaleFactor }) => ({
-    left: bounds.x * scaleFactor,
-    top: bounds.y * scaleFactor,
-    right: (bounds.x + bounds.width) * scaleFactor,
-    bottom: (bounds.y + bounds.height) * scaleFactor
-  }))
+function desktopSize(exclude: number | null = null): ScreenSize {
+  const boxes = screen
+    .getAllDisplays()
+    .filter(({ id }) => id !== exclude)
+    .map(({ bounds, scaleFactor }) => ({
+      left: bounds.x * scaleFactor,
+      top: bounds.y * scaleFactor,
+      right: (bounds.x + bounds.width) * scaleFactor,
+      bottom: (bounds.y + bounds.height) * scaleFactor
+    }))
   if (boxes.length === 0) return { width: 1920, height: 1080 }
   return {
     width: Math.round(
@@ -338,9 +341,27 @@ async function boot(): Promise<void> {
   let ownKind: DeviceKind = 'desktop'
   /** Nome deste aparelho nos outros: o dos ajustes, assim que o núcleo existir. */
   let ownName = (): string => cleanName(hostname()) || 'Computador'
+  /** Ajustes atuais, assim que o núcleo existir. */
+  let ownSettings = (): Settings | null => null
+  /** A tela estendida que o motor próprio criou (fica de fora do tamanho deste computador). */
+  let virtualDisplay = (): number | null => null
   let engine: EnginePort = fake
   if (USE_WEBRTC) {
-    engine = createAppWebRtcEngine({ presence, deviceName: () => ownName(), kind: () => ownKind })
+    const webrtc = createAppWebRtcEngine({
+      presence,
+      deviceName: () => ownName(),
+      kind: () => ownKind,
+      // Onde a pessoa deixou a tela deste aparelho; sem posição guardada, o lado padrão dos ajustes.
+      placementFor: (fingerprint) => {
+        const settings = ownSettings()
+        return (
+          settings?.screenPlacements[fingerprint] ??
+          (settings ? { side: settings.extendSide } : null)
+        )
+      }
+    })
+    virtualDisplay = () => webrtc.target()
+    engine = webrtc
   } else if (dev) {
     engine = composeEngine(
       new SunshineEngine({
@@ -477,6 +498,7 @@ async function boot(): Promise<void> {
   if (mouse) app.on('before-quit', () => void mouse.stop().catch(() => undefined))
   const controller = await createController({ engine, mouse, store })
   ownName = () => controller.getSnapshot().settings.deviceName
+  ownSettings = () => controller.getSnapshot().settings
   // Todo Horizonte aberto anuncia o próprio tipo, em qualquer modo (o ícone certo nas listas dos outros).
   void kindReady.then((kind) =>
     presence.announce(controller.getSnapshot().settings.deviceName, kind)
@@ -601,7 +623,7 @@ async function boot(): Promise<void> {
     ])
     return presence.withKinds(peers)
   })
-  ipcMain.handle(CHANNELS.mouseScreen, () => desktopSize())
+  ipcMain.handle(CHANNELS.mouseScreen, () => desktopSize(virtualDisplay()))
   ipcMain.handle(CHANNELS.deviceKind, async (_event, address: unknown, name: unknown) => {
     if (typeof name !== 'string') return kindReady
     const where = typeof address === 'string' ? address : undefined

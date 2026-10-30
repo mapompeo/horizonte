@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from '../../core/settings'
+import type { ScreenPlacement } from '../../../shared/types'
 import type { PairRequest } from '../port'
 import type { ScreenRequest, VirtualScreen } from './display'
 import {
@@ -82,10 +83,18 @@ function fakeWindows(fp: string): MotorWindows & {
   }
 }
 
-function fakeScreen(): VirtualScreen & { requests: ScreenRequest[]; released: number } {
+function fakeScreen(): VirtualScreen & {
+  requests: ScreenRequest[]
+  released: number
+  placed: ScreenPlacement[]
+} {
   const screen = {
     requests: [] as ScreenRequest[],
     released: 0,
+    placed: [] as ScreenPlacement[],
+    place: async (placement: ScreenPlacement) => {
+      screen.placed.push(placement)
+    },
     ensure: async (request: ScreenRequest) => {
       screen.requests.push(request)
       return 77
@@ -133,6 +142,7 @@ function pair(): {
     deviceName: () => 'Desktop',
     kind: () => 'desktop',
     screenSize: () => ({ width: 1920, height: 1080 }),
+    placementFor: (fp) => (fp === FP.show ? { side: 'left', offset: 0.25 } : null),
     signaling
   })
   const shower = new WebRtcEngine({
@@ -287,5 +297,32 @@ describe('WebRtcEngine', () => {
     expect(announced.at(-1)).toBeNull()
     await shower.listHosts()
     await expect(shower.connect('127.0.0.1', settings)).rejects.toThrow()
+  })
+
+  it('põe a tela de quem conectou onde a pessoa deixou, e muda na hora', async () => {
+    const { sender, shower, screen, requests } = pair()
+    const peers: unknown[] = []
+    sender.onClientConnected((_device, peer) => peers.push(peer))
+    await sender.prepare(() => undefined, settings)
+    await shower.listHosts()
+    const connecting = shower.connect('127.0.0.1', settings)
+    await until(() => requests.length === 1)
+    expect(requests[0].screen).toEqual({ width: 1366, height: 768 })
+    await sender.approve({ pairingId: requests[0].pairingId, name: 'Notebook' })
+    await connecting
+    await until(() => screen.placed.length === 1)
+    expect(screen.placed).toEqual([{ side: 'left', offset: 0.25 }])
+    await until(() => peers.length === 1)
+    expect(peers[0]).toEqual({ fingerprint: FP.show, screen: { width: 1366, height: 768 } })
+
+    await sender.placeScreen({ side: 'above' })
+    expect(screen.placed.at(-1)).toEqual({ side: 'above' })
+  })
+
+  it('sem ninguém conectado, mudar a posição não mexe na tela', async () => {
+    const { sender, screen } = pair()
+    await sender.prepare(() => undefined, settings)
+    await sender.placeScreen({ side: 'above' })
+    expect(screen.placed).toEqual([])
   })
 })

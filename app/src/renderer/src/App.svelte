@@ -94,7 +94,14 @@
               fingerprint={state.fingerprint}
             />
           {:else if state.screen === 'connected'}
-            <Connected device={state.device} bitrate={settings.bitrate} />
+            <Connected
+              device={state.device}
+              bitrate={settings.bitrate}
+              fingerprint={state.fingerprint}
+              peerScreen={state.peerScreen}
+              placements={settings.screenPlacements}
+              extendSide={settings.extendSide}
+            />
           {:else if state.screen === 'discover'}
             <Discover />
           {:else if state.screen === 'receiving'}

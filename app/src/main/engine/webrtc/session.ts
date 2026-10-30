@@ -93,8 +93,8 @@ export interface SenderOptions extends LinkOptions {
   hello(): Hello
   /** Decide se este aparelho pode ver a tela. `true`: aceito; `false`: recusado pela pessoa. */
   approve(peer: Hello, address: string, cancelled: Promise<void>): Promise<boolean>
-  /** Cria a janela de transmissão para uma sessão nova. */
-  media(): MediaSide
+  /** Liga a janela de transmissão a uma sessão nova com este aparelho. */
+  media(peer: Hello): MediaSide
   onSession(session: Session, address: string): void
   onError?(error: Error): void
   helloTimeoutMs?: number
@@ -145,7 +145,7 @@ export async function startSender(options: SenderOptions): Promise<Sender> {
       const stop = link.onMessage((message) => {
         if (message.t !== 'want') return
         stop()
-        resolve(bridge(link, peer, options.media(), message))
+        resolve(bridge(link, peer, options.media(peer), message))
       })
       link.onClose(() => resolve(null))
     })

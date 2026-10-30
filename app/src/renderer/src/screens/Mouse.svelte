@@ -4,7 +4,7 @@
   import type { DeviceKind } from '../../../shared/device'
   import { copyFor, safeName } from '../lib/copy'
   import { patchSettings, send } from '../lib/actions'
-  import MouseMap from '../components/MouseMap.svelte'
+  import ScreenMap from '../components/ScreenMap.svelte'
   import { pollHosts } from '../lib/hosts'
   import { isHostAddress } from '../../../shared/address'
 
@@ -77,7 +77,7 @@
   <h1 class="title title-md">{copy.title}</h1>
   <p class="subtitle">{copy.subtitle}</p>
   {#if ownScreen && hosts.length > 0}
-    <MouseMap own={ownScreen} {ownKind} {hosts} {sides} {offsets} onPlace={place} />
+    <ScreenMap own={ownScreen} {ownKind} {hosts} {sides} {offsets} onPlace={place} />
   {/if}
   <div class="stack gap-xs mouse-actions">
     {#if hosts.length > 0}

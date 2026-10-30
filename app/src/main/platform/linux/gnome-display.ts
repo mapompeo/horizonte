@@ -1,3 +1,4 @@
+import type { ScreenPlacement } from '../../../shared/types'
 import type { ScreenRequest, VirtualScreen } from '../../engine/webrtc/display'
 import type { RunningDisplay } from '../macos/helper'
 
@@ -9,6 +10,12 @@ export interface GnomeDisplayDeps {
   sleep(ms: number): Promise<void>
   /** Quanto esperar o Electron notar a tela nova. */
   appearTimeoutMs?: number
+}
+
+/** O pedido que o auxiliar entende: "place <lado> [início]" (sem início: centralizada). */
+export function placeCommand(placement: ScreenPlacement): string {
+  const start = placement.offset === undefined ? '' : ` ${placement.offset.toFixed(4)}`
+  return `place ${placement.side}${start}\n`
 }
 
 /**
@@ -43,6 +50,9 @@ export function createGnomeDisplay(deps: GnomeDisplayDeps): VirtualScreen {
     async release() {
       running?.helper.stop()
       running = null
+    },
+    async place(placement) {
+      running?.helper.send?.(placeCommand(placement))
     }
   }
 }

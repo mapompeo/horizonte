@@ -5,6 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { ensureMotorFirewall } from '../../platform/linux/firewall'
 import type { DeviceKind } from '../../../shared/device'
+import type { ScreenPlacement } from '../../../shared/types'
 import type { createPresence } from '../presence'
 import {
   createLinuxVirtualScreen,
@@ -97,6 +98,7 @@ export function createAppWebRtcEngine(deps: {
   presence: ReturnType<typeof createPresence>
   deviceName(): string
   kind(): DeviceKind
+  placementFor(fingerprint: string): ScreenPlacement | null
 }): WebRtcEngine {
   const frames = gnomeFrames() ? framesSocket() : null
   const gnome = process.platform === 'linux' && /gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? '')
@@ -111,6 +113,7 @@ export function createAppWebRtcEngine(deps: {
     frames,
     deviceName: deps.deviceName,
     kind: deps.kind,
+    placementFor: deps.placementFor,
     screenSize: primarySize,
     ...(process.platform === 'linux' ? { prepareSystem: linuxFirewall } : {}),
     log
