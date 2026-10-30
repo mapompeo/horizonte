@@ -685,11 +685,14 @@ const motor = readMotorArgs()
 
 /**
  * Motor próprio (WebRTC): o padrão no Linux. No Windows e no Mac, só com HORIZONTE_ENGINE=webrtc até ser testado
- * nesses sistemas; HORIZONTE_ENGINE=sunshine volta ao motor antigo no Linux.
+ * nesses sistemas. HORIZONTE_ENGINE=sunshine volta ao motor antigo no Linux; =fake abre o motor de mentira do
+ * desenvolvimento (o teste do app aberto usa o roteiro dele).
  */
 const USE_WEBRTC =
   process.env['HORIZONTE_ENGINE'] === 'webrtc' ||
-  (process.platform === 'linux' && process.env['HORIZONTE_ENGINE'] !== 'sunshine')
+  (process.platform === 'linux' &&
+    process.env['HORIZONTE_ENGINE'] !== 'sunshine' &&
+    process.env['HORIZONTE_ENGINE'] !== 'fake')
 
 if (motor === 'invalid') {
   app.exit(2)

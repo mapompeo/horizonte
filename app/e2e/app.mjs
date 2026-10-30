@@ -56,7 +56,8 @@ async function launch(label) {
     throw new Error(`não achei o app para abrir: ${executable}`)
   const child = spawn(executable, args, {
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env }
+    // Do código-fonte, o roteiro do motor de mentira (pedido e conexão simulados); empacotado, o motor de verdade.
+    env: packaged ? { ...process.env } : { ...process.env, HORIZONTE_ENGINE: 'fake' }
   })
   child.stdout.pipe(log)
   child.stderr.pipe(log)
