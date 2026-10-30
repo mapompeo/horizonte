@@ -172,6 +172,13 @@ O README e o site passam a falar só do motor próprio. Isso vira a 0.3.
 
 ---
 
-## Agora
+## Andamento
 
-Começando por A1 e A2, nesta branch, e em seguida A3 com o notebook. Depois, B.
+- **A1 feito.**
+  - O site explica que no Linux basta permitir, e que o PIN ainda pode aparecer no Windows e no Mac.
+  - Os créditos dizem o que vale para cada sistema.
+  - O E2E do site confere as duas coisas.
+- **A2 feito.**
+  - `platform/linux/video-driver.ts`, com testes, e o aviso nas telas Pronto e Buscar, com o comando certo para a distribuição.
+  - Conferido no app: com a pasta de drivers vazia (`HORIZONTE_DRI_DIRS`), aparece o aviso da AMD com `sudo apt install -y mesa-va-drivers`; com os drivers, nada aparece.
+- **A3:** depende de instalar o `.deb` no notebook, o que pede o `sudo` da pessoa.
