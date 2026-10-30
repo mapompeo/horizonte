@@ -29,8 +29,8 @@ describe('parseSettings', () => {
       autostart: false,
       deviceName: 'Notebook',
       extendSide: 'left',
-      mouseSides: { Suntrans: 'left' },
-      mouseOffsets: { Suntrans: 0.25 },
+      mouseSides: { Trabalho: 'left' },
+      mouseOffsets: { Trabalho: 0.25 },
       trusted: [{ name: 'Desktop', address: '192.168.1.4' }]
     }
     expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null })
@@ -40,8 +40,8 @@ describe('parseSettings', () => {
     const many = Object.fromEntries(Array.from({ length: 25 }, (_, i) => [`PC${i}`, 'left']))
     expect(Object.keys(parseSettings({ mouseSides: many }).mouseSides)).toHaveLength(20)
     expect(
-      parseSettings({ mouseSides: { Suntrans: 'left', Outro: 'embaixo', '': 'right' } }).mouseSides
-    ).toEqual({ Suntrans: 'left' })
+      parseSettings({ mouseSides: { Trabalho: 'left', Outro: 'embaixo', '': 'right' } }).mouseSides
+    ).toEqual({ Trabalho: 'left' })
     expect(parseSettings({ mouseSides: ['left'] }).mouseSides).toEqual({})
   })
 

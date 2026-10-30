@@ -19,7 +19,7 @@ describe('isUiEvent', () => {
     {
       type: 'MOUSE_SHARE',
       peers: [
-        { name: 'Suntrans', address: '192.168.1.7' },
+        { name: 'Trabalho', address: '192.168.1.7' },
         { name: 'Notebook', address: '192.168.1.6' }
       ]
     }
@@ -45,7 +45,7 @@ describe('isUiEvent', () => {
     { type: 'CHOOSE', mode: 'qualquer' },
     { type: 'MOUSE_SHARE', peers: [] },
     { type: 'MOUSE_SHARE', peers: [{ name: 'X', address: 'não é endereço!' }] },
-    { type: 'MOUSE_SHARE', peers: 'Suntrans' },
+    { type: 'MOUSE_SHARE', peers: 'Trabalho' },
     { type: 'CONNECT' },
     { type: 'CONNECT', host: '' },
     { type: 'CONNECT', host: '--fullscreen', name: 'x' },

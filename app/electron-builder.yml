@@ -54,7 +54,7 @@ linux:
   target:
     - AppImage
     - deb
-  maintainer: Matheus Pompeo <matheuspompeo13@gmail.com>
+  maintainer: Horizonte
   category: Utility
   # O auxiliar que cria o monitor virtual no GNOME (compilado por npm run build:helper:linux) vai dentro do app.
   extraResources:

@@ -96,7 +96,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
           kind: 'laptop'
         },
         {
-          name: 'Suntrans',
+          name: 'Trabalho',
           address: '192.168.1.7',
           screen: { width: 1366, height: 768 },
           kind: 'laptop'

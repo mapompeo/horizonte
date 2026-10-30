@@ -7,19 +7,19 @@ describe('createPresence', () => {
     const presence = createPresence({
       advertise: () => () => undefined,
       browse: async () => [
-        { name: 'Suntrans', address: '192.168.1.7', txt: { k: 'laptop' } },
+        { name: 'Trabalho', address: '192.168.1.7', txt: { k: 'laptop' } },
         { name: 'Estranho', address: '192.168.1.9', txt: { k: 'geladeira' } }
       ]
     })
     await presence.refresh()
     expect(
       presence.withKinds([
-        { name: 'Suntrans', address: '192.168.1.7' },
+        { name: 'Trabalho', address: '192.168.1.7' },
         { name: 'Estranho', address: '192.168.1.9' },
         { name: 'iPhone de Ana', address: '192.168.1.20' }
       ])
     ).toEqual([
-      { name: 'Suntrans', address: '192.168.1.7', kind: 'laptop' },
+      { name: 'Trabalho', address: '192.168.1.7', kind: 'laptop' },
       { name: 'Estranho', address: '192.168.1.9', kind: 'desktop' },
       { name: 'iPhone de Ana', address: '192.168.1.20', kind: 'phone' }
     ])
