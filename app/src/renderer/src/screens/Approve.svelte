@@ -10,9 +10,11 @@
     device: string
     pin: string | null
     address?: string
+    /** Motor próprio: a identidade vem pelo certificado, sem PIN. */
+    fingerprint?: string
   }
 
-  let { device, pin, address }: Props = $props()
+  let { device, pin, address, fingerprint }: Props = $props()
 
   /** Palpite pelo nome na hora; o que o aparelho anuncia na rede chega logo depois. */
   let announced = $state<DeviceKind | null>(null)
@@ -29,11 +31,12 @@
   let trust = $state(true)
 
   const copy = $derived(copyFor({ screen: 'approve', mode: 'send', device, pairingId: '', pin }))
-  const ready = $derived(isValidPin(pin ?? typed))
+  const needsPin = $derived(pin === null && !fingerprint)
+  const ready = $derived(!needsPin || isValidPin(typed))
 
   function approve(): void {
     if (!ready) return
-    void send(pin === null ? { type: 'APPROVE', pin: typed, trust } : { type: 'APPROVE', trust })
+    void send(needsPin ? { type: 'APPROVE', pin: typed, trust } : { type: 'APPROVE', trust })
   }
 </script>
 
@@ -44,7 +47,7 @@
   <h1 class="title title-md">{copy.title}</h1>
   <p class="subtitle">{copy.subtitle}</p>
 </div>
-{#if pin === null}
+{#if needsPin}
   <div class="stack gap-xs">
     <label class="hint" for="pin">Digite o PIN que aparece no outro dispositivo</label>
     <input

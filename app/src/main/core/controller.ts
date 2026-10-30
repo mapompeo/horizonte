@@ -161,12 +161,22 @@ export async function createController({
     if (prev.screen === 'approve' && next.screen === 'ready') {
       if (event.type === 'APPROVE') {
         const pin = approvalPin(prev, event)
-        if (pin !== null) {
+        if (pin !== null || prev.fingerprint) {
           engine
-            .approve({ pairingId: prev.pairingId, pin, name: prev.device })
+            .approve({
+              pairingId: prev.pairingId,
+              ...(pin !== null ? { pin } : {}),
+              name: prev.device
+            })
             .catch(failIfStill(next, 'Não consegui responder ao pedido.'))
         }
-        if (event.trust && prev.address) trust({ name: prev.device, address: prev.address })
+        if (event.trust && prev.address)
+          trust({
+            name: prev.device,
+            address: prev.address,
+            ...(prev.fingerprint ? { fingerprint: prev.fingerprint } : {}),
+            ...(prev.deviceId ? { deviceId: prev.deviceId } : {})
+          })
       } else if (event.type === 'DENY') {
         engine.deny(prev.pairingId).catch(failIfStill(next, 'Não consegui responder ao pedido.'))
       }
@@ -213,10 +223,15 @@ export async function createController({
     }
   }
 
-  /** Lembra o aparelho; o próximo pedido dele com o mesmo nome e endereço é aprovado sozinho. */
+  /**
+   * Lembra o aparelho: o próximo pedido dele é aprovado sozinho (pelo certificado, no motor próprio; pelo nome e
+   * endereço, no antigo). A entrada antiga do mesmo aparelho sai.
+   */
   function trust(device: TrustedDevice): void {
     const others = settings.trusted.filter(
-      (known) => known.name !== device.name || known.address !== device.address
+      (known) =>
+        (known.name !== device.name || known.address !== device.address) &&
+        (!device.fingerprint || known.fingerprint !== device.fingerprint)
     )
     settings = {
       ...parseSettings({ ...settings, trusted: [device, ...others] }),
@@ -226,22 +241,37 @@ export async function createController({
     settingsQueue = settingsQueue.then(() => store.save(settings)).catch(() => undefined)
   }
 
-  const isTrusted = (request: { device: string; address?: string }): boolean =>
-    settings.trusted.some(
-      (known) => known.name === request.device && known.address === request.address
-    )
+  const isTrusted = (request: {
+    device: string
+    address?: string
+    fingerprint?: string
+  }): boolean =>
+    request.fingerprint
+      ? settings.trusted.some((known) => known.fingerprint === request.fingerprint)
+      : settings.trusted.some(
+          (known) =>
+            !known.fingerprint && known.name === request.device && known.address === request.address
+        )
 
   function onPairRequest(request: {
     device: string
     pairingId: string
     pin?: string
     address?: string
+    fingerprint?: string
+    deviceId?: string
   }): void {
     const event = { type: 'PAIR_REQUEST', ...request } as const
-    // Aparelho confiável com o PIN do Horizonte: aprova sem mostrar o pedido. Se falhar, mostra como sempre.
-    if (state.screen === 'ready' && request.pin && isValidPin(request.pin) && isTrusted(request)) {
+    // Aparelho confiável (pelo certificado, ou com o PIN do Horizonte no motor antigo): aprova sem mostrar o pedido.
+    // Se falhar, mostra como sempre.
+    const verified = request.fingerprint || (request.pin && isValidPin(request.pin))
+    if (state.screen === 'ready' && verified && isTrusted(request)) {
       engine
-        .approve({ pairingId: request.pairingId, pin: request.pin, name: request.device })
+        .approve({
+          pairingId: request.pairingId,
+          ...(request.pin ? { pin: request.pin } : {}),
+          name: request.device
+        })
         .catch(() => dispatch(event))
       return
     }

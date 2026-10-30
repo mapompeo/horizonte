@@ -142,6 +142,16 @@ export class FakeEngine implements EnginePort {
     })
   }
 
+  /** Pedido do motor próprio: sem PIN, com a impressão digital do certificado. */
+  simulateVerifiedRequest(
+    device: string,
+    fingerprint: string,
+    pairingId = 'p1',
+    address = '192.168.1.6'
+  ): void {
+    this.pair.emit({ device, pairingId, address, fingerprint, deviceId: '0f8fad5b-d9cb-469f' })
+  }
+
   simulatePairCancelled(pairingId: string): void {
     this.pairCancelled.emit(pairingId)
   }

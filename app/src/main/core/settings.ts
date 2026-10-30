@@ -1,3 +1,4 @@
+import { isFingerprint } from '../engine/webrtc/protocol'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { cleanName } from '../../shared/names'
@@ -68,11 +69,19 @@ function parseTrusted(raw: unknown): TrustedDevice[] {
   return raw
     .flatMap((item: unknown): TrustedDevice[] => {
       if (typeof item !== 'object' || item === null) return []
-      const { name, address } = item as Record<string, unknown>
+      const { name, address, fingerprint, deviceId } = item as Record<string, unknown>
       const clean = typeof name === 'string' ? cleanName(name) : ''
-      return clean && typeof address === 'string' && isHostAddress(address)
-        ? [{ name: clean, address }]
-        : []
+      if (!clean || typeof address !== 'string' || !isHostAddress(address)) return []
+      return [
+        {
+          name: clean,
+          address,
+          ...(isFingerprint(fingerprint) ? { fingerprint } : {}),
+          ...(typeof deviceId === 'string' && /^[0-9a-f-]{8,64}$/.test(deviceId)
+            ? { deviceId }
+            : {})
+        }
+      ]
     })
     .slice(0, 20)
 }
