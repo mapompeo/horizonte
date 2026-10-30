@@ -98,6 +98,9 @@ jobs:
       - name: App aberto de verdade
         if: ${{ success() && runner.os != 'Linux' }}
         run: npm run e2e:app
+      - name: Motor novo (transmissão WebRTC entre dois Electron)
+        if: ${{ success() }}
+        run: npm run e2e:motor
       - name: Empacotar o app (sem instalador)
         if: ${{ success() }}
         env:

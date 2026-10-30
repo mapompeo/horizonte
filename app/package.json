@@ -19,6 +19,8 @@
     "typecheck": "npm run typecheck:node && npm run svelte-check",
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
+    "dev:motor": "electron-vite dev --",
+    "e2e:motor": "node e2e/motor.mjs",
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir --publish never",
