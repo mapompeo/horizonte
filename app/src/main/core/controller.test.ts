@@ -951,4 +951,33 @@ describe('posição da tela por aparelho (motor próprio)', () => {
       peerScreen: { width: 1366, height: 768 }
     })
   })
+
+  it('aparelho confiável conectando guarda o tamanho atual da tela dele', async () => {
+    const engine = new FakeEngine(0)
+    const store: SettingsStore = {
+      load: async () => ({
+        ...DEFAULT_SETTINGS,
+        mode: 'send',
+        trusted: [{ name: 'Notebook', address: '192.168.1.9', fingerprint: FP }]
+      }),
+      save: async () => undefined
+    }
+    const controller = await createController({
+      engine,
+      store,
+      initial: { screen: 'ready', mode: 'send' }
+    })
+    engine.simulateClientConnected('Notebook', {
+      fingerprint: FP,
+      screen: { width: 1366, height: 768 }
+    })
+    expect(controller.getSnapshot().settings.trusted).toEqual([
+      {
+        name: 'Notebook',
+        address: '192.168.1.9',
+        fingerprint: FP,
+        screen: { width: 1366, height: 768 }
+      }
+    ])
+  })
 })

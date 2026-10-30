@@ -289,9 +289,20 @@ export async function createController({
     queuedPairs = queuedPairs.filter((queued) => queued.pairingId !== pairingId)
     dispatch({ type: 'PAIR_CANCELLED', pairingId })
   })
-  engine.onClientConnected((device, peer) =>
+  engine.onClientConnected((device, peer) => {
     dispatch({ type: 'CLIENT_CONNECTED', device, ...(peer ?? {}) })
-  )
+    // Aparelho confiável: guarda o tamanho atual da tela dele, para acertar a posição nos ajustes depois.
+    const known = peer?.fingerprint
+      ? settings.trusted.find((t) => t.fingerprint === peer.fingerprint)
+      : undefined
+    const size = peer?.screen
+    if (
+      known &&
+      size &&
+      (known.screen?.width !== size.width || known.screen?.height !== size.height)
+    )
+      trust({ ...known, screen: size })
+  })
   engine.onClientDisconnected(() => dispatch({ type: 'CLIENT_DISCONNECTED' }))
   engine.onStreamEnded(() => dispatch({ type: 'STREAM_ENDED' }))
   mouse?.onRequest((request) => dispatch({ type: 'MOUSE_REQUEST', ...request }))
