@@ -13,12 +13,14 @@ export interface RunningDisplay {
 }
 
 /**
- * Liga o auxiliar `horizonte-display` e espera ele avisar "DISPLAY_ID <n>". Sem aviso a tempo, ou se ele encerrar
- * antes, o erro leva o que ele disse. O monitor virtual dura enquanto o auxiliar estiver rodando.
+ * Liga o auxiliar `horizonte-display` e espera ele avisar que a tela está pronta ("DISPLAY_ID <n>" no macOS, "READY"
+ * no Linux). Sem aviso a tempo, ou se ele encerrar antes, o erro leva o que ele disse. O monitor virtual dura enquanto
+ * o auxiliar estiver rodando.
  */
 export function startDisplayHelper(
   spawn: () => HelperProcess,
-  timeoutMs = 20_000
+  timeoutMs = 20_000,
+  ready: RegExp = /DISPLAY_ID (\d+)\n/
 ): Promise<RunningDisplay> {
   return new Promise((resolve, reject) => {
     const child = spawn()
@@ -56,11 +58,11 @@ export function startDisplayHelper(
       if (settled) return
       stdout += text
       // Só vale a linha inteira: "DISPLAY_ID 1" pode ser o começo de "DISPLAY_ID 12".
-      const found = /DISPLAY_ID (\d+)\n/.exec(stdout)
+      const found = ready.exec(stdout)
       if (!found) return
       settled = true
       clearTimeout(timer)
-      resolve({ displayId: Number(found[1]), stop })
+      resolve({ displayId: Number(found[1] ?? 0), stop })
     })
     child.onExit((code) => {
       stopped = true
