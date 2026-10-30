@@ -35,7 +35,6 @@ export function createReceiver(
   let pc: RTCPeerConnection | null = null
   let ice: ReturnType<typeof iceQueue> | null = null
   let statsTimer: ReturnType<typeof setInterval> | null = null
-  let frames = 0
   let firstFrameSent = false
   const latencies: number[] = []
   let lastLatency: number | null = null
@@ -54,7 +53,6 @@ export function createReceiver(
   })
 
   function onFrame(_now: number, metadata: FrameMetadata): void {
-    frames += 1
     if (!firstFrameSent) {
       firstFrameSent = true
       api.report({ type: 'first-frame' })
@@ -68,11 +66,16 @@ export function createReceiver(
     // Do último pacote do quadro até a tela: decodificar e desenhar. Vem mesmo sem a hora da captura.
     if (metadata.receiveTime !== undefined)
       lastDisplay = metadata.expectedDisplayTime - metadata.receiveTime
-    if (options.testFrames !== null && frames === options.testFrames) checkTestFrame()
     video.requestVideoFrameCallback(onFrame as VideoFrameRequestCallback)
   }
 
-  function checkTestFrame(): void {
+  let tested = false
+  /**
+   * Teste de ponta a ponta: confere a cor do bloco fixo do quadro de teste quando já foram decodificados `testFrames`
+   * quadros. Conta pelos números do WebRTC, e não pelos quadros desenhados: janela encoberta não desenha vídeo.
+   */
+  function checkTestFrame(decoded: number): void {
+    tested = true
     const canvas = document.createElement('canvas')
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
@@ -88,7 +91,7 @@ export function createReceiver(
     api.report({
       type: 'test-result',
       ok,
-      detail: `${frames} quadros, ${canvas.width}x${canvas.height}, pixel rgb(${r}, ${g}, ${b})`
+      detail: `${decoded} quadros, ${canvas.width}x${canvas.height}, pixel rgb(${r}, ${g}, ${b})`
     })
   }
 
@@ -131,6 +134,11 @@ export function createReceiver(
       const stats = summarize(previous, current, { latencyMs: lastLatency, displayMs: lastDisplay })
       previous = current
       if (!stats) return
+      if (options.testFrames !== null && !tested) {
+        const inbound = current.find((e) => e.type === 'inbound-rtp' && e.kind === 'video')
+        const decoded = Number(inbound?.framesDecoded ?? 0)
+        if (decoded >= options.testFrames && video.videoWidth > 0) checkTestFrame(decoded)
+      }
       render(stats)
       api.report({ type: 'stats', stats })
     }, 1000)

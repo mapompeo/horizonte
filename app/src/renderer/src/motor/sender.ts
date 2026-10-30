@@ -2,7 +2,14 @@ import type { Want } from '../../../main/engine/webrtc/protocol'
 import type { MediaMessage, MotorApi } from '../../../shared/motor'
 import { BASE_ORDER, orderCodecList, rankCodecs, type CodecProbe } from './codecs'
 import type { Identity } from './identity'
-import { createPeer, forwardIce, iceQueue, negotiateCaptureTime, type MotorSide } from './peer'
+import {
+  createPeer,
+  fixKeyFrames,
+  forwardIce,
+  iceQueue,
+  negotiateCaptureTime,
+  type MotorSide
+} from './peer'
 import { summarize, type StatEntry } from './stats'
 import { syntheticStream } from './synthetic'
 
@@ -117,7 +124,7 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
   async function start(want: Want, frames?: string): Promise<void> {
     stop()
     const send = (message: MediaMessage): void => api.signal(message)
-    pc = createPeer(identity.certificate)
+    pc = createPeer(identity.certificate, true)
     ice = iceQueue(pc)
     forwardIce(pc, send)
     pc.addEventListener('connectionstatechange', () =>
@@ -136,6 +143,7 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
     const transceiver = pc.addTransceiver(track, { direction: 'sendonly', streams: [stream] })
     sender = transceiver.sender
     negotiateCaptureTime(transceiver)
+    fixKeyFrames(sender)
 
     const ranked = rankCodecs(await probeCodecs(want), want.codecs)
     const capabilities = RTCRtpSender.getCapabilities('video')?.codecs ?? []

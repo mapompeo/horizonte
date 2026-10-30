@@ -40,8 +40,10 @@ const log = (...parts: unknown[]): void => console.log('[motor]', ...parts)
 export function prepareMotorSwitches(): void {
   // Sem isso, o Chromium troca o IP local dos candidatos por um nome .local que o outro lado nem sempre resolve.
   app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns')
-  // Não liga a VA-API do Linux à força: com ela (Wayland, 30/10/2026) o primeiro quadro-chave do H.264 se perdia e o
-  // vídeo levava ~25 s para aparecer. O Chromium escolhe sozinho; o `encoderImplementation` mostra o resultado.
+  // Codificação pela placa de vídeo no Linux (VA-API): sem estas, o Chromium codifica por software. A decodificação
+  // pela placa já vem ligada; forçar a dela (`VaapiVideoDecodeLinuxGL`) fazia o primeiro quadro levar ~25 s.
+  if (process.platform === 'linux')
+    app.commandLine.appendSwitch('enable-features', 'AcceleratedVideoEncoder,VaapiVideoEncoder')
 }
 
 const lanAddresses = (): string[] =>
@@ -246,7 +248,8 @@ function recorder(role: MotorRole): {
       if (stats.at - lastLog >= 5000) {
         lastLog = stats.at
         log(
-          `${stats.width}x${stats.height} ${stats.fps} fps ${stats.mbps} Mbps ${stats.codec} (${stats.implementation})` +
+          `${stats.width}x${stats.height} ${stats.fps} fps ${stats.mbps} Mbps ${stats.codec} (${stats.implementation}` +
+            `${stats.hardware === null ? '' : stats.hardware ? ', placa de vídeo' : ', software'})` +
             ` ida e volta ${stats.rttMs ?? '?'} ms` +
             (stats.displayMs !== null ? ` recebido até a tela ${stats.displayMs} ms` : '') +
             (stats.latencyMs !== null ? ` captura até a tela ${stats.latencyMs} ms` : '') +

@@ -39,6 +39,8 @@ export interface MotorStats {
   /** Do último pacote do quadro até a tela (decodificar e desenhar), pelo relógio desta janela. */
   displayMs: number | null
   qualityLimitation: string | null
+  /** O Chromium diz que codifica ou decodifica pela placa de vídeo; null quando ele não informa. */
+  hardware: boolean | null
 }
 
 /** Da janela para o processo principal. */
