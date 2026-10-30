@@ -1,3 +1,5 @@
+import type { ScreenPlacement } from '../../../shared/types'
+
 /** Tamanho que quem mostra pediu para a tela estendida. */
 export interface ScreenRequest {
   width: number
@@ -14,4 +16,6 @@ export interface VirtualScreen {
   ensure(request: ScreenRequest): Promise<number | null>
   /** Desliga o monitor virtual: as janelas que estavam nele voltam para as outras telas. */
   release(): Promise<void>
+  /** Põe o monitor virtual neste lugar em relação às outras telas (onde o sistema permite). */
+  place?(placement: ScreenPlacement): Promise<void>
 }

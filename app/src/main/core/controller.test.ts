@@ -893,3 +893,62 @@ describe('aparelhos confiáveis', () => {
     ])
   })
 })
+
+describe('posição da tela por aparelho (motor próprio)', () => {
+  const FP = 'AB:'.repeat(31) + 'CD'
+
+  it('mudar a posição de quem está conectado aplica na hora; a de outro aparelho só guarda', async () => {
+    const engine = new FakeEngine(0)
+    const store: SettingsStore = {
+      load: async () => ({ ...DEFAULT_SETTINGS, mode: 'send' }),
+      save: async () => undefined
+    }
+    const controller = await createController({
+      engine,
+      store,
+      initial: {
+        screen: 'connected',
+        mode: 'send',
+        device: 'Notebook',
+        fingerprint: FP,
+        peerScreen: { width: 1366, height: 768 }
+      }
+    })
+    await controller.updateSettings({ screenPlacements: { [FP]: { side: 'left', offset: 0.1 } } })
+    expect(engine.lastPlacement).toEqual({ side: 'left', offset: 0.1 })
+
+    const placed = (): number => engine.calls.filter((call) => call === 'placeScreen').length
+    expect(placed()).toBe(1)
+    await controller.updateSettings({
+      screenPlacements: {
+        [FP]: { side: 'left', offset: 0.1 },
+        ['EF:'.repeat(31) + '01']: { side: 'above' }
+      }
+    })
+    expect(placed()).toBe(1)
+  })
+
+  it('a conexão chega com quem é e o tamanho da tela dele', async () => {
+    const engine = new FakeEngine(0)
+    const store: SettingsStore = {
+      load: async () => ({ ...DEFAULT_SETTINGS, mode: 'send' }),
+      save: async () => undefined
+    }
+    const controller = await createController({
+      engine,
+      store,
+      initial: { screen: 'ready', mode: 'send' }
+    })
+    engine.simulateClientConnected('Notebook', {
+      fingerprint: FP,
+      screen: { width: 1366, height: 768 }
+    })
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'connected',
+      mode: 'send',
+      device: 'Notebook',
+      fingerprint: FP,
+      peerScreen: { width: 1366, height: 768 }
+    })
+  })
+})

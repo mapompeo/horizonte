@@ -1,6 +1,13 @@
 import type { DeviceKind } from '../../../shared/device'
-import type { Host, PrepProgress, PrepStep, ScreenSize, Settings } from '../../../shared/types'
-import type { ApproveRequest, EnginePort, PairRequest } from '../port'
+import type {
+  Host,
+  PrepProgress,
+  PrepStep,
+  ScreenPlacement,
+  ScreenSize,
+  Settings
+} from '../../../shared/types'
+import type { ApproveRequest, ConnectedPeer, EnginePort, PairRequest } from '../port'
 import type { VirtualScreen } from './display'
 import { PROTOCOL_VERSION, SIGNALING_PORT, type Hello, type Want } from './protocol'
 import {
@@ -59,6 +66,8 @@ export interface WebRtcEngineDeps {
   deviceName(): string
   kind(): DeviceKind
   screenSize(): ScreenSize
+  /** Onde a pessoa deixou a tela deste aparelho (pela impressão digital); null: o padrão. */
+  placementFor?(fingerprint: string): ScreenPlacement | null
   /** Preparo do sistema antes de escutar (no Linux, liberar o firewall). */
   prepareSystem?(): Promise<void>
   /** Ajustes da sinalização (nos testes: porta 0 em 127.0.0.1, sem ping). */
@@ -105,7 +114,7 @@ export class WebRtcEngine implements EnginePort {
 
   private readonly pairRequested = listeners<[PairRequest]>()
   private readonly pairCancelled = listeners<[string]>()
-  private readonly clientConnected = listeners<[string]>()
+  private readonly clientConnected = listeners<[string, ConnectedPeer]>()
   private readonly clientDisconnected = listeners<[]>()
   private readonly streamEnded = listeners<[]>()
 
@@ -163,7 +172,7 @@ export class WebRtcEngine implements EnginePort {
       ...this.deps.signaling,
       hello: () => this.hello(identity),
       approve: (peer, address, cancelled) => this.ask(peer, address, cancelled),
-      media: () => this.sendMedia(),
+      media: (peer) => this.sendMedia(peer),
       onSession: (session) => this.onSending(session),
       onError: (error) => this.log('sinalização:', error.message)
     }).then(
@@ -194,12 +203,13 @@ export class WebRtcEngine implements EnginePort {
         pairingId,
         address,
         deviceId: peer.id,
-        fingerprint: peer.fp
+        fingerprint: peer.fp,
+        ...(peer.screen ? { screen: peer.screen } : {})
       })
     })
   }
 
-  private sendMedia(): MediaSide {
+  private sendMedia(peer: Hello): MediaSide {
     const virtual = this.deps.virtualScreen
     return this.deps.windows.sendMedia({
       beforeStart: async (want) => {
@@ -209,6 +219,8 @@ export class WebRtcEngine implements EnginePort {
           height: want.height,
           fps: want.fps
         })
+        const placement = this.deps.placementFor?.(peer.fp)
+        if (placement) await virtual.place?.(placement)
         return this.deps.frames ? { frames: this.deps.frames } : undefined
       },
       afterStop: () => {
@@ -229,7 +241,10 @@ export class WebRtcEngine implements EnginePort {
       this.sending = null
       this.clientDisconnected.emit()
     })
-    this.clientConnected.emit(session.peer.name)
+    this.clientConnected.emit(session.peer.name, {
+      fingerprint: session.peer.fp,
+      ...(session.peer.screen ? { screen: session.peer.screen } : {})
+    })
   }
 
   async approve(request: ApproveRequest): Promise<void> {
@@ -337,8 +352,13 @@ export class WebRtcEngine implements EnginePort {
   onPairCancelled(callback: (pairingId: string) => void): () => void {
     return this.pairCancelled.on(callback)
   }
-  onClientConnected(callback: (device: string) => void): () => void {
+  onClientConnected(callback: (device: string, peer?: ConnectedPeer) => void): () => void {
     return this.clientConnected.on(callback)
+  }
+
+  /** Muda na hora a posição da tela de quem está conectado. */
+  async placeScreen(placement: ScreenPlacement): Promise<void> {
+    if (this.sending) await this.deps.virtualScreen?.place?.(placement)
   }
   onClientDisconnected(callback: () => void): () => void {
     return this.clientDisconnected.on(callback)

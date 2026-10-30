@@ -479,8 +479,8 @@ static void remember_virtual_monitors(struct app *app) {
   free_layout(items, count);
 }
 
-/* Põe a tela estendida no lado pedido das outras telas. `start` < -1 (sem início): centralizada na borda. */
-static gboolean place(struct app *app, const char *side, double start, char **why) {
+/* Põe a tela estendida no lado pedido das outras telas; `centered`: no meio da borda, sem olhar `start`. */
+static gboolean place(struct app *app, const char *side, gboolean centered, double start, char **why) {
   struct logical items[16];
   guint32 serial = 0;
   int count = read_layout(app, &serial, items, 16);
@@ -506,7 +506,7 @@ static gboolean place(struct app *app, const char *side, double start, char **wh
   const gboolean along_x = !g_strcmp0(side, "above") || !g_strcmp0(side, "below");
   const int edge = along_x ? right - left : bottom - top;
   const int peer = along_x ? v->w : v->h;
-  const int at = start < -1 ? (edge - peer) / 2 : (int)(start * edge);
+  const int at = centered ? (edge - peer) / 2 : (int)(start * edge);
   if (!g_strcmp0(side, "left")) { v->x = left - v->w; v->y = top + at; }
   else if (!g_strcmp0(side, "right")) { v->x = right; v->y = top + at; }
   else if (!g_strcmp0(side, "above")) { v->x = left + at; v->y = top - v->h; }
@@ -559,11 +559,12 @@ static gboolean on_command(GIOChannel *channel, GIOCondition condition, gpointer
     fprintf(stderr, "pedido de posição inválido\n");
     return G_SOURCE_CONTINUE;
   }
+  /* O início pode passar um pouco das pontas da borda (tela estendida maior que as outras), nunca muito. */
   char *end = NULL;
-  double start = fields == 2 ? g_ascii_strtod(start_text, &end) : -2;
-  if (fields == 2 && (!end || *end || start < -1 || start > 1)) start = -2;
+  double start = fields == 2 ? g_ascii_strtod(start_text, &end) : 0;
+  const gboolean centered = fields < 2 || !end || *end || start < -4 || start > 4;
   char *why = NULL;
-  if (place(app, side, start, &why)) {
+  if (place(app, side, centered, start, &why)) {
     printf("PLACED %s\n", side);
     fflush(stdout);
   } else {

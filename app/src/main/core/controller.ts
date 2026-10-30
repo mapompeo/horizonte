@@ -175,7 +175,8 @@ export async function createController({
             name: prev.device,
             address: prev.address,
             ...(prev.fingerprint ? { fingerprint: prev.fingerprint } : {}),
-            ...(prev.deviceId ? { deviceId: prev.deviceId } : {})
+            ...(prev.deviceId ? { deviceId: prev.deviceId } : {}),
+            ...(prev.peerScreen ? { screen: prev.peerScreen } : {})
           })
       } else if (event.type === 'DENY') {
         engine.deny(prev.pairingId).catch(failIfStill(next, 'Não consegui responder ao pedido.'))
@@ -288,7 +289,9 @@ export async function createController({
     queuedPairs = queuedPairs.filter((queued) => queued.pairingId !== pairingId)
     dispatch({ type: 'PAIR_CANCELLED', pairingId })
   })
-  engine.onClientConnected((device) => dispatch({ type: 'CLIENT_CONNECTED', device }))
+  engine.onClientConnected((device, peer) =>
+    dispatch({ type: 'CLIENT_CONNECTED', device, ...(peer ?? {}) })
+  )
   engine.onClientDisconnected(() => dispatch({ type: 'CLIENT_DISCONNECTED' }))
   engine.onStreamEnded(() => dispatch({ type: 'STREAM_ENDED' }))
   mouse?.onRequest((request) => dispatch({ type: 'MOUSE_REQUEST', ...request }))
@@ -308,6 +311,13 @@ export async function createController({
       const update = settingsQueue.then(async () => {
         const next = parseSettings({ ...settings, ...patch })
         const moved = next.extendSide !== settings.extendSide
+        // Motor próprio: mudou a posição da tela de quem está conectado agora.
+        const viewer = state.screen === 'connected' ? state.fingerprint : undefined
+        const placement = viewer ? next.screenPlacements[viewer] : undefined
+        const replaced =
+          viewer !== undefined &&
+          placement !== undefined &&
+          JSON.stringify(placement) !== JSON.stringify(settings.screenPlacements[viewer])
         const sharing = state.screen === 'mouse-active' && state.role === 'share'
         const mouseMoved =
           sharing &&
@@ -320,6 +330,7 @@ export async function createController({
         settings = { ...next, mode: settings.mode }
         notify()
         if (moved) await engine.placeDisplay?.(settings.extendSide).catch(() => undefined)
+        if (replaced && placement) await engine.placeScreen?.(placement).catch(() => undefined)
         if (mouseMoved) await mouse?.setLayout(placementsFor(sharingWith)).catch(() => undefined)
         if (state.screen === 'connected' || state.screen === 'receiving') {
           // Ajuste ao vivo é melhor esforço: se falhar, a conexão segue com o valor anterior.

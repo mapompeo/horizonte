@@ -1,5 +1,7 @@
 import type {
   ExtendSide,
+  ScreenPlacement,
+  ScreenSize,
   Host,
   MouseSide,
   PrepProgress,
@@ -16,6 +18,13 @@ export interface PairRequest {
   /** Motor próprio: id e impressão digital do certificado do outro aparelho (é nela que vale a confiança). */
   deviceId?: string
   fingerprint?: string
+  screen?: ScreenSize
+}
+
+/** Quem acabou de se conectar para ver a tela (motor próprio). */
+export interface ConnectedPeer {
+  fingerprint?: string
+  screen?: ScreenSize
 }
 
 export interface ApproveRequest {
@@ -73,9 +82,11 @@ export interface ServerEngine {
   applyBitrate(mbps: number): Promise<void>
   /** Muda a posição da tela estendida sem preparar tudo de novo. */
   placeDisplay?(side: ExtendSide): Promise<void>
+  /** Motor próprio: muda na hora a posição da tela de quem está conectado. */
+  placeScreen?(placement: ScreenPlacement): Promise<void>
   onPairRequest(callback: (request: PairRequest) => void): () => void
   onPairCancelled(callback: (pairingId: string) => void): () => void
-  onClientConnected(callback: (device: string) => void): () => void
+  onClientConnected(callback: (device: string, peer?: ConnectedPeer) => void): () => void
   onClientDisconnected(callback: () => void): () => void
 }
 

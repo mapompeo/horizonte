@@ -40,8 +40,17 @@ export type AppState =
        */
       fingerprint?: string
       deviceId?: string
+      /** Tamanho da tela do outro aparelho, para o mapa de posição. */
+      peerScreen?: ScreenSize
     }
-  | { screen: 'connected'; mode: 'send'; device: string }
+  | {
+      screen: 'connected'
+      mode: 'send'
+      device: string
+      /** Motor próprio: quem está mostrando (é por ela que a posição da tela é guardada) e o tamanho da tela dele. */
+      fingerprint?: string
+      peerScreen?: ScreenSize
+    }
   | { screen: 'discover'; mode: 'receive' }
   | { screen: 'receiving'; mode: 'receive'; host: string; name: string }
   | { screen: 'mouse'; mode: 'mouse' }
@@ -64,11 +73,12 @@ export type AppEvent =
       address?: string
       fingerprint?: string
       deviceId?: string
+      screen?: ScreenSize
     }
   | { type: 'PAIR_CANCELLED'; pairingId: string }
   | { type: 'APPROVE'; pin?: string; trust?: boolean }
   | { type: 'DENY' }
-  | { type: 'CLIENT_CONNECTED'; device: string }
+  | { type: 'CLIENT_CONNECTED'; device: string; fingerprint?: string; screen?: ScreenSize }
   | { type: 'CLIENT_DISCONNECTED' }
   | { type: 'STOP' }
   | { type: 'CONNECT'; host: string; name: string }
@@ -103,6 +113,17 @@ export interface TrustedDevice {
   address: string
   fingerprint?: string
   deviceId?: string
+  /** Tamanho da tela dele, para acertar a posição antes de conectar. */
+  screen?: ScreenSize
+}
+
+/**
+ * Onde fica a tela estendida de um aparelho: de que lado das telas deste e onde começa ao longo dessa borda (fração
+ * da borda deste; sem valor, centralizada).
+ */
+export interface ScreenPlacement {
+  side: MouseSide
+  offset?: number
 }
 
 export interface Settings {
@@ -120,6 +141,8 @@ export interface Settings {
   /** Modo Mouse: onde começa a borda de cada outro computador, em fração da borda deste; sem valor, centralizado. */
   mouseOffsets: Record<string, number>
   trusted: TrustedDevice[]
+  /** Motor próprio: posição da tela estendida de cada aparelho, pela impressão digital do certificado dele. */
+  screenPlacements: Record<string, ScreenPlacement>
   /** Último modo escolhido neste aparelho; null até a pessoa escolher pela primeira vez. */
   mode: Mode | null
 }

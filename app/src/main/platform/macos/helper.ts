@@ -5,11 +5,14 @@ export interface HelperProcess {
   onExit(callback: (code: number | null) => void): void
   onError(callback: (error: Error) => void): void
   kill(): void
+  /** Manda uma linha ao auxiliar (o do Linux recebe pedidos de posição assim). */
+  write?(line: string): void
 }
 
 export interface RunningDisplay {
   displayId: number
   stop(): void
+  send?(line: string): void
 }
 
 /**
@@ -62,7 +65,11 @@ export function startDisplayHelper(
       if (!found) return
       settled = true
       clearTimeout(timer)
-      resolve({ displayId: Number(found[1] ?? 0), stop })
+      resolve({
+        displayId: Number(found[1] ?? 0),
+        stop,
+        ...(child.write ? { send: (line: string) => !stopped && child.write?.(line) } : {})
+      })
     })
     child.onExit((code) => {
       stopped = true

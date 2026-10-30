@@ -74,11 +74,18 @@ export function reduce(state: AppState, event: AppEvent): AppState {
           pin,
           ...(event.address ? { address: event.address } : {}),
           ...(event.fingerprint ? { fingerprint: event.fingerprint } : {}),
-          ...(event.deviceId ? { deviceId: event.deviceId } : {})
+          ...(event.deviceId ? { deviceId: event.deviceId } : {}),
+          ...(event.screen ? { peerScreen: event.screen } : {})
         }
       }
       if (event.type === 'CLIENT_CONNECTED')
-        return { screen: 'connected', mode: 'send', device: event.device }
+        return {
+          screen: 'connected',
+          mode: 'send',
+          device: event.device,
+          ...(event.fingerprint ? { fingerprint: event.fingerprint } : {}),
+          ...(event.screen ? { peerScreen: event.screen } : {})
+        }
       return state
     case 'approve':
       if (event.type === 'APPROVE') {

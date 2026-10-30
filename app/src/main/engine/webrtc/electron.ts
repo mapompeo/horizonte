@@ -237,7 +237,8 @@ export function createLinuxVirtualScreen(frames: string | null): VirtualScreen {
             onStderr: (callback) => child.stderr.on('data', (chunk) => callback(String(chunk))),
             onExit: (callback) => child.on('exit', callback),
             onError: (callback) => child.on('error', callback),
-            kill: () => child.kill('SIGTERM')
+            kill: () => child.kill('SIGTERM'),
+            write: (line) => void child.stdin.write(line)
           }
         },
         10_000,

@@ -1,5 +1,5 @@
-import type { Host, PrepStep, ExtendSide } from '../../shared/types'
-import type { ApproveRequest, EnginePort, PairRequest } from './port'
+import type { Host, PrepStep, ExtendSide, ScreenPlacement } from '../../shared/types'
+import type { ApproveRequest, ConnectedPeer, EnginePort, PairRequest } from './port'
 
 type Callback<A extends unknown[]> = (...args: A) => void
 
@@ -35,7 +35,7 @@ export class FakeEngine implements EnginePort {
 
   private pair = emitter<[PairRequest]>()
   private pairCancelled = emitter<[string]>()
-  private connected = emitter<[string]>()
+  private connected = emitter<[string, ConnectedPeer?]>()
   private disconnected = emitter<[]>()
   private ended = emitter<[]>()
 
@@ -71,6 +71,13 @@ export class FakeEngine implements EnginePort {
       this.failApprove = null
       throw new Error(message)
     }
+  }
+
+  lastPlacement: ScreenPlacement | null = null
+
+  async placeScreen(placement: ScreenPlacement): Promise<void> {
+    this.calls.push('placeScreen')
+    this.lastPlacement = placement
   }
 
   async deny(pairingId: string): Promise<void> {
@@ -156,8 +163,8 @@ export class FakeEngine implements EnginePort {
     this.pairCancelled.emit(pairingId)
   }
 
-  simulateClientConnected(device: string): void {
-    this.connected.emit(device)
+  simulateClientConnected(device: string, peer?: ConnectedPeer): void {
+    this.connected.emit(device, peer)
   }
 
   simulateClientDisconnected(): void {

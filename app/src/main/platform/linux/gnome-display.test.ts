@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ScreenRequest, VirtualScreen } from '../../engine/webrtc/display'
-import { createGnomeDisplay } from './gnome-display'
+import { createGnomeDisplay, placeCommand } from './gnome-display'
 
 const HD: ScreenRequest = { width: 1920, height: 1080, fps: 60 }
 
@@ -66,5 +66,29 @@ describe('monitor virtual do GNOME', () => {
     expect(stopped).toEqual([1])
     await display.release()
     expect(stopped).toEqual([1])
+  })
+
+  it('manda o pedido de posição ao auxiliar que está rodando', async () => {
+    const sent: string[] = []
+    const display = createGnomeDisplay({
+      startHelper: async () => ({
+        displayId: 0,
+        stop: () => undefined,
+        send: (line) => sent.push(line)
+      }),
+      displays: () => [1],
+      sleep: async () => undefined,
+      appearTimeoutMs: 0
+    })
+    await display.place?.({ side: 'left' })
+    expect(sent).toEqual([])
+    await display.ensure(HD)
+    await display.place?.({ side: 'below', offset: -0.125 })
+    expect(sent).toEqual(['place below -0.1250\n'])
+  })
+
+  it('pedido sem início fica centralizado', () => {
+    expect(placeCommand({ side: 'right' })).toBe('place right\n')
+    expect(placeCommand({ side: 'above', offset: 0.5 })).toBe('place above 0.5000\n')
   })
 })
