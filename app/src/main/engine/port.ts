@@ -10,13 +10,18 @@ import type {
 export interface PairRequest {
   device: string
   pairingId: string
+  /** Só no motor antigo (Moonlight): o PIN que o outro aparelho mandou. */
   pin?: string
   address?: string
+  /** Motor próprio: id e impressão digital do certificado do outro aparelho (é nela que vale a confiança). */
+  deviceId?: string
+  fingerprint?: string
 }
 
 export interface ApproveRequest {
   pairingId: string
-  pin: string
+  /** Só no motor antigo (Moonlight); o motor próprio não usa PIN. */
+  pin?: string
   name: string
 }
 
