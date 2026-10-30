@@ -1,3 +1,4 @@
+import type { VideoHint } from '../main/platform/linux/video-driver'
 import type { DeviceKind } from './device'
 import type {
   AppEvent,
@@ -17,6 +18,7 @@ export const CHANNELS = {
   hosts: 'horizonte:hosts',
   mousePeers: 'horizonte:mouse-peers',
   mouseScreen: 'horizonte:mouse-screen',
+  videoHint: 'horizonte:video-hint',
   deviceKind: 'horizonte:device-kind',
   webAccess: 'horizonte:web-access',
   setWebAccess: 'horizonte:set-web-access',
@@ -57,6 +59,8 @@ export interface HorizonteApi {
    * deste aparelho.
    */
   deviceKind(address?: string, name?: string): Promise<DeviceKind>
+  /** Falta o driver de vídeo da placa (Linux): o aviso, ou null quando está tudo certo. */
+  videoHint(): Promise<VideoHint | null>
   getWebAccess(): Promise<WebAccess>
   setWebAccess(on: boolean): Promise<WebAccess>
   /** Abre a página do projeto no navegador padrão. */

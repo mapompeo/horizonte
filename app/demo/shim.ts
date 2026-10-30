@@ -136,6 +136,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     listHosts: () => controller.listHosts(),
     listMousePeers: () => controller.listMousePeers(),
     ownScreen: async () => ({ width: 3840, height: 1080 }),
+    videoHint: async () => null,
     deviceKind: async (_address, name) => (name ? guessKind(name) : 'desktop'),
     getWebAccess: async () => web,
     setWebAccess: async (on) => {
