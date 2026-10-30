@@ -1,0 +1,44 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #f5f5f7;
+  font-family: system-ui, sans-serif;
+}
+
+.motor-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  cursor: none;
+}
+
+.motor-panel {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(16, 16, 18, 0.78);
+  font:
+    12px/1.5 ui-monospace,
+    monospace;
+  pointer-events: none;
+}
+
+.motor-clock {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font:
+    600 14vw/1 ui-monospace,
+    monospace;
+  font-variant-numeric: tabular-nums;
+  background: #101012;
+}

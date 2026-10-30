@@ -9,6 +9,7 @@
     "src/main/core/**/*",
     "src/main/engine/fake.ts",
     "src/main/engine/port.ts",
+    "src/main/engine/webrtc/protocol.ts",
     "demo/**/*"
   ],
   "compilerOptions": {

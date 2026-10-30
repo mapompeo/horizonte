@@ -38,6 +38,8 @@ import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
 import { finishStartup, runStartup } from './startup'
 import { runDevDemo } from './dev-demo'
+import { MOTOR_USAGE, parseMotorArgs, type MotorArgs } from './motor/args'
+import { prepareMotorSwitches, runMotorBench } from './motor/bench'
 import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
 import { createRealMouseEngine } from './engine/deskflow/wire'
@@ -663,8 +665,25 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
+/** `--motor-send` ou `--motor-receive=IP`: teste do motor novo, no lugar do app (ver `motor/args.ts`). */
+function readMotorArgs(): MotorArgs | null | 'invalid' {
+  try {
+    return parseMotorArgs(process.argv)
+  } catch (error) {
+    console.error(`${error instanceof Error ? error.message : String(error)}\n\n${MOTOR_USAGE}`)
+    return 'invalid'
+  }
+}
+const motor = readMotorArgs()
+
+if (motor === 'invalid') {
+  app.exit(2)
+} else if (motor) {
+  prepareMotorSwitches()
+  void runMotorBench(motor)
+}
 // Só uma cópia do app por vez (o instalador já abre uma): abrir de novo traz a janela existente para a frente.
-if (!app.isPackaged || app.requestSingleInstanceLock()) {
+else if (!app.isPackaged || app.requestSingleInstanceLock()) {
   app.on('second-instance', () => {
     const [window] = BrowserWindow.getAllWindows()
     if (!window) return
