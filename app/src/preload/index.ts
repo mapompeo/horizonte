@@ -4,6 +4,7 @@ import type { Snapshot } from '../shared/types'
 
 const api: HorizonteApi = {
   platform: process.platform,
+  engine: process.argv.includes('--horizonte-engine=webrtc') ? 'webrtc' : 'sunshine',
   getSnapshot: () => ipcRenderer.invoke(CHANNELS.snapshot),
   dispatch: (event) => ipcRenderer.invoke(CHANNELS.dispatch, event),
   updateSettings: (patch) => ipcRenderer.invoke(CHANNELS.updateSettings, patch),

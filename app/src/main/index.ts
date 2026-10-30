@@ -139,6 +139,7 @@ function createWindow(controller: Controller): void {
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#101012' : '#FBFBFD',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
+      additionalArguments: [`--horizonte-engine=${USE_WEBRTC ? 'webrtc' : 'sunshine'}`],
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false

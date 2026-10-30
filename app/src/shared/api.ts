@@ -38,6 +38,12 @@ export type DiagnosticReportResult = 'opened' | 'copied'
 export interface HorizonteApi {
   /** Sistema em que o app roda (`process.platform`): win32, darwin ou linux. */
   platform: string
+  /**
+   * Motor de transmissão: o próprio (WebRTC) ou o antigo (Sunshine e Moonlight). No próprio, o Chromium escolhe o
+   * codificador e a tela estendida nasce no tamanho de quem mostra: os ajustes de codificação, codec e resolução e o
+   * receber pelo navegador não se aplicam.
+   */
+  engine: 'webrtc' | 'sunshine'
   getSnapshot(): Promise<Snapshot>
   dispatch(event: AppEvent): Promise<void>
   updateSettings(patch: SettingsPatch): Promise<Settings>

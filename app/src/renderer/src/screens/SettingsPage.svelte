@@ -41,6 +41,8 @@
     { id: 'equilibrado', name: 'Equilibrado', mbps: PROFILES.equilibrado },
     { id: 'maximo', name: 'Máximo', mbps: PROFILES.maximo }
   ] as const
+  /** Motor próprio: sem os ajustes que só valiam para o Sunshine. */
+  const webrtc = window.horizonte.engine === 'webrtc'
 </script>
 
 <div class="sheet">
@@ -144,19 +146,21 @@
     <section class="group" aria-labelledby="g-advanced">
       <h2 class="group-label" id="g-advanced">Avançado</h2>
       <div class="card">
-        <div class="adv-block">
-          <span class="adv-label">Resolução</span>
-          <Segmented
-            label="Resolução"
-            value={settings.resolution}
-            options={[
-              { value: '720p', text: '720p' },
-              { value: '1080p', text: '1080p' },
-              { value: '1440p', text: '1440p' }
-            ]}
-            onSelect={(value) => patchSettings({ resolution: value as Resolution })}
-          />
-        </div>
+        {#if !webrtc}
+          <div class="adv-block">
+            <span class="adv-label">Resolução</span>
+            <Segmented
+              label="Resolução"
+              value={settings.resolution}
+              options={[
+                { value: '720p', text: '720p' },
+                { value: '1080p', text: '1080p' },
+                { value: '1440p', text: '1440p' }
+              ]}
+              onSelect={(value) => patchSettings({ resolution: value as Resolution })}
+            />
+          </div>
+        {/if}
         <div class="adv-block">
           <span class="adv-label">Quadros por segundo</span>
           <Segmented
@@ -170,35 +174,42 @@
             onSelect={(value) => patchSettings({ fps: value as Fps })}
           />
         </div>
-        <div class="adv-block">
-          <span class="adv-label">Codificação</span>
-          <Segmented
-            label="Codificação"
-            value={settings.encoding}
-            options={[
-              { value: 'auto', text: 'Automática' },
-              { value: 'gpu', text: 'Placa de vídeo' },
-              { value: 'cpu', text: 'Processador' }
-            ]}
-            onSelect={(value) => patchSettings({ encoding: value as Encoding })}
-          />
+        {#if webrtc}
           <p class="adv-note">
-            Automática usa a placa de vídeo e cai para o processador se ela falhar.
+            A tela estendida tem o tamanho da tela de quem mostra, e o Horizonte usa a placa de
+            vídeo quando ela está disponível.
           </p>
-        </div>
-        <div class="adv-block">
-          <span class="adv-label">Codec</span>
-          <Segmented
-            label="Codec"
-            value={settings.codec}
-            options={[
-              { value: 'h264', text: 'H.264' },
-              { value: 'hevc', text: 'HEVC' },
-              { value: 'av1', text: 'AV1' }
-            ]}
-            onSelect={(value) => patchSettings({ codec: value as Codec })}
-          />
-        </div>
+        {:else}
+          <div class="adv-block">
+            <span class="adv-label">Codificação</span>
+            <Segmented
+              label="Codificação"
+              value={settings.encoding}
+              options={[
+                { value: 'auto', text: 'Automática' },
+                { value: 'gpu', text: 'Placa de vídeo' },
+                { value: 'cpu', text: 'Processador' }
+              ]}
+              onSelect={(value) => patchSettings({ encoding: value as Encoding })}
+            />
+            <p class="adv-note">
+              Automática usa a placa de vídeo e cai para o processador se ela falhar.
+            </p>
+          </div>
+          <div class="adv-block">
+            <span class="adv-label">Codec</span>
+            <Segmented
+              label="Codec"
+              value={settings.codec}
+              options={[
+                { value: 'h264', text: 'H.264' },
+                { value: 'hevc', text: 'HEVC' },
+                { value: 'av1', text: 'AV1' }
+              ]}
+              onSelect={(value) => patchSettings({ codec: value as Codec })}
+            />
+          </div>
+        {/if}
       </div>
     </section>
 
