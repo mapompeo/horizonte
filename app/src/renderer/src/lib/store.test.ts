@@ -18,6 +18,7 @@ const current: Snapshot = {
     mouseSides: {},
     mouseOffsets: {},
     trusted: [],
+    screenPlacements: {},
     mode: 'send'
   }
 }

@@ -12,14 +12,19 @@
     offsets: Record<string, number>
     /** Solto perto deste computador (`side`), ou na faixa de baixo (null: fica fora). */
     onPlace: (name: string, place: { side: MouseSide; offset: number } | null) => void
+    /**
+     * Com a faixa de baixo para deixar de fora (modo Mouse). Sem ela (tela estendida), o outro sempre fica encostado
+     * em algum lado.
+     */
+    dock?: boolean
+    height?: number
   }
 
-  let { own, ownKind, hosts, sides, offsets, onPlace }: Props = $props()
+  let { own, ownKind, hosts, sides, offsets, onPlace, dock = true, height = 320 }: Props = $props()
 
-  const DOCK = 64
+  const DOCK = $derived(dock ? 64 : 0)
   let width = $state(560)
-  const height = 320
-  const area = height - DOCK
+  const area = $derived(height - DOCK)
 
   /** Enquanto arrasta, o computador segue o mouse solto; só encaixa ao soltar. */
   let drag = $state<{ name: string; x: number; y: number; dx: number; dy: number } | null>(null)
@@ -105,7 +110,7 @@
 
   /** Encaixa na borda mais perto do centro solto; na faixa de baixo, fica fora. */
   function snap(host: Host, cx: number, cy: number): { side: MouseSide; offset: number } | null {
-    if (cy > area) return null
+    if (dock && cy > area) return null
     const size = sizeOf(host)
     const w = size.width * scale
     const h = size.height * scale
@@ -160,7 +165,7 @@
   function key(event: KeyboardEvent, host: Host, name: string): void {
     const order: MouseSide[] = ['right', 'below', 'left', 'above']
     const side = sides[name]
-    if (event.key === 'Delete' || event.key === 'Backspace') {
+    if (dock && (event.key === 'Delete' || event.key === 'Backspace')) {
       event.preventDefault()
       onPlace(name, null)
       return
@@ -168,7 +173,8 @@
     if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
     // Enter: passa para o próximo lado (fora → direita → embaixo → esquerda → acima → fora).
-    const next = side ? order[order.indexOf(side) + 1] : order[0]
+    // Sem a faixa de baixo, volta ao começo em vez de deixar de fora.
+    const next = side ? (order[order.indexOf(side) + 1] ?? (dock ? undefined : order[0])) : order[0]
     if (!next) return onPlace(name, null)
     const size = sizeOf(host)
     const edge = horizontal(next) ? [own.width, size.width] : [own.height, size.height]
@@ -196,9 +202,11 @@
     <DeviceIcon kind={ownKind} size={16} />
     <span>Este computador</span>
   </div>
-  <div class="map-dock">
-    {#if boxes.every((box) => box.side)}<span>Solte aqui para deixar de fora</span>{/if}
-  </div>
+  {#if dock}
+    <div class="map-dock">
+      {#if boxes.every((box) => box.side)}<span>Solte aqui para deixar de fora</span>{/if}
+    </div>
+  {/if}
   {#each boxes as box (box.host.address)}
     <div
       class="map-screen map-peer"
@@ -208,7 +216,9 @@
       tabindex="0"
       aria-label="{box.name}, {box.side
         ? SIDE_TEXT[box.side]
-        : 'fora'}. Arraste até a borda deste computador. Enter troca o lado, Delete deixa de fora."
+        : 'fora'}. Arraste até a borda deste computador. Enter troca o lado{dock
+        ? ', Delete deixa de fora'
+        : ''}."
       style="left: {box.x}px; top: {box.y}px; width: {box.w}px; height: {box.h}px"
       onpointerdown={(event) => down(event, box.name, box.x, box.y)}
       onpointermove={move}
