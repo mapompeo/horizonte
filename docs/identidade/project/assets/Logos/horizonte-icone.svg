@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Horizonte">
+  <!-- Ícone do app: o sol nasce sobre o horizonte, e o horizonte passa da borda (a tela que continua). -->
+  <defs>
+    <clipPath id="tile"><rect width="1024" height="1024" rx="228"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="1024" height="1024" fill="#1A1A1F"/>
+    <!-- Contorno interno, por baixo do horizonte: separa o ícone de docks e fundos escuros. -->
+    <rect x="6" y="6" width="1012" height="1012" rx="222" fill="none" stroke="#34343B" stroke-width="12"/>
+    <path d="M196 584A236 236 0 0 1 668 584Z" fill="#FF9F0A"/>
+    <rect x="150" y="604" width="920" height="76" rx="38" fill="#F5F5F7"/>
+  </g>
+</svg>

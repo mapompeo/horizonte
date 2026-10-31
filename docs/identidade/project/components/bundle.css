@@ -1,0 +1,57 @@
+/* Componentes do Horizonte, como no app (app/src/renderer/src/assets/main.css), lidos dos tokens. */
+.hz {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+.hz-stack { display: flex; flex-direction: column; gap: var(--space-sm); align-items: flex-start; }
+.hz-row { display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap; }
+
+.hz-btn {
+  height: var(--control-lg);
+  padding: 0 44px;
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  font: 600 16px/1 var(--font-sans);
+  cursor: pointer;
+}
+.hz-btn-primary { background: var(--ink); color: var(--bg); }
+.hz-btn-outline { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.hz-btn-ghost { height: var(--control-md); padding: 0 20px; border: 0; background: transparent; color: var(--ink-muted); font-weight: 400; font-size: 15px; }
+.hz-btn-sm { height: var(--control-md); padding: 0 28px; border-radius: 22px; font-size: 15px; }
+.hz-btn:focus-visible, .hz-seg-item:focus-visible, .hz-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hz-link { color: var(--accent); font: 400 15px/1 var(--font-sans); text-decoration: none; }
+
+.hz-pill { display: inline-flex; align-items: center; gap: var(--space-s); padding: 7px 14px; border-radius: var(--radius-pill); font: 600 13px/1 var(--font-sans); }
+.hz-pill .dot { width: 8px; height: 8px; border-radius: 4px; }
+.hz-pill-ok { color: var(--ok-fg); background: var(--ok-bg); }
+.hz-pill-ok .dot { background: var(--ok-dot); }
+.hz-pill-wait { color: var(--wait-fg); background: var(--wait-bg); }
+.hz-pill-wait .dot { background: var(--wait-dot); }
+.hz-pill-danger { color: var(--danger-fg); background: var(--danger-bg); }
+
+.hz-seg { display: inline-flex; padding: 3px; background: var(--surface-sunken); border-radius: var(--radius-pill); }
+.hz-seg-item { height: var(--control-sm); padding: 0 22px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--ink-muted); font: 400 15px/1 var(--font-sans); }
+.hz-seg-item.on { background: var(--surface-raised); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-seg); }
+
+.hz-switch { width: 51px; height: 31px; border-radius: var(--radius-pill); border: 0; background: var(--surface-sunken); position: relative; }
+.hz-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
+.hz-switch[aria-checked='true'] { background: var(--switch-on); }
+.hz-switch[aria-checked='true']::after { left: 22px; }
+
+.hz-card { display: flex; align-items: center; gap: var(--space-md); padding: 14px 14px 14px 18px; border-radius: var(--radius-card); background: var(--surface); border: 1px solid var(--line-soft); box-shadow: var(--shadow-card); }
+.hz-card-icon { width: 44px; height: 44px; border-radius: var(--radius-icon); background: var(--surface-sunken); display: grid; place-items: center; color: var(--ink); }
+.hz-card-body { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.hz-card-name { font: 600 18px/1.3 var(--font-sans); }
+.hz-card-addr { font: 400 14px/1.4 var(--font-sans); color: var(--ink-muted); }
+
+.hz-title { font: 700 52px/1.05 var(--font-sans); letter-spacing: -0.035em; margin: 0; text-wrap: balance; }
+.hz-title-md { font: 700 38px/1.12 var(--font-sans); letter-spacing: -0.03em; margin: 0; }
+.hz-subtitle { font: 400 19px/1.4 var(--font-sans); color: var(--ink-muted); margin: 0; }
+.hz-hint { font: 400 13px/1.4 var(--font-sans); color: var(--ink-muted); margin: 0; }
+
+.hz-note { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--surface-sunken); max-width: 420px; }
+.hz-note code { font: 400 12px/1.4 var(--font-mono); user-select: all; word-break: break-all; }
+
+.hz-brand { display: inline-flex; align-items: center; gap: var(--space-sm); font: 600 18px/1 var(--font-sans); letter-spacing: -0.01em; }

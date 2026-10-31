@@ -1,0 +1,35 @@
+<!-- @dsCard height=288 -->
+<div class="cover">
+  <svg class="art" viewBox="0 0 480 288" aria-hidden="true">
+    <!--
+      blocos: brand-tile 480×288 (laje alta), sun meio-disco r=96, brand-paper faixa 26px que sai pela borda direita, accent 72×72 com radius-control, surface-sunken 120×60 com radius-card
+      arranjo: uma laje alta com satélites; a faixa do horizonte atravessa a laje e sangra pela direita, como no ícone
+      padrão: motivo literal (o sol nascendo) → meios-discos de sun repetidos sobre a faixa, menores à direita; escolhido porque o README define o logo como "o sol nascendo sobre o horizonte, e o horizonte passando da borda"
+      passos e raios: space-md (16), space-lg (26), space-xl (34); radius-control (24), radius-card (20)
+    -->
+    <rect class="tile" x="0" y="0" width="480" height="288" />
+    <rect class="tint" x="34" y="34" width="120" height="60" />
+    <rect class="accent" x="374" y="34" width="72" height="72" />
+    <path class="sun" d="M120 188A96 96 0 0 1 312 188Z" />
+    <path class="sun" d="M330 188A26 26 0 0 1 382 188Z" />
+    <path class="sun" d="M398 188A16 16 0 0 1 430 188Z" />
+    <path class="sun" d="M446 188A9 9 0 0 1 464 188Z" />
+    <rect class="paper" x="34" y="200" width="480" height="26" rx="13" />
+  </svg>
+  <div class="name">
+    <h1>Horizonte</h1>
+    <p>A tela que continua além da borda.</p>
+  </div>
+</div>
+<style>
+  .cover { position: relative; width: 960px; height: 288px; background: var(--bg); overflow: hidden; font-family: var(--font-sans); }
+  .art { position: absolute; left: 480px; top: 0; width: 480px; height: 288px; }
+  .tile { fill: var(--brand-tile); }
+  .tint { fill: var(--surface-sunken); rx: var(--radius-card); }
+  .accent { fill: var(--accent); rx: var(--radius-control); }
+  .sun { fill: var(--sun); }
+  .paper { fill: var(--brand-paper); }
+  .name { position: absolute; left: 34px; bottom: 34px; max-width: 440px; display: grid; gap: 10px; }
+  .name h1 { margin: 0; font-size: 80px; line-height: 0.95; font-weight: 700; letter-spacing: -0.035em; color: var(--ink); }
+  .name p { margin: 0; font-size: 14px; color: var(--ink-muted); }
+</style>

@@ -1,0 +1,26 @@
+{
+  "v": 3,
+  "layout": "files",
+  "createdOnFiles": { "v": 1, "at": "2026-10-31T01:59:17Z" },
+  "title": "Horizonte",
+  "namespace": "Horizonte",
+  "libraries": [],
+  "sections": {},
+  "groups": ["Logos"],
+  "assetGroups": {
+    "Logos": {
+      "name": "Logos",
+      "tile": "l",
+      "order": ["horizonte-icone.svg", "horizonte-marca-escura.svg", "horizonte-marca-clara.svg", "horizonte-marca-mono.svg"],
+      "files": {
+        "horizonte-icone.svg": { "name": "horizonte-icone.svg", "blob": "1dccf5346982ce1bb9892fbae7d86bd3", "size": 576, "type": "image/svg+xml" },
+        "horizonte-marca-escura.svg": { "name": "horizonte-marca-escura.svg", "blob": "eea5a021e29278c8bca67c1b26a7403f", "size": 240, "type": "image/svg+xml" },
+        "horizonte-marca-clara.svg": { "name": "horizonte-marca-clara.svg", "blob": "424aa21a14039c5a018003a7297e486c", "size": 240, "type": "image/svg+xml" },
+        "horizonte-marca-mono.svg": { "name": "horizonte-marca-mono.svg", "blob": "221ae7adda6418d42a19d3648b734680", "size": 240, "type": "image/svg+xml" }
+      }
+    }
+  },
+  "blobs": {},
+  "docs": { "sections": [] },
+  "lastChange": { "by": "Claude", "at": "2026-10-31T01:59:17Z", "via": "Claude Code", "note": "Primeira versão: logo novo, cores unificadas entre app e site, tipografia, espaços, componentes." }
+}
