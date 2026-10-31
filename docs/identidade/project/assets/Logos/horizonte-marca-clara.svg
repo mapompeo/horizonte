@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Horizonte">
+  <!-- Marca sem fundo, para fundos escuros: tinta #F5F5F7, sol âmbar. -->
+  <path d="M10 35A15 15 0 0 1 40 35Z" fill="#FF9F0A"/>
+  <rect x="6" y="38" width="52" height="7" rx="3.5" fill="#F5F5F7"/>
+</svg>
