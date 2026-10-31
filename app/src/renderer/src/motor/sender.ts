@@ -1,3 +1,4 @@
+import { INPUT, INPUT_MOVES } from '../../../shared/input'
 import type { Want } from '../../../main/engine/webrtc/protocol'
 import type { MediaMessage, MotorApi } from '../../../shared/motor'
 import { BASE_ORDER, orderCodecList, rankCodecs, type CodecProbe } from './codecs'
@@ -152,6 +153,16 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
     console.log('[motor] ordem dos codecs:', ranked.join(', ') || 'padrão do navegador')
 
     pc.createDataChannel('controle')
+    // Entrada vinda de quem mostra (mouse, teclado, toque): vai ao processo principal, que confere e aplica.
+    for (const label of [INPUT_MOVES, INPUT]) {
+      const channel = pc.createDataChannel(
+        label,
+        label === INPUT_MOVES ? { ordered: false, maxRetransmits: 0 } : {}
+      )
+      channel.addEventListener('message', ({ data }) => {
+        if (typeof data === 'string') api.input(data)
+      })
+    }
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
     send({ t: 'offer', sdp: pc.localDescription?.sdp ?? offer.sdp ?? '' })

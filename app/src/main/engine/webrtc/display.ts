@@ -18,4 +18,6 @@ export interface VirtualScreen {
   release(): Promise<void>
   /** Põe o monitor virtual neste lugar em relação às outras telas (onde o sistema permite). */
   place?(placement: ScreenPlacement): Promise<void>
+  /** Aplica na tela estendida um evento de entrada já conferido (uma linha para o auxiliar). */
+  input?(line: string): void
 }

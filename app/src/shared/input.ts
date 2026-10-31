@@ -4,6 +4,10 @@
  * computador.
  */
 
+/** Canais de entrada que quem envia abre: o do movimento (sem fila nem reenvio) e o do resto (em ordem, confiável). */
+export const INPUT_MOVES = 'entrada-movimento'
+export const INPUT = 'entrada'
+
 /** Coordenadas são frações da tela estendida (0 a 1), para não depender do tamanho de nenhum dos lados. */
 export type InputEvent =
   | { t: 'move'; x: number; y: number }
