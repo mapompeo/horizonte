@@ -4,9 +4,8 @@ import { createPeer, forwardIce, iceQueue, negotiateCaptureTime, type MotorSide 
 import { percentiles } from '../../../shared/percentiles'
 import { summarize, type StatEntry } from './stats'
 import { matchesTestColor } from './synthetic'
-
-/** Quanto tempo segurar Esc para sair (um toque sem querer não derruba a sessão). */
-const HOLD_ESC_MS = 1000
+import { attachInputCapture } from './input-capture'
+import { encodeInput, INPUT, INPUT_MOVES, type InputEvent } from '../../../shared/input'
 
 interface FrameMetadata {
   captureTime?: number
@@ -40,17 +39,24 @@ export function createReceiver(
   let lastLatency: number | null = null
   let lastDisplay: number | null = null
 
-  // Atalhos: Ctrl+Shift+D mostra os números; Esc segurado sai.
-  let escTimer: ReturnType<typeof setTimeout> | null = null
-  window.addEventListener('keydown', (event) => {
-    if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'd')
-      panel.hidden = !panel.hidden
-    if (event.key === 'Escape' && !event.repeat)
-      escTimer = setTimeout(() => api.report({ type: 'quit' }), HOLD_ESC_MS)
-  })
-  window.addEventListener('keyup', (event) => {
-    if (event.key === 'Escape' && escTimer) clearTimeout(escTimer)
-  })
+  // Mouse, teclado e toque desta janela agem na tela estendida, pelos canais que quem envia abriu. Ficam de fora
+  // Ctrl+Shift+D (mostra os números) e Esc segurado (sai).
+  const channels = new Map<string, RTCDataChannel>()
+  const sendInput = (event: InputEvent): void => {
+    const channel = (event.t === 'move' && channels.get(INPUT_MOVES)) || channels.get(INPUT)
+    if (channel?.readyState === 'open') channel.send(encodeInput(event))
+  }
+  if (options.testFrames === null)
+    attachInputCapture({
+      video,
+      send: sendInput,
+      onQuit: () => api.report({ type: 'quit' }),
+      onLocalShortcut: (event) => {
+        if (!(event.ctrlKey && event.shiftKey && event.code === 'KeyD')) return false
+        if (event.type === 'keydown') panel.hidden = !panel.hidden
+        return true
+      }
+    })
 
   function onFrame(_now: number, metadata: FrameMetadata): void {
     if (!firstFrameSent) {
@@ -120,6 +126,10 @@ export function createReceiver(
     pc.addEventListener('connectionstatechange', () =>
       console.log('[motor] conexão:', pc?.connectionState)
     )
+    pc.addEventListener('datachannel', ({ channel }) => {
+      if (channel.label === INPUT || channel.label === INPUT_MOVES)
+        channels.set(channel.label, channel)
+    })
     pc.addEventListener('track', ({ track, receiver, streams }) => {
       // Sem buffer extra: na rede local, menos atraso vale mais que absorver variação.
       ;(receiver as RTCRtpReceiver & { jitterBufferTarget?: number }).jitterBufferTarget = 0
@@ -161,6 +171,7 @@ export function createReceiver(
     statsTimer = null
     pc?.close()
     pc = ice = null
+    channels.clear()
     video.srcObject = null
   }
 

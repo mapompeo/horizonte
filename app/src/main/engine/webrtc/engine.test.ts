@@ -24,7 +24,7 @@ class FakeMedia implements MediaSide {
   stopped = false
   constructor(
     private readonly fp: string | null,
-    private readonly hooks: MediaHooks = {}
+    readonly hooks: MediaHooks = {}
   ) {}
   start(send: (message: MediaMessage) => void, want: Parameters<MediaSide['start']>[1]): void {
     void (this.hooks.beforeStart?.(want) ?? Promise.resolve()).then(() => {
@@ -87,11 +87,16 @@ function fakeScreen(): VirtualScreen & {
   requests: ScreenRequest[]
   released: number
   placed: ScreenPlacement[]
+  inputs: string[]
 } {
   const screen = {
     requests: [] as ScreenRequest[],
     released: 0,
     placed: [] as ScreenPlacement[],
+    inputs: [] as string[],
+    input: (line: string) => {
+      screen.inputs.push(line)
+    },
     place: async (placement: ScreenPlacement) => {
       screen.placed.push(placement)
     },
@@ -324,5 +329,32 @@ describe('WebRtcEngine', () => {
     await sender.prepare(() => undefined, settings)
     await sender.placeScreen({ side: 'above' })
     expect(screen.placed).toEqual([])
+  })
+
+  it('entrada de quem mostra: só a válida, e só durante a sessão aprovada', async () => {
+    const { sender, shower, sendWindows, screen, requests } = pair()
+    const connected: string[] = []
+    const disconnected: number[] = []
+    sender.onClientConnected((device) => connected.push(device))
+    sender.onClientDisconnected(() => disconnected.push(1))
+    await sender.prepare(() => undefined, settings)
+    await shower.listHosts()
+    const connecting = shower.connect('127.0.0.1', settings)
+    await until(() => requests.length === 1)
+    await sender.approve({ pairingId: requests[0].pairingId, name: 'Notebook' })
+    await connecting
+    await until(() => connected.length === 1)
+
+    const media = sendWindows.sent[0]
+    media.hooks.onInput?.('{"t":"move","x":0.5,"y":0.25}')
+    media.hooks.onInput?.('{"t":"key","code":"KeyA","down":true}')
+    media.hooks.onInput?.('{"t":"exec","cmd":"rm -rf"}')
+    media.hooks.onInput?.('{"t":"move","x":7,"y":0}')
+    expect(screen.inputs).toEqual(['move 0.50000 0.25000\n', 'key 30 1\n'])
+
+    await shower.disconnect()
+    await until(() => disconnected.length === 1)
+    media.hooks.onInput?.('{"t":"move","x":0.1,"y":0.1}')
+    expect(screen.inputs).toHaveLength(2)
   })
 })

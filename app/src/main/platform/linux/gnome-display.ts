@@ -53,6 +53,9 @@ export function createGnomeDisplay(deps: GnomeDisplayDeps): VirtualScreen {
     },
     async place(placement) {
       running?.helper.send?.(placeCommand(placement))
+    },
+    input(line) {
+      running?.helper.send?.(line)
     }
   }
 }
