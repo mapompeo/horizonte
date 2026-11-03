@@ -182,3 +182,8 @@ O README e o site passam a falar só do motor próprio. Isso vira a 0.3.
   - `platform/linux/video-driver.ts`, com testes, e o aviso nas telas Pronto e Buscar, com o comando certo para a distribuição.
   - Conferido no app: com a pasta de drivers vazia (`HORIZONTE_DRI_DIRS`), aparece o aviso da AMD com `sudo apt install -y mesa-va-drivers`; com os drivers, nada aparece.
 - **A3:** depende de instalar o `.deb` no notebook, o que pede o `sudo` da pessoa.
+- **C3 feito (falta conferir no Wi-Fi de verdade).**
+  - `motor/adapt.ts`, com testes: o perfil é o teto; com perda de 2% ou mais, ou ida e volta subindo (fila), por 2 s seguidos, baixa 20% até um quarto do teto; no mínimo e ainda ruim, cai para 30 fps. Com 5 s de rede boa, sobe 10% de cada vez e recupera os quadros por último. Processador no limite por 3 s também cai para 30 fps.
+  - Começa depois da subida inicial de 3 s; mudar o perfil à mão vira o novo teto na hora.
+  - Conferido em rede local limpa (40 s, 60 fps): nenhuma mudança à toa. Falta medir num Wi-Fi ruim.
+- **C4 adiado:** a medição precisa do monitor virtual do GNOME, que não abre com a tela bloqueada. O relógio do teste (`--motor-clock`) agora abre na tela estendida quando o teste estende, para ter imagem mudando durante a medição.

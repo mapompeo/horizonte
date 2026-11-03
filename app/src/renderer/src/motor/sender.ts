@@ -11,6 +11,7 @@ import {
   negotiateCaptureTime,
   type MotorSide
 } from './peer'
+import { createAdapter, netSignal } from './adapt'
 import { summarize, type StatEntry } from './stats'
 import { syntheticStream } from './synthetic'
 
@@ -102,6 +103,7 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
   let statsTimer: ReturnType<typeof setInterval> | null = null
   let rampTimer: ReturnType<typeof setInterval> | null = null
   let targetMbps = 0
+  let adapter: ReturnType<typeof createAdapter> | null = null
   let stopFrames: (() => void) | null = null
 
   async function setBitrate(mbps: number, fps?: number): Promise<void> {
@@ -168,13 +170,18 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
     send({ t: 'offer', sdp: pc.localDescription?.sdp ?? offer.sdp ?? '' })
 
     targetMbps = want.bitrate
+    adapter = null
     await setBitrate(targetMbps * START_FRACTION, want.fps)
     const began = Date.now()
     rampTimer = setInterval(() => {
       const progress = Math.min(1, (Date.now() - began) / RAMP_MS)
       const fraction = START_FRACTION + (1 - START_FRACTION) * progress
       void setBitrate(targetMbps * fraction)
-      if (progress >= 1 && rampTimer) clearInterval(rampTimer)
+      if (progress >= 1 && rampTimer) {
+        clearInterval(rampTimer)
+        // Depois da subida inicial, o perfil vira o teto e a qualidade passa a seguir a rede.
+        adapter = createAdapter({ mbps: targetMbps, fps: want.fps })
+      }
     }, 500)
 
     let previous: StatEntry[] | null = null
@@ -183,6 +190,11 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
       const current = [...(await pc.getStats()).values()] as StatEntry[]
       const stats = summarize(previous, current)
       previous = current
+      const change = adapter?.next(netSignal(current))
+      if (change) {
+        console.log(`[motor] qualidade automática: ${change.mbps} Mbps, ${change.fps} fps`)
+        void setBitrate(change.mbps, change.fps)
+      }
       if (stats) api.report({ type: 'stats', stats })
     }, 1000)
   }
@@ -195,6 +207,8 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
     } else if (message.t === 'ice') await ice.add(message)
     else if (message.t === 'bitrate') {
       targetMbps = message.mbps
+      const fps = adapter?.current().fps
+      adapter?.setCeiling({ mbps: message.mbps, fps: fps ?? 60 })
       await setBitrate(message.mbps)
     }
   }
@@ -203,6 +217,7 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
     if (statsTimer) clearInterval(statsTimer)
     if (rampTimer) clearInterval(rampTimer)
     statsTimer = rampTimer = null
+    adapter = null
     stopFrames?.()
     stopFrames = null
     for (const track of stream?.getTracks() ?? []) track.stop()
