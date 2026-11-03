@@ -64,11 +64,15 @@ beforeAll(async () => {
         name: 'update-controls-client-test',
         resolveId(id) {
           if (id === 'virtual:update-controls') return '\0update-controls'
+          if (id === './Logo.svelte') return '\0logo'
           return null
         },
         async load(id) {
           if (id === '\0update-controls')
             return compile(await readFile(filename, 'utf8'), { filename, generate: 'client' }).js
+              .code
+          if (id === '\0logo')
+            return compile('<img alt="" />', { filename: 'Logo.svelte', generate: 'client' }).js
               .code
           return null
         }

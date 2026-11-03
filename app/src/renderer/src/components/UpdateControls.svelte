@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Logo from './Logo.svelte'
   interface Props {
     /** Uma linha discreta no rodapé da tela principal, em vez do bloco "Sobre" dos Ajustes. */
     compact?: boolean
@@ -94,18 +95,7 @@
 {:else}
   <section class="about" aria-labelledby="g-update">
     <h2 class="sr-only" id="g-update">Atualizações</h2>
-    <span class="about-icon" aria-hidden="true"
-      ><svg
-        width="22"
-        height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        ><rect x="3" y="5" width="18" height="12" rx="2" /><path d="M9 20h6" /></svg
-      ></span
-    >
+    <Logo size={40} />
     <span class="about-name">Horizonte</span>
     {#if status}
       <p class="about-line" aria-live="polite">
