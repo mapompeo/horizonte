@@ -15,22 +15,22 @@ O Horizonte segue as Human Interface Guidelines da Apple: clareza, deferência e
 
 ## Logo
 
-O logo é um só: o sol nascendo sobre o horizonte, e o horizonte passando da borda.
+O logo é um só: o sol nascendo sobre o horizonte, o sinal sem fio se espalhando em ondas, e o horizonte passando da borda.
 
 - **Ícone do app** (`horizonte-icone.svg`): dock, barra de tarefas, instalador e favicon.
 - **Marca sem fundo** (`horizonte-marca-escura.svg` em fundos claros, `horizonte-marca-clara.svg` em fundos escuros): ao lado do nome, no site e no topo das telas de começar.
 - **Marca de uma cor** (`horizonte-marca-mono.svg`): bandeja do sistema.
 - **Cores fixas:**
-  - o sol usa o `orange` do sistema;
-  - o horizonte é branco no ícone e na marca clara, e quase preto na marca escura;
-  - o quadrado do ícone é o quase preto da Apple (#1C1C1E).
-- **Não troque cores, não separe o sol do horizonte e não crie variações.**
+  - o quadrado do ícone é o `accent` (azul do sistema), e o desenho é branco;
+  - as ondas do sinal são o mesmo branco, mais claras por fora (60% e 30%);
+  - na marca escura o desenho é `accent`, na clara é branco e na de uma cor é preto.
+- **No logo, só azul e branco. Não troque cores, não separe o sol do horizonte e não crie variações.**
 
 ## Cor
 
 - **Fundo e texto:** fundo `background`, grupos e cartões em `surface`, texto em `label` e `label-secondary`.
 - **`accent` (azul do sistema) é a única cor de ação:** botão principal, links, seleção e foco.
-- **`green`, `orange` e `red` só indicam estado** (conectado, esperando, erro), sempre com a palavra junto.
+- **`green`, `gray` e `red` só indicam estado** (conectado, esperando, erro), sempre com a palavra junto.
 - **Os dois temas seguem o sistema.** Não há outra cor.
 
 ## Tipografia

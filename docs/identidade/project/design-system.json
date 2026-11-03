@@ -25,26 +25,26 @@
       "files": {
         "horizonte-icone.svg": {
           "name": "horizonte-icone.svg",
-          "blob": "1c8ba2723cb8fdaedd6c19a121207ffa",
-          "size": 576,
+          "blob": "8e3fa059d726ed93fac0085c233a98e4",
+          "size": 732,
           "type": "image/svg+xml"
         },
         "horizonte-marca-escura.svg": {
           "name": "horizonte-marca-escura.svg",
-          "blob": "27681ad261ef0f21fe2309e30238d5c8",
-          "size": 240,
+          "blob": "c4e11d4e7712ddf2e2e3c673e4dcf936",
+          "size": 535,
           "type": "image/svg+xml"
         },
         "horizonte-marca-clara.svg": {
           "name": "horizonte-marca-clara.svg",
-          "blob": "7cefefdfca565efae7c3feb43e5df02f",
-          "size": 240,
+          "blob": "0575f35dff5c848c6285f1cc2655d61d",
+          "size": 535,
           "type": "image/svg+xml"
         },
         "horizonte-marca-mono.svg": {
           "name": "horizonte-marca-mono.svg",
-          "blob": "91052f3f187df3cbd0cd6e3c6681a567",
-          "size": 240,
+          "blob": "f748c8aa683d15439f16a20f32429b70",
+          "size": 535,
           "type": "image/svg+xml"
         }
       }
@@ -56,8 +56,8 @@
   },
   "lastChange": {
     "by": "Claude",
-    "at": "2026-11-03T17:52:57Z",
+    "at": "2026-11-03T19:30:00Z",
     "via": "Claude Code",
-    "note": "Simplificado pelas Human Interface Guidelines da Apple: 11 cores do sistema, 5 tamanhos de texto, grade de 8 pt, 5 componentes."
+    "note": "Logo novo sem laranja (sol e ondas de sinal em branco sobre o azul do sistema), estado esperando em cinza e padrão pílula em tudo."
   }
 }
