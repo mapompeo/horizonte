@@ -22,7 +22,7 @@
   --danger-bg: rgba(255, 59, 48, 0.12);
   --danger-fg: #ff3b30;
   --card-shadow: none;
-  --radius-group: 10px;
+  --radius-group: 28px;
   --font:
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI Variable',
     'Segoe UI', system-ui, sans-serif;
@@ -187,7 +187,7 @@ input:focus-visible {
   grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr));
   padding: 2px;
   background: var(--seg);
-  border-radius: 9px;
+  border-radius: 999px;
 }
 
 .seg-thumb {
@@ -196,7 +196,7 @@ input:focus-visible {
   bottom: 2px;
   left: 2px;
   width: calc((100% - 4px) / var(--n, 2));
-  border-radius: 7px;
+  border-radius: 999px;
   background: var(--seg-on);
   transform: translateX(calc(var(--i, 0) * 100%));
   transition: transform 0.38s var(--ease);
@@ -208,7 +208,7 @@ input:focus-visible {
   height: 32px;
   padding: 0 18px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 999px;
   background: transparent;
   color: var(--fg);
   font-size: 13px;
@@ -240,7 +240,7 @@ input:focus-visible {
   width: 44px;
   height: 44px;
   border: 0;
-  border-radius: 22px;
+  border-radius: 999px;
   background: transparent;
   color: var(--muted);
   display: flex;
@@ -297,7 +297,7 @@ input:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 0;
-  border-radius: 0;
+  border-radius: 999px;
   font-size: 13px;
   font-weight: 400;
 }
@@ -312,7 +312,7 @@ input:focus-visible {
 .dot {
   width: 8px;
   height: 8px;
-  border-radius: 4px;
+  border-radius: 999px;
 }
 .pill-ok .dot {
   background: var(--ok-dot);
@@ -364,7 +364,7 @@ input:focus-visible {
 .bar {
   width: 280px;
   height: 4px;
-  border-radius: 2px;
+  border-radius: 999px;
   background: var(--line-soft);
 }
 .bar {
@@ -372,7 +372,7 @@ input:focus-visible {
 }
 .bar-fill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: 999px;
   background: var(--fg);
   transition: width 0.25s linear;
 }
@@ -393,7 +393,7 @@ input:focus-visible {
 .badge {
   width: 72px;
   height: 72px;
-  border-radius: 36px;
+  border-radius: 999px;
   background: var(--wait-bg);
   color: var(--fg);
   display: flex;
@@ -406,7 +406,7 @@ input:focus-visible {
   color: var(--danger-fg);
   width: 64px;
   height: 64px;
-  border-radius: 32px;
+  border-radius: 999px;
 }
 
 /* Estender / Em uso */
@@ -434,7 +434,7 @@ input:focus-visible {
 .round {
   width: 44px;
   height: 44px;
-  border-radius: 22px;
+  border-radius: 999px;
   border: 0;
   background: var(--seg);
   color: var(--accent);
@@ -456,7 +456,7 @@ input:focus-visible {
   align-items: center;
   gap: 16px;
   padding: 14px 14px 14px 18px;
-  border-radius: var(--radius-group);
+  border-radius: 999px;
   background: var(--card);
   border: 0;
   text-align: left;
@@ -466,7 +466,7 @@ input:focus-visible {
   width: 44px;
   height: 44px;
   flex: none;
-  border-radius: 8px;
+  border-radius: 999px;
   background: var(--seg);
   display: flex;
   align-items: center;
@@ -488,7 +488,7 @@ input:focus-visible {
   position: relative;
   width: 100%;
   height: var(--h);
-  border-radius: 16px;
+  border-radius: var(--radius-group);
   border: 1px dashed var(--line);
   overflow: hidden;
   touch-action: none;
@@ -695,7 +695,7 @@ input[type='range'] {
   height: 44px;
   padding: 0 10px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--bg);
   color: var(--fg);
   font-size: 15px;
@@ -726,7 +726,7 @@ input[type='range'] {
   height: 31px;
   padding: 2px;
   border: 0;
-  border-radius: 16px;
+  border-radius: 999px;
   background: var(--seg);
   display: flex;
   justify-content: flex-start;
@@ -747,7 +747,7 @@ input[type='range'] {
 .switch-thumb {
   width: 27px;
   height: 27px;
-  border-radius: 14px;
+  border-radius: 999px;
   background: #ffffff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
@@ -764,10 +764,10 @@ input[type='range'] {
   cursor: pointer;
 }
 .card > .row-button:first-child {
-  border-radius: 10px 10px 0 0;
+  border-radius: var(--radius-group) var(--radius-group) 0 0;
 }
 .card > .row-button:last-child {
-  border-radius: 0 0 10px 10px;
+  border-radius: 0 0 var(--radius-group) var(--radius-group);
 }
 .row-button::after {
   content: '›';
@@ -893,7 +893,7 @@ input[type='range'] {
   width: 160px;
   height: 56px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 999px;
   background: var(--card);
   color: var(--fg);
   font-size: 28px;
@@ -1013,7 +1013,7 @@ input,
   display: grid;
   gap: 6px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 999px;
   background: color-mix(in srgb, currentColor 6%, transparent);
   text-align: left;
 }
