@@ -19,7 +19,7 @@
 .hz-status { display: inline-flex; align-items: center; gap: var(--space-2); font: 400 13px/18px var(--font-sans); color: var(--label-secondary); }
 .hz-status::before { content: ''; width: 8px; height: 8px; border-radius: var(--radius-capsule); background: var(--dot); }
 .hz-status-ok { --dot: var(--green); }
-.hz-status-wait { --dot: var(--orange); }
+.hz-status-wait { --dot: var(--gray); }
 .hz-status-error { --dot: var(--red); color: var(--red); }
 
 .hz-seg { display: inline-flex; padding: 2px; background: var(--fill); border-radius: var(--radius-capsule); }

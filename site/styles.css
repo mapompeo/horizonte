@@ -19,7 +19,7 @@
   --ok-dot: #34c759;
   --wait-bg: #f0f0f3;
   --wait-fg: #6e6e73;
-  --sun-soft: rgba(255, 159, 10, 0.22);
+  --sun-soft: rgba(0, 122, 255, 0.18);
   --app-bg: #f2f2f7;
   --app-card: #ffffff;
   --device: #1d1d1f;
@@ -60,7 +60,7 @@
     --ok-dot: #30d158;
     --wait-bg: #1d1d20;
     --wait-fg: #a1a1a6;
-    --sun-soft: rgba(255, 179, 64, 0.16);
+    --sun-soft: rgba(10, 132, 255, 0.2);
     --app-bg: #101012;
     --app-card: #1b1b1f;
     --device: #2a2a2e;
@@ -90,7 +90,7 @@
   --ok-dot: #30d158;
   --wait-bg: #1d1d20;
   --wait-fg: #a1a1a6;
-  --sun-soft: rgba(255, 179, 64, 0.16);
+  --sun-soft: rgba(10, 132, 255, 0.2);
   --app-bg: #101012;
   --app-card: #1b1b1f;
   --device: #2a2a2e;

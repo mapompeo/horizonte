@@ -15,7 +15,7 @@
   --ok-dot: #34c759;
   --wait-bg: rgba(118, 118, 128, 0.12);
   --wait-fg: rgba(60, 60, 67, 0.6);
-  --wait-dot: #ff9500;
+  --wait-dot: #8e8e93;
   --accent: #007aff;
   --on-accent: #ffffff;
   --switch-on: #34c759;
@@ -44,7 +44,7 @@
     --ok-dot: #30d158;
     --wait-bg: rgba(118, 118, 128, 0.24);
     --wait-fg: rgba(235, 235, 245, 0.6);
-    --wait-dot: #ff9f0a;
+    --wait-dot: #8e8e93;
     --accent: #0a84ff;
     --switch-on: #30d158;
     --danger-bg: rgba(255, 69, 58, 0.18);
