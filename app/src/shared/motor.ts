@@ -58,7 +58,8 @@ export const MOTOR_CHANNELS = {
   config: 'motor:config',
   signal: 'motor:signal',
   report: 'motor:report',
-  push: 'motor:push'
+  push: 'motor:push',
+  input: 'motor:input'
 } as const
 
 /** Leitura das imagens que o auxiliar do Linux manda (só na janela de envio). */
@@ -75,5 +76,7 @@ export interface MotorApi {
   config(): Promise<MotorConfig>
   signal(message: MediaMessage): void
   report(report: MotorReport): void
+  /** Entrada que chegou de quem mostra (uma mensagem do canal, ainda sem conferir). */
+  input(raw: string): void
   onMessage(callback: (message: ToMotorWindow) => void): () => void
 }

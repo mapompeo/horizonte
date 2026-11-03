@@ -20,7 +20,13 @@
  * disposição é aplicada como temporária (sem o aviso "manter alterações" do GNOME) e responde "PLACED" ou, no erro
  * padrão, o motivo.
  *
+ * Entrada (--input): cria também uma sessão de controle remoto do Mutter ligada a este monitor, sem diálogo, e aceita
+ * pela entrada padrão "move <x> <y>" (frações da tela), "button <código evdev> <1|0>", "wheel <dx> <dy>" (passos),
+ * "key <código evdev> <1|0>" e "touch <down|move|up> <dedo> <x> <y>". É assim que o mouse, o teclado e o toque do
+ * aparelho que mostra agem na tela estendida.
+ *
  * Uso: horizonte-display [--width 1920] [--height 1080] [--refresh 60] [--frames /run/user/1000/horizonte.sock]
+ *                        [--input]
  * Saída 2: argumentos ou ambiente; 3: o Mutter recusou ou encerrou a sessão; 4: o PipeWire falhou; 5: o socket.
  */
 #include <errno.h>
@@ -43,6 +49,7 @@
 #include <unistd.h>
 
 #define MUTTER "org.gnome.Mutter.ScreenCast"
+#define REMOTE "org.gnome.Mutter.RemoteDesktop"
 #define DISPLAY_CONFIG "org.gnome.Mutter.DisplayConfig"
 #define DISPLAY_CONFIG_PATH "/org/gnome/Mutter/DisplayConfig"
 #define FRAME_MAGIC 0x31465A48u /* "HZF1" */
@@ -64,6 +71,9 @@ struct app {
   int refresh;
   int exit_code;
   gboolean ready;
+  /* Controle remoto (--input): a sessão do Mutter que recebe o mouse, o teclado e o toque. */
+  gboolean with_input;
+  char *remote;
   /* Monitores virtuais (Meta-N) que já existiam antes deste: o nosso é o que aparecer de novo. */
   GPtrArray *virtual_before;
 
@@ -328,10 +338,54 @@ static GVariant *call(struct app *app, const char *path, const char *iface, cons
                                      error);
 }
 
+static GVariant *remote_call(struct app *app, const char *path, const char *iface, const char *method,
+                             GVariant *args, const char *reply, GError **error) {
+  return g_dbus_connection_call_sync(app->bus, REMOTE, path, iface, method, args,
+                                     reply ? G_VARIANT_TYPE(reply) : NULL, G_DBUS_CALL_FLAGS_NONE, 10000, NULL,
+                                     error);
+}
+
+/* Cria a sessão de controle remoto e devolve o id dela, para ligar a de captura a ela (NULL se falhou). */
+static char *start_remote(struct app *app) {
+  GError *error = NULL;
+  GVariant *result = remote_call(app, "/org/gnome/Mutter/RemoteDesktop", REMOTE, "CreateSession", NULL, "(o)", &error);
+  if (!result) {
+    fprintf(stderr, "o GNOME não aceitou o controle remoto: %s\n", error->message);
+    return NULL;
+  }
+  g_variant_get(result, "(o)", &app->remote);
+  g_variant_unref(result);
+  result = remote_call(app, app->remote, "org.freedesktop.DBus.Properties", "Get",
+                       g_variant_new("(ss)", REMOTE ".Session", "SessionId"), "(v)", &error);
+  if (!result) {
+    fprintf(stderr, "sem o id da sessão de controle remoto: %s\n", error->message);
+    return NULL;
+  }
+  GVariant *value = NULL;
+  g_variant_get(result, "(v)", &value);
+  char *id = g_variant_dup_string(value, NULL);
+  g_variant_unref(value);
+  g_variant_unref(result);
+  g_dbus_connection_signal_subscribe(app->bus, REMOTE, REMOTE ".Session", "Closed", app->remote, NULL,
+                                     G_DBUS_SIGNAL_FLAGS_NONE, on_session_closed, app, NULL);
+  return id;
+}
+
 static int start_mutter(struct app *app) {
   GError *error = NULL;
   GVariantBuilder props;
   g_variant_builder_init(&props, G_VARIANT_TYPE_VARDICT);
+  if (app->with_input) {
+    /* Sem controle remoto (o GNOME recusa com a tela bloqueada, por exemplo), a tela estendida segue sem entrada. */
+    char *id = start_remote(app);
+    if (id) {
+      g_variant_builder_add(&props, "{sv}", "remote-desktop-session-id", g_variant_new_take_string(id));
+    } else {
+      g_clear_pointer(&app->remote, g_free);
+      printf("NO_INPUT\n");
+      fflush(stdout);
+    }
+  }
   GVariant *result = call(app, "/org/gnome/Mutter/ScreenCast", MUTTER, "CreateSession",
                           g_variant_new("(a{sv})", &props), "(o)", &error);
   if (!result) {
@@ -360,7 +414,9 @@ static int start_mutter(struct app *app) {
   g_dbus_connection_signal_subscribe(app->bus, MUTTER, MUTTER ".Stream", "PipeWireStreamAdded", app->stream_path,
                                      NULL, G_DBUS_SIGNAL_FLAGS_NONE, on_stream_added, app, NULL);
 
-  result = call(app, app->session, MUTTER ".Session", "Start", NULL, NULL, &error);
+  /* Com controle remoto, quem começa (e termina) é a sessão dele; a de captura vai junto. */
+  result = app->remote ? remote_call(app, app->remote, REMOTE ".Session", "Start", NULL, NULL, &error)
+                       : call(app, app->session, MUTTER ".Session", "Start", NULL, NULL, &error);
   if (!result) {
     fprintf(stderr, "o GNOME não iniciou o monitor virtual: %s\n", error->message);
     return -1;
@@ -546,11 +602,71 @@ static gboolean place(struct app *app, const char *side, gboolean centered, doub
   return TRUE;
 }
 
+static void on_notified(GObject *source, GAsyncResult *result, gpointer data) {
+  GError *error = NULL;
+  GVariant *reply = g_dbus_connection_call_finish(G_DBUS_CONNECTION(source), result, &error);
+  if (reply) g_variant_unref(reply);
+  if (error) {
+    fprintf(stderr, "o GNOME recusou o evento %s: %s\n", (const char *)data, error->message);
+    g_error_free(error);
+  }
+}
+
+/* Manda um evento à sessão de controle remoto sem esperar a resposta: o movimento do mouse não pode enfileirar.
+ * Se o GNOME recusar, o motivo vai para o erro padrão. */
+static void notify(struct app *app, const char *method, GVariant *args) {
+  g_dbus_connection_call(app->bus, REMOTE, app->remote, REMOTE ".Session", method, args, NULL,
+                         G_DBUS_CALL_FLAGS_NO_AUTO_START, 2000, NULL, on_notified, (gpointer)method);
+}
+
+static gboolean fraction_ok(double v) { return v >= 0 && v <= 1; }
+
+/* Um evento de entrada ("move", "button", "wheel", "key", "touch"); devolve FALSE se a linha não é de entrada. */
+static gboolean input_command(struct app *app, const char *line) {
+  double x = 0, y = 0;
+  int a = 0, b = 0;
+  char phase[8] = "";
+  if (sscanf(line, "move %lf %lf", &x, &y) == 2) {
+    if (app->remote && app->stream_path && fraction_ok(x) && fraction_ok(y))
+      notify(app, "NotifyPointerMotionAbsolute", g_variant_new("(sdd)", app->stream_path, x * app->width, y * app->height));
+    return TRUE;
+  }
+  if (sscanf(line, "button %d %d", &a, &b) == 2) {
+    if (app->remote && a >= 0x110 && a <= 0x117) notify(app, "NotifyPointerButton", g_variant_new("(ib)", a, b != 0));
+    return TRUE;
+  }
+  if (sscanf(line, "wheel %d %d", &a, &b) == 2) {
+    /* Eixo 0 é o vertical; 1, o horizontal. */
+    if (app->remote && b != 0 && abs(b) <= 20) notify(app, "NotifyPointerAxisDiscrete", g_variant_new("(ui)", 0, b));
+    if (app->remote && a != 0 && abs(a) <= 20) notify(app, "NotifyPointerAxisDiscrete", g_variant_new("(ui)", 1, a));
+    return TRUE;
+  }
+  if (sscanf(line, "key %d %d", &a, &b) == 2) {
+    if (app->remote && a > 0 && a < 0x300) notify(app, "NotifyKeyboardKeycode", g_variant_new("(ub)", (guint32)a, b != 0));
+    return TRUE;
+  }
+  if (sscanf(line, "touch %7s %d %lf %lf", phase, &a, &x, &y) == 4) {
+    if (!app->remote || !app->stream_path || a < 0 || a > 9 || !fraction_ok(x) || !fraction_ok(y)) return TRUE;
+    if (!strcmp(phase, "down"))
+      notify(app, "NotifyTouchDown", g_variant_new("(sudd)", app->stream_path, (guint32)a, x * app->width, y * app->height));
+    else if (!strcmp(phase, "move"))
+      notify(app, "NotifyTouchMotion", g_variant_new("(sudd)", app->stream_path, (guint32)a, x * app->width, y * app->height));
+    else if (!strcmp(phase, "up"))
+      notify(app, "NotifyTouchUp", g_variant_new("(u)", (guint32)a));
+    return TRUE;
+  }
+  return FALSE;
+}
+
 static gboolean on_command(GIOChannel *channel, GIOCondition condition, gpointer data) {
   struct app *app = data;
   if (condition & (G_IO_HUP | G_IO_ERR)) return G_SOURCE_REMOVE;
   char *line = NULL;
   if (g_io_channel_read_line(channel, &line, NULL, NULL, NULL) != G_IO_STATUS_NORMAL || !line) return G_SOURCE_CONTINUE;
+  if (input_command(app, line)) {
+    g_free(line);
+    return G_SOURCE_CONTINUE;
+  }
   char side[16] = "";
   char start_text[32] = "";
   const int fields = sscanf(line, "place %15s %31s", side, start_text);
@@ -595,6 +711,11 @@ int main(int argc, char **argv) {
   struct app app = { .width = 1920, .height = 1080, .refresh = 60, .listen_fd = -1 };
   for (int i = 1; i < argc; i += 2) {
     const char *value = i + 1 < argc ? argv[i + 1] : NULL;
+    if (!strcmp(argv[i], "--input")) {
+      app.with_input = TRUE;
+      i--; /* não tem valor */
+      continue;
+    }
     if (!strcmp(argv[i], "--frames") && value && value[0] == '/') {
       app.frames_path = value;
       continue;
@@ -604,7 +725,7 @@ int main(int argc, char **argv) {
                 : !strcmp(argv[i], "--refresh") ? &app.refresh
                                                 : NULL;
     if (!target || (*target = parse_int(value, 1, 16384)) < 0) {
-      fprintf(stderr, "uso: horizonte-display [--width 1920] [--height 1080] [--refresh 60] [--frames /caminho.sock]\n");
+      fprintf(stderr, "uso: horizonte-display [--width 1920] [--height 1080] [--refresh 60] [--frames /caminho.sock] [--input]\n");
       return 2;
     }
   }
@@ -648,7 +769,10 @@ int main(int argc, char **argv) {
   g_main_loop_run(app.loop);
 
   /* Fecha a sessão do Mutter: o monitor some na hora, e as janelas voltam para as outras telas. */
-  if (app.session) {
+  if (app.remote) {
+    GVariant *result = remote_call(&app, app.remote, REMOTE ".Session", "Stop", NULL, NULL, NULL);
+    if (result) g_variant_unref(result);
+  } else if (app.session) {
     GVariant *result = call(&app, app.session, MUTTER ".Session", "Stop", NULL, NULL, NULL);
     if (result) g_variant_unref(result);
   }

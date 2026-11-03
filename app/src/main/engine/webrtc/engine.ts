@@ -1,4 +1,5 @@
 import type { DeviceKind } from '../../../shared/device'
+import { helperCommand, parseInput } from '../../../shared/input'
 import type {
   Host,
   PrepProgress,
@@ -36,6 +37,7 @@ export interface MediaHooks {
   beforeStart?(want: Want): Promise<{ frames?: string } | void>
   afterStop?(): void
   onError?(error: Error): void
+  onInput?(raw: string): void
 }
 
 /** A janela de exibição de uma sessão de quem mostra. */
@@ -230,7 +232,8 @@ export class WebRtcEngine implements EnginePort {
       onError: (error) => {
         this.log('tela estendida:', error.message)
         this.sending?.end('error')
-      }
+      },
+      onInput: (raw) => this.input(raw)
     })
   }
 
@@ -354,6 +357,16 @@ export class WebRtcEngine implements EnginePort {
   }
   onClientConnected(callback: (device: string, peer?: ConnectedPeer) => void): () => void {
     return this.clientConnected.on(callback)
+  }
+
+  /**
+   * Entrada de quem mostra (mouse, teclado, toque): só com uma sessão aprovada em andamento, e só o que passa pela
+   * conferência do protocolo vira comando para a tela estendida.
+   */
+  private input(raw: string): void {
+    if (!this.sending) return
+    const event = parseInput(raw)
+    if (event) this.deps.virtualScreen?.input?.(helperCommand(event))
   }
 
   /** Muda na hora a posição da tela de quem está conectado. */

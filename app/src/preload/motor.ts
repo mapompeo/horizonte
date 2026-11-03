@@ -11,6 +11,7 @@ const api: MotorApi = {
   config: () => ipcRenderer.invoke(MOTOR_CHANNELS.config),
   signal: (message) => ipcRenderer.send(MOTOR_CHANNELS.signal, message),
   report: (report) => ipcRenderer.send(MOTOR_CHANNELS.report, report),
+  input: (raw) => ipcRenderer.send(MOTOR_CHANNELS.input, raw),
   onMessage: (callback) => {
     const handler = (_event: unknown, message: ToMotorWindow): void => callback(message)
     ipcRenderer.on(MOTOR_CHANNELS.push, handler)

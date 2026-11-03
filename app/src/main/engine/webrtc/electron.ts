@@ -51,6 +51,7 @@ export function primarySize(): { width: number; height: number } {
 const configs = new Map<number, MotorConfig>()
 const signalTargets = new Map<number, (message: MediaMessage) => void>()
 const reportListeners = new Map<number, (report: MotorReport) => void>()
+const inputTargets = new Map<number, (raw: string) => void>()
 let ipcWired = false
 
 /** Liga o IPC das janelas do motor (uma vez por processo). */
@@ -64,6 +65,9 @@ export function wireMotorIpc(): void {
   ipcMain.on(MOTOR_CHANNELS.report, (event, report: MotorReport) =>
     reportListeners.get(event.sender.id)?.(report)
   )
+  ipcMain.on(MOTOR_CHANNELS.input, (event, raw: unknown) => {
+    if (typeof raw === 'string') inputTargets.get(event.sender.id)?.(raw)
+  })
 }
 
 export function motorWindow(
@@ -94,6 +98,7 @@ export function motorWindow(
     configs.delete(id)
     signalTargets.delete(id)
     reportListeners.delete(id)
+    inputTargets.delete(id)
   })
   if (is.dev && process.env['ELECTRON_RENDERER_URL'])
     void window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/motor.html`)
@@ -142,6 +147,8 @@ export interface WindowMediaHooks {
   beforeStart?(want: Want): Promise<{ frames?: string } | void>
   afterStop?(): void
   onError?(error: Error): void
+  /** Entrada que chegou de quem mostra durante a sessão (sem conferir). */
+  onInput?(raw: string): void
 }
 
 /** Liga uma sessão à janela do motor. */
@@ -155,6 +162,7 @@ export function windowMedia(window: BrowserWindow, hooks: WindowMediaHooks = {})
     start(send, want) {
       const mine = ++run
       signalTargets.set(id, send)
+      if (hooks.onInput) inputTargets.set(id, hooks.onInput)
       void (hooks.beforeStart?.(want) ?? Promise.resolve()).then(
         (extra) => mine === run && push({ t: 'start', want, ...(extra ?? {}) }),
         (error: unknown) => {
@@ -168,6 +176,7 @@ export function windowMedia(window: BrowserWindow, hooks: WindowMediaHooks = {})
     stop() {
       run += 1
       signalTargets.delete(id)
+      inputTargets.delete(id)
       push({ t: 'stop' })
       hooks.afterStop?.()
     }
@@ -230,7 +239,9 @@ export function createLinuxVirtualScreen(frames: string | null): VirtualScreen {
             String(request.height),
             '--refresh',
             String(request.fps),
-            ...(frames ? ['--frames', frames] : [])
+            ...(frames ? ['--frames', frames] : []),
+            // Mouse, teclado e toque de quem mostra agem nesta tela (sessão de controle remoto do GNOME).
+            '--input'
           ])
           return {
             onStdout: (callback) => child.stdout.on('data', (chunk) => callback(String(chunk))),
