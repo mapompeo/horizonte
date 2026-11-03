@@ -1,9 +1,7 @@
-Botões em pílula, com a ação escrita no próprio botão.
+Botão em cápsula, com a ação escrita nele.
 
-- **Principal** (`hz-btn-primary`): `ink` com texto em `bg`, altura `control-lg`. Um por tela: a ação que a pessoa veio fazer ("Permitir", "Conectar").
-- **Contornado** (`hz-btn-outline`): `surface`, borda `line`. A segunda ação ou uma ação que interrompe ("Parar").
-- **Discreto** (`hz-btn-ghost`): sem fundo, em `ink-muted`, altura `control-md`. Recusar, voltar.
-- **Pequeno** (`hz-btn-sm`): altura `control-md`, ao lado de um campo.
-- **Link** (`hz-link`): `accent`, para caminhos secundários dentro do texto.
+- **Preenchido** (`hz-btn-filled`): `accent` com texto `on-accent`, em `headline`. Um por tela, para a ação que a pessoa veio fazer.
+- **Simples** (`hz-btn-plain`): texto em `accent`, sem fundo. Ações secundárias e links.
+- **Destrutivo** (`hz-btn-destructive`): texto em `red`. Parar, esquecer, desinstalar.
 
-Quem usa passa o texto. Nunca pinte um botão grande de `accent`, e nunca use "OK".
+Altura mínima `target`. Quem usa passa o texto.
