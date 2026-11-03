@@ -23,6 +23,8 @@ import { Bonjour } from 'bonjour-service'
 import { autoUpdater } from 'electron-updater'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import trayTemplate from '../../resources/trayTemplate.png?asset'
+import trayTemplate2x from '../../resources/trayTemplate@2x.png?asset'
 import { CHANNELS, REPO_URL } from '../shared/api'
 import { isUiEvent } from '../shared/events'
 import { cleanName } from '../shared/names'
@@ -96,6 +98,22 @@ if (process.platform === 'linux' && !process.env.XDG_CURRENT_DESKTOP)
 const PAIR_TIMEOUT_MS = 60_000
 // O list responde em segundos quando o aparelho está pareado.
 const LIST_TIMEOUT_MS = 20_000
+
+/**
+ * Ícone da bandeja. No Mac, a marca de uma cor como "template": o sistema pinta de preto ou de branco conforme a
+ * barra. Nos outros, o ícone do app, que aparece em barra clara ou escura.
+ */
+function trayImage(): Electron.NativeImage {
+  if (process.platform !== 'darwin')
+    return nativeImage.createFromPath(icon).resize({ width: 16, height: 16 })
+  const image = nativeImage.createFromPath(trayTemplate)
+  image.addRepresentation({
+    scaleFactor: 2,
+    buffer: nativeImage.createFromPath(trayTemplate2x).toPNG()
+  })
+  image.setTemplateImage(true)
+  return image
+}
 
 /** Os botões de janela ficam por cima da interface, na cor do fundo e discretos. */
 /** Área de trabalho em pixels de verdade, com todas as telas juntas (é o que o Deskflow enxerga). */
@@ -178,7 +196,7 @@ function createWindow(controller: Controller): void {
     { hide: () => window.hide(), show: showWindow },
     {
       open: () => {
-        tray ??= new Tray(nativeImage.createFromPath(icon).resize({ width: 16, height: 16 }))
+        tray ??= new Tray(trayImage())
         tray.setToolTip('Horizonte: conectado')
         tray.setContextMenu(
           Menu.buildFromTemplate([

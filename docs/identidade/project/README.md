@@ -48,9 +48,8 @@ O logo é um só: o sol nascendo sobre o horizonte, e o horizonte passando da bo
 
 - **Grade de 8 pt:** `space-1` a `space-5` (4, 8, 16, 24 e 32px).
 - **Altura mínima de toque:** `target` (44px).
-- **Dois cantos só:**
-  - `radius-group` (10px) para grupos e cartões;
-  - `radius-capsule` para botões, estados e o seletor.
+- **Tudo em pílula:** botões, campos, seletor, linhas, estados e ícones usam `radius-capsule`.
+- **Só o que é alto demais para pílula** (grupos de várias linhas e cartões) usa `radius-group` (28px).
 - **Sem sombras, degradês nem bordas coloridas.** Grupos se separam pelo fundo `surface` sobre `background`, como nos Ajustes.
 
 ## Movimento
