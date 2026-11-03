@@ -1034,3 +1034,23 @@ input,
   font-size: 15px;
   color: var(--muted);
 }
+
+/* Aviso de driver de vídeo faltando: discreto, com o comando selecionável de uma vez. */
+.video-hint {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  text-align: left;
+}
+.video-hint .hint {
+  margin: 0;
+}
+.video-hint-command {
+  font:
+    12px/1.4 ui-monospace,
+    monospace;
+  user-select: all;
+  word-break: break-all;
+}

@@ -11,6 +11,7 @@ const api: HorizonteApi = {
   listHosts: () => ipcRenderer.invoke(CHANNELS.hosts),
   listMousePeers: () => ipcRenderer.invoke(CHANNELS.mousePeers),
   ownScreen: () => ipcRenderer.invoke(CHANNELS.mouseScreen),
+  videoHint: () => ipcRenderer.invoke(CHANNELS.videoHint),
   deviceKind: (address?: string, name?: string) =>
     ipcRenderer.invoke(CHANNELS.deviceKind, address, name),
   getWebAccess: () => ipcRenderer.invoke(CHANNELS.webAccess),

@@ -176,9 +176,9 @@
 
         </div>
         <div class="captions" id="captions">
-          <div class="cap"><h3>Abra o Horizonte.</h3><p>Na primeira vez ele instala o motor de transmissão e o monitor virtual. Você só clica em Começar.</p></div>
+          <div class="cap"><h3>Abra o Horizonte.</h3><p>Na primeira vez ele prepara o monitor virtual e o que mais precisar. Você só clica em Começar.</p></div>
           <div class="cap"><h3>Diga quem envia e quem mostra.</h3><p>O computador principal envia. O outro dispositivo mostra. Da próxima vez, cada um já abre no seu papel.</p></div>
-          <div class="cap"><h3>Ele acha o outro sozinho.</h3><p>Os dois se encontram pela rede local, sem criar conta. Se o pareamento pedir, digite o PIN mostrado no outro dispositivo.</p></div>
+          <div class="cap"><h3>Ele acha o outro sozinho.</h3><p>Os dois se encontram pela rede local, sem criar conta. No Linux, basta permitir no outro computador; no Windows e no Mac, se o pareamento pedir, digite o PIN mostrado no outro dispositivo.</p></div>
           <div class="cap"><h3>Arraste a janela para o lado.</h3><p>O outro dispositivo vira uma extensão da sua tela. É só levar a janela até a borda.</p></div>
           <div class="cap"><h3>Ajuste a qualidade ao vivo.</h3><p>Mais nitidez ou mais leveza, com um toque. O selo mostra quem está conectado.</p></div>
         </div>
@@ -205,7 +205,7 @@
   <section class="wrap radar-sec" id="rede">
     <div class="radar-copy">
       <h2 data-mask><span class="mask"><span>Ele acha o outro</span></span><span class="mask"><span class="grad">sozinho.</span></span></h2>
-      <p data-rise>Pela rede local, sem criar conta. A descoberta é automática; se necessário, conecte pelo IP e digite o PIN mostrado no outro dispositivo.</p>
+      <p data-rise>Pela rede local, sem criar conta. A descoberta é automática; se necessário, conecte pelo IP. No Linux, quem envia só clica em Permitir; no Windows e no Mac, o pareamento pode pedir o PIN mostrado no outro dispositivo.</p>
     </div>
     <div class="radar" id="radar" aria-hidden="true">
       <i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i><i class="sweep"></i>
@@ -257,9 +257,10 @@
       <span class="mask"><span class="grad">Sem configurar.</span></span>
     </h2>
     <p data-rise>
-      Os dois computadores conversam direto pela sua rede. Por baixo, projetos abertos e maduros
-      transmitem a imagem; por cima, uma janela que só pede o que importa.
-      <span class="credit">Sunshine · Moonlight · Virtual Display Driver</span>
+      Os dois computadores conversam direto pela sua rede. No Linux, o próprio Horizonte transmite a
+      imagem com WebRTC; no Windows e no Mac, por enquanto, projetos abertos e maduros fazem esse
+      papel. Por cima, uma janela que só pede o que importa.
+      <span class="credit">WebRTC · Sunshine e Moonlight (Windows e Mac) · Virtual Display Driver (Windows)</span>
     </p>
   </div>
 
@@ -336,7 +337,7 @@
   <div class="wrap">
     <span class="foot-brand"><img src="./icon.png" alt="" />Horizonte</span>
     <span class="foot-os" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-windows"/></svg><svg class="ico" aria-hidden="true"><use href="#i-linux"/></svg><svg class="ico" aria-hidden="true"><use href="#i-apple"/></svg></span>
-    <span class="foot-credit">GPL-3.0 · usa Sunshine, Moonlight e Virtual Display Driver</span>
+    <span class="foot-credit">GPL-3.0 · motor próprio com WebRTC; Sunshine e Moonlight no Windows e no Mac</span>
     <a class="gh" href="https://github.com/mapompeo/horizonte"><svg class="ico" aria-hidden="true"><use href="#i-github"/></svg><span>github.com/mapompeo/horizonte</span></a>
   </div>
 </footer>

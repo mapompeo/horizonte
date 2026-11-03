@@ -41,6 +41,12 @@ import { runDevDemo } from './dev-demo'
 import { MOTOR_USAGE, parseMotorArgs, type MotorArgs } from './motor/args'
 import { prepareMotorSwitches, runMotorBench } from './motor/bench'
 import { createAppWebRtcEngine } from './engine/webrtc/wire'
+import {
+  DRIVER_DIRS,
+  parseOsRelease,
+  videoDriverHint,
+  type VideoHint
+} from './platform/linux/video-driver'
 import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
 import { createRealMouseEngine } from './engine/deskflow/wire'
@@ -205,6 +211,23 @@ function createWindow(controller: Controller): void {
   } else {
     void window.loadFile(join(__dirname, '../renderer/index.html'))
   }
+}
+
+/** Linux: confere se a placa de vídeo tem o driver VA-API (sem ele, o vídeo atrasa muito). */
+async function readVideoHint(): Promise<VideoHint | null> {
+  const cards = await readdir('/sys/class/drm').catch(() => [] as string[])
+  const vendors = await Promise.all(
+    cards
+      .filter((card) => /^card\d+$/.test(card))
+      .map((card) => readFile(`/sys/class/drm/${card}/device/vendor`, 'utf8').catch(() => ''))
+  )
+  // HORIZONTE_DRI_DIRS: outras pastas de drivers (para testar o aviso sem desinstalar nada).
+  const dirs = process.env['HORIZONTE_DRI_DIRS']?.split(':') ?? DRIVER_DIRS
+  const drivers = (
+    await Promise.all(dirs.map((dir) => readdir(dir).catch(() => [] as string[])))
+  ).flat()
+  const os = parseOsRelease(await readFile('/etc/os-release', 'utf8').catch(() => ''))
+  return videoDriverHint({ vendors: vendors.filter(Boolean), drivers, os })
 }
 
 async function boot(): Promise<void> {
@@ -624,6 +647,7 @@ async function boot(): Promise<void> {
     return presence.withKinds(peers)
   })
   ipcMain.handle(CHANNELS.mouseScreen, () => desktopSize(virtualDisplay()))
+  ipcMain.handle(CHANNELS.videoHint, () => (process.platform === 'linux' ? readVideoHint() : null))
   ipcMain.handle(CHANNELS.deviceKind, async (_event, address: unknown, name: unknown) => {
     if (typeof name !== 'string') return kindReady
     const where = typeof address === 'string' ? address : undefined

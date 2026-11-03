@@ -1,4 +1,5 @@
 <script lang="ts">
+  import VideoHint from '../components/VideoHint.svelte'
   import { onMount } from 'svelte'
   import type { WebAccess } from '../../../shared/types'
   import { copyFor, readySubtitle } from '../lib/copy'
@@ -37,6 +38,7 @@
 {#if copy.pill}<Pill tone={copy.pill.tone}>{copy.pill.text}</Pill>{/if}
 <h1 class="title">{copy.title}</h1>
 <p class="subtitle">{readySubtitle(deviceName)}</p>
+<VideoHint />
 
 {#if window.horizonte.engine === 'sunshine'}
   <div class="stack gap-sm">

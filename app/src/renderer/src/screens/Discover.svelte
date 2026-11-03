@@ -1,4 +1,5 @@
 <script lang="ts">
+  import VideoHint from '../components/VideoHint.svelte'
   import DeviceIcon from '../components/DeviceIcon.svelte'
   import { guessKind } from '../../../shared/device'
   import { onMount } from 'svelte'
@@ -75,3 +76,4 @@
     {/if}
   </div>
 </div>
+<VideoHint />
