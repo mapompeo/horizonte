@@ -97,6 +97,10 @@
       </span>
     {:else if searching}
       <span class="searching">Procurando outros computadores com o Horizonte no modo Mouse…</span>
+    {:else}
+      <span class="searching"
+        >Nenhum computador encontrado. Abra o Horizonte no outro e escolha Mouse.</span
+      >
     {/if}
     {#if manual}
       <form

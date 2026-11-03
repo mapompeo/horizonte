@@ -52,6 +52,10 @@
   <div class="stack gap-xs">
     {#if searching}
       <span class="searching">Procurando outros dispositivos…</span>
+    {:else if hosts.length === 0}
+      <span class="searching"
+        >Nenhum dispositivo encontrado. Abra o Horizonte no outro e escolha Enviar.</span
+      >
     {/if}
     {#if manual}
       <form
