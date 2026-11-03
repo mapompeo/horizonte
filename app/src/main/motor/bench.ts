@@ -103,16 +103,18 @@ async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void
   })
   const identity = await reports.identity()
 
-  if (args.clock) {
-    const { bounds } = screen.getPrimaryDisplay()
-    motorWindow(
+  // O relógio fica na tela que vai no vídeo: a principal, ou a estendida quando ela existir.
+  let clock: ReturnType<typeof motorWindow> | null = null
+  const openClock = (displayId: number | null): void => {
+    const display =
+      screen.getAllDisplays().find((d) => d.id === displayId) ?? screen.getPrimaryDisplay()
+    clock?.destroy()
+    clock = motorWindow(
       { role: 'clock', synthetic: false, testFrames: null, showStats: false },
-      {
-        ...bounds,
-        fullscreen: true
-      }
+      { ...display.bounds, fullscreen: true }
     )
   }
+  if (args.clock && !args.extend) openClock(null)
 
   const sender = await startSender({
     ...(args.port !== undefined ? { port: args.port } : {}),
@@ -128,10 +130,13 @@ async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void
           if (!virtual) return
           target = await virtual.ensure({ width: want.width, height: want.height, fps: want.fps })
           log(`tela estendida criada: ${want.width}x${want.height}`)
+          if (args.clock) openClock(target)
           return frames ? { frames } : undefined
         },
         afterStop: () => {
           target = null
+          clock?.destroy()
+          clock = null
           void virtual?.release()
         }
       }),
