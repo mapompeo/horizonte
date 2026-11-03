@@ -9,7 +9,6 @@
   --accent: #007aff;
   --on-accent: #ffffff;
   --green: #34c759;
-  --gray: #8e8e93;
   --red: #ff3b30;
 }
 [data-theme="dark"] {
@@ -22,7 +21,6 @@
   --accent: #0a84ff;
   --on-accent: #ffffff;
   --green: #30d158;
-  --gray: #8e8e93;
   --red: #ff453a;
 }
 :root {
@@ -34,10 +32,10 @@
   --radius-group: 28px;
   --radius-capsule: 999px;
   --target: 44px;
+  --segmented: 32px;
+  --titlebar: 64px;
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
 }
-.large-title { font-family: var(--font-sans); font-size: 34px; line-height: 41px; font-weight: 700; }
-.title { font-family: var(--font-sans); font-size: 22px; line-height: 28px; font-weight: 700; }
-.headline { font-family: var(--font-sans); font-size: 17px; line-height: 22px; font-weight: 600; }
+.title { font-family: var(--font-sans); font-size: 28px; line-height: 34px; font-weight: 700; }
 .body { font-family: var(--font-sans); font-size: 17px; line-height: 22px; font-weight: 400; }
 .footnote { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 400; }

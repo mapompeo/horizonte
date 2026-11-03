@@ -3,25 +3,14 @@
   --bg: #f2f2f7;
   --fg: #000000;
   --muted: rgba(60, 60, 67, 0.6);
-  --faint: rgba(60, 60, 67, 0.6);
   --line: rgba(60, 60, 67, 0.29);
-  --line-soft: rgba(60, 60, 67, 0.29);
   --card: #ffffff;
   --seg: rgba(118, 118, 128, 0.12);
   --seg-on: #ffffff;
-  --seg-shadow: none;
-  --ok-bg: transparent;
-  --ok-fg: rgba(60, 60, 67, 0.6);
   --ok-dot: #34c759;
-  --wait-bg: rgba(118, 118, 128, 0.12);
-  --wait-fg: rgba(60, 60, 67, 0.6);
-  --wait-dot: #8e8e93;
   --accent: #007aff;
   --on-accent: #ffffff;
-  --switch-on: #34c759;
-  --danger-bg: rgba(255, 59, 48, 0.12);
   --danger-fg: #ff3b30;
-  --card-shadow: none;
   --radius-group: 28px;
   --font:
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI Variable',
@@ -34,20 +23,12 @@
     --bg: #000000;
     --fg: #ffffff;
     --muted: rgba(235, 235, 245, 0.6);
-    --faint: rgba(235, 235, 245, 0.6);
     --line: rgba(84, 84, 88, 0.6);
-    --line-soft: rgba(84, 84, 88, 0.6);
     --card: #1c1c1e;
     --seg: rgba(118, 118, 128, 0.24);
     --seg-on: #636366;
-    --ok-fg: rgba(235, 235, 245, 0.6);
     --ok-dot: #30d158;
-    --wait-bg: rgba(118, 118, 128, 0.24);
-    --wait-fg: rgba(235, 235, 245, 0.6);
-    --wait-dot: #8e8e93;
     --accent: #0a84ff;
-    --switch-on: #30d158;
-    --danger-bg: rgba(255, 69, 58, 0.18);
     --danger-fg: #ff453a;
   }
 }
@@ -128,20 +109,17 @@ input:focus-visible {
 
 .title {
   margin: 0;
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 700;
-  line-height: 41px;
+  line-height: 34px;
   white-space: pre-line;
   max-width: 560px;
 }
 
-.title-lg {
-  font-size: 34px;
-  line-height: 41px;
-}
+.title-lg,
 .title-md {
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 28px;
+  line-height: 34px;
 }
 
 .subtitle {
@@ -160,7 +138,7 @@ input:focus-visible {
 }
 .hint-faint {
   font-size: 13px;
-  color: var(--faint);
+  color: var(--muted);
 }
 .hint strong {
   color: var(--fg);
@@ -214,7 +192,7 @@ input:focus-visible {
   position: relative;
   z-index: 1;
   height: 32px;
-  padding: 0 18px;
+  padding: 0 16px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -224,11 +202,11 @@ input:focus-visible {
   transition: color 0.25s ease;
 }
 
-/* O visual mede 38 px; a área clicável chega a 44 px sem mudar o desenho. */
+/* O visual mede 36 px com o trilho; a área clicável chega a 44 px sem mudar o desenho. */
 .seg-item::after {
   content: '';
   position: absolute;
-  inset: -3px -1px;
+  inset: -6px 0;
 }
 
 .seg-item.on {
@@ -286,7 +264,7 @@ input:focus-visible {
 .btn-sm {
   min-height: 44px;
   padding: 0 20px;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .link {
@@ -295,7 +273,7 @@ input:focus-visible {
   border: 0;
   background: transparent;
   color: var(--accent);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 400;
 }
 
@@ -311,11 +289,11 @@ input:focus-visible {
 }
 
 .pill-ok {
-  color: var(--ok-fg);
-  background: var(--ok-bg);
+  color: var(--muted);
+  background: transparent;
 }
 .pill-wait {
-  color: var(--wait-fg);
+  color: var(--muted);
 }
 .dot {
   width: 8px;
@@ -326,14 +304,13 @@ input:focus-visible {
   background: var(--ok-dot);
 }
 .pill-wait .dot {
-  background: var(--wait-dot);
+  background: var(--muted);
 }
 
 /* Instalar e escolher */
 .wordmark {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
-  letter-spacing: 0.01em;
 }
 
 .choices {
@@ -359,8 +336,8 @@ input:focus-visible {
 }
 
 .choice-name {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
 }
 .choice-sub {
   font-size: 13px;
@@ -373,7 +350,7 @@ input:focus-visible {
   width: 280px;
   height: 4px;
   border-radius: 999px;
-  background: var(--line-soft);
+  background: var(--line);
 }
 .bar {
   overflow: hidden;
@@ -402,7 +379,7 @@ input:focus-visible {
   width: 72px;
   height: 72px;
   border-radius: 999px;
-  background: var(--wait-bg);
+  background: var(--seg);
   color: var(--fg);
   display: flex;
   align-items: center;
@@ -410,7 +387,7 @@ input:focus-visible {
 }
 
 .badge-danger {
-  background: var(--danger-bg);
+  background: var(--seg);
   color: var(--danger-fg);
   width: 64px;
   height: 64px;
@@ -430,9 +407,8 @@ input:focus-visible {
   min-width: 150px;
 }
 .stepper-num {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 600;
-  letter-spacing: -0.02em;
 }
 .stepper-cap {
   font-size: 13px;
@@ -446,7 +422,7 @@ input:focus-visible {
   border: 0;
   background: var(--seg);
   color: var(--accent);
-  font-size: 22px;
+  font-size: 17px;
   line-height: 1;
 }
 
@@ -512,8 +488,8 @@ input:focus-visible {
   align-items: center;
   justify-content: flex-end;
   padding: 0 16px;
-  font-size: 12px;
-  color: var(--faint);
+  font-size: 13px;
+  color: var(--muted);
 }
 .map-screen {
   position: absolute;
@@ -523,7 +499,7 @@ input:focus-visible {
   justify-content: center;
   gap: 2px;
   border-radius: 7px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -555,7 +531,7 @@ input:focus-visible {
   cursor: grabbing;
   transition: none;
   z-index: 2;
-  box-shadow: var(--card-shadow);
+  box-shadow: none;
 }
 .map-peer:focus-visible {
   outline: 3px solid var(--accent);
@@ -589,7 +565,7 @@ input:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -633,23 +609,22 @@ input:focus-visible {
   width: 100%;
   max-width: 500px;
   align-self: center;
-  padding: 8px 20px 28px;
+  padding: 8px 16px 32px;
   display: flex;
   flex-direction: column;
-  gap: 26px;
+  gap: 24px;
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 .group-label {
-  margin: 0 4px;
+  margin: 0 16px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--muted);
-  letter-spacing: 0.02em;
 }
 
 .card {
@@ -658,15 +633,16 @@ input:focus-visible {
   border-radius: var(--radius-group);
 }
 .card-pad {
-  padding: 14px 18px 12px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .row {
   min-height: 44px;
-  padding: 0 18px;
+  padding: 0 16px;
+  gap: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -676,7 +652,11 @@ input:focus-visible {
 .row + .row,
 /* O diálogo do diagnóstico fica entre duas linhas e não pode apagar a divisória. */
 dialog + .row {
-  border-top: 1px solid var(--line-soft);
+  /* Divisória recuada à esquerda, como nos Ajustes. */
+  background-image: linear-gradient(var(--line), var(--line));
+  background-size: calc(100% - 16px) 1px;
+  background-position: right top;
+  background-repeat: no-repeat;
 }
 .row-value {
   color: var(--muted);
@@ -686,7 +666,7 @@ dialog + .row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font-size: 15px;
+  font-size: 17px;
 }
 .range-row strong {
   font-weight: 600;
@@ -700,34 +680,37 @@ input[type='range'] {
 
 .text-input {
   width: 180px;
-  height: 44px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
   border-radius: 999px;
-  background: var(--bg);
+  background: var(--seg);
   color: var(--fg);
-  font-size: 15px;
+  font-size: 17px;
   text-align: right;
 }
 
 .adv-block {
-  padding: 14px 18px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .adv-block + .adv-block {
-  border-top: 1px solid var(--line-soft);
+  background-image: linear-gradient(var(--line), var(--line));
+  background-size: calc(100% - 16px) 1px;
+  background-position: right top;
+  background-repeat: no-repeat;
 }
 .adv-label {
-  font-size: 15px;
+  font-size: 17px;
 }
 .adv-note {
   margin: 0;
-  padding: 0 18px 14px;
+  padding: 0 16px 12px;
   font-size: 13px;
   color: var(--muted);
-  line-height: 1.4;
+  line-height: 18px;
 }
 
 .switch {
@@ -750,7 +733,7 @@ input[type='range'] {
 }
 
 .switch.on {
-  background: var(--switch-on);
+  background: var(--ok-dot);
   justify-content: flex-end;
 }
 .switch-thumb {
@@ -765,7 +748,7 @@ input[type='range'] {
 .row-button {
   width: 100%;
   border: 0;
-  background: transparent;
+  background-color: transparent;
   color: var(--fg);
   font: inherit;
   font-size: 17px;
@@ -780,11 +763,11 @@ input[type='range'] {
 }
 .row-button::after {
   content: '›';
-  color: var(--faint);
-  font-size: 20px;
+  color: var(--muted);
+  font-size: 17px;
 }
 .row-button:hover {
-  background: var(--seg);
+  background-color: var(--seg);
 }
 .row-button.danger {
   color: var(--danger-fg);
@@ -827,7 +810,7 @@ input[type='range'] {
   text-align: center;
 }
 .about-name {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
 }
 .about-line {
@@ -850,15 +833,15 @@ input[type='range'] {
   justify-content: center;
   gap: 10px;
   min-height: 28px;
-  font-size: 12px;
-  color: var(--faint);
+  font-size: 13px;
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 .foot-link {
   border: 0;
   background: transparent;
   color: var(--accent);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   padding: 6px 4px;
   cursor: pointer;
@@ -879,7 +862,7 @@ input[type='range'] {
   padding: 8px 16px;
   background: var(--accent);
   color: #ffffff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -890,7 +873,7 @@ input[type='range'] {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .btn:disabled {
@@ -960,7 +943,7 @@ input[type='range'] {
 }
 
 .copy.copied {
-  color: var(--ok-fg);
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -989,11 +972,18 @@ input,
   -webkit-app-region: no-drag;
 }
 
-/* O topo fica acima da faixa de arraste, e o lado direito é livre para os botões da janela. */
+/* O topo fica preso em cima, com o fundo da janela: nada rola por baixo dos botões da janela.
+   O lado direito (Windows e Linux) e o esquerdo (macOS) ficam livres para eles. */
 .topbar,
 .sheet-head {
-  position: relative;
-  z-index: 1;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+  -webkit-app-region: drag;
+}
+[data-platform='darwin'] .sheet-head {
+  padding-left: 84px;
 }
 
 .manual {
@@ -1013,7 +1003,7 @@ input,
   justify-content: space-between;
   gap: 16px;
   width: min(320px, 100%);
-  font-size: 15px;
+  font-size: 17px;
   color: var(--muted);
 }
 

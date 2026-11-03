@@ -141,8 +141,9 @@ function desktopSize(exclude: number | null = null): ScreenSize {
 function overlayFor(): { color: string; symbolColor: string; height: number } {
   const dark = nativeTheme.shouldUseDarkColors
   return {
-    color: dark ? '#101012' : '#FBFBFD',
-    symbolColor: dark ? '#9A9AA2' : '#6E6E73',
+    // Mesmo fundo da janela (--bg no CSS), para os botões não parecerem uma faixa à parte.
+    color: dark ? '#000000' : '#F2F2F7',
+    symbolColor: dark ? '#FFFFFF' : '#000000',
     height: 64
   }
 }
@@ -163,7 +164,7 @@ function createWindow(controller: Controller): void {
     ...(process.platform === 'darwin'
       ? { trafficLightPosition: { x: 20, y: 25 } }
       : { titleBarOverlay: overlayFor() }),
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#101012' : '#FBFBFD',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#000000' : '#F2F2F7',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       additionalArguments: [`--horizonte-engine=${USE_WEBRTC ? 'webrtc' : 'sunshine'}`],

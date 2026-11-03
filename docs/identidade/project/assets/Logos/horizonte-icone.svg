@@ -1,13 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Horizonte">
-  <!-- Ícone do app: o sol nasce sobre o horizonte e o sinal se espalha; o horizonte passa da borda (a tela que continua). -->
+  <!-- Ícone do app: o sol nasce sobre o horizonte e o sinal se espalha. Branco no preto, centrado. -->
   <defs>
     <clipPath id="tile"><rect width="1024" height="1024" rx="228"/></clipPath>
   </defs>
   <g clip-path="url(#tile)">
-    <rect width="1024" height="1024" fill="#007AFF"/>
-    <path d="M300 600A112 112 0 0 1 524 600Z" fill="#FFFFFF"/>
-    <path d="M216 600A196 196 0 0 1 608 600" fill="none" stroke="#FFFFFF" stroke-width="52" stroke-linecap="round" opacity="0.6"/>
-    <path d="M132 600A280 280 0 0 1 692 600" fill="none" stroke="#FFFFFF" stroke-width="52" stroke-linecap="round" opacity="0.3"/>
-    <rect x="132" y="660" width="940" height="72" rx="36" fill="#FFFFFF"/>
+    <rect width="1024" height="1024" fill="#000000"/>
+    <!-- Contorno interno: separa o ícone de docks e fundos escuros. -->
+    <rect x="6" y="6" width="1012" height="1012" rx="222" fill="none" stroke="#2C2C2E" stroke-width="12"/>
+    <g fill="none" stroke="#FFFFFF" stroke-width="56" stroke-linecap="round">
+      <path d="M336 606A176 176 0 0 1 688 606"/>
+      <path d="M228 606A284 284 0 0 1 796 606"/>
+    </g>
+    <path d="M416 606A96 96 0 0 1 608 606Z" fill="#FFFFFF"/>
+    <rect x="200" y="662" width="624" height="64" rx="32" fill="#FFFFFF"/>
   </g>
 </svg>

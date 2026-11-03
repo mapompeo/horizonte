@@ -25,26 +25,26 @@
       "files": {
         "horizonte-icone.svg": {
           "name": "horizonte-icone.svg",
-          "blob": "8e3fa059d726ed93fac0085c233a98e4",
-          "size": 732,
+          "blob": "6e5be21bbb5c895ef96ae5dc7c0c919e",
+          "size": 771,
           "type": "image/svg+xml"
         },
         "horizonte-marca-escura.svg": {
           "name": "horizonte-marca-escura.svg",
-          "blob": "c4e11d4e7712ddf2e2e3c673e4dcf936",
-          "size": 535,
+          "blob": "8d106b9f0fe14cb9980b10be61f144f5",
+          "size": 431,
           "type": "image/svg+xml"
         },
         "horizonte-marca-clara.svg": {
           "name": "horizonte-marca-clara.svg",
-          "blob": "0575f35dff5c848c6285f1cc2655d61d",
-          "size": 535,
+          "blob": "379bb92e9e4a96f9bb6805fd1ddbc311",
+          "size": 431,
           "type": "image/svg+xml"
         },
         "horizonte-marca-mono.svg": {
           "name": "horizonte-marca-mono.svg",
-          "blob": "f748c8aa683d15439f16a20f32429b70",
-          "size": 535,
+          "blob": "1789a5ccb0b10884cbe7fceac47e2a89",
+          "size": 431,
           "type": "image/svg+xml"
         }
       }
@@ -56,8 +56,8 @@
   },
   "lastChange": {
     "by": "Claude",
-    "at": "2026-11-03T19:30:00Z",
+    "at": "2026-11-03T20:10:00Z",
     "via": "Claude Code",
-    "note": "Logo novo sem laranja (sol e ondas de sinal em branco sobre o azul do sistema), estado esperando em cinza e padrão pílula em tudo."
+    "note": "Logo preto e branco e centrado; três tamanhos de texto; cores reduzidas a 10; seletor de 32px, linhas com margem de 16 e divisória recuada; barra da janela com o fundo do app."
   }
 }

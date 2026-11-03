@@ -1,17 +1,17 @@
 <!-- @dsCard height=288 -->
 <div class="cover">
-  <svg class="art" viewBox="0 0 480 288" aria-hidden="true">
+  <svg class="art" viewBox="-32 0 480 288" aria-hidden="true">
     <!--
-      blocos: accent 480×288 (o azul do ícone, como laje), sol branco r=56 com duas ondas, faixa branca 24px que sai pela borda direita
-      arranjo: uma laje com o logo em grande; o horizonte atravessa e sangra pela direita, como no ícone
+      blocos: preto 480×288 (o quadrado do ícone, como laje), sol branco r=56 com duas ondas, faixa branca 24px que sai pela borda direita
+      arranjo: uma laje com o logo em grande; o desenho fica centrado na laje, como no ícone
       padrão: motivo literal (o sol nascendo sobre o horizonte, com o sinal), um só, sem repetição; escolhido porque o README pede deferência e pouca cor
       passos e raios: space-4 (24), space-5 (32); radius-capsule na faixa
     -->
     <rect class="slab" x="0" y="0" width="480" height="288" />
     <path class="sun" d="M152 176A56 56 0 0 1 264 176Z" />
-    <path class="wave" d="M110 176A98 98 0 0 1 306 176" opacity="0.6" />
-    <path class="wave" d="M68 176A140 140 0 0 1 348 176" opacity="0.3" />
-    <rect class="horizon" x="96" y="200" width="420" height="24" rx="12" />
+    <path class="wave" d="M110 176A98 98 0 0 1 306 176" />
+    <path class="wave" d="M68 176A140 140 0 0 1 348 176" />
+    <rect class="horizon" x="68" y="200" width="280" height="24" rx="12" />
   </svg>
   <div class="name">
     <h1>Horizonte</h1>
@@ -21,7 +21,7 @@
 <style>
   .cover { position: relative; width: 960px; height: 288px; background: var(--background); overflow: hidden; font-family: var(--font-sans); }
   .art { position: absolute; left: 480px; top: 0; width: 480px; height: 288px; }
-  .slab { fill: #007aff; }
+  .slab { fill: #000000; }
   .sun { fill: #ffffff; }
   .wave { fill: none; stroke: #ffffff; stroke-width: 26; stroke-linecap: round; }
   .horizon { fill: #ffffff; }
