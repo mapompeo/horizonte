@@ -14,7 +14,8 @@ defaults:
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Na main, uma de cada vez e sem cancelar: cancelar no meio deixaria uma versão pela metade.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -35,11 +36,45 @@ jobs:
       - run: npm run lint
       - run: npm test
 
-  package:
+  # Versão nova a cada mudança do app que entra na main (ou numa tag v* feita à mão). O app instalado acha essa versão
+  # sozinho, baixa e pede só para reiniciar: ninguém precisa baixar nem rodar comando.
+  version:
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Escolher a versão
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            test "$version" = "$(node -p 'require("./package.json").version')"
+          else
+            version=$(gh release list --limit 100 --json tagName -q '.[].tagName' |
+              node ../.github/scripts/next-version.mjs "$(node -p 'require("./package.json").version')")
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Versão: $version"
+      - name: Rascunho da versão (vira pública só com todos os instaladores anexados)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.pick.outputs.version }}
+        run: |
+          gh release view "v$VERSION" >/dev/null 2>&1 ||
+            gh release create "v$VERSION" --draft --prerelease --target "$GITHUB_SHA" \
+              --title "Horizonte $VERSION" --notes "$(git log -1 --format=%s "$GITHUB_SHA")"
+
+  package:
+    needs: version
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - os: windows-latest
@@ -62,9 +97,8 @@ jobs:
       - name: Bibliotecas do auxiliar do monitor virtual (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-dev libglib2.0-dev
-      - name: Conferir que a tag bate com a versão do app
-        shell: bash
-        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
+      - name: Usar a versão escolhida
+        run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run ${{ matrix.script }}
       - name: Conferir a assinatura do app do Mac
         if: matrix.os == 'macos-latest'
@@ -75,14 +109,23 @@ jobs:
             codesign -dv "$APP" 2>&1 | grep -E "Signature=adhoc|Identifier|Format"
           done
       - name: Anexar à versão
-        uses: softprops/action-gh-release@v2
-        with:
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          files: |
-            app/dist/Horizonte-*-setup.exe
-            app/dist/Horizonte-*.AppImage
-            app/dist/Horizonte-*.deb
-            app/dist/Horizonte-*.dmg
-            app/dist/latest*.yml
-            app/dist/beta*.yml
-            app/dist/*.blockmap
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(dist/Horizonte-*-setup.exe dist/Horizonte-*.AppImage dist/Horizonte-*.deb dist/Horizonte-*.dmg \
+            dist/latest*.yml dist/beta*.yml dist/*.blockmap)
+          ls -la "${files[@]}"
+          gh release upload "v${{ needs.version.outputs.version }}" "${files[@]}" --clobber
+
+  publish:
+    needs: [version, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publicar a versão
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "v${{ needs.version.outputs.version }}" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease

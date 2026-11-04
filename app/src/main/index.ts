@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  Notification,
   nativeTheme,
   safeStorage,
   screen,
@@ -15,7 +16,7 @@ import {
 } from 'electron'
 import { execFile, spawn } from 'node:child_process'
 import { randomInt } from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { homedir, hostname, networkInterfaces, release as osRelease } from 'node:os'
 import { join } from 'node:path'
@@ -608,10 +609,8 @@ async function boot(): Promise<void> {
   autoUpdater.allowPrerelease = app.getVersion().includes('-')
   autoUpdater.allowDowngrade = false
   const updates = createUpdater({
-    supported:
-      app.isPackaged &&
-      process.platform !== 'darwin' &&
-      (process.platform !== 'linux' || Boolean(process.env.APPIMAGE)),
+    supported: app.isPackaged && updatesSupported(),
+    autoDownload: true,
     currentVersion: app.getVersion(),
     check: () => autoUpdater.checkForUpdates(),
     download: () => autoUpdater.downloadUpdate(),
@@ -633,6 +632,27 @@ async function boot(): Promise<void> {
       window.webContents.send(CHANNELS.updatePush, status)
     )
   })
+  // Pronta para instalar: avisa uma vez, e o clique já reinicia atualizado.
+  let announced = ''
+  updates.subscribe((status) => {
+    if (status.phase !== 'ready' || announced === status.version || !Notification.isSupported())
+      return
+    announced = status.version ?? ''
+    const note = new Notification({
+      title: 'Atualização pronta',
+      body: `Clique para reiniciar o Horizonte na versão ${(status.version ?? '').replace(/-beta\./, ' beta ')}.`
+    })
+    note.on('click', () => void updates.perform('install'))
+    note.show()
+  })
+  // Além de ao abrir, confere de tempos em tempos: o app costuma ficar aberto na bandeja por dias.
+  setInterval(
+    () => {
+      if (['idle', 'current', 'error'].includes(updates.status().phase))
+        void updates.perform('check')
+    },
+    4 * 60 * 60 * 1000
+  ).unref()
   ipcMain.handle(CHANNELS.updateStatus, () => updates.status())
   const uninstall = createUninstaller({
     platform: process.platform,
@@ -778,6 +798,21 @@ async function boot(): Promise<void> {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
+
+/**
+ * Onde o app consegue se atualizar sozinho: Windows (instalador), AppImage e o pacote .deb (o sistema pede a senha
+ * numa janela para instalar a versão nova). No Mac, sem assinatura da Apple, não dá: lá fica o link do GitHub.
+ */
+function updatesSupported(): boolean {
+  if (process.platform === 'win32') return true
+  if (process.platform !== 'linux') return false
+  if (process.env.APPIMAGE) return true
+  try {
+    return readFileSync(join(process.resourcesPath, 'package-type'), 'utf8').trim() === 'deb'
+  } catch {
+    return false
+  }
+}
 
 /** `--motor-send` ou `--motor-receive=IP`: teste do motor novo, no lugar do app (ver `motor/args.ts`). */
 function readMotorArgs(): MotorArgs | null | 'invalid' {

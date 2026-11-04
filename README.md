@@ -18,6 +18,8 @@ A versão mais recente fica em [Releases](https://github.com/mapompeo/horizonte/
 | Linux (Ubuntu, Debian 13, Fedora, openSUSE, Arch e derivados; Xorg ou Wayland) | `.AppImage` ou `.deb` | Envia e recebe; em Wayland espelha a tela principal (sem monitor extra); em teste |
 | macOS (chip Apple e Intel) | `.dmg` | Envia (com monitor virtual próprio) e recebe; em teste |
 
+Depois de instalado, o Horizonte se atualiza sozinho no Windows e no Linux: confere ao abrir e a cada 4 horas, baixa a versão nova em segundo plano e avisa quando ela estiver pronta para reiniciar. No `.deb`, o sistema pede a senha numa janela ao instalar. No Mac, por falta de assinatura da Apple, baixe a versão nova em Releases.
+
 O instalador ainda não é assinado. No Windows aparece "O Windows protegeu o computador": clique em Mais informações e depois em Executar assim mesmo.
 
 No Mac, o primeiro "Abrir" pode ser recusado ("danificado" ou "desenvolvedor não identificado"). Arraste o Horizonte para Aplicativos e rode uma vez no Terminal: `xattr -cr /Applications/Horizonte.app`. Depois abra normalmente. Para enviar a tela, o macOS pede a permissão de Gravação de Tela na primeira vez.

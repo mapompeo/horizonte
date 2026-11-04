@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createUpdater, type UpdateEvents } from './updater'
 
-function setup(): {
+function setup(autoDownload = false): {
   updater: ReturnType<typeof createUpdater>
   events: UpdateEvents
   install: ReturnType<typeof vi.fn>
@@ -14,6 +14,7 @@ function setup(): {
   const download = vi.fn(async () => undefined)
   const updater = createUpdater({
     supported: true,
+    autoDownload,
     currentVersion: '0.1.0-beta.9',
     listen: (value) => {
       events = value
@@ -65,5 +66,18 @@ describe('atualização', () => {
     t.events.downloaded()
     await t.updater.perform('install')
     expect(t.install).toHaveBeenCalledOnce()
+  })
+  it('sozinho, baixa ao achar versão nova e depois só falta reiniciar', async () => {
+    const t = setup(true)
+    expect(await t.updater.perform('check')).toMatchObject({
+      phase: 'downloading',
+      version: '0.1.0-beta.10'
+    })
+    expect(t.download).toHaveBeenCalledOnce()
+    t.events.downloaded()
+    expect(await t.updater.perform('check')).toMatchObject({ phase: 'ready' })
+    t.events.available('0.1.0-beta.10')
+    expect(t.download).toHaveBeenCalledOnce()
+    expect(t.updater.status().phase).toBe('ready')
   })
 })
