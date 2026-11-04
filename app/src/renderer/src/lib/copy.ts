@@ -15,20 +15,17 @@ export function safeName(raw: string): string {
 export function copyFor(state: AppState): ScreenCopy {
   switch (state.screen) {
     case 'install':
-      return { title: 'Estenda sua tela,\nsem fio.', subtitle: 'Sem configurar nada.' }
+      return { title: 'Estenda sua tela,\nsem fio.' }
     case 'choose':
       return { title: 'Este dispositivo vai…' }
     case 'preparing':
       return { title: 'Preparando.' }
     case 'ready':
-      return {
-        title: 'Pronto.',
-        pill: { tone: 'wait', text: 'Aguardando conexão' }
-      }
+      return { title: 'Pronto.' }
     case 'approve':
       return {
         title: `Permitir o ${safeName(state.device)}?`,
-        subtitle: 'Ele quer receber a tela deste dispositivo.'
+        subtitle: 'Quer usar esta tela como extensão.'
       }
     case 'connected':
       return {
@@ -41,24 +38,22 @@ export function copyFor(state: AppState): ScreenCopy {
       return { title: 'Recebendo a tela.', pill: { tone: 'ok', text: safeName(state.name) } }
     case 'mouse':
       return {
-        title: 'Um mouse, vários computadores.',
-        subtitle: 'Arraste cada computador para onde ele fica na sua mesa.'
+        title: 'Um mouse, vários computadores.'
       }
     case 'mouse-request':
       return {
         title: `Usar o mouse do ${safeName(state.device)}?`,
-        subtitle: 'O mouse e o teclado dele vão controlar este computador também.'
+        subtitle: 'Ele vai controlar este computador.'
       }
     case 'mouse-active':
       return state.role === 'share'
         ? {
             title: 'Mouse compartilhado.',
-            subtitle: 'Passe o mouse pela borda da tela para usar os outros computadores.',
+            subtitle: 'Passe o mouse pela borda da tela.',
             pill: { tone: 'ok', text: safeName(state.device) }
           }
         : {
             title: 'Controlado pelo outro mouse.',
-            subtitle: `O mouse do ${safeName(state.device)} também funciona aqui.`,
             pill: { tone: 'ok', text: safeName(state.device) }
           }
     case 'error':
@@ -68,7 +63,7 @@ export function copyFor(state: AppState): ScreenCopy {
 
 /** Diz ao outro aparelho qual nome procurar na lista. */
 export const readySubtitle = (deviceName: string): string =>
-  `Abra o Horizonte no outro dispositivo e selecione ${safeName(deviceName)}.`
+  `No outro aparelho, escolha ${safeName(deviceName)}.`
 
 export const PREP_STEPS: readonly PrepStep[] = ['engine', 'display', 'encoder']
 

@@ -23,10 +23,7 @@
         d="M30 20h14M38 14l6 6-6 6"
       />
     </svg>
-    <span class="stack gap-xs">
-      <span class="choice-name">Enviar a tela</span>
-      <span class="choice-sub">É o dispositivo principal.</span>
-    </span>
+    <span class="choice-name">Enviar a tela</span>
   </button>
   <button class="choice" onclick={() => chooseMode('receive')}>
     <svg
@@ -44,10 +41,6 @@
         d="M18 20H4M10 14l-6 6 6 6"
       />
     </svg>
-    <span class="stack gap-xs">
-      <span class="choice-name">Mostrar a tela</span>
-      <span class="choice-sub">É o dispositivo que recebe.</span>
-    </span>
+    <span class="choice-name">Mostrar a tela</span>
   </button>
 </div>
-<span class="hint">Você troca com um clique, a qualquer momento.</span>

@@ -40,19 +40,17 @@ describe('copyFor', () => {
   it('instalar', () => {
     const copy = copyFor({ screen: 'install' })
     expect(copy.title).toBe('Estenda sua tela,\nsem fio.')
-    expect(copy.subtitle).toBe('Sem configurar nada.')
+    expect(copy.subtitle).toBeUndefined()
   })
 
   it('pronto manda selecionar o nome do próprio aparelho', () => {
-    expect(readySubtitle('Notebook')).toBe(
-      'Abra o Horizonte no outro dispositivo e selecione Notebook.'
-    )
+    expect(readySubtitle('Notebook')).toBe('No outro aparelho, escolha Notebook.')
   })
 
-  it('pronto aguarda conexão', () => {
+  it('pronto: só o título, sem selo repetindo a mesma coisa', () => {
     const copy = copyFor({ screen: 'ready', mode: 'send' })
     expect(copy.title).toBe('Pronto.')
-    expect(copy.pill).toEqual({ tone: 'wait', text: 'Aguardando conexão' })
+    expect(copy.pill).toBeUndefined()
   })
 
   it('permitir usa o nome seguro do dispositivo', () => {
@@ -64,7 +62,7 @@ describe('copyFor', () => {
       pin: null
     })
     expect(copy.title).toBe('Permitir o Notebook?')
-    expect(copy.subtitle).toBe('Ele quer receber a tela deste dispositivo.')
+    expect(copy.subtitle).toBe('Quer usar esta tela como extensão.')
     const hostile = copyFor({
       screen: 'approve',
       mode: 'send',

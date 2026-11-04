@@ -2,7 +2,7 @@
   import DeviceIcon from '../components/DeviceIcon.svelte'
   import { guessKind, type DeviceKind } from '../../../shared/device'
   import { isValidPin } from '../../../shared/pin'
-  import { copyFor, safeName } from '../lib/copy'
+  import { copyFor } from '../lib/copy'
   import { send } from '../lib/actions'
   import Toggle from '../components/Toggle.svelte'
 
@@ -68,15 +68,10 @@
   </div>
 {/if}
 <div class="trust-row">
-  <span>Confiar neste aparelho</span>
-  <Toggle
-    label="Confiar neste aparelho"
-    checked={trust}
-    onChange={(checked) => (trust = checked)}
-  />
+  <span>Sempre permitir</span>
+  <Toggle label="Sempre permitir" checked={trust} onChange={(checked) => (trust = checked)} />
 </div>
 <div class="stack gap-xs">
   <button class="btn btn-primary" disabled={!ready} onclick={approve}>Permitir</button>
   <button class="btn btn-ghost" onclick={() => send({ type: 'DENY' })}>Recusar</button>
 </div>
-<span class="hint-faint">{safeName(device)} · mesma rede</span>

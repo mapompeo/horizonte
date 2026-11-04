@@ -94,9 +94,6 @@
           onchange={commitBitrate}
         />
       </div>
-      <p class="adv-note">
-        Em Wi-Fi 5 GHz, de 30 a 50 Mbps costuma ficar nítido. Mais que isso pode travar.
-      </p>
     </section>
 
     <section class="group" aria-labelledby="g-computer">
@@ -162,12 +159,7 @@
             onSelect={(value) => patchSettings({ fps: value as Fps })}
           />
         </div>
-        {#if webrtc}
-          <p class="adv-note">
-            A tela estendida tem o tamanho da tela de quem mostra, e o Horizonte usa a placa de
-            vídeo quando ela está disponível.
-          </p>
-        {:else}
+        {#if !webrtc}
           <div class="adv-block">
             <span class="adv-label">Codificação</span>
             <Segmented
@@ -233,7 +225,7 @@
         </div>
         <p class="adv-note">
           {webrtc
-            ? 'Arraste a tela estendida para onde ela fica na sua mesa. Vale para todos os aparelhos e muda na hora se algum estiver conectado.'
+            ? 'Arraste para posicionar. Vale para todos os aparelhos.'
             : 'Vale para todos os aparelhos.'}
         </p>
       </section>

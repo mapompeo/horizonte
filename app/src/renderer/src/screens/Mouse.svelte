@@ -75,9 +75,8 @@
 
 <div class="hosts hosts-wide">
   <h1 class="title title-md">{copy.title}</h1>
-  <p class="subtitle">{copy.subtitle}</p>
   {#if ownScreen}
-    <ScreenMap own={ownScreen} {ownKind} {hosts} {sides} {offsets} onPlace={place} />
+    <ScreenMap own={ownScreen} {ownKind} {hosts} {sides} {offsets} onPlace={place} height={260} />
   {/if}
   <div class="stack gap-xs mouse-actions">
     {#if hosts.length > 0}

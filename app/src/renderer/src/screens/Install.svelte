@@ -12,7 +12,6 @@
 </div>
 <div class="stack gap-sm">
   <h1 class="title title-lg">{copy.title}</h1>
-  <p class="subtitle">{copy.subtitle}</p>
 </div>
 <div class="stack gap-sm">
   <button class="btn btn-primary" onclick={() => send({ type: 'INSTALL_DONE' })}>Começar</button>

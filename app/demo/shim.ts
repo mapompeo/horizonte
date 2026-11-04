@@ -141,7 +141,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     getWebAccess: async () => web,
     setWebAccess: async (on) => {
       web = on
-        ? { on: true, url: 'http://192.168.1.5:8080', user: 'horizonte', code: '4821' }
+        ? { on: true, url: 'http://192.168.1.5:47920', code: '482193' }
         : { on: false }
       return web
     },

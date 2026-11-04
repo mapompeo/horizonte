@@ -1,16 +1,14 @@
 <script lang="ts">
   import { copyFor } from '../lib/copy'
-  import { patchSettings, send } from '../lib/actions'
+  import { send } from '../lib/actions'
   import Pill from '../components/Pill.svelte'
-  import Stepper from '../components/Stepper.svelte'
 
   interface Props {
     host: string
     name: string
-    bitrate: number
   }
 
-  let { host, name, bitrate }: Props = $props()
+  let { host, name }: Props = $props()
 
   const copy = $derived(copyFor({ screen: 'receiving', mode: 'receive', host, name }))
 </script>
@@ -19,7 +17,4 @@
   {#if copy.pill}<Pill tone={copy.pill.tone}>{copy.pill.text}</Pill>{/if}
   <h1 class="title">{copy.title}</h1>
 </div>
-<div class="stack gap-md">
-  <Stepper {bitrate} onChange={(mbps) => patchSettings({ bitrate: mbps })} />
-  <button class="btn btn-outline" onclick={() => send({ type: 'STOP' })}>Sair</button>
-</div>
+<button class="btn btn-outline" onclick={() => send({ type: 'STOP' })}>Sair</button>

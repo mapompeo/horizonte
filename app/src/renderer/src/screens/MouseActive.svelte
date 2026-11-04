@@ -16,6 +16,6 @@
 <div class="stack gap-sm">
   {#if copy.pill}<Pill tone={copy.pill.tone}>{copy.pill.text}</Pill>{/if}
   <h1 class="title">{copy.title}</h1>
-  <p class="subtitle">{copy.subtitle}</p>
+  {#if copy.subtitle}<p class="subtitle">{copy.subtitle}</p>{/if}
 </div>
 <button class="btn btn-outline" onclick={() => send({ type: 'STOP' })}>Parar</button>
