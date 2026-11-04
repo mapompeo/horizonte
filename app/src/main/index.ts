@@ -196,11 +196,19 @@ function createWindow(controller: Controller): void {
   let tray: Tray | null = null
   const showWindow = (): void => {
     if (window.isDestroyed()) return
+    if (window.isMinimized()) window.restore()
     window.show()
     window.focus()
   }
+  // No Linux o ícone da bandeja só aparece com uma extensão (o GNOME padrão não tem): esconder deixaria a janela sem
+  // volta. Lá ela só minimiza e continua no dock e no Alt+Tab.
+  const hideWindow = (): void => {
+    if (window.isDestroyed()) return
+    if (process.platform === 'linux') window.minimize()
+    else window.hide()
+  }
   const followTray = createTrayFollower(
-    { hide: () => window.hide(), show: showWindow },
+    { hide: hideWindow, show: showWindow },
     {
       open: () => {
         tray ??= new Tray(trayImage())
