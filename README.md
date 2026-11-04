@@ -32,6 +32,9 @@ Tudo fica na sua rede local, sem conta e sem nuvem.
 
 No Linux, o Horizonte transmite sozinho: WebRTC entre os dois aparelhos, sem instalar nada além dele. No GNOME, a tela estendida é um monitor virtual de verdade, criado sem nenhum diálogo. Use a placa de vídeo nos dois lados; em Intel, instale o `intel-media-va-driver`.
 
+- **Tablet ou celular, sem instalar nada:** no computador que envia, toque em "Receber pelo navegador". No outro aparelho, abra o endereço que aparece (porta 47920) e digite o código de 6 dígitos. O computador ainda pergunta se pode.
+- **Qualidade automática:** o perfil escolhido (Econômico, Equilibrado ou Máximo) é o teto. Quando o Wi-Fi perde pacotes, o vídeo baixa sozinho e volta quando a rede melhora.
+
 No Windows e no Mac, por enquanto, o Horizonte ainda instala e configura o [Sunshine](https://github.com/LizardByte/Sunshine), o [Moonlight](https://github.com/moonlight-stream/moonlight-qt) e o [Virtual Display Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver). O motor próprio chega a eles depois de testado nesses sistemas.
 
 ## Desenvolver
