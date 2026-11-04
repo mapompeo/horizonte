@@ -34,6 +34,8 @@ export interface Want {
   bitrate: number
   /** Codecs que quem mostra decodifica, como `video/H264`, na ordem que prefere. */
   codecs: string[]
+  /** Densidade da tela de quem mostra (2 em Retina e notebooks 2x): a tela estendida nasce com essa escala. */
+  scale?: number
 }
 
 export type Message =
@@ -87,12 +89,21 @@ function parseHello(raw: Record<string, unknown>): Hello | null {
 }
 
 function parseWant(raw: Record<string, unknown>): Want | null {
-  const { width, height, fps, bitrate, codecs } = raw
+  const { width, height, fps, bitrate, codecs, scale } = raw
+  if (scale !== undefined && !isNumber(scale, 1, 4)) return null
   if (!isInt(width, 160, 8192) || !isInt(height, 120, 8192) || !isInt(fps, 1, 240)) return null
   if (!isNumber(bitrate, 0.5, 500)) return null
   if (!Array.isArray(codecs) || codecs.length > 16) return null
   if (!codecs.every((c) => typeof c === 'string' && MIME.test(c))) return null
-  return { t: 'want', width, height, fps, bitrate, codecs: [...new Set(codecs as string[])] }
+  return {
+    t: 'want',
+    width,
+    height,
+    fps,
+    bitrate,
+    codecs: [...new Set(codecs as string[])],
+    ...(scale !== undefined ? { scale } : {})
+  }
 }
 
 /** Lê uma linha recebida. Qualquer coisa fora do formato devolve null (quem chama encerra a conexão). */

@@ -25,7 +25,10 @@ export function placeCommand(placement: ScreenPlacement): string {
 export function createGnomeDisplay(deps: GnomeDisplayDeps): VirtualScreen {
   let running: { helper: RunningDisplay; request: ScreenRequest; id: number | null } | null = null
   const same = (a: ScreenRequest, b: ScreenRequest): boolean =>
-    a.width === b.width && a.height === b.height && a.fps === b.fps
+    a.width === b.width &&
+    a.height === b.height &&
+    a.fps === b.fps &&
+    (a.scale ?? 1) === (b.scale ?? 1)
 
   return {
     async ensure(request) {

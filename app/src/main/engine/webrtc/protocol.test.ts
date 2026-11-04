@@ -39,6 +39,15 @@ describe('parseMessage', () => {
       bitrate: 30,
       codecs: ['video/H264', 'video/AV1']
     },
+    {
+      t: 'want',
+      width: 2560,
+      height: 1600,
+      fps: 60,
+      bitrate: 30,
+      codecs: ['video/H264'],
+      scale: 2
+    },
     { t: 'offer', sdp: 'v=0\r\n' },
     { t: 'answer', sdp: 'v=0\r\n' },
     {
@@ -76,6 +85,10 @@ describe('parseMessage', () => {
     [
       'want com fps absurdo',
       '{"t":"want","width":1920,"height":1080,"fps":1000,"bitrate":30,"codecs":[]}'
+    ],
+    [
+      'want com escala absurda',
+      '{"t":"want","width":1920,"height":1080,"fps":60,"bitrate":30,"codecs":[],"scale":9}'
     ],
     ['oferta vazia', '{"t":"offer","sdp":""}'],
     ['oferta gigante', JSON.stringify({ t: 'offer', sdp: 'a'.repeat(40_000) })],

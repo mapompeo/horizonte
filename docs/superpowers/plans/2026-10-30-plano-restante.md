@@ -201,3 +201,6 @@ O README e o site passam a falar só do motor próprio. Isso vira a 0.3.
   - Conversão para NV12 no auxiliar (laços que o compilador vetoriza, BT.709 em faixa limitada), com o `VideoFrame` já em NV12: o socket cai de 314 para 137 MB/s, mas o auxiliar sobe de 20% para 43% de um núcleo.
   - No app de verdade (Começar → Enviar → Receber pelo navegador, com o mouse mexendo na tela estendida a 60 Hz), duas rodadas de cada: antes 180% e 188% de um núcleo para 37,1 e 39,8 quadros/s (4,86 e 4,72 por quadro); depois 165% e 158% para 35,5 e 34,8 quadros/s (4,65 e 4,55 por quadro). Uns 4% por quadro, com menos quadros chegando: não compensa.
   - O caminho que vale testar depois é o DMA-BUF (sem cópia nenhuma). Para medir, o jeito que funcionou foi o app de verdade com a página do navegador num Chromium escondido mexendo o mouse (o relógio do teste não abre na tela estendida no Wayland).
+- **C5 feito.**
+  - Quem mostra manda a densidade da tela no `want` (`scale`, de 1 a 4; o app pelo `scaleFactor`, a página do navegador pelo `devicePixelRatio`). O auxiliar recebe `--scale` e, ao posicionar a tela, usa a escala mais perto entre as que o GNOME aceita no modo dela.
+  - Conferido no GNOME daqui: 2560x1600 com `--scale 2` nasce como `Meta-0` em escala 2.0, à direita do monitor principal e centrada (1280x800 lógicos).

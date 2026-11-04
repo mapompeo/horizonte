@@ -79,6 +79,7 @@ function appWindows(): MotorWindows {
           width: Math.round(display.size.width * display.scaleFactor),
           height: Math.round(display.size.height * display.scaleFactor)
         },
+        scale: display.scaleFactor,
         media: () => windowMedia(window),
         onQuit: (callback) => quitListeners.push(callback),
         close: () => {

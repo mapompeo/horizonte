@@ -5,6 +5,8 @@ export interface ScreenRequest {
   width: number
   height: number
   fps: number
+  /** Escala da tela estendida (1 quando não vem); o sistema usa a mais perto que ele aceita. */
+  scale?: number
 }
 
 /** A tela extra que o motor transmite. Cada sistema tem a sua implementação em `platform/`. */
