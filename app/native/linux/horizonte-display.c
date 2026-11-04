@@ -80,6 +80,8 @@ struct app {
   gboolean with_input;
   /* Escala da tela estendida (--scale); 0: a que o GNOME escolher. */
   double scale;
+  /* Escala em uso depois de posicionar: o Mutter conta a posição do mouse e do toque em pixels lógicos. */
+  double applied_scale;
   char *remote;
   /* Monitores virtuais (Meta-N) que já existiam antes deste: o nosso é o que aparecer de novo. */
   GPtrArray *virtual_before;
@@ -590,6 +592,7 @@ static gboolean place(struct app *app, const char *side, gboolean centered, doub
     }
     v->scale = best;
   }
+  app->applied_scale = v->scale > 0 ? v->scale : 1;
   const gboolean along_x = !g_strcmp0(side, "above") || !g_strcmp0(side, "below");
   const int edge = along_x ? right - left : bottom - top;
   const int peer = along_x ? v->w : v->h;
@@ -652,6 +655,10 @@ static void notify(struct app *app, const char *method, GVariant *args) {
 
 static gboolean fraction_ok(double v) { return v >= 0 && v <= 1; }
 
+/* Tamanho da tela estendida em pixels lógicos, que é como o Mutter conta a posição (com escala 1,25, 1920 viram 1536). */
+static double logical_w(struct app *app) { return app->width / (app->applied_scale > 0 ? app->applied_scale : 1); }
+static double logical_h(struct app *app) { return app->height / (app->applied_scale > 0 ? app->applied_scale : 1); }
+
 /* Um evento de entrada ("move", "button", "wheel", "key", "touch"); devolve FALSE se a linha não é de entrada. */
 static gboolean input_command(struct app *app, const char *line) {
   double x = 0, y = 0;
@@ -659,7 +666,8 @@ static gboolean input_command(struct app *app, const char *line) {
   char phase[8] = "";
   if (sscanf(line, "move %lf %lf", &x, &y) == 2) {
     if (app->remote && app->stream_path && fraction_ok(x) && fraction_ok(y))
-      notify(app, "NotifyPointerMotionAbsolute", g_variant_new("(sdd)", app->stream_path, x * app->width, y * app->height));
+      notify(app, "NotifyPointerMotionAbsolute",
+             g_variant_new("(sdd)", app->stream_path, x * logical_w(app), y * logical_h(app)));
     return TRUE;
   }
   if (sscanf(line, "button %d %d", &a, &b) == 2) {
@@ -679,9 +687,11 @@ static gboolean input_command(struct app *app, const char *line) {
   if (sscanf(line, "touch %7s %d %lf %lf", phase, &a, &x, &y) == 4) {
     if (!app->remote || !app->stream_path || a < 0 || a > 9 || !fraction_ok(x) || !fraction_ok(y)) return TRUE;
     if (!strcmp(phase, "down"))
-      notify(app, "NotifyTouchDown", g_variant_new("(sudd)", app->stream_path, (guint32)a, x * app->width, y * app->height));
+      notify(app, "NotifyTouchDown",
+             g_variant_new("(sudd)", app->stream_path, (guint32)a, x * logical_w(app), y * logical_h(app)));
     else if (!strcmp(phase, "move"))
-      notify(app, "NotifyTouchMotion", g_variant_new("(sudd)", app->stream_path, (guint32)a, x * app->width, y * app->height));
+      notify(app, "NotifyTouchMotion",
+             g_variant_new("(sudd)", app->stream_path, (guint32)a, x * logical_w(app), y * logical_h(app)));
     else if (!strcmp(phase, "up"))
       notify(app, "NotifyTouchUp", g_variant_new("(u)", (guint32)a));
     return TRUE;
