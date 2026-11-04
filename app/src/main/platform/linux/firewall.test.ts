@@ -28,7 +28,7 @@ describe('firewall do motor no Linux', () => {
     expect(await ensureMotorFirewall(d)).toBe('opened')
     expect(d.ran).toEqual([MOTOR_FIREWALL_SCRIPT])
     expect(d.marks).toBe(1)
-    expect(MOTOR_FIREWALL_SCRIPT).toContain('port 47910:47919 proto tcp')
+    expect(MOTOR_FIREWALL_SCRIPT).toContain('port 47910:47929 proto tcp')
     expect(MOTOR_FIREWALL_SCRIPT).not.toContain('0.0.0.0/0')
   })
 
