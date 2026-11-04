@@ -1,4 +1,4 @@
-// Teste de ponta a ponta do receber pelo navegador: quem envia manda o quadro de teste e abre a página (porta 47920);
+// Teste de ponta a ponta do receber pelo navegador: quem envia manda o quadro de teste e abre a página (porta 47920 ou a próxima livre);
 // um Chromium escondido (e2e/web-check) faz o papel do tablet, digita o código e confere que o vídeo chega. Precisa do `npm run build`.
 import { spawn } from 'node:child_process'
 import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'

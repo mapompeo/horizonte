@@ -16,8 +16,13 @@ import { MAX_LINE_BYTES, parseMessage } from '../engine/webrtc/protocol'
  * mensagens, uma por pedido, conferidas pelo mesmo `parseMessage` da sinalização.
  */
 
-/** Porta da página. Fora da faixa da sinalização (47910 a 47919). */
+/**
+ * Porta da página: a primeira livre de 47920 a 47929, fora da faixa da sinalização (47910 a 47919). Ela fica dentro da
+ * faixa que o Linux sorteia para conexões de saída, então outro programa pode estar usando a primeira (visto com o
+ * Spotify): por isso a faixa, e o app mostra a porta que pegou.
+ */
 export const BROWSER_PORT = 47920
+export const BROWSER_PORT_LAST = 47929
 /** Tentativas erradas do código antes de travar por um minuto. */
 const MAX_WRONG = 5
 const LOCK_MS = 60_000
@@ -235,15 +240,30 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
     reply(res, 404)
   })
 
-  const port = await new Promise<number>((resolve, reject) => {
-    server.once('error', reject)
-    server.listen(options.port ?? BROWSER_PORT, options.host, () => {
-      const address = server.address()
-      resolve(
-        typeof address === 'object' && address ? address.port : (options.port ?? BROWSER_PORT)
-      )
+  const listenOn = (candidate: number): Promise<number> =>
+    new Promise<number>((resolve, reject) => {
+      const fail = (error: Error): void => reject(error)
+      server.once('error', fail)
+      server.listen(candidate, options.host, () => {
+        server.off('error', fail)
+        const address = server.address()
+        resolve(typeof address === 'object' && address ? address.port : candidate)
+      })
     })
-  })
+  const candidates =
+    options.port !== undefined
+      ? [options.port]
+      : Array.from({ length: BROWSER_PORT_LAST - BROWSER_PORT + 1 }, (_, i) => BROWSER_PORT + i)
+  let port = 0
+  for (const [i, candidate] of candidates.entries()) {
+    try {
+      port = await listenOn(candidate)
+      break
+    } catch (error) {
+      const busy = (error as NodeJS.ErrnoException).code === 'EADDRINUSE'
+      if (!busy || i === candidates.length - 1) throw error
+    }
+  }
 
   return {
     port,
@@ -286,7 +306,7 @@ export function createBrowserAccess(options: {
         return {
           on: false,
           error: busy
-            ? `A porta ${BROWSER_PORT} já está em uso por outro programa.`
+            ? `As portas ${BROWSER_PORT} a ${BROWSER_PORT_LAST} estão em uso por outros programas.`
             : 'Não consegui abrir a página para o navegador.'
         }
       }

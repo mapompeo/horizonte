@@ -1,6 +1,7 @@
 import { INPUT, INPUT_MOVES } from '../../../shared/input'
 import type { Want } from '../../../main/engine/webrtc/protocol'
 import type { MediaMessage, MotorApi } from '../../../shared/motor'
+import type { RawFrame } from '../../../shared/frames'
 import { BASE_ORDER, orderCodecList, rankCodecs, type CodecProbe } from './codecs'
 import type { Identity } from './identity'
 import {
@@ -18,6 +19,8 @@ import { syntheticStream } from './synthetic'
 /** A sessão começa abaixo do bitrate pedido e sobe em poucos segundos: evita uma rajada logo no começo. */
 const START_FRACTION = 0.6
 const RAMP_MS = 3000
+/** Depois da última imagem de uma rajada, quanto esperar para entregá-la de novo ao codificador. */
+const SETTLE_MS = 100
 
 /** Pergunta ao navegador quais codecs ele codifica, e quais pela placa de vídeo. */
 async function probeCodecs(want: Want): Promise<CodecProbe[]> {
@@ -44,7 +47,10 @@ async function probeCodecs(want: Want): Promise<CodecProbe[]> {
 
 /**
  * Vídeo feito das imagens que o auxiliar do Linux manda (a tela estendida do GNOME), sem passar pelo portal de captura
- * e o seletor dele. Se uma imagem chega enquanto a anterior ainda está sendo entregue, ela é descartada.
+ * e o seletor dele. Se uma imagem chega enquanto a anterior ainda está sendo entregue, ela espera a vez (só a mais
+ * recente): descartar deixava a última mudança da tela de fora até a próxima. E quando a tela para de mudar, a última
+ * imagem é entregue de novo depois de `SETTLE_MS`: o codificador limita os quadros por segundo e pode descartar
+ * justamente o último de uma rajada (o texto que acabou de ser digitado ficava ~1 s sem aparecer).
  */
 function framesStream(
   path: string,
@@ -55,28 +61,52 @@ function framesStream(
   const generator = new MediaStreamTrackGenerator({ kind: 'video' })
   const writer = generator.writable.getWriter()
   let busy = false
-  const stop = frames.open(
+  let waiting: RawFrame | null = null
+  let last: RawFrame | null = null
+  let settle: ReturnType<typeof setTimeout> | null = null
+  const deliver = (raw: RawFrame): void => {
+    busy = true
+    const frame = new VideoFrame(raw.data, {
+      format: raw.format,
+      codedWidth: raw.width,
+      codedHeight: raw.height,
+      layout: [{ offset: 0, stride: raw.stride }],
+      timestamp: Math.round(performance.now() * 1000)
+    })
+    writer
+      .write(frame)
+      .catch(() => undefined)
+      .finally(() => {
+        frame.close()
+        busy = false
+        const next = waiting
+        waiting = null
+        if (next) deliver(next)
+      })
+  }
+  const receive = (raw: RawFrame): void => {
+    if (busy) waiting = raw
+    else deliver(raw)
+  }
+  const close = frames.open(
     path,
     (raw) => {
-      if (busy) return
-      busy = true
-      const frame = new VideoFrame(raw.data, {
-        format: raw.format,
-        codedWidth: raw.width,
-        codedHeight: raw.height,
-        layout: [{ offset: 0, stride: raw.stride }],
-        timestamp: Math.round(performance.now() * 1000)
-      })
-      writer
-        .write(frame)
-        .catch(() => undefined)
-        .finally(() => {
-          frame.close()
-          busy = false
-        })
+      receive(raw)
+      last = raw
+      if (settle) clearTimeout(settle)
+      settle = setTimeout(() => {
+        settle = null
+        if (last) receive(last)
+      }, SETTLE_MS)
     },
     onClose
   )
+  const stop = (): void => {
+    if (settle) clearTimeout(settle)
+    settle = null
+    last = null
+    close()
+  }
   return { stream: new MediaStream([generator]), stop }
 }
 
