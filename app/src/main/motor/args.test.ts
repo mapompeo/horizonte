@@ -11,15 +11,20 @@ describe('parseMotorArgs', () => {
       role: 'send',
       synthetic: false,
       clock: true,
-      extend: false
+      extend: false,
+      browser: false
     })
-    expect(parseMotorArgs(['--motor-send', '--motor-extend'])).toMatchObject({ extend: true })
+    expect(parseMotorArgs(['--motor-send', '--motor-extend'])).toMatchObject({
+      extend: true,
+      browser: false
+    })
     expect(parseMotorArgs(['--motor-send', '--motor-synthetic', '--motor-port=47915'])).toEqual({
       role: 'send',
       port: 47915,
       synthetic: true,
       clock: false,
-      extend: false
+      extend: false,
+      browser: false
     })
   })
 

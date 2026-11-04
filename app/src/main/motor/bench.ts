@@ -18,6 +18,7 @@ import {
 import { SIGNALING_PORT, type Want } from '../engine/webrtc/protocol'
 import { connect, startSender } from '../engine/webrtc/session'
 import type { MotorArgs } from './args'
+import { startBrowserBridge } from '../web/browser'
 
 export { prepareMotorSwitches } from '../engine/webrtc/electron'
 
@@ -152,6 +153,15 @@ async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void
     void sender.stop()
     void virtual?.release()
   })
+
+  if (args.browser) {
+    const page = await startBrowserBridge({
+      pagesDir: join(__dirname, '../renderer'),
+      signalingPort: () => sender.port
+    })
+    app.once('before-quit', () => void page.stop())
+    log(`no navegador: http://${lanAddresses()[0] ?? '127.0.0.1'}:${page.port} código ${page.code}`)
+  }
 
   const addresses = lanAddresses()
   log(`pronto para enviar. Impressão digital: ${identity.fp.slice(0, 23)}…`)

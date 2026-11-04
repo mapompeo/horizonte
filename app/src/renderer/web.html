@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <title>Horizonte</title>
+  </head>
+  <body>
+    <main class="web-start" id="inicio">
+      <img class="web-logo" src="./src/assets/logo/horizonte-icone.svg" alt="" width="64" height="64" />
+      <h1 class="web-title">Receber a tela</h1>
+      <p class="web-text" id="texto">Digite o código que aparece no Horizonte do computador.</p>
+      <form class="web-form" id="form">
+        <input
+          class="web-code"
+          id="codigo"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          pattern="[0-9]{6}"
+          placeholder="000000"
+          aria-label="Código de 6 dígitos"
+          required
+        />
+        <button class="web-button" id="entrar" type="submit">Conectar</button>
+      </form>
+    </main>
+    <script type="module" src="./src/web/main.ts"></script>
+  </body>
+</html>

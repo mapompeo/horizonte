@@ -77,7 +77,8 @@ import {
   createMoonlightLauncher as createLinuxMoonlightLauncher,
   SUNSHINE_LOG as LINUX_SUNSHINE_LOG
 } from './platform/linux/wire'
-import { createRealGateway } from './web/wire'
+import { createRealGateway, lanAddress } from './web/wire'
+import { createBrowserAccess } from './web/browser'
 import {
   createMacPlatform,
   createMoonlightLauncher,
@@ -387,6 +388,8 @@ async function boot(): Promise<void> {
   let ownSettings = (): Settings | null => null
   /** A tela estendida que o motor próprio criou (fica de fora do tamanho deste computador). */
   let virtualDisplay = (): number | null => null
+  /** Porta em que o motor próprio espera conexão (a página do navegador liga nela). */
+  let signalingPort = (): number | null => null
   let engine: EnginePort = fake
   if (USE_WEBRTC) {
     const webrtc = createAppWebRtcEngine({
@@ -403,6 +406,7 @@ async function boot(): Promise<void> {
       }
     })
     virtualDisplay = () => webrtc.target()
+    signalingPort = () => webrtc.signalingPort()
     engine = webrtc
   } else if (dev) {
     engine = composeEngine(
@@ -708,11 +712,19 @@ async function boot(): Promise<void> {
     sleep,
     deviceName: () => controller.getSnapshot().settings.deviceName
   })
-  ipcMain.handle(CHANNELS.webAccess, () => gateway.status())
+  // No motor próprio, a página do receptor vem deste app (main/web/browser.ts); no antigo, do gateway.
+  const webAccess = USE_WEBRTC
+    ? createBrowserAccess({
+        pagesDir: join(__dirname, '../renderer'),
+        signalingPort: () => signalingPort(),
+        lanAddress: () => lanAddress()
+      })
+    : gateway
+  ipcMain.handle(CHANNELS.webAccess, () => webAccess.status())
   ipcMain.handle(CHANNELS.setWebAccess, (_event, on: unknown) =>
-    on === true ? gateway.start() : gateway.stop().then(() => gateway.status())
+    on === true ? webAccess.start() : webAccess.stop().then(() => webAccess.status())
   )
-  app.on('before-quit', () => void gateway.stop())
+  app.on('before-quit', () => void webAccess.stop())
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(controller)

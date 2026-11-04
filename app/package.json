@@ -21,7 +21,7 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "dev:motor": "electron-vite dev --",
-    "e2e:motor": "node e2e/motor.mjs",
+    "e2e:motor": "node e2e/motor.mjs && node e2e/web.mjs",
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir --publish never",
