@@ -17,7 +17,10 @@ function launch(label, args, onLine = () => undefined) {
   const full = [`--user-data-dir=${mkdtempSync(join(tmpdir(), `hz-web-${label}-`))}`, ...args]
   if (process.platform === 'linux') full.unshift('--no-sandbox')
   const log = createWriteStream(join(OUT, `web-${label}.log`))
-  const child = spawn(electronPath, full, { stdio: ['ignore', 'pipe', 'pipe'] })
+  const child = spawn(electronPath, full, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, ELECTRON_ENABLE_LOGGING: '1' }
+  })
   for (const stream of [child.stdout, child.stderr])
     stream.on('data', (chunk) => {
       log.write(chunk)
