@@ -1,5 +1,5 @@
 // Teste de ponta a ponta do receber pelo navegador: quem envia manda o quadro de teste e abre a página (porta 47920);
-// um Chromium escondido faz o papel do tablet, digita o código e confere que o vídeo chega. Precisa do `npm run build`.
+// um Chromium escondido (e2e/web-check) faz o papel do tablet, digita o código e confere que o vídeo chega. Precisa do `npm run build`.
 import { spawn } from 'node:child_process'
 import { createWriteStream, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -41,7 +41,7 @@ const sender = launch(
     const match = /no navegador: http:\/\/\S+:(\d+) código (\d{6})/.exec(line)
     if (match && !browser)
       browser = launch('navegador', [
-        resolve('e2e/web-check.cjs'),
+        resolve('e2e/web-check'),
         `http://127.0.0.1:${match[1]}/`,
         match[2]
       ])

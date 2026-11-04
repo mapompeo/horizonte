@@ -1,5 +1,5 @@
-// Faz o papel do tablet: abre a página de receber pelo navegador num Chromium escondido, digita o código e espera o
-// vídeo andar. Uso: electron web-check.cjs <url> <código>. Sai com 0 quando o vídeo chega.
+// Faz o papel do tablet (é um app Electron à parte): abre a página de receber pelo navegador num Chromium escondido,
+// digita o código e espera o vídeo andar. Uso: electron e2e/web-check <url> <código>. Sai com 0 quando o vídeo chega.
 const { app, BrowserWindow } = require('electron')
 
 process.on('unhandledRejection', (error) => {
@@ -8,7 +8,7 @@ process.on('unhandledRejection', (error) => {
 })
 
 app.whenReady().then(async () => {
-  const at = process.argv.findIndex((arg) => arg.endsWith('web-check.cjs'))
+  const at = process.argv.findIndex((arg) => /web-check[\\/]?$/.test(arg))
   const [url, code] = process.argv.slice(at + 1)
   const win = new BrowserWindow({
     show: false,
