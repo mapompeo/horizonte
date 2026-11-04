@@ -36,7 +36,8 @@
         width: Math.max(max.width, sizeOf(host).width),
         height: Math.max(max.height, sizeOf(host).height)
       }),
-      { width: 1, height: 1 }
+      // Sem ninguém ainda, reserva o espaço de uma tela do mesmo tamanho em cada lado.
+      hosts.length > 0 ? { width: 1, height: 1 } : own
     )
   )
   // Escala única para todas as telas, com espaço para um computador em cada lado.
@@ -204,7 +205,8 @@
   </div>
   {#if dock}
     <div class="map-dock">
-      {#if boxes.every((box) => box.side)}<span>Solte aqui para deixar de fora</span>{/if}
+      {#if boxes.length === 0}<span>Os computadores encontrados aparecem aqui</span>
+      {:else if boxes.every((box) => box.side)}<span>Solte aqui para deixar de fora</span>{/if}
     </div>
   {/if}
   {#each boxes as box (box.host.address)}

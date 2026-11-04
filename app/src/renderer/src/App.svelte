@@ -99,8 +99,7 @@
               bitrate={settings.bitrate}
               fingerprint={state.fingerprint}
               peerScreen={state.peerScreen}
-              placements={settings.screenPlacements}
-              extendSide={settings.extendSide}
+              placement={settings.screenPlacement}
             />
           {:else if state.screen === 'discover'}
             <Discover />

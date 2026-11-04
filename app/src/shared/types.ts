@@ -141,8 +141,8 @@ export interface Settings {
   /** Modo Mouse: onde começa a borda de cada outro computador, em fração da borda deste; sem valor, centralizado. */
   mouseOffsets: Record<string, number>
   trusted: TrustedDevice[]
-  /** Motor próprio: posição da tela estendida de cada aparelho, pela impressão digital do certificado dele. */
-  screenPlacements: Record<string, ScreenPlacement>
+  /** Motor próprio: onde fica a tela estendida, a mesma para todos os aparelhos. */
+  screenPlacement: ScreenPlacement
   /** Último modo escolhido neste aparelho; null até a pessoa escolher pela primeira vez. */
   mode: Mode | null
 }

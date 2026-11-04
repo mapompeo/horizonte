@@ -150,6 +150,9 @@ function overlayFor(): { color: string; symbolColor: string; height: number } {
   }
 }
 
+/** A janela do app (o motor próprio abre outras, escondidas, para o vídeo). */
+let mainWindow: BrowserWindow | null = null
+
 function createWindow(controller: Controller): void {
   const window = new BrowserWindow({
     title: 'Horizonte',
@@ -176,6 +179,7 @@ function createWindow(controller: Controller): void {
     }
   })
 
+  mainWindow = window
   window.once('ready-to-show', () => window.show())
   // Só Windows e Linux têm a barra por cima: no macOS os botões são nativos e não mudam de cor.
   if (process.platform !== 'darwin') {
@@ -222,6 +226,7 @@ function createWindow(controller: Controller): void {
     followTray(snapshot.state)
   })
   window.on('closed', () => {
+    if (mainWindow === window) mainWindow = null
     unsubscribe()
     tray?.destroy()
     tray = null
@@ -427,14 +432,8 @@ async function boot(): Promise<void> {
       presence,
       deviceName: () => ownName(),
       kind: () => ownKind,
-      // Onde a pessoa deixou a tela deste aparelho; sem posição guardada, o lado padrão dos ajustes.
-      placementFor: (fingerprint) => {
-        const settings = ownSettings()
-        return (
-          settings?.screenPlacements[fingerprint] ??
-          (settings ? { side: settings.extendSide } : null)
-        )
-      }
+      // A mesma posição para todos os aparelhos (Ajustes > Posição da tela estendida).
+      placementFor: () => ownSettings()?.screenPlacement ?? null
     })
     virtualDisplay = () => webrtc.target()
     signalingPort = () => webrtc.signalingPort()
@@ -844,10 +843,12 @@ if (motor === 'invalid') {
 }
 // Só uma cópia do app por vez (o instalador já abre uma): abrir de novo traz a janela existente para a frente.
 else if (!app.isPackaged || app.requestSingleInstanceLock()) {
+  // Conectado, a janela fica escondida na bandeja: abrir pelo menu do sistema precisa mostrá-la, não só dar foco.
   app.on('second-instance', () => {
-    const [window] = BrowserWindow.getAllWindows()
-    if (!window) return
+    const window = mainWindow
+    if (!window || window.isDestroyed()) return
     if (window.isMinimized()) window.restore()
+    window.show()
     window.focus()
   })
   if (USE_WEBRTC) prepareMotorSwitches()

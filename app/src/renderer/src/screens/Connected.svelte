@@ -4,7 +4,7 @@
   import Pill from '../components/Pill.svelte'
   import PlacementMap from '../components/PlacementMap.svelte'
   import Stepper from '../components/Stepper.svelte'
-  import type { ExtendSide, ScreenPlacement, ScreenSize } from '../../../shared/types'
+  import type { ScreenPlacement, ScreenSize } from '../../../shared/types'
 
   interface Props {
     device: string
@@ -12,11 +12,10 @@
     /** Motor próprio: quem está mostrando e o tamanho da tela dele (sem isso, não há mapa). */
     fingerprint?: string
     peerScreen?: ScreenSize
-    placements: Record<string, ScreenPlacement>
-    extendSide: ExtendSide
+    placement: ScreenPlacement
   }
 
-  let { device, bitrate, fingerprint, peerScreen, placements, extendSide }: Props = $props()
+  let { device, bitrate, fingerprint, peerScreen, placement }: Props = $props()
 
   const copy = $derived(copyFor({ screen: 'connected', mode: 'send', device }))
 </script>
@@ -27,15 +26,10 @@
 </div>
 {#if fingerprint && peerScreen}
   <div class="stack gap-xs">
-    <PlacementMap
-      {device}
-      {fingerprint}
-      {peerScreen}
-      {placements}
-      fallback={extendSide}
-      height={220}
-    />
-    <p class="hint-faint">Arraste a tela para onde ela fica na sua mesa. Muda na hora.</p>
+    <PlacementMap {device} {peerScreen} {placement} height={220} />
+    <p class="hint-faint">
+      Arraste a tela para onde ela fica na sua mesa. Muda na hora e vale para todos.
+    </p>
   </div>
 {/if}
 <div class="stack gap-md">

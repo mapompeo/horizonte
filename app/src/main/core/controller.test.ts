@@ -894,10 +894,10 @@ describe('aparelhos confiáveis', () => {
   })
 })
 
-describe('posição da tela por aparelho (motor próprio)', () => {
+describe('posição da tela estendida (motor próprio)', () => {
   const FP = 'AB:'.repeat(31) + 'CD'
 
-  it('mudar a posição de quem está conectado aplica na hora; a de outro aparelho só guarda', async () => {
+  it('mudar a posição com alguém conectado aplica na hora, uma vez só', async () => {
     const engine = new FakeEngine(0)
     const store: SettingsStore = {
       load: async () => ({ ...DEFAULT_SETTINGS, mode: 'send' }),
@@ -914,17 +914,12 @@ describe('posição da tela por aparelho (motor próprio)', () => {
         peerScreen: { width: 1366, height: 768 }
       }
     })
-    await controller.updateSettings({ screenPlacements: { [FP]: { side: 'left', offset: 0.1 } } })
+    await controller.updateSettings({ screenPlacement: { side: 'left', offset: 0.1 } })
     expect(engine.lastPlacement).toEqual({ side: 'left', offset: 0.1 })
 
     const placed = (): number => engine.calls.filter((call) => call === 'placeScreen').length
     expect(placed()).toBe(1)
-    await controller.updateSettings({
-      screenPlacements: {
-        [FP]: { side: 'left', offset: 0.1 },
-        ['EF:'.repeat(31) + '01']: { side: 'above' }
-      }
-    })
+    await controller.updateSettings({ screenPlacement: { side: 'left', offset: 0.1 } })
     expect(placed()).toBe(1)
   })
 
