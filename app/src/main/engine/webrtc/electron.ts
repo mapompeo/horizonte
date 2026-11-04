@@ -251,6 +251,8 @@ export function createLinuxVirtualScreen(frames: string | null): VirtualScreen {
             String(request.fps),
             ...(frames ? ['--frames', frames] : []),
             ...(request.scale && request.scale > 1 ? ['--scale', String(request.scale)] : []),
+            // O cursor à parte só faz sentido com as imagens pelo socket (é por ele que a posição vai).
+            ...(frames && request.cursor ? ['--cursor'] : []),
             // Mouse, teclado e toque de quem mostra agem nesta tela (sessão de controle remoto do GNOME).
             '--input'
           ])

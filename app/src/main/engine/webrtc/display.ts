@@ -7,6 +7,8 @@ export interface ScreenRequest {
   fps: number
   /** Escala da tela estendida (1 quando não vem); o sistema usa a mais perto que ele aceita. */
   scale?: number
+  /** O cursor vem à parte, e não desenhado na imagem (quem mostra desenha por cima do vídeo). */
+  cursor?: boolean
 }
 
 /** A tela extra que o motor transmite. Cada sistema tem a sua implementação em `platform/`. */

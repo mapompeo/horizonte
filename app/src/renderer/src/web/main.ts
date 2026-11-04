@@ -96,7 +96,8 @@ async function connect(code: string): Promise<void> {
     fps: 60,
     bitrate: 20,
     codecs: videoMimes(RTCRtpReceiver.getCapabilities('video')?.codecs ?? []),
-    ...(window.devicePixelRatio > 1 ? { scale: Math.min(window.devicePixelRatio, 2) } : {})
+    ...(window.devicePixelRatio > 1 ? { scale: Math.min(window.devicePixelRatio, 2) } : {}),
+    cursor: true
   }
 
   let peer: Hello | null = null
