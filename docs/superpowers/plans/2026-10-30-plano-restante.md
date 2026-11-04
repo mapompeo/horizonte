@@ -187,3 +187,8 @@ O README e o site passam a falar só do motor próprio. Isso vira a 0.3.
   - Começa depois da subida inicial de 3 s; mudar o perfil à mão vira o novo teto na hora.
   - Conferido em rede local limpa (40 s, 60 fps): nenhuma mudança à toa. Falta medir num Wi-Fi ruim.
 - **C4 adiado:** a medição precisa do monitor virtual do GNOME, que não abre com a tela bloqueada. O relógio do teste (`--motor-clock`) agora abre na tela estendida quando o teste estende, para ter imagem mudando durante a medição.
+- **F2 feito.**
+  - `main/web/browser.ts`: a página do receptor na porta 47920 (fora da faixa da sinalização, 47910 a 47919), ligada à sinalização deste aparelho por HTTP (`/api/abrir` com o código de 6 dígitos, `/api/eventos` em Server-Sent Events, `/api/enviar`). Cinco códigos errados travam por um minuto; só passam mensagens que o `parseMessage` aceita; a página só serve `web.html` e `assets/`.
+  - `renderer/web.html` e `src/web/main.ts`: o tablet manda o `hello`, espera o Permitir, pede a tela no tamanho dele e usa o mesmo receptor do app (com toque e teclado). Confere a impressão digital da oferta contra o `hello` do computador.
+  - No app, o botão "Receber pelo navegador" da tela Pronto mostra o endereço e o código também no motor próprio.
+  - `e2e/web.mjs` (dentro de `npm run e2e:motor`): um Chromium escondido digita o código e confere o vídeo. Falta testar com um tablet e um celular de verdade.

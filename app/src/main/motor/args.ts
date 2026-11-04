@@ -9,6 +9,8 @@ export type MotorArgs =
       clock: boolean
       /** Cria um monitor virtual e envia só ele (tela estendida), em vez da tela principal. */
       extend: boolean
+      /** Abre também a página de receber pelo navegador, com o código no terminal. */
+      browser: boolean
     }
   | {
       role: 'receive'
@@ -26,6 +28,7 @@ export const MOTOR_USAGE = [
   '      [--motor-extend]           cria uma tela extra e envia só ela (estender, em vez de espelhar)',
   '      [--motor-clock]            abre um relógio em milissegundos (medição de atraso por foto)',
   '      [--motor-synthetic]        envia um quadro de teste no lugar da tela',
+  '      [--motor-browser]          abre a página de receber pelo navegador (porta 47920)',
   '      [--motor-port=47910]',
   '  --motor-receive=IP[:PORTA]     mostra a tela de outro aparelho',
   '      [--motor-fps=60] [--motor-bitrate=30] [--motor-size=1920x1080]',
@@ -68,7 +71,8 @@ export function parseMotorArgs(argv: string[]): MotorArgs | null {
       ...(port !== undefined ? { port } : {}),
       synthetic: flag(argv, 'motor-synthetic') !== undefined,
       clock: flag(argv, 'motor-clock') !== undefined,
-      extend: flag(argv, 'motor-extend') !== undefined
+      extend: flag(argv, 'motor-extend') !== undefined,
+      browser: flag(argv, 'motor-browser') !== undefined
     }
 
   if (typeof receive !== 'string')

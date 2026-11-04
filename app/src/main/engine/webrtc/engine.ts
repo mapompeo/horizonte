@@ -269,6 +269,11 @@ export class WebRtcEngine implements EnginePort {
     session?.end('user')
   }
 
+  /** Porta em que este aparelho espera conexão (para a página do navegador); null se não está esperando. */
+  signalingPort(): number | null {
+    return this.sender?.port ?? null
+  }
+
   async abort(): Promise<void> {
     for (const resolve of this.pending.values()) resolve(false)
     this.pending.clear()

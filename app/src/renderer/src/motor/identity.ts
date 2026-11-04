@@ -31,6 +31,13 @@ async function open(): Promise<IDBDatabase> {
   return request(req)
 }
 
+/** Id novo. `crypto.randomUUID` só existe em página segura (https); a página do navegador é http na rede local. */
+function newId(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 function fingerprintOf(certificate: RTCCertificate): string {
   const sha = certificate.getFingerprints().find((f) => f.algorithm === 'sha-256')
   if (!sha?.value) throw new Error('O certificado não tem impressão digital SHA-256.')
@@ -51,7 +58,7 @@ export async function loadIdentity(): Promise<Identity> {
       namedCurve: 'P-256',
       expires: TEN_YEARS_MS
     } as EcKeyGenParams & { expires: number })
-    const fresh: Stored = { id: stored?.id ?? crypto.randomUUID(), certificate }
+    const fresh: Stored = { id: stored?.id ?? newId(), certificate }
     const write = db.transaction(STORE, 'readwrite').objectStore(STORE)
     await request(write.put(fresh, KEY))
     return { ...fresh, fp: fingerprintOf(certificate) }

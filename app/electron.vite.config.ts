@@ -21,7 +21,9 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
-          motor: resolve(__dirname, 'src/renderer/motor.html')
+          motor: resolve(__dirname, 'src/renderer/motor.html'),
+          // Página de receber pelo navegador, servida por quem envia (main/web/browser.ts).
+          web: resolve(__dirname, 'src/renderer/web.html')
         }
       }
     }
