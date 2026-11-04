@@ -59,7 +59,8 @@
   {:else if web.on}
     <p class="hint">
       No tablet ou celular, abra
-      {#if web.url}<strong>{web.url}</strong>{:else}o endereço deste computador na porta 47920{/if}
+      {#if web.url}<strong>{web.url}</strong>{:else}o endereço deste computador na porta 47920 (ou
+        uma das seguintes){/if}
       no navegador e digite o código <strong>{web.code}</strong>.
     </p>
   {/if}

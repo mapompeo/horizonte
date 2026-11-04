@@ -124,3 +124,25 @@ test('sessão que não existe não recebe nem manda', async () => {
   })
   expect(sent.status).toBe(404)
 })
+
+test('com a primeira porta ocupada por outro programa, pega a próxima da faixa', async () => {
+  const { createServer: createHttp } = await import('node:http')
+  const { BROWSER_PORT } = await import('./browser')
+  const squatter = createHttp()
+  const taken = await new Promise<boolean>((resolve) => {
+    squatter.once('error', () => resolve(false))
+    squatter.listen(BROWSER_PORT, '127.0.0.1', () => resolve(true))
+  })
+  const second = await startBrowserBridge({
+    pagesDir: pages,
+    signalingPort: () => signalingPort,
+    host: '127.0.0.1'
+  })
+  try {
+    expect(second.port).toBeGreaterThan(BROWSER_PORT)
+    expect(second.port).toBeLessThanOrEqual(BROWSER_PORT + 9)
+  } finally {
+    await second.stop()
+    if (taken) await new Promise<void>((resolve) => squatter.close(() => resolve()))
+  }
+})
