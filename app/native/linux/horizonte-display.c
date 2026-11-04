@@ -87,7 +87,9 @@ struct app {
   GPtrArray *virtual_before;
 
   /* Envio das imagens (--frames). A thread do PipeWire copia a imagem nova para `frame` quando o envio está livre;
-   * a thread de envio manda e libera. Se o envio ainda está ocupado, a imagem é descartada: vale a mais recente. */
+   * a thread de envio manda e libera. Se o envio ainda está ocupado, a imagem vai para `spare` (a mais recente
+   * substitui a anterior) e sai assim que o envio terminar: sem isso, a última mudança da tela (o texto que acabou de
+   * ser digitado) ficava de fora até a tela mudar de novo. */
   const char *frames_path;
   int listen_fd;
   pthread_t sender;
@@ -95,6 +97,9 @@ struct app {
   pthread_cond_t wake;
   uint8_t *frame;
   uint32_t frame_size, frame_stride, frame_format;
+  uint8_t *spare;
+  uint32_t spare_size, spare_stride, spare_format;
+  gboolean spare_ready;
   gboolean frame_new, frame_valid, sending, stopping;
   unsigned frames_in, frames_sent;
 };
@@ -178,6 +183,17 @@ static void *sender_main(void *data) {
       pthread_mutex_lock(&app->lock);
       app->sending = FALSE;
       if (result == 0) app->frames_sent++;
+      /* Chegou imagem durante o envio: ela vira a próxima a sair. */
+      if (app->spare_ready) {
+        uint8_t *swap = app->frame;
+        app->frame = app->spare;
+        app->spare = swap;
+        app->frame_size = app->spare_size;
+        app->frame_stride = app->spare_stride;
+        app->frame_format = app->spare_format;
+        app->spare_ready = FALSE;
+        app->frame_new = TRUE;
+      }
       pthread_mutex_unlock(&app->lock);
       if (result < 0) break; /* a janela fechou: espera a próxima */
     }
@@ -204,6 +220,7 @@ static int start_frames(struct app *app) {
     return -1;
   }
   app->frame = g_malloc((size_t)app->width * app->height * 4);
+  app->spare = g_malloc((size_t)app->width * app->height * 4);
   pthread_mutex_init(&app->lock, NULL);
   pthread_cond_init(&app->wake, NULL);
   return pthread_create(&app->sender, NULL, sender_main, app) == 0 ? 0 : -1;
@@ -240,14 +257,24 @@ static void on_process(void *data) {
     const uint32_t stride = in->chunk->stride > 0 ? (uint32_t)in->chunk->stride : (uint32_t)app->width * 4;
     const uint32_t size = stride * (uint32_t)app->height;
     pthread_mutex_lock(&app->lock);
-    if (!app->sending && size <= (uint32_t)app->width * app->height * 4 && in->chunk->offset + size <= in->maxsize) {
-      memcpy(app->frame, (const uint8_t *)in->data + in->chunk->offset, size);
-      app->frame_size = size;
-      app->frame_stride = stride;
-      app->frame_format =
-        (app->input_format == SPA_VIDEO_FORMAT_RGBx || app->input_format == SPA_VIDEO_FORMAT_RGBA) ? 1 : 0;
-      app->frame_valid = app->frame_new = TRUE;
-      pthread_cond_signal(&app->wake);
+    const uint32_t format =
+      (app->input_format == SPA_VIDEO_FORMAT_RGBx || app->input_format == SPA_VIDEO_FORMAT_RGBA) ? 1 : 0;
+    if (size <= (uint32_t)app->width * app->height * 4 && in->chunk->offset + size <= in->maxsize) {
+      const uint8_t *pixels = (const uint8_t *)in->data + in->chunk->offset;
+      if (!app->sending) {
+        memcpy(app->frame, pixels, size);
+        app->frame_size = size;
+        app->frame_stride = stride;
+        app->frame_format = format;
+        app->frame_valid = app->frame_new = TRUE;
+        pthread_cond_signal(&app->wake);
+      } else {
+        memcpy(app->spare, pixels, size);
+        app->spare_size = size;
+        app->spare_stride = stride;
+        app->spare_format = format;
+        app->spare_ready = TRUE;
+      }
     }
     pthread_mutex_unlock(&app->lock);
   }
