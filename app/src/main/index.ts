@@ -37,6 +37,7 @@ import { buildReportDiagnostic, createDiagnosticReporter } from './core/report-d
 import { createDiagnosticHistory } from './core/diagnostic-history'
 import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
+import { parsePowerSave, wifiPowerHint } from './platform/linux/wifi-power'
 import { finishStartup, runStartup } from './startup'
 import { runDevDemo } from './dev-demo'
 import { MOTOR_USAGE, parseMotorArgs, type MotorArgs } from './motor/args'
@@ -246,7 +247,38 @@ async function readVideoHint(): Promise<VideoHint | null> {
     await Promise.all(dirs.map((dir) => readdir(dir).catch(() => [] as string[])))
   ).flat()
   const os = parseOsRelease(await readFile('/etc/os-release', 'utf8').catch(() => ''))
-  return videoDriverHint({ vendors: vendors.filter(Boolean), drivers, os })
+  return (
+    videoDriverHint({ vendors: vendors.filter(Boolean), drivers, os }) ?? (await readWifiHint())
+  )
+}
+
+/** Linux: confere a economia de energia de cada Wi-Fi conectado (`iw`, sem precisar de sudo para ler). */
+async function readWifiHint(): Promise<VideoHint | null> {
+  const names = await readdir('/sys/class/net').catch(() => [] as string[])
+  const wireless = (
+    await Promise.all(
+      names.map(async (name) => {
+        const isWifi = existsSync(`/sys/class/net/${name}/wireless`)
+        const up =
+          (await readFile(`/sys/class/net/${name}/operstate`, 'utf8').catch(() => '')).trim() ===
+          'up'
+        return isWifi && up ? name : null
+      })
+    )
+  ).filter((name): name is string => name !== null)
+  const iw = ['/usr/sbin/iw', '/sbin/iw', '/usr/bin/iw'].find((path) => existsSync(path))
+  if (!iw) return null
+  const interfaces = await Promise.all(
+    wireless.map(
+      (name) =>
+        new Promise<{ name: string; powerSave: boolean | null }>((resolve) =>
+          execFile(iw, ['dev', name, 'get', 'power_save'], { timeout: 3000 }, (_error, stdout) =>
+            resolve({ name, powerSave: parsePowerSave(String(stdout)) })
+          )
+        )
+    )
+  )
+  return wifiPowerHint({ interfaces })
 }
 
 async function boot(): Promise<void> {
