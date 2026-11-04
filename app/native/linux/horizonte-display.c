@@ -15,6 +15,9 @@
  * Cada imagem vai com um cabeçalho de 24 bytes (inteiros de 32 bits, little-endian): "HZF1", largura, altura, bytes
  * por linha, formato (0 = BGRX, 1 = RGBX) e tamanho dos dados; depois os dados.
  *
+ * Escala (--scale): com a tela de quem mostra em alta densidade (Retina, notebooks 2x), a tela estendida recebe a
+ * escala mais perto da pedida entre as que o GNOME aceita no modo dela, para o texto não ficar minúsculo.
+ *
  * Posição: pela entrada padrão, uma linha por pedido, "place <left|right|above|below> [início]". O início é onde a
  * tela estendida começa ao longo da borda das outras telas, em fração dessa borda; sem ele, fica centralizada. A
  * disposição é aplicada como temporária (sem o aviso "manter alterações" do GNOME) e responde "PLACED" ou, no erro
@@ -26,10 +29,11 @@
  * aparelho que mostra agem na tela estendida.
  *
  * Uso: horizonte-display [--width 1920] [--height 1080] [--refresh 60] [--frames /run/user/1000/horizonte.sock]
- *                        [--input]
+ *                        [--scale 2] [--input]
  * Saída 2: argumentos ou ambiente; 3: o Mutter recusou ou encerrou a sessão; 4: o PipeWire falhou; 5: o socket.
  */
 #include <errno.h>
+#include <math.h>
 #include <gio/gio.h>
 #include <glib-unix.h>
 #include <pipewire/pipewire.h>
@@ -41,6 +45,7 @@
 #include <spa/pod/builder.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
@@ -73,6 +78,8 @@ struct app {
   gboolean ready;
   /* Controle remoto (--input): a sessão do Mutter que recebe o mouse, o teclado e o toque. */
   gboolean with_input;
+  /* Escala da tela estendida (--scale); 0: a que o GNOME escolher. */
+  double scale;
   char *remote;
   /* Monitores virtuais (Meta-N) que já existiam antes deste: o nosso é o que aparecer de novo. */
   GPtrArray *virtual_before;
@@ -429,6 +436,11 @@ static int start_mutter(struct app *app) {
 
 struct logical {
   int x, y, w, h;
+  /* Tamanho do modo em pixels de verdade, e as escalas que o GNOME aceita nele. */
+  int mode_w, mode_h;
+  double scales[16];
+  int n_scales;
+  gboolean logical_layout;
   double scale;
   guint32 transform;
   gboolean primary;
@@ -488,6 +500,13 @@ static int read_layout(struct app *app, guint32 *serial, struct logical *out, in
             g_variant_get_child(mode, 0, "s", &item->mode);
             g_variant_get_child(mode, 1, "i", &w);
             g_variant_get_child(mode, 2, "i", &h);
+            item->mode_w = w;
+            item->mode_h = h;
+            item->logical_layout = layout_mode == 1;
+            GVariant *scales = g_variant_get_child_value(mode, 5);
+            for (gsize k2 = 0; k2 < g_variant_n_children(scales) && item->n_scales < 16; k2++)
+              g_variant_get_child(scales, k2, "d", &item->scales[item->n_scales++]);
+            g_variant_unref(scales);
             /* Com o layout lógico (o padrão do GNOME), a área de trabalho conta em pixels lógicos. */
             const gboolean rotated = item->transform % 2 == 1;
             const double div = layout_mode == 1 && item->scale > 0 ? item->scale : 1;
@@ -559,6 +578,18 @@ static gboolean place(struct app *app, const char *side, gboolean centered, doub
     bottom = MAX(bottom, items[i].y + items[i].h);
   }
   struct logical *v = &items[mine];
+  /* Escala pedida (tela de quem mostra com alta densidade): a mais perto que o GNOME aceita neste modo. */
+  if (app->scale > 1 && v->n_scales > 0) {
+    double best = v->scale;
+    for (int k = 0; k < v->n_scales; k++)
+      if (fabs(v->scales[k] - app->scale) < fabs(best - app->scale)) best = v->scales[k];
+    if (best != v->scale && v->logical_layout) {
+      const gboolean rotated = v->transform % 2 == 1;
+      v->w = (int)((rotated ? v->mode_h : v->mode_w) / best + 0.5);
+      v->h = (int)((rotated ? v->mode_w : v->mode_h) / best + 0.5);
+    }
+    v->scale = best;
+  }
   const gboolean along_x = !g_strcmp0(side, "above") || !g_strcmp0(side, "below");
   const int edge = along_x ? right - left : bottom - top;
   const int peer = along_x ? v->w : v->h;
@@ -716,6 +747,15 @@ int main(int argc, char **argv) {
       i--; /* não tem valor */
       continue;
     }
+    if (!strcmp(argv[i], "--scale")) {
+      char *end = NULL;
+      app.scale = value ? strtod(value, &end) : 0;
+      if (!end || *end != '\0' || app.scale < 1 || app.scale > 4) {
+        fprintf(stderr, "--scale precisa ser um número entre 1 e 4\n");
+        return 2;
+      }
+      continue;
+    }
     if (!strcmp(argv[i], "--frames") && value && value[0] == '/') {
       app.frames_path = value;
       continue;
@@ -725,7 +765,7 @@ int main(int argc, char **argv) {
                 : !strcmp(argv[i], "--refresh") ? &app.refresh
                                                 : NULL;
     if (!target || (*target = parse_int(value, 1, 16384)) < 0) {
-      fprintf(stderr, "uso: horizonte-display [--width 1920] [--height 1080] [--refresh 60] [--frames /caminho.sock] [--input]\n");
+      fprintf(stderr, "uso: horizonte-display [--width 1920] [--height 1080] [--refresh 60] [--frames /caminho.sock] [--scale 2] [--input]\n");
       return 2;
     }
   }

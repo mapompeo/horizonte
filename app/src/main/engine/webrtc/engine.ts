@@ -45,6 +45,8 @@ export interface ReceiverWindow {
   codecs: string[]
   /** Tamanho da tela onde ela abriu, em pixels de verdade: é o tamanho pedido para a tela estendida. */
   size: ScreenSize
+  /** Densidade dessa tela (o `scaleFactor`); acima de 1, a tela estendida nasce com essa escala. */
+  scale?: number
   media(): MediaSide
   /** A pessoa pediu para sair (segurou Esc ou fechou a janela). */
   onQuit(callback: () => void): void
@@ -219,7 +221,8 @@ export class WebRtcEngine implements EnginePort {
         this.captureTarget = await virtual.ensure({
           width: want.width,
           height: want.height,
-          fps: want.fps
+          fps: want.fps,
+          ...(want.scale !== undefined ? { scale: want.scale } : {})
         })
         const placement = this.deps.placementFor?.(peer.fp)
         if (placement) await virtual.place?.(placement)
@@ -309,7 +312,8 @@ export class WebRtcEngine implements EnginePort {
       height: window.size.height,
       fps: settings.fps,
       bitrate: settings.bitrate,
-      codecs: window.codecs
+      codecs: window.codecs,
+      ...(window.scale && window.scale > 1 ? { scale: window.scale } : {})
     }
     try {
       const session = await connect({
