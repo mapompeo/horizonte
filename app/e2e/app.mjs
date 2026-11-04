@@ -272,9 +272,12 @@ try {
         await app.click(/^Permitir$/)
         const text = await app.waitText(/Notebook conectado/, 30_000)
         if (!/Tela estendida/.test(text)) throw new Error('sem "Tela estendida"')
-        // Conectado, o Horizonte sai da frente e fica nos ícones ocultos: sem janela, não há o que fotografar.
-        const hidden = await app.ev('document.visibilityState')
-        if (hidden !== 'hidden') throw new Error(`a janela continuou na frente (${hidden})`)
+        // Conectado, o Horizonte sai da frente e fica nos ícones ocultos: sem janela, não há o que fotografar. No Linux
+        // ele só minimiza (sem extensão não há bandeja), e a CI não tem gerenciador de janelas para minimizar.
+        if (process.platform !== 'linux') {
+          const hidden = await app.ev('document.visibilityState')
+          if (hidden !== 'hidden') throw new Error(`a janela continuou na frente (${hidden})`)
+        }
       }
     )
     await app.close()
