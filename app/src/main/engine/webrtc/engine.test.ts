@@ -142,8 +142,7 @@ function pair(): {
   const sender = new WebRtcEngine({
     windows: sendWindows,
     presence: { setSending: (info) => announced.push(info?.port ?? null), hosts: async () => [] },
-    virtualScreen: screen,
-    frames: '/run/user/1000/horizonte.sock',
+    screens: () => ({ screen, frames: '/run/user/1000/horizonte.sock' }),
     deviceName: () => 'Desktop',
     kind: () => 'desktop',
     screenSize: () => ({ width: 1920, height: 1080 }),
@@ -158,8 +157,7 @@ function pair(): {
         { name: 'Desktop', address: '127.0.0.1', port: announced.at(-1) ?? 0 }
       ]
     },
-    virtualScreen: null,
-    frames: null,
+    screens: null,
     deviceName: () => 'Notebook',
     kind: () => 'laptop',
     screenSize: () => ({ width: 1366, height: 768 }),

@@ -78,16 +78,18 @@ export interface ServerEngine {
   abort(): Promise<void>
   approve(request: ApproveRequest): Promise<void>
   deny(pairingId: string): Promise<void>
-  stopSending(): Promise<void>
+  /** Para de mostrar para um aparelho (pela impressão digital) ou, sem ela, para todos. */
+  stopSending(fingerprint?: string): Promise<void>
   applyBitrate(mbps: number): Promise<void>
   /** Muda a posição da tela estendida sem preparar tudo de novo. */
   placeDisplay?(side: ExtendSide): Promise<void>
   /** Motor próprio: muda na hora a posição da tela de quem está conectado. */
-  placeScreen?(placement: ScreenPlacement): Promise<void>
+  placeScreen?(placement: ScreenPlacement, fingerprint?: string): Promise<void>
   onPairRequest(callback: (request: PairRequest) => void): () => void
   onPairCancelled(callback: (pairingId: string) => void): () => void
   onClientConnected(callback: (device: string, peer?: ConnectedPeer) => void): () => void
-  onClientDisconnected(callback: () => void): () => void
+  /** Um aparelho saiu (motor próprio: com a impressão digital dele; sem ela, a conexão toda acabou). */
+  onClientDisconnected(callback: (fingerprint?: string) => void): () => void
 }
 
 /** Papel de quem recebe a tela (Moonlight). */

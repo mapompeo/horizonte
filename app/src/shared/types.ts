@@ -16,6 +16,15 @@ export interface AppError {
   detail?: string
 }
 
+/** Um aparelho vendo a tela agora (motor próprio: vários ao mesmo tempo, cada um com a sua tela estendida). */
+export interface ConnectedDevice {
+  device: string
+  /** Motor próprio: quem está mostrando (é por ela que a posição da tela é guardada). */
+  fingerprint?: string
+  /** Tamanho da tela dele, para o mapa de posição. */
+  peerScreen?: ScreenSize
+}
+
 export type AppState =
   | { screen: 'install' }
   | { screen: 'choose' }
@@ -42,14 +51,14 @@ export type AppState =
       deviceId?: string
       /** Tamanho da tela do outro aparelho, para o mapa de posição. */
       peerScreen?: ScreenSize
+      /** Quem já estava conectado quando o pedido chegou: a tela volta para eles depois da resposta. */
+      connected?: ConnectedDevice[]
     }
   | {
       screen: 'connected'
       mode: 'send'
-      device: string
-      /** Motor próprio: quem está mostrando (é por ela que a posição da tela é guardada) e o tamanho da tela dele. */
-      fingerprint?: string
-      peerScreen?: ScreenSize
+      /** Na ordem em que conectaram. */
+      devices: ConnectedDevice[]
     }
   | { screen: 'discover'; mode: 'receive' }
   | { screen: 'receiving'; mode: 'receive'; host: string; name: string }
@@ -79,8 +88,10 @@ export type AppEvent =
   | { type: 'APPROVE'; pin?: string; trust?: boolean }
   | { type: 'DENY' }
   | { type: 'CLIENT_CONNECTED'; device: string; fingerprint?: string; screen?: ScreenSize }
-  | { type: 'CLIENT_DISCONNECTED' }
-  | { type: 'STOP' }
+  /** Sem a impressão digital: todos saíram (o motor antigo não diz quem). */
+  | { type: 'CLIENT_DISCONNECTED'; fingerprint?: string }
+  /** Com a impressão digital, para de mostrar só para esse aparelho. */
+  | { type: 'STOP'; fingerprint?: string }
   | { type: 'CONNECT'; host: string; name: string }
   | { type: 'STREAM_ENDED' }
   | { type: 'FAIL'; error: AppError }
@@ -141,8 +152,10 @@ export interface Settings {
   /** Modo Mouse: onde começa a borda de cada outro computador, em fração da borda deste; sem valor, centralizado. */
   mouseOffsets: Record<string, number>
   trusted: TrustedDevice[]
-  /** Motor próprio: onde fica a tela estendida, a mesma para todos os aparelhos. */
+  /** Motor próprio: onde fica a tela estendida de quem ainda não tem posição própria (o padrão). */
   screenPlacement: ScreenPlacement
+  /** Motor próprio: a posição de cada aparelho que já foi arrastado, pela impressão digital do certificado. */
+  screenPlacements: Record<string, ScreenPlacement>
   /** Último modo escolhido neste aparelho; null até a pessoa escolher pela primeira vez. */
   mode: Mode | null
 }

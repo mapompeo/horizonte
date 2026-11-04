@@ -98,29 +98,38 @@ export interface SenderOptions extends LinkOptions {
   onSession(session: Session, address: string): void
   onError?(error: Error): void
   helloTimeoutMs?: number
+  /** Quantos aparelhos ao mesmo tempo (cada um com a sua tela estendida); acima disso, "ocupado". */
+  maxViewers?: number
 }
+
+/** Até quatro telas sem fio ao mesmo tempo: além disso, o GNOME e a rede local começam a sofrer. */
+export const MAX_VIEWERS = 4
 
 export interface Sender {
   readonly port: number
   stop(): Promise<void>
 }
 
-/** Lado que envia: escuta, pede aprovação, e atende uma sessão por vez. */
+/**
+ * Lado que envia: escuta, pede aprovação e atende vários aparelhos ao mesmo tempo, cada um na sua sessão (até
+ * `maxViewers`). O mesmo aparelho conectando de novo substitui a sessão antiga dele.
+ */
 export async function startSender(options: SenderOptions): Promise<Sender> {
-  let busy = false
-  let current: Session | null = null
+  const limit = options.maxViewers ?? MAX_VIEWERS
+  /** Pedidos em andamento (esperando aprovação ou o `want`), pela impressão digital. */
+  const asking = new Set<string>()
+  const sessions = new Map<string, Session>()
   const server: SignalingServer = await listen({
     ...options,
     onLink(link, peer) {
-      if (busy) {
+      const others = [...sessions.keys()].filter((fp) => fp !== peer.fp)
+      if (asking.has(peer.fp) || others.length + asking.size >= limit) {
         link.send({ t: 'denied', reason: 'busy' })
         link.close('ocupado')
         return
       }
-      busy = true
-      void serve(link, peer).finally(() => {
-        if (!current) busy = false
-      })
+      asking.add(peer.fp)
+      void serve(link, peer).finally(() => asking.delete(peer.fp))
     }
   })
 
@@ -150,10 +159,10 @@ export async function startSender(options: SenderOptions): Promise<Sender> {
       link.onClose(() => resolve(null))
     })
     if (!session) return
-    current = session
+    sessions.get(peer.fp)?.end('quit')
+    sessions.set(peer.fp, session)
     session.onEnded(() => {
-      current = null
-      busy = false
+      if (sessions.get(peer.fp) === session) sessions.delete(peer.fp)
     })
     options.onSession(session, link.remoteAddress)
   }
@@ -161,7 +170,7 @@ export async function startSender(options: SenderOptions): Promise<Sender> {
   return {
     port: server.port,
     async stop() {
-      current?.end('quit')
+      for (const session of [...sessions.values()]) session.end('quit')
       await server.close()
     }
   }

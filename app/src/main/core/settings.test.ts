@@ -32,7 +32,8 @@ describe('parseSettings', () => {
       mouseSides: { Trabalho: 'left' },
       mouseOffsets: { Trabalho: 0.25 },
       trusted: [{ name: 'Desktop', address: '192.168.1.4' }],
-      screenPlacement: { side: 'below', offset: 0.5 }
+      screenPlacement: { side: 'below', offset: 0.5 },
+      screenPlacements: { ['AB:'.repeat(31) + 'CD']: { side: 'left' } }
     }
     expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null })
   })

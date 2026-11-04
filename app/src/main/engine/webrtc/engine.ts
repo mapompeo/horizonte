@@ -2,6 +2,7 @@ import type { DeviceKind } from '../../../shared/device'
 import { helperCommand, parseInput } from '../../../shared/input'
 import type {
   Host,
+  MouseSide,
   PrepProgress,
   PrepStep,
   ScreenPlacement,
@@ -9,6 +10,7 @@ import type {
   Settings
 } from '../../../shared/types'
 import type { ApproveRequest, ConnectedPeer, EnginePort, PairRequest } from '../port'
+import { freePlacement } from '../../../shared/placement'
 import type { VirtualScreen } from './display'
 import { PROTOCOL_VERSION, SIGNALING_PORT, type Hello, type Want } from './protocol'
 import {
@@ -60,24 +62,36 @@ export interface MotorWindows {
   openReceiver(): Promise<ReceiverWindow>
 }
 
+/** Um monitor virtual e o socket das imagens dele (GNOME), um para cada aparelho conectado ao mesmo tempo. */
+export interface ScreenSlot {
+  screen: VirtualScreen
+  frames: string | null
+}
+
 export interface WebRtcEngineDeps {
   windows: MotorWindows
   presence: LanPresence
-  /** Monitor virtual deste sistema; sem ele, a tela principal é espelhada. */
-  virtualScreen: VirtualScreen | null
-  /** Socket do auxiliar com as imagens da tela estendida (GNOME), quando houver. */
-  frames: string | null
+  /**
+   * O monitor virtual de número `index` (0, 1, 2…): um por aparelho conectado. Sem isso (null), a tela principal é
+   * espelhada.
+   */
+  screens: ((index: number) => ScreenSlot) | null
   deviceName(): string
   kind(): DeviceKind
   screenSize(): ScreenSize
-  /** Onde a pessoa deixou a tela deste aparelho (pela impressão digital); null: o padrão. */
+  /** Onde a pessoa deixou a tela deste aparelho (pela impressão digital); null: ainda não arrastou. */
   placementFor?(fingerprint: string): ScreenPlacement | null
+  /** Onde fica quem ainda não tem posição própria. */
+  defaultPlacement?(): ScreenPlacement
   /** Preparo do sistema antes de escutar (no Linux, liberar o firewall). */
   prepareSystem?(): Promise<void>
   /** Ajustes da sinalização (nos testes: porta 0 em 127.0.0.1, sem ping). */
   signaling?: Pick<SenderOptions, 'port' | 'host' | 'pingMs' | 'helloTimeoutMs'>
   log?(...parts: unknown[]): void
 }
+
+/** Quanto esperar o GNOME assentar a disposição depois de um monitor novo, para posicionar todos de novo. */
+const REPLACE_AFTER_MS = 1500
 
 type Listener<A extends unknown[]> = (...args: A) => void
 
@@ -105,7 +119,21 @@ export class WebRtcEngine implements EnginePort {
   private sender: Sender | null = null
   private starting: Promise<Sender> | null = null
   private identity: { id: string; fp: string } | null = null
-  private sending: Session | null = null
+  /** Quem está vendo a tela agora, pela impressão digital: a sessão e o monitor virtual de cada um. */
+  private readonly viewers = new Map<
+    string,
+    {
+      session: Session | null
+      slot: number
+      target: number | null
+      side?: MouseSide
+      placement?: ScreenPlacement | null
+      /** O monitor dele já foi criado (o Electron pode demorar a enxergar, e aí `target` fica null). */
+      created?: boolean
+    }
+  >()
+  /** Os monitores já criados, por número: um número volta a ficar livre quando o aparelho dele sai. */
+  private readonly slots = new Map<number, ScreenSlot>()
   private receiving: {
     session: Session | null
     window: ReceiverWindow
@@ -113,20 +141,39 @@ export class WebRtcEngine implements EnginePort {
   } | null = null
   private readonly pending = new Map<string, (approved: boolean) => void>()
   private readonly ports = new Map<string, number>()
-  private captureTarget: number | null = null
   private nextPairing = 0
 
   private readonly pairRequested = listeners<[PairRequest]>()
   private readonly pairCancelled = listeners<[string]>()
   private readonly clientConnected = listeners<[string, ConnectedPeer]>()
-  private readonly clientDisconnected = listeners<[]>()
+  private readonly clientDisconnected = listeners<[string | undefined]>()
   private readonly streamEnded = listeners<[]>()
 
   constructor(private readonly deps: WebRtcEngineDeps) {}
 
-  /** A tela que a janela de envio captura (a do monitor virtual, quando há); null: a principal. */
+  /** A tela que a janela de envio captura (a do monitor virtual mais recente, quando há); null: a principal. */
   target(): number | null {
-    return this.captureTarget
+    let last: number | null = null
+    for (const viewer of this.viewers.values()) if (viewer.target !== null) last = viewer.target
+    return last
+  }
+
+  /** O monitor de número livre mais baixo (criado na primeira vez que é preciso). */
+  private freeSlot(): number {
+    const used = new Set([...this.viewers.values()].map((viewer) => viewer.slot))
+    let index = 0
+    while (used.has(index)) index++
+    return index
+  }
+
+  private slot(index: number): ScreenSlot | null {
+    if (!this.deps.screens) return null
+    let slot = this.slots.get(index)
+    if (!slot) {
+      slot = this.deps.screens(index)
+      this.slots.set(index, slot)
+    }
+    return slot
   }
 
   private log(...parts: unknown[]): void {
@@ -214,42 +261,93 @@ export class WebRtcEngine implements EnginePort {
   }
 
   private sendMedia(peer: Hello): MediaSide {
-    const virtual = this.deps.virtualScreen
+    // O mesmo aparelho conectando de novo fica com o monitor que já era dele.
+    const index = this.viewers.get(peer.fp)?.slot ?? this.freeSlot()
+    const viewer = {
+      session: null as Session | null,
+      slot: index,
+      target: null as number | null,
+      side: undefined as MouseSide | undefined,
+      placement: null as ScreenPlacement | null,
+      created: false
+    }
+    this.viewers.set(peer.fp, viewer)
+    const slot = this.slot(index)
     return this.deps.windows.sendMedia({
       beforeStart: async (want) => {
-        if (!virtual) return
-        this.captureTarget = await virtual.ensure({
+        if (!slot) return
+        viewer.target = await slot.screen.ensure({
           width: want.width,
           height: want.height,
           fps: want.fps,
           ...(want.scale !== undefined ? { scale: want.scale } : {}),
           ...(want.cursor ? { cursor: true } : {})
         })
-        const placement = this.deps.placementFor?.(peer.fp)
-        if (placement) await virtual.place?.(placement)
-        return this.deps.frames ? { frames: this.deps.frames } : undefined
+        const placement = this.placementOf(peer.fp)
+        viewer.side = placement?.side
+        viewer.placement = placement
+        viewer.created = true
+        // Um monitor novo faz o GNOME refazer a disposição e desfazer a posição dos que já existiam: todas as telas
+        // conectadas voltam para o lugar delas, na ordem em que conectaram.
+        await this.placeAgain()
+        // O GNOME às vezes refaz a disposição um pouco depois de o monitor aparecer: mais uma vez, já assentado.
+        setTimeout(() => void this.placeAgain(), REPLACE_AFTER_MS)
+        return slot.frames ? { frames: slot.frames } : undefined
       },
       afterStop: () => {
-        this.captureTarget = null
-        void virtual?.release()
+        viewer.target = null
+        viewer.created = false
+        if (this.viewers.get(peer.fp) === viewer && !viewer.session) this.viewers.delete(peer.fp)
+        if (![...this.viewers.values()].some((other) => other !== viewer && other.slot === index))
+          // Sem o monitor deste, o GNOME refaz a disposição: as outras telas voltam para o lugar delas.
+          void slot?.screen
+            .release()
+            .then(() => new Promise((resolve) => setTimeout(resolve, 500)))
+            .then(() => this.placeAgain())
       },
       onError: (error) => {
         this.log('tela estendida:', error.message)
-        this.sending?.end('error')
+        viewer.session?.end('error')
       },
-      onInput: (raw) => this.input(raw)
+      onInput: (raw) => this.input(peer.fp, raw)
     })
   }
 
+  /**
+   * A posição de um aparelho: a que a pessoa deixou para ele ou, sem ela, a padrão. Se outro aparelho conectado já
+   * está desse lado, vai para o primeiro lado livre (direita, esquerda, acima, abaixo): uma tela não fica sobre a outra.
+   */
+  private placementOf(fingerprint: string): ScreenPlacement | null {
+    const own = this.deps.placementFor?.(fingerprint)
+    if (own) return own
+    const fallback = this.deps.defaultPlacement?.() ?? null
+    if (!fallback) return null
+    const others = [...this.viewers].filter(([fp]) => fp !== fingerprint)
+    return freePlacement(
+      fallback,
+      others.map(([, viewer]) => viewer.side)
+    )
+  }
+
+  private async placeAgain(): Promise<void> {
+    for (const viewer of this.viewers.values()) {
+      if (viewer.placement && viewer.created)
+        await this.slot(viewer.slot)?.screen.place?.(viewer.placement)
+    }
+  }
+
   private onSending(session: Session): void {
-    this.sending = session
+    const fp = session.peer.fp
+    const viewer = this.viewers.get(fp)
+    if (viewer) viewer.session = session
     session.onEnded(() => {
-      if (this.sending !== session) return
-      this.sending = null
-      this.clientDisconnected.emit()
+      const current = this.viewers.get(fp)
+      if (!current || current.session !== session) return
+      this.viewers.delete(fp)
+      this.clientDisconnected.emit(fp)
     })
     this.clientConnected.emit(session.peer.name, {
-      fingerprint: session.peer.fp,
+      fingerprint: fp,
       ...(session.peer.screen ? { screen: session.peer.screen } : {})
     })
   }
@@ -267,10 +365,13 @@ export class WebRtcEngine implements EnginePort {
     resolve?.(false)
   }
 
-  async stopSending(): Promise<void> {
-    const session = this.sending
-    this.sending = null
-    session?.end('user')
+  /** Para de mostrar para um aparelho (pela impressão digital) ou, sem ela, para todos. */
+  async stopSending(fingerprint?: string): Promise<void> {
+    // Encerrar a sessão já tira o aparelho da lista e avisa a saída (ver `onSending`).
+    for (const [fp, viewer] of [...this.viewers]) {
+      if (fingerprint && fp !== fingerprint) continue
+      viewer.session?.end('user')
+    }
   }
 
   /** Porta em que este aparelho espera conexão (para a página do navegador); null se não está esperando. */
@@ -374,17 +475,23 @@ export class WebRtcEngine implements EnginePort {
    * Entrada de quem mostra (mouse, teclado, toque): só com uma sessão aprovada em andamento, e só o que passa pela
    * conferência do protocolo vira comando para a tela estendida.
    */
-  private input(raw: string): void {
-    if (!this.sending) return
+  private input(fingerprint: string, raw: string): void {
+    const viewer = this.viewers.get(fingerprint)
+    if (!viewer?.session) return
     const event = parseInput(raw)
-    if (event) this.deps.virtualScreen?.input?.(helperCommand(event))
+    if (event) this.slot(viewer.slot)?.screen.input?.(helperCommand(event))
   }
 
-  /** Muda na hora a posição da tela de quem está conectado. */
-  async placeScreen(placement: ScreenPlacement): Promise<void> {
-    if (this.sending) await this.deps.virtualScreen?.place?.(placement)
+  /** Muda na hora a posição da tela de um aparelho conectado (sem a impressão digital: de todos). */
+  async placeScreen(placement: ScreenPlacement, fingerprint?: string): Promise<void> {
+    for (const [fp, viewer] of this.viewers) {
+      if (fingerprint && fp !== fingerprint) continue
+      viewer.placement = placement
+      viewer.side = placement.side
+      if (viewer.session) await this.slot(viewer.slot)?.screen.place?.(placement)
+    }
   }
-  onClientDisconnected(callback: () => void): () => void {
+  onClientDisconnected(callback: (fingerprint?: string) => void): () => void {
     return this.clientDisconnected.on(callback)
   }
   onStreamEnded(callback: () => void): () => void {

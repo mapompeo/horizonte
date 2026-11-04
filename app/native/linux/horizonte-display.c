@@ -95,6 +95,8 @@ struct app {
   char *remote;
   /* Monitores virtuais (Meta-N) que já existiam antes deste: o nosso é o que aparecer de novo. */
   GPtrArray *virtual_before;
+  /* O conector do nosso, guardado na primeira vez: com vários aparelhos, os monitores dos outros também são novos. */
+  char *my_connector;
 
   /* Envio das imagens (--frames). A thread do PipeWire copia a imagem nova para `frame` quando o envio está livre;
    * a thread de envio manda e libera. Se o envio ainda está ocupado, a imagem vai para `spare` (a mais recente
@@ -682,23 +684,50 @@ static void remember_virtual_monitors(struct app *app) {
 }
 
 /* Põe a tela estendida no lado pedido das outras telas; `centered`: no meio da borda, sem olhar `start`. */
+static gboolean overlaps(const struct logical *a, const struct logical *b) {
+  return a->x < b->x + b->w && b->x < a->x + a->w && a->y < b->y + b->h && b->y < a->y + a->h;
+}
+
+/* Encosta em alguma outra tela: um lado em comum, com algum trecho junto. */
+static gboolean touches(const struct logical *a, const struct logical *b) {
+  const gboolean side_by_side = (a->x + a->w == b->x || b->x + b->w == a->x) && a->y < b->y + b->h && b->y < a->y + a->h;
+  const gboolean stacked = (a->y + a->h == b->y || b->y + b->h == a->y) && a->x < b->x + b->w && b->x < a->x + a->w;
+  return side_by_side || stacked;
+}
+
+static gboolean attached(const struct logical *items, int count, int index) {
+  for (int k = 0; k < count; k++)
+    if (k != index && touches(&items[index], &items[k])) return TRUE;
+  return FALSE;
+}
+
 static gboolean place(struct app *app, const char *side, gboolean centered, double start, char **why) {
   struct logical items[16];
   guint32 serial = 0;
   int count = read_layout(app, &serial, items, 16);
   int mine = -1;
-  for (int i = count - 1; i >= 0; i--)
-    if (g_str_has_prefix(items[i].connector, "Meta-") && !was_virtual_before(app, items[i].connector)) mine = i;
+  if (app->my_connector) {
+    for (int i = 0; i < count; i++)
+      if (!g_strcmp0(items[i].connector, app->my_connector)) mine = i;
+  } else {
+    for (int i = count - 1; i >= 0; i--)
+      if (g_str_has_prefix(items[i].connector, "Meta-") && !was_virtual_before(app, items[i].connector)) mine = i;
+    if (mine >= 0) app->my_connector = g_strdup(items[mine].connector);
+  }
   if (mine < 0 || count < 2) {
     free_layout(items, count);
     *why = g_strdup("a tela estendida ainda não apareceu");
     return FALSE;
   }
 
-  /* Caixa das outras telas. */
+  /* Caixa das telas de verdade (os outros monitores virtuais, de outros aparelhos, ficam de fora: cada um se posiciona
+   * em relação às telas físicas, e não em relação aos outros). Sem tela física, vale a caixa de todas as outras. */
   int left = G_MAXINT, top = G_MAXINT, right = G_MININT, bottom = G_MININT;
+  gboolean physical = FALSE;
+  for (int i = 0; i < count; i++)
+    if (i != mine && !g_str_has_prefix(items[i].connector, "Meta-")) physical = TRUE;
   for (int i = 0; i < count; i++) {
-    if (i == mine) continue;
+    if (i == mine || (physical && g_str_has_prefix(items[i].connector, "Meta-"))) continue;
     left = MIN(left, items[i].x);
     top = MIN(top, items[i].y);
     right = MAX(right, items[i].x + items[i].w);
@@ -726,6 +755,35 @@ static gboolean place(struct app *app, const char *side, gboolean centered, doub
   else if (!g_strcmp0(side, "right")) { v->x = right; v->y = top + at; }
   else if (!g_strcmp0(side, "above")) { v->x = left + at; v->y = top - v->h; }
   else { v->x = left + at; v->y = bottom; }
+
+  /* Outro aparelho já do mesmo lado: este vai para fora dele, sem ficar por cima. */
+  for (int round = 0; round < 8; round++) {
+    gboolean moved = FALSE;
+    for (int i = 0; i < count; i++) {
+      if (i == mine || !overlaps(v, &items[i])) continue;
+      if (!g_strcmp0(side, "left")) v->x = items[i].x - v->w;
+      else if (!g_strcmp0(side, "right")) v->x = items[i].x + items[i].w;
+      else if (!g_strcmp0(side, "above")) v->y = items[i].y - v->h;
+      else v->y = items[i].y + items[i].h;
+      moved = TRUE;
+    }
+    if (!moved) break;
+  }
+
+  /* O GNOME recusa a disposição inteira se alguma tela fica solta, sem encostar em outra. Um monitor de outro aparelho
+   * que ficou solto (estava encostado onde este estava antes) vai para a direita de tudo; o auxiliar dele o devolve ao
+   * lugar dele logo em seguida. */
+  for (int i = 0; i < count; i++) {
+    if (i == mine || !g_str_has_prefix(items[i].connector, "Meta-") || attached(items, count, i)) continue;
+    int edge_x = G_MININT, edge_top = G_MAXINT;
+    for (int k = 0; k < count; k++)
+      if (k != i) {
+        edge_x = MAX(edge_x, items[k].x + items[k].w);
+        if (items[k].x + items[k].w >= edge_x) edge_top = items[k].y;
+      }
+    items[i].x = edge_x;
+    items[i].y = edge_top;
+  }
 
   /* O GNOME quer a área de trabalho começando em (0, 0). */
   int ox = G_MAXINT, oy = G_MAXINT;

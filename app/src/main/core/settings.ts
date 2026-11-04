@@ -30,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mouseOffsets: {},
   trusted: [],
   screenPlacement: { side: 'right' },
+  screenPlacements: {},
   mode: null
 }
 
@@ -60,8 +61,20 @@ function parsePlacement(value: unknown): ScreenPlacement | null {
   return { side: side as MouseSide, ...(valid ? { offset } : {}) }
 }
 
+/** Até 20 aparelhos (pela impressão digital), cada um com uma posição válida; o resto é descartado. */
+function parseScreenPlacements(raw: unknown): Record<string, ScreenPlacement> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
+  const entries = Object.entries(raw as Record<string, unknown>).flatMap(
+    ([key, value]): [string, ScreenPlacement][] => {
+      const placement = isFingerprint(key) ? parsePlacement(value) : null
+      return placement ? [[key, placement]] : []
+    }
+  )
+  return Object.fromEntries(entries.slice(0, 20))
+}
+
 /**
- * Posição da tela estendida, a mesma para todos. Ajustes antigos tinham uma por aparelho (`screenPlacements`, pela
+ * Posição padrão da tela estendida. Ajustes antigos tinham uma por aparelho (`screenPlacements`, pela
  * impressão digital): vale a primeira delas; sem nenhuma, o lado padrão.
  */
 function parseScreenPlacement(raw: unknown, legacy: unknown, side: ExtendSide): ScreenPlacement {
@@ -159,6 +172,7 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
       input.screenPlacements,
       extendSide
     ),
+    screenPlacements: parseScreenPlacements(input.screenPlacements),
     extendSide,
     mouseSides: parseMouseSides(input.mouseSides),
     mouseOffsets: parseMouseOffsets(input.mouseOffsets),

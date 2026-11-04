@@ -440,8 +440,9 @@ async function boot(): Promise<void> {
       presence,
       deviceName: () => ownName(),
       kind: () => ownKind,
-      // A mesma posição para todos os aparelhos (Ajustes > Posição da tela estendida).
-      placementFor: () => ownSettings()?.screenPlacement ?? null
+      // A posição de cada aparelho que já foi arrastado; os outros ficam na padrão (Ajustes > Posição da tela).
+      placementFor: (fingerprint) => ownSettings()?.screenPlacements[fingerprint] ?? null,
+      defaultPlacement: () => ownSettings()?.screenPlacement ?? { side: 'right' }
     })
     virtualDisplay = () => webrtc.target()
     signalingPort = () => webrtc.signalingPort()

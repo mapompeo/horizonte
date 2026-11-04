@@ -118,7 +118,7 @@ describe('buildDiagnostic', () => {
         pairingId: 'pair-9f3',
         pin: '4821'
       },
-      { screen: 'connected', mode: 'send', device: 'Notebook da Ana' },
+      { screen: 'connected', mode: 'send', devices: [{ device: 'Notebook da Ana' }] },
       { screen: 'receiving', mode: 'receive', host: '192.168.1.5', name: 'Desktop do João' }
     ]
     for (const state of states) {

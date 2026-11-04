@@ -95,10 +95,9 @@
             />
           {:else if state.screen === 'connected'}
             <Connected
-              device={state.device}
-              fingerprint={state.fingerprint}
-              peerScreen={state.peerScreen}
+              devices={state.devices}
               placement={settings.screenPlacement}
+              placements={settings.screenPlacements}
             />
           {:else if state.screen === 'discover'}
             <Discover />
