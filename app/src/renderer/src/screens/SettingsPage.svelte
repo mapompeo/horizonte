@@ -44,8 +44,6 @@
   ] as const
   /** Tamanho de quem ainda não conectou desde que passou a ser guardado: o real chega na próxima conexão. */
   const UNKNOWN_SCREEN = { width: 1920, height: 1080 }
-  /** Aparelho com o mapa de posição aberto (pela impressão digital). */
-  let placing = $state<string | null>(null)
   /** Motor próprio: sem os ajustes que só valiam para o Sunshine. */
   const webrtc = window.horizonte.engine === 'webrtc'
 </script>
@@ -112,35 +110,11 @@
             onChange={(checked) => patchSettings({ autostart: checked })}
           />
         </div>
-        {#if window.horizonte.platform !== 'darwin' && !webrtc}
-          <div class="adv-block">
-            <span class="adv-label">Posição da tela estendida</span>
-            <Segmented
-              label="Posição da tela estendida"
-              value={settings.extendSide}
-              options={[
-                { value: 'left', text: 'Esquerda' },
-                { value: 'above', text: 'Acima' },
-                { value: 'right', text: 'Direita' }
-              ]}
-              onSelect={(value) => patchSettings({ extendSide: value as ExtendSide })}
-            />
-          </div>
-        {/if}
         {#each settings.trusted as device (device.name + device.address)}
           <div class="row">
             <span>{device.name} <span class="row-value">· confiável</span></span>
-            {#if webrtc && device.fingerprint}
-              <button
-                class="foot-link"
-                aria-expanded={placing === device.fingerprint}
-                onclick={() =>
-                  (placing = placing === device.fingerprint ? null : (device.fingerprint ?? null))}
-                >{placing === device.fingerprint ? 'Pronto' : 'Posição'}</button
-              >
-            {/if}
             <button
-              class="foot-link"
+              class="row-action"
               onclick={() =>
                 patchSettings({
                   trusted: settings.trusted.filter(
@@ -149,22 +123,6 @@
                 })}>Esquecer</button
             >
           </div>
-          {#if placing && placing === device.fingerprint}
-            <div class="adv-block">
-              <PlacementMap
-                device={device.name}
-                fingerprint={placing}
-                peerScreen={device.screen ?? UNKNOWN_SCREEN}
-                placements={settings.screenPlacements}
-                fallback={settings.extendSide}
-                height={200}
-              />
-              <p class="adv-note">
-                Arraste a tela do {device.name} para onde ela fica na sua mesa. Vale na próxima conexão
-                (ou na hora, se ele estiver conectado).
-              </p>
-            </div>
-          {/if}
         {/each}
         <div class="row">
           <span>Nome deste dispositivo</span>
@@ -242,6 +200,44 @@
         {/if}
       </div>
     </section>
+
+    {#if webrtc || window.horizonte.platform !== 'darwin'}
+      <section class="group" aria-labelledby="g-place">
+        <h2 class="group-label" id="g-place">Posição da tela estendida</h2>
+        <div class="card">
+          {#if webrtc}
+            <div class="adv-block">
+              <PlacementMap
+                device="Tela estendida"
+                peerScreen={settings.trusted.findLast((device) => device.screen)?.screen ??
+                  UNKNOWN_SCREEN}
+                placement={settings.screenPlacement}
+                height={200}
+              />
+            </div>
+          {:else}
+            <div class="adv-block">
+              <span class="adv-label">Posição da tela estendida</span>
+              <Segmented
+                label="Posição da tela estendida"
+                value={settings.extendSide}
+                options={[
+                  { value: 'left', text: 'Esquerda' },
+                  { value: 'above', text: 'Acima' },
+                  { value: 'right', text: 'Direita' }
+                ]}
+                onSelect={(value) => patchSettings({ extendSide: value as ExtendSide })}
+              />
+            </div>
+          {/if}
+        </div>
+        <p class="adv-note">
+          {webrtc
+            ? 'Arraste a tela estendida para onde ela fica na sua mesa. Vale para todos os aparelhos e muda na hora se algum estiver conectado.'
+            : 'Vale para todos os aparelhos.'}
+        </p>
+      </section>
+    {/if}
 
     <section class="group" aria-labelledby="g-about">
       <h2 class="group-label" id="g-about">Sobre</h2>

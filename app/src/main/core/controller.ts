@@ -322,13 +322,11 @@ export async function createController({
       const update = settingsQueue.then(async () => {
         const next = parseSettings({ ...settings, ...patch })
         const moved = next.extendSide !== settings.extendSide
-        // Motor próprio: mudou a posição da tela de quem está conectado agora.
-        const viewer = state.screen === 'connected' ? state.fingerprint : undefined
-        const placement = viewer ? next.screenPlacements[viewer] : undefined
+        // Motor próprio: mudou a posição da tela estendida com alguém conectado agora.
+        const placement = next.screenPlacement
         const replaced =
-          viewer !== undefined &&
-          placement !== undefined &&
-          JSON.stringify(placement) !== JSON.stringify(settings.screenPlacements[viewer])
+          state.screen === 'connected' &&
+          JSON.stringify(placement) !== JSON.stringify(settings.screenPlacement)
         const sharing = state.screen === 'mouse-active' && state.role === 'share'
         const mouseMoved =
           sharing &&
@@ -341,7 +339,7 @@ export async function createController({
         settings = { ...next, mode: settings.mode }
         notify()
         if (moved) await engine.placeDisplay?.(settings.extendSide).catch(() => undefined)
-        if (replaced && placement) await engine.placeScreen?.(placement).catch(() => undefined)
+        if (replaced) await engine.placeScreen?.(placement).catch(() => undefined)
         if (mouseMoved) await mouse?.setLayout(placementsFor(sharingWith)).catch(() => undefined)
         if (state.screen === 'connected' || state.screen === 'receiving') {
           // Ajuste ao vivo é melhor esforço: se falhar, a conexão segue com o valor anterior.

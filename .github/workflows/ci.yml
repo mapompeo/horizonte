@@ -124,6 +124,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # Sem checkout: a pasta app não existe aqui.
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Publicar a versão
         env:

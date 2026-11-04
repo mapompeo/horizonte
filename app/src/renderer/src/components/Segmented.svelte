@@ -29,7 +29,8 @@
       aria-pressed={option.value === value}
       onclick={() => onSelect(option.value)}
     >
-      {option.text}
+      <!-- O texto em negrito reserva a largura: o seletor não muda de tamanho ao trocar de opção. -->
+      <span class="seg-text" data-text={option.text}>{option.text}</span>
     </button>
   {/each}
 </div>

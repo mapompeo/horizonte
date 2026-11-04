@@ -33,10 +33,10 @@ O logo é um só: o sol nascendo sobre o horizonte, o sinal sem fio se espalhand
 ## Tipografia
 
 - A fonte é a do sistema (`sans`: SF Pro no Mac, Segoe UI no Windows, a padrão no Linux).
-- **Três tamanhos só:**
-  - `title` (28px) para o título da tela e de pedidos;
-  - `body` (17px) para o resto, com nomes e botões em seminegrito;
-  - `footnote` (13px) para dicas, rótulos e o seletor.
+- **Três tamanhos só, de app de computador:**
+  - `title` (22px) para o título da tela e de pedidos;
+  - `body` (14px) para o resto, com nomes e botões em seminegrito;
+  - `footnote` (12px) para dicas, rótulos e o seletor.
 - **Três pesos:** 400, 600 e 700 (só no título).
 - Nada de caixa alta nem espaçamento entre letras feito à mão: a fonte do sistema já ajusta.
 
@@ -44,9 +44,10 @@ O logo é um só: o sol nascendo sobre o horizonte, o sinal sem fio se espalhand
 
 - **Grade de 8 pt:** `space-1` a `space-5` (4, 8, 16, 24 e 32px).
 - **Altura mínima de toque:** `target` (44px). O seletor mede `segmented` (32px) e chega a 44 de toque.
-- **Margem de 16 em tudo:** linhas, cartões, rótulos de grupo e o recuo das divisórias usam `space-3`.
+- **Margem de 16 em tudo:** linhas, cartões e rótulos de grupo usam `space-3`.
+- **Divisórias de ponta a ponta:** a linha entre itens de um grupo vai de uma borda à outra, sem recuo.
 - **Tudo em pílula:** botões, campos, seletor, linhas, estados e ícones usam `radius-capsule`.
-- **Só o que é alto demais para pílula** (grupos de várias linhas e cartões) usa `radius-group` (28px).
+- **Só o que é alto demais para pílula** (grupos de várias linhas e cartões) usa `radius-group` (20px).
 - **Sem sombras, degradês nem bordas coloridas.** Grupos se separam pelo fundo `surface` sobre `background`, como nos Ajustes.
 
 ## Janela

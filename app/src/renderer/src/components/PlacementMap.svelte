@@ -1,23 +1,21 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import type { DeviceKind } from '../../../shared/device'
-  import type { ExtendSide, ScreenPlacement, ScreenSize } from '../../../shared/types'
+  import type { ScreenPlacement, ScreenSize } from '../../../shared/types'
   import { patchSettings } from '../lib/actions'
   import { safeName } from '../lib/copy'
   import ScreenMap from './ScreenMap.svelte'
 
   interface Props {
+    /** Nome no retângulo da outra tela. */
     device: string
-    /** O aparelho, pela impressão digital do certificado: é por ela que a posição fica guardada. */
-    fingerprint: string
     peerScreen: ScreenSize
-    placements: Record<string, ScreenPlacement>
-    /** Lado de quem ainda não tem posição guardada. */
-    fallback: ExtendSide
+    /** A posição da tela estendida, a mesma para todos os aparelhos. */
+    placement: ScreenPlacement
     height?: number
   }
 
-  let { device, fingerprint, peerScreen, placements, fallback, height = 240 }: Props = $props()
+  let { device, peerScreen, placement, height = 240 }: Props = $props()
 
   let own = $state<ScreenSize | null>(null)
   let ownKind = $state<DeviceKind>('desktop')
@@ -27,8 +25,7 @@
   })
 
   const name = $derived(safeName(device))
-  const placement = $derived<ScreenPlacement>(placements[fingerprint] ?? { side: fallback })
-  const hosts = $derived([{ name: device, address: fingerprint, screen: peerScreen }])
+  const hosts = $derived([{ name: device, address: 'tela-estendida', screen: peerScreen }])
 
   function place(
     _name: string,
@@ -36,7 +33,7 @@
   ): void {
     // Sem a faixa de deixar de fora, o mapa sempre devolve um lado; null só por garantia.
     if (!where) return
-    void patchSettings({ screenPlacements: { ...placements, [fingerprint]: where } })
+    void patchSettings({ screenPlacement: where })
   }
 </script>
 

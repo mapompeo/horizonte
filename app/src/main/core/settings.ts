@@ -29,7 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mouseSides: {},
   mouseOffsets: {},
   trusted: [],
-  screenPlacements: {},
+  screenPlacement: { side: 'right' },
   mode: null
 }
 
@@ -51,19 +51,28 @@ function parseMouseSides(raw: unknown): Record<string, MouseSide> {
   return Object.fromEntries(entries.slice(0, 20))
 }
 
-/** Até 20 aparelhos (pela impressão digital), cada um com um lado válido e um início entre -4 e 4. */
-function parseScreenPlacements(raw: unknown): Record<string, ScreenPlacement> {
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
-  const entries = Object.entries(raw as Record<string, unknown>).flatMap(
-    ([key, value]): [string, ScreenPlacement][] => {
-      if (!isFingerprint(key) || typeof value !== 'object' || value === null) return []
-      const { side, offset } = value as Record<string, unknown>
-      if (!['left', 'right', 'above', 'below'].includes(side as string)) return []
-      const valid = typeof offset === 'number' && Number.isFinite(offset) && Math.abs(offset) <= 4
-      return [[key, { side: side as MouseSide, ...(valid ? { offset } : {}) }]]
+/** Um lado válido e um início entre -4 e 4 (fração da borda); fora disso, nada. */
+function parsePlacement(value: unknown): ScreenPlacement | null {
+  if (typeof value !== 'object' || value === null) return null
+  const { side, offset } = value as Record<string, unknown>
+  if (!['left', 'right', 'above', 'below'].includes(side as string)) return null
+  const valid = typeof offset === 'number' && Number.isFinite(offset) && Math.abs(offset) <= 4
+  return { side: side as MouseSide, ...(valid ? { offset } : {}) }
+}
+
+/**
+ * Posição da tela estendida, a mesma para todos. Ajustes antigos tinham uma por aparelho (`screenPlacements`, pela
+ * impressão digital): vale a primeira delas; sem nenhuma, o lado padrão.
+ */
+function parseScreenPlacement(raw: unknown, legacy: unknown, side: ExtendSide): ScreenPlacement {
+  const direct = parsePlacement(raw)
+  if (direct) return direct
+  if (typeof legacy === 'object' && legacy !== null && !Array.isArray(legacy))
+    for (const [key, value] of Object.entries(legacy as Record<string, unknown>)) {
+      const old = isFingerprint(key) ? parsePlacement(value) : null
+      if (old) return old
     }
-  )
-  return Object.fromEntries(entries.slice(0, 20))
+  return { side }
 }
 
 /** Até 20 computadores, cada um com uma posição entre -2 e 2 (fração da borda); o resto é descartado. */
@@ -123,6 +132,11 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
   const bitrate = clampBitrate(
     typeof input.bitrate === 'number' ? input.bitrate : DEFAULT_SETTINGS.bitrate
   )
+  const extendSide = oneOf<ExtendSide>(
+    input.extendSide,
+    ['left', 'right', 'above'],
+    DEFAULT_SETTINGS.extendSide
+  )
   const saved = typeof input.deviceName === 'string' ? cleanName(input.deviceName) : ''
   // "Computador" era o nome padrão antigo, gravado sem a pessoa escolher: vale o nome do aparelho.
   const name = LEGACY_DEFAULT_NAMES.includes(saved) ? '' : saved
@@ -140,12 +154,12 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
     codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
     autostart: typeof input.autostart === 'boolean' ? input.autostart : DEFAULT_SETTINGS.autostart,
     trusted: parseTrusted(input.trusted),
-    screenPlacements: parseScreenPlacements(input.screenPlacements),
-    extendSide: oneOf<ExtendSide>(
-      input.extendSide,
-      ['left', 'right', 'above'],
-      DEFAULT_SETTINGS.extendSide
+    screenPlacement: parseScreenPlacement(
+      input.screenPlacement,
+      input.screenPlacements,
+      extendSide
     ),
+    extendSide,
     mouseSides: parseMouseSides(input.mouseSides),
     mouseOffsets: parseMouseOffsets(input.mouseOffsets),
     deviceName: name || defaultName,

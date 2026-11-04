@@ -32,7 +32,7 @@ describe('parseSettings', () => {
       mouseSides: { Trabalho: 'left' },
       mouseOffsets: { Trabalho: 0.25 },
       trusted: [{ name: 'Desktop', address: '192.168.1.4' }],
-      screenPlacements: { ['AB:'.repeat(31) + 'CD']: { side: 'below', offset: 0.5 } }
+      screenPlacement: { side: 'below', offset: 0.5 }
     }
     expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null })
   })
@@ -192,23 +192,25 @@ describe('nome padrão do dispositivo', () => {
     expect(parseSettings({}).deviceName).toBe('Dispositivo')
   })
 
-  it('guarda a posição da tela por aparelho, só com impressão digital, lado e início válidos', () => {
+  it('posição da tela estendida: uma só para todos, vinda dos ajustes antigos por aparelho', () => {
     const FP = 'AB:'.repeat(31) + 'CD'
     expect(
-      parseSettings({
-        screenPlacements: {
-          [FP]: { side: 'left', offset: 0.25 },
-          ['EF:'.repeat(31) + '01']: { side: 'below' },
-          ['01:'.repeat(31) + '02']: { side: 'above', offset: 99 },
-          Notebook: { side: 'right' },
-          ['02:'.repeat(31) + '03']: { side: 'dentro' }
-        }
-      }).screenPlacements
-    ).toEqual({
-      [FP]: { side: 'left', offset: 0.25 },
-      ['EF:'.repeat(31) + '01']: { side: 'below' },
-      ['01:'.repeat(31) + '02']: { side: 'above' }
+      parseSettings({ screenPlacement: { side: 'above', offset: 0.25 } }).screenPlacement
+    ).toEqual({ side: 'above', offset: 0.25 })
+    expect(parseSettings({ screenPlacement: { side: 'dentro' } }).screenPlacement).toEqual({
+      side: 'right'
     })
+    expect(
+      parseSettings({ screenPlacement: { side: 'left', offset: 99 } }).screenPlacement
+    ).toEqual({
+      side: 'left'
+    })
+    expect(
+      parseSettings({
+        screenPlacements: { Notebook: { side: 'above' }, [FP]: { side: 'left', offset: 0.1 } }
+      }).screenPlacement
+    ).toEqual({ side: 'left', offset: 0.1 })
+    expect(parseSettings({ extendSide: 'above' }).screenPlacement).toEqual({ side: 'above' })
   })
 
   it('aparelho confiável guarda o tamanho da tela, quando válido', () => {

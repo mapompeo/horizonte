@@ -11,7 +11,11 @@
   --accent: #007aff;
   --on-accent: #ffffff;
   --danger-fg: #ff3b30;
-  --radius-group: 28px;
+  --radius-group: 20px;
+  /* Três tamanhos de texto e nada mais: título, texto e detalhe. */
+  --t-title: 22px;
+  --t-body: 14px;
+  --t-small: 12px;
   --font:
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI Variable',
     'Segoe UI', system-ui, sans-serif;
@@ -108,36 +112,36 @@ input:focus-visible {
 }
 
 .title {
-  margin: 0;
-  font-size: 28px;
+  margin: 0 auto;
+  font-size: var(--t-title);
   font-weight: 700;
-  line-height: 34px;
+  line-height: 28px;
   white-space: pre-line;
   max-width: 560px;
 }
 
 .title-lg,
 .title-md {
-  font-size: 28px;
-  line-height: 34px;
+  font-size: var(--t-title);
+  line-height: 28px;
 }
 
 .subtitle {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--t-body);
   color: var(--muted);
-  line-height: 22px;
+  line-height: 20px;
   max-width: 420px;
   text-align: center;
   align-self: center;
 }
 
 .hint {
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
 }
 .hint-faint {
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
 }
 .hint strong {
@@ -197,7 +201,7 @@ input:focus-visible {
   border-radius: 999px;
   background: transparent;
   color: var(--fg);
-  font-size: 13px;
+  font-size: var(--t-small);
   font-weight: 400;
   transition: color 0.25s ease;
 }
@@ -212,6 +216,22 @@ input:focus-visible {
 .seg-item.on {
   color: var(--fg);
   font-weight: 600;
+}
+.seg-text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+.seg-text::after {
+  content: attr(data-text);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 600;
+}
+/* No topo, as três opções têm a mesma largura e o seletor nunca muda de tamanho. */
+.topbar .seg {
+  min-width: 264px;
 }
 
 .seg-wide {
@@ -240,7 +260,7 @@ input:focus-visible {
   padding: 0 24px;
   border-radius: 999px;
   border: 0;
-  font-size: 17px;
+  font-size: var(--t-body);
   font-weight: 600;
 }
 
@@ -258,13 +278,13 @@ input:focus-visible {
   border: 0;
   background: transparent;
   color: var(--accent);
-  font-size: 17px;
+  font-size: var(--t-body);
   font-weight: 400;
 }
 .btn-sm {
   min-height: 44px;
   padding: 0 20px;
-  font-size: 17px;
+  font-size: var(--t-body);
 }
 
 .link {
@@ -273,7 +293,7 @@ input:focus-visible {
   border: 0;
   background: transparent;
   color: var(--accent);
-  font-size: 17px;
+  font-size: var(--t-body);
   font-weight: 400;
 }
 
@@ -284,7 +304,7 @@ input:focus-visible {
   gap: 8px;
   padding: 0;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: var(--t-small);
   font-weight: 400;
 }
 
@@ -309,7 +329,7 @@ input:focus-visible {
 
 /* Instalar e escolher */
 .wordmark {
-  font-size: 17px;
+  font-size: var(--t-body);
   font-weight: 600;
 }
 
@@ -336,11 +356,11 @@ input:focus-visible {
 }
 
 .choice-name {
-  font-size: 17px;
+  font-size: var(--t-body);
   font-weight: 600;
 }
 .choice-sub {
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
   line-height: 1.4;
 }
@@ -365,7 +385,7 @@ input:focus-visible {
 .status {
   margin: 0;
   min-height: 26px;
-  font-size: 17px;
+  font-size: var(--t-body);
   color: var(--muted);
 }
 
@@ -407,11 +427,11 @@ input:focus-visible {
   min-width: 150px;
 }
 .stepper-num {
-  font-size: 28px;
+  font-size: var(--t-title);
   font-weight: 600;
 }
 .stepper-cap {
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
 }
 
@@ -422,7 +442,7 @@ input:focus-visible {
   border: 0;
   background: var(--seg);
   color: var(--accent);
-  font-size: 17px;
+  font-size: var(--t-body);
   line-height: 1;
 }
 
@@ -488,7 +508,7 @@ input:focus-visible {
   align-items: center;
   justify-content: flex-end;
   padding: 0 16px;
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
 }
 .map-screen {
@@ -499,7 +519,7 @@ input:focus-visible {
   justify-content: center;
   gap: 2px;
   border-radius: 7px;
-  font-size: 13px;
+  font-size: var(--t-small);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -551,21 +571,21 @@ input:focus-visible {
   gap: 2px;
 }
 .host-name {
-  font-size: 17px;
+  font-size: var(--t-body);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .host-addr {
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
 }
 .searching {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
 }
 
@@ -587,7 +607,7 @@ input:focus-visible {
 
 .sheet-title {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--t-body);
   font-weight: 600;
 }
 
@@ -597,7 +617,7 @@ input:focus-visible {
   border: 0;
   background: transparent;
   color: var(--accent);
-  font-size: 17px;
+  font-size: var(--t-body);
   font-weight: 500;
   display: inline-flex;
   align-items: center;
@@ -622,7 +642,7 @@ input:focus-visible {
 }
 .group-label {
   margin: 0 16px;
-  font-size: 13px;
+  font-size: var(--t-small);
   font-weight: 400;
   color: var(--muted);
 }
@@ -646,15 +666,15 @@ input:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 17px;
+  font-size: var(--t-body);
 }
 
 .row + .row,
 /* O diálogo do diagnóstico fica entre duas linhas e não pode apagar a divisória. */
 dialog + .row {
-  /* Divisória recuada à esquerda, como nos Ajustes. */
+  /* Divisória de ponta a ponta do cartão. */
   background-image: linear-gradient(var(--line), var(--line));
-  background-size: calc(100% - 16px) 1px;
+  background-size: 100% 1px;
   background-position: right top;
   background-repeat: no-repeat;
 }
@@ -666,7 +686,7 @@ dialog + .row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font-size: 17px;
+  font-size: var(--t-body);
 }
 .range-row strong {
   font-weight: 600;
@@ -686,7 +706,7 @@ input[type='range'] {
   border-radius: 999px;
   background: var(--seg);
   color: var(--fg);
-  font-size: 17px;
+  font-size: var(--t-body);
   text-align: right;
 }
 
@@ -696,26 +716,28 @@ input[type='range'] {
   flex-direction: column;
   gap: 8px;
 }
-.adv-block + .adv-block {
+.adv-block + .adv-block,
+.row + .adv-block,
+.adv-block + .row {
   background-image: linear-gradient(var(--line), var(--line));
-  background-size: calc(100% - 16px) 1px;
+  background-size: 100% 1px;
   background-position: right top;
   background-repeat: no-repeat;
 }
 .adv-label {
-  font-size: 17px;
+  font-size: var(--t-body);
 }
 .adv-note {
   margin: 0;
   padding: 0 16px 12px;
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
-  line-height: 18px;
+  line-height: 16px;
 }
 
 .switch {
-  width: 51px;
-  height: 31px;
+  width: 40px;
+  height: 24px;
   padding: 2px;
   border: 0;
   border-radius: 999px;
@@ -725,11 +747,11 @@ input[type='range'] {
   position: relative;
 }
 
-/* O interruptor mede 31 px; a área clicável chega a 45 px sem mudar o desenho. */
+/* O interruptor mede 24 px; a área clicável chega a 44 px sem mudar o desenho. */
 .switch::after {
   content: '';
   position: absolute;
-  inset: -7px -3px;
+  inset: -10px -4px;
 }
 
 .switch.on {
@@ -737,11 +759,22 @@ input[type='range'] {
   justify-content: flex-end;
 }
 .switch-thumb {
-  width: 27px;
-  height: 27px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
   background: #ffffff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Ação dentro de uma linha (Esquecer): texto azul do mesmo tamanho da linha, sem negrito. */
+.row-action {
+  min-height: 44px;
+  margin-right: -8px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--t-body);
 }
 
 /* Linhas que são botões (lista "Sobre"): ocupam a linha toda, com a seta à direita. */
@@ -751,7 +784,7 @@ input[type='range'] {
   background-color: transparent;
   color: var(--fg);
   font: inherit;
-  font-size: 17px;
+  font-size: var(--t-body);
   text-align: left;
   cursor: pointer;
 }
@@ -764,7 +797,7 @@ input[type='range'] {
 .row-button::after {
   content: '›';
   color: var(--muted);
-  font-size: 17px;
+  font-size: var(--t-body);
 }
 .row-button:hover {
   background-color: var(--seg);
@@ -782,7 +815,7 @@ input[type='range'] {
 .row-note {
   margin: 0;
   padding: 0 18px 12px;
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -810,12 +843,12 @@ input[type='range'] {
   text-align: center;
 }
 .about-name {
-  font-size: 17px;
+  font-size: var(--t-body);
   font-weight: 600;
 }
 .about-line {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -833,7 +866,7 @@ input[type='range'] {
   justify-content: center;
   gap: 10px;
   min-height: 28px;
-  font-size: 13px;
+  font-size: var(--t-small);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -841,7 +874,7 @@ input[type='range'] {
   border: 0;
   background: transparent;
   color: var(--accent);
-  font-size: 13px;
+  font-size: var(--t-small);
   font-weight: 600;
   padding: 6px 4px;
   cursor: pointer;
@@ -851,7 +884,7 @@ input[type='range'] {
   border: 0;
   background: transparent;
   color: var(--accent);
-  font-size: 13px;
+  font-size: var(--t-small);
   padding: 6px 8px;
   cursor: pointer;
 }
@@ -862,7 +895,7 @@ input[type='range'] {
   padding: 8px 16px;
   background: var(--accent);
   color: #ffffff;
-  font-size: 13px;
+  font-size: var(--t-small);
   font-weight: 600;
   cursor: pointer;
 }
@@ -873,7 +906,7 @@ input[type='range'] {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted);
-  font-size: 17px;
+  font-size: var(--t-body);
 }
 
 .btn:disabled {
@@ -888,7 +921,7 @@ input[type='range'] {
   border-radius: 999px;
   background: var(--card);
   color: var(--fg);
-  font-size: 28px;
+  font-size: var(--t-title);
   font-weight: 600;
   letter-spacing: 0.4em;
   text-align: center;
@@ -1003,7 +1036,7 @@ input,
   justify-content: space-between;
   gap: 16px;
   width: min(320px, 100%);
-  font-size: 17px;
+  font-size: var(--t-body);
   color: var(--muted);
 }
 
