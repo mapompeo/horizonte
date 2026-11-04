@@ -15,12 +15,24 @@ const lanInterfaces = (): string[] =>
     .flat()
     .flatMap((info) => (info && info.family === 'IPv4' && !info.internal ? [info.address] : []))
 
-const perInterface = (): Bonjour[] =>
-  lanInterfaces().map((address) => {
-    // Opções do multicast-dns por baixo (o tipo do bonjour-service não lista todas).
-    const options = { port: 5353, bind: '0.0.0.0', interface: address }
-    return new Bonjour(options)
-  })
+/**
+ * Bonjour numa interface, sem derrubar o app quando a rede some ou muda (Wi-Fi trocando, volta do bloqueio, cabo
+ * solto): o envio falha com ENODEV ou ENETUNREACH, e por padrão a biblioteca lança o erro no processo principal. Aqui
+ * ele só vai para o registro; o próximo anúncio ou a próxima busca tenta de novo.
+ */
+export function safeBonjour(interfaceAddress?: string): Bonjour {
+  // Opções do multicast-dns por baixo (o tipo do bonjour-service não lista todas).
+  const options = { port: 5353, bind: '0.0.0.0', interface: interfaceAddress }
+  const report = (error: Error): void =>
+    console.warn(`[rede local] ${interfaceAddress ?? 'padrão'}: ${error.message}`)
+  const bonjour = new Bonjour(options, report)
+  const mdns = (bonjour as unknown as { server?: { mdns?: NodeJS.EventEmitter } }).server?.mdns
+  mdns?.on('error', report)
+  mdns?.on('warning', report)
+  return bonjour
+}
+
+const perInterface = (): Bonjour[] => lanInterfaces().map(safeBonjour)
 
 export interface FoundService {
   name: string
