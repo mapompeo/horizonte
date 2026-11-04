@@ -32,6 +32,8 @@ export interface MotorStats {
   implementation: string
   rttMs: number | null
   packetsLost: number
+  /** Pacotes de correção (FlexFEC) recebidos até agora; null do lado que envia ou sem FEC. */
+  fecPackets: number | null
   framesDropped: number
   jitterBufferMs: number | null
   /** Captura até a exibição, pelo relógio do WebRTC; null quando o Chromium não informa. */

@@ -52,6 +52,7 @@ function recorder(role: MotorRole): {
           `${stats.width}x${stats.height} ${stats.fps} fps ${stats.mbps} Mbps ${stats.codec} (${stats.implementation}` +
             `${stats.hardware === null ? '' : stats.hardware ? ', placa de vídeo' : ', software'})` +
             ` ida e volta ${stats.rttMs ?? '?'} ms` +
+            (stats.fecPackets ? ` correção ${stats.fecPackets} pacotes` : '') +
             (stats.displayMs !== null ? ` recebido até a tela ${stats.displayMs} ms` : '') +
             (stats.latencyMs !== null ? ` captura até a tela ${stats.latencyMs} ms` : '') +
             (stats.qualityLimitation && stats.qualityLimitation !== 'none'
