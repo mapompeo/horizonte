@@ -19,7 +19,6 @@ import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { homedir, hostname, networkInterfaces, release as osRelease } from 'node:os'
 import { join } from 'node:path'
-import { Bonjour } from 'bonjour-service'
 import { autoUpdater } from 'electron-updater'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -52,7 +51,7 @@ import {
 import { composeEngine } from './engine/compose'
 import { createDiscovery } from './engine/discovery'
 import { createRealMouseEngine } from './engine/deskflow/wire'
-import { advertiseService, browseService } from './engine/lan'
+import { advertiseService, browseService, safeBonjour } from './engine/lan'
 import { createPresence } from './engine/presence'
 import { detectDeviceKind } from './platform/device-kind'
 import type { DeviceKind } from '../shared/device'
@@ -301,8 +300,7 @@ async function boot(): Promise<void> {
   const discovery = createDiscovery({
     find: (interfaceAddress) => {
       // A rota multicast padrao pode ser VirtualBox/WSL. Consulta cada interface explicitamente.
-      const options = { port: 5353, bind: '0.0.0.0', interface: interfaceAddress }
-      const bonjour = new Bonjour(options)
+      const bonjour = safeBonjour(interfaceAddress)
       const browser = bonjour.find({ type: 'nvstream' })
       return {
         on: (_event, listener) => browser.on('up', listener),
