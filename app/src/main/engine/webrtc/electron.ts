@@ -35,9 +35,13 @@ export function prepareMotorSwitches(): void {
   app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns')
   // Correção de perda (FlexFEC): pacotes extras que refazem os perdidos sem esperar o reenvio, o que segura o atraso
   // no Wi-Fi. Os dois lados anunciam; com quem não anuncia (um navegador, por exemplo), a sessão segue sem.
+  // Sem espera para mostrar (ForcePlayoutDelay 0 a 0): o receptor do WebRTC segurava cada quadro de 300 a 650 ms para
+  // "suavizar", porque os quadros de tela variam muito de tamanho (parada é quase nada, vídeo é grande). O
+  // `jitterBufferTarget = 0` só zera o mínimo; aqui o máximo também é zero e o quadro aparece assim que decodifica.
   app.commandLine.appendSwitch(
     'force-fieldtrials',
-    'WebRTC-FlexFEC-03/Enabled/WebRTC-FlexFEC-03-Advertised/Enabled/'
+    'WebRTC-FlexFEC-03/Enabled/WebRTC-FlexFEC-03-Advertised/Enabled/' +
+      'WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/'
   )
   // Codificação pela placa de vídeo no Linux (VA-API): sem estas, o Chromium codifica por software. A decodificação
   // pela placa já vem ligada; forçar a dela (`VaapiVideoDecodeLinuxGL`) fazia o primeiro quadro levar ~25 s.
