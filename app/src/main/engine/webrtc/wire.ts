@@ -22,9 +22,12 @@ import { WebRtcEngine, type MotorWindows, type ReceiverWindow } from './engine'
 
 const log = (...parts: unknown[]): void => console.log('[motor]', ...parts)
 
-/** Linux: libera a sinalização no ufw, se ele estiver ligado (o sistema pede a senha uma vez). */
+/**
+ * Linux: libera a sinalização e a página do navegador no ufw, se ele estiver ligado (o sistema pede a senha uma vez).
+ * A v1 só liberava a sinalização: quem já tinha liberado libera de novo, agora com a página.
+ */
 async function linuxFirewall(): Promise<void> {
-  const marker = join(app.getPath('userData'), 'firewall-motor-v1')
+  const marker = join(app.getPath('userData'), 'firewall-motor-v2')
   const result = await ensureMotorFirewall({
     readConfig: () => readFile('/etc/ufw/ufw.conf', 'utf8').catch(() => null),
     marked: async () => existsSync(marker),

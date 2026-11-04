@@ -1,13 +1,15 @@
-import { SIGNALING_PORT, SIGNALING_PORT_LAST } from '../../engine/webrtc/protocol'
+import { SIGNALING_PORT } from '../../engine/webrtc/protocol'
+import { BROWSER_PORT_LAST } from '../../web/browser'
 
 /**
- * Com o ufw ligado, o outro aparelho não alcança a sinalização do motor próprio. Libera só essas portas (TCP) e só
- * para as redes privadas, nunca para a internet. O vídeo (UDP) não precisa de regra: as verificações do WebRTC saem
+ * Com o ufw ligado, o outro aparelho não alcança a sinalização do motor próprio nem a página de receber pelo
+ * navegador. Libera só essas portas (TCP, 47910 a 47929, as duas faixas lado a lado) e só para as redes privadas,
+ * nunca para a internet. O vídeo (UDP) não precisa de regra: as verificações do WebRTC saem
  * dos dois lados, e o firewall com estado deixa a volta entrar.
  */
 export const MOTOR_FIREWALL_SCRIPT = [
   'for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12; do',
-  `  ufw allow from "$net" to any port ${SIGNALING_PORT}:${SIGNALING_PORT_LAST} proto tcp`,
+  `  ufw allow from "$net" to any port ${SIGNALING_PORT}:${BROWSER_PORT_LAST} proto tcp`,
   'done'
 ].join('\n')
 
