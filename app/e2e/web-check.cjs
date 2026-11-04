@@ -2,6 +2,11 @@
 // vídeo andar. Uso: electron web-check.cjs <url> <código>. Sai com 0 quando o vídeo chega.
 const { app, BrowserWindow } = require('electron')
 
+process.on('unhandledRejection', (error) => {
+  console.log(`[motor] navegador: erro ${error instanceof Error ? error.message : String(error)}`)
+  app.exit(1)
+})
+
 app.whenReady().then(async () => {
   const at = process.argv.findIndex((arg) => arg.endsWith('web-check.cjs'))
   const [url, code] = process.argv.slice(at + 1)

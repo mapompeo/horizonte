@@ -1,7 +1,7 @@
 // Teste de ponta a ponta do receber pelo navegador: quem envia manda o quadro de teste e abre a página (porta 47920);
 // um Chromium escondido faz o papel do tablet, digita o código e confere que o vídeo chega. Precisa do `npm run build`.
 import { spawn } from 'node:child_process'
-import { createWriteStream, mkdirSync, mkdtempSync } from 'node:fs'
+import { createWriteStream, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -56,6 +56,7 @@ const code = await new Promise((resolveCode) => {
     })
   }, 200)
 })
+if (code !== 0) console.log(readFileSync(join(OUT, 'web-navegador.log'), 'utf8').slice(-4000))
 browser?.kill()
 sender.kill()
 console.log(
