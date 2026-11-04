@@ -157,7 +157,7 @@ export function startScenes(M) {
     { screen: "choose" },
     { screen: "discover", mode: "receive" },
     null,
-    { screen: "connected", mode: "send", device: "Notebook" },
+    { screen: "connected", mode: "send", devices: [{ device: "Notebook" }] },
   ];
   const syncDemo = () => {
     if (frameReady && states[current])
