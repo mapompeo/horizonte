@@ -3,7 +3,7 @@ import type { AppState } from '../../shared/types'
 import { createTrayFollower } from './tray'
 
 const ready: AppState = { screen: 'ready', mode: 'send' }
-const connected: AppState = { screen: 'connected', mode: 'send', device: 'Notebook' }
+const connected: AppState = { screen: 'connected', mode: 'send', devices: [{ device: 'Notebook' }] }
 const receiving: AppState = {
   screen: 'receiving',
   mode: 'receive',

@@ -27,11 +27,15 @@ export function copyFor(state: AppState): ScreenCopy {
         title: `Permitir o ${safeName(state.device)}?`,
         subtitle: 'Quer usar esta tela como extensão.'
       }
-    case 'connected':
+    case 'connected': {
+      const names = state.devices.map((d) => safeName(d.device))
+      const many = names.length > 1
+      const list = many ? `${names.slice(0, -1).join(', ')} e ${names.at(-1)}` : names[0]
       return {
-        title: 'Tela estendida.',
-        pill: { tone: 'ok', text: `${safeName(state.device)} conectado` }
+        title: many ? 'Telas estendidas.' : 'Tela estendida.',
+        pill: { tone: 'ok', text: `${list} ${many ? 'conectados' : 'conectado'}` }
       }
+    }
     case 'discover':
       return { title: 'Na sua rede' }
     case 'receiving':

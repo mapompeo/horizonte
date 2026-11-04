@@ -23,6 +23,17 @@ import { MAX_LINE_BYTES, parseMessage } from '../engine/webrtc/protocol'
  */
 export const BROWSER_PORT = 47920
 export const BROWSER_PORT_LAST = 47929
+/** Adicionada à tela de início do celular, a página abre como app: tela inteira, deitada, sem as barras do navegador. */
+const MANIFEST = {
+  name: 'Horizonte',
+  short_name: 'Horizonte',
+  start_url: '/',
+  display: 'fullscreen',
+  orientation: 'landscape',
+  background_color: '#000000',
+  theme_color: '#000000'
+}
+
 /** Tentativas erradas do código antes de travar por um minuto. */
 const MAX_WRONG = 5
 const LOCK_MS = 60_000
@@ -235,6 +246,13 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
     if (route === 'POST /api/fechar') {
       close(id)
       return reply(res, 204)
+    }
+    if (route === 'GET /manifest.webmanifest') {
+      res.writeHead(200, {
+        'content-type': 'application/manifest+json; charset=utf-8',
+        'cache-control': 'no-store'
+      })
+      return void res.end(JSON.stringify(MANIFEST))
     }
     if (req.method === 'GET') return done(page(url.pathname, res))
     reply(res, 404)

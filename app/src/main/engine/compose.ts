@@ -7,12 +7,15 @@ export function composeEngine(server: ServerEngine, client: ClientEngine): Engin
     abort: () => server.abort(),
     approve: (request) => server.approve(request),
     deny: (pairingId) => server.deny(pairingId),
-    stopSending: () => server.stopSending(),
+    stopSending: (fingerprint) => server.stopSending(fingerprint),
     applyBitrate: async (mbps) => {
       await Promise.allSettled([server.applyBitrate(mbps), client.applyBitrate(mbps)])
     },
     placeDisplay: async (side) => {
       await server.placeDisplay?.(side)
+    },
+    placeScreen: async (placement, fingerprint) => {
+      await server.placeScreen?.(placement, fingerprint)
     },
     onPairRequest: (callback) => server.onPairRequest(callback),
     onPairCancelled: (callback) => server.onPairCancelled(callback),

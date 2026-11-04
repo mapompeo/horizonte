@@ -1,8 +1,47 @@
 import { isValidPin } from '../../shared/pin'
-import type { AppEvent, AppState, Mode } from '../../shared/types'
+import type { AppEvent, AppState, ConnectedDevice, Mode } from '../../shared/types'
 
 type ApproveState = Extract<AppState, { screen: 'approve' }>
 type ApproveEvent = Extract<AppEvent, { type: 'APPROVE' }>
+type PairEvent = Extract<AppEvent, { type: 'PAIR_REQUEST' }>
+type ConnectedEvent = Extract<AppEvent, { type: 'CLIENT_CONNECTED' }>
+
+const deviceOf = (event: ConnectedEvent): ConnectedDevice => ({
+  device: event.device,
+  ...(event.fingerprint ? { fingerprint: event.fingerprint } : {}),
+  ...(event.screen ? { peerScreen: event.screen } : {})
+})
+
+/** O mesmo aparelho conectando de novo fica no lugar dele na lista. */
+const added = (list: ConnectedDevice[], device: ConnectedDevice): ConnectedDevice[] =>
+  device.fingerprint && list.some((d) => d.fingerprint === device.fingerprint)
+    ? list.map((d) => (d.fingerprint === device.fingerprint ? device : d))
+    : [...list, device]
+
+/** Sem a impressão digital, saem todos (o motor antigo não diz quem saiu). */
+const removed = (list: ConnectedDevice[], fingerprint?: string): ConnectedDevice[] =>
+  fingerprint ? list.filter((d) => d.fingerprint !== fingerprint) : []
+
+const withDevices = (devices: ConnectedDevice[]): AppState =>
+  devices.length > 0
+    ? { screen: 'connected', mode: 'send', devices }
+    : { screen: 'ready', mode: 'send' }
+
+function asking(event: PairEvent, connected: ConnectedDevice[]): AppState {
+  const pin = event.pin !== undefined && isValidPin(event.pin) ? event.pin : null
+  return {
+    screen: 'approve',
+    mode: 'send',
+    device: event.device,
+    pairingId: event.pairingId,
+    pin,
+    ...(event.address ? { address: event.address } : {}),
+    ...(event.fingerprint ? { fingerprint: event.fingerprint } : {}),
+    ...(event.deviceId ? { deviceId: event.deviceId } : {}),
+    ...(event.screen ? { peerScreen: event.screen } : {}),
+    ...(connected.length > 0 ? { connected } : {})
+  }
+}
 
 /** O PIN digitado vale mais que o já conhecido; qualquer um precisa ter 4 dígitos. */
 export function approvalPin(state: ApproveState, event: ApproveEvent): string | null {
@@ -64,44 +103,33 @@ export function reduce(state: AppState, event: AppEvent): AppState {
       }
       return state
     case 'ready':
-      if (event.type === 'PAIR_REQUEST') {
-        const pin = event.pin !== undefined && isValidPin(event.pin) ? event.pin : null
-        return {
-          screen: 'approve',
-          mode: 'send',
-          device: event.device,
-          pairingId: event.pairingId,
-          pin,
-          ...(event.address ? { address: event.address } : {}),
-          ...(event.fingerprint ? { fingerprint: event.fingerprint } : {}),
-          ...(event.deviceId ? { deviceId: event.deviceId } : {}),
-          ...(event.screen ? { peerScreen: event.screen } : {})
-        }
-      }
-      if (event.type === 'CLIENT_CONNECTED')
-        return {
-          screen: 'connected',
-          mode: 'send',
-          device: event.device,
-          ...(event.fingerprint ? { fingerprint: event.fingerprint } : {}),
-          ...(event.screen ? { peerScreen: event.screen } : {})
-        }
+      if (event.type === 'PAIR_REQUEST') return asking(event, [])
+      if (event.type === 'CLIENT_CONNECTED') return withDevices([deviceOf(event)])
       return state
-    case 'approve':
+    case 'approve': {
+      // Quem já estava conectado continua: a resposta volta para a lista deles (ou para "pronto", sem ninguém).
+      const back = withDevices(state.connected ?? [])
       if (event.type === 'APPROVE') {
         // Motor próprio: sem PIN, a identidade vem pelo certificado.
-        if (state.fingerprint) return { screen: 'ready', mode: 'send' }
-        return approvalPin(state, event) === null ? state : { screen: 'ready', mode: 'send' }
+        if (state.fingerprint) return back
+        return approvalPin(state, event) === null ? state : back
       }
-      if (event.type === 'DENY') return { screen: 'ready', mode: 'send' }
-      if (event.type === 'PAIR_CANCELLED') {
-        return event.pairingId === state.pairingId ? { screen: 'ready', mode: 'send' } : state
-      }
+      if (event.type === 'DENY') return back
+      if (event.type === 'PAIR_CANCELLED') return event.pairingId === state.pairingId ? back : state
+      // Outro aparelho confiável conectou (ou saiu) enquanto a pessoa responde: a lista anda junto.
+      if (event.type === 'CLIENT_CONNECTED')
+        return { ...state, connected: added(state.connected ?? [], deviceOf(event)) }
+      if (event.type === 'CLIENT_DISCONNECTED')
+        return { ...state, connected: removed(state.connected ?? [], event.fingerprint) }
       return state
+    }
     case 'connected':
-      return event.type === 'CLIENT_DISCONNECTED' || event.type === 'STOP'
-        ? { screen: 'ready', mode: 'send' }
-        : state
+      if (event.type === 'CLIENT_CONNECTED')
+        return withDevices(added(state.devices, deviceOf(event)))
+      if (event.type === 'CLIENT_DISCONNECTED' || event.type === 'STOP')
+        return withDevices(removed(state.devices, event.fingerprint))
+      if (event.type === 'PAIR_REQUEST') return asking(event, state.devices)
+      return state
     case 'discover':
       return event.type === 'CONNECT'
         ? { screen: 'receiving', mode: 'receive', host: event.host, name: event.name }

@@ -6,16 +6,22 @@
   import { safeName } from '../lib/copy'
   import ScreenMap from './ScreenMap.svelte'
 
-  interface Props {
-    /** Nome no retângulo da outra tela. */
-    device: string
-    peerScreen: ScreenSize
-    /** A posição da tela estendida, a mesma para todos os aparelhos. */
+  /** Uma tela no mapa: `key` é a impressão digital do aparelho, ou `*` para a posição padrão. */
+  export interface MapScreen {
+    key: string
+    name: string
+    screen: ScreenSize
     placement: ScreenPlacement
+  }
+
+  interface Props {
+    screens: MapScreen[]
+    /** As posições guardadas de cada aparelho (para juntar a nova às outras). */
+    placements: Record<string, ScreenPlacement>
     height?: number
   }
 
-  let { device, peerScreen, placement, height = 240 }: Props = $props()
+  let { screens, placements, height = 240 }: Props = $props()
 
   let own = $state<ScreenSize | null>(null)
   let ownKind = $state<DeviceKind>('desktop')
@@ -24,28 +30,33 @@
     void window.horizonte.deviceKind().then((kind) => (ownKind = kind))
   })
 
-  const name = $derived(safeName(device))
-  const hosts = $derived([{ name: device, address: 'tela-estendida', screen: peerScreen }])
+  const hosts = $derived(screens.map((s) => ({ name: s.name, address: s.key, screen: s.screen })))
+  const sides = $derived(
+    Object.fromEntries(screens.map((s) => [safeName(s.name), s.placement.side]))
+  )
+  const offsets = $derived(
+    Object.fromEntries(
+      screens.flatMap((s) =>
+        s.placement.offset === undefined ? [] : [[safeName(s.name), s.placement.offset]]
+      )
+    )
+  )
 
   function place(
-    _name: string,
+    name: string,
     where: { side: ScreenPlacement['side']; offset: number } | null
   ): void {
     // Sem a faixa de deixar de fora, o mapa sempre devolve um lado; null só por garantia.
-    if (!where) return
-    void patchSettings({ screenPlacement: where })
+    const moved = screens.find((s) => safeName(s.name) === name)
+    if (!where || !moved) return
+    void patchSettings(
+      moved.key === '*'
+        ? { screenPlacement: where }
+        : { screenPlacements: { ...placements, [moved.key]: where } }
+    )
   }
 </script>
 
 {#if own}
-  <ScreenMap
-    {own}
-    {ownKind}
-    {hosts}
-    sides={{ [name]: placement.side }}
-    offsets={placement.offset === undefined ? {} : { [name]: placement.offset }}
-    onPlace={place}
-    dock={false}
-    {height}
-  />
+  <ScreenMap {own} {ownKind} {hosts} {sides} {offsets} onPlace={place} dock={false} {height} />
 {/if}

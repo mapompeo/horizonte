@@ -1109,3 +1109,24 @@ input,
   width: 100%;
   max-width: 480px;
 }
+
+/* Várias telas conectadas: uma linha por aparelho, com o Parar de cada um. */
+.connected-list {
+  width: 100%;
+  max-width: 320px;
+  border-radius: var(--radius-group);
+  background: var(--card);
+}
+.connected-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: var(--t-body);
+}
+.connected-row + .connected-row {
+  background-image: linear-gradient(var(--line), var(--line));
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+}

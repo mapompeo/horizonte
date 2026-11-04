@@ -81,6 +81,12 @@ test('serve a página e os arquivos dela, e mais nada da pasta', async () => {
   expect((await fetch(`${base}/assets/%2e%2e/segredo.txt`)).status).toBe(404)
 })
 
+test('manifesto: adicionada à tela de início, a página abre como app em tela inteira', async () => {
+  const res = await fetch(`${base}/manifest.webmanifest`)
+  expect(res.headers.get('content-type')).toContain('application/manifest+json')
+  expect(await res.json()).toMatchObject({ display: 'fullscreen', start_url: '/' })
+})
+
 test('código errado não abre; cinco erros travam até o código certo', async () => {
   expect((await open('000000')).status).toBe(403)
   for (let i = 0; i < 4; i++) await open('000000')

@@ -42,22 +42,54 @@ async function linuxFirewall(): Promise<void> {
   if (result === 'opened') log('firewall liberado para a conexão')
 }
 
-/** As janelas do motor no app: uma oculta para enviar (criada na primeira vez) e uma em tela cheia para mostrar. */
+/**
+ * As janelas do motor no app: uma oculta para enviar a cada aparelho conectado (a primeira fica aberta e também diz a
+ * identidade deste aparelho; as outras fecham quando o aparelho sai) e uma em tela cheia para mostrar.
+ */
 function appWindows(): MotorWindows {
-  let sender: { window: BrowserWindow; reports: WindowReports } | null = null
-  const sendWindow = (): { window: BrowserWindow; reports: WindowReports } => {
-    if (sender && !sender.window.isDestroyed()) return sender
+  const hidden = (): { window: BrowserWindow; reports: WindowReports } => {
     const window = motorWindow(
       { role: 'send', synthetic: false, testFrames: null, showStats: false },
       { show: false, width: 320, height: 200 }
     )
-    sender = { window, reports: listenReports(window.webContents, () => undefined) }
-    return sender
+    return { window, reports: listenReports(window.webContents, () => undefined) }
+  }
+  let first: { window: BrowserWindow; reports: WindowReports } | null = null
+  let firstBusy = false
+  const main = (): { window: BrowserWindow; reports: WindowReports } => {
+    if (!first || first.window.isDestroyed()) first = hidden()
+    return first
   }
 
   return {
-    identity: () => sendWindow().reports.identity(),
-    sendMedia: (hooks) => windowMedia(sendWindow().window, hooks),
+    identity: () => main().reports.identity(),
+    sendMedia(hooks) {
+      if (!firstBusy) {
+        firstBusy = true
+        return windowMedia(main().window, {
+          ...hooks,
+          afterStop: () => {
+            firstBusy = false
+            hooks.afterStop?.()
+          }
+        })
+      }
+      // Mais um aparelho ao mesmo tempo: uma janela só dele, que espera a página carregar antes de começar.
+      const extra = hidden()
+      return windowMedia(
+        extra.window,
+        {
+          ...hooks,
+          afterStop: () => {
+            hooks.afterStop?.()
+            setTimeout(() => {
+              if (!extra.window.isDestroyed()) extra.window.destroy()
+            }, 1000)
+          }
+        },
+        extra.reports.identity()
+      )
+    },
     async openReceiver(): Promise<ReceiverWindow> {
       // Abre na tela onde está o mouse: é onde a pessoa está olhando.
       const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
@@ -103,21 +135,27 @@ export function createAppWebRtcEngine(deps: {
   deviceName(): string
   kind(): DeviceKind
   placementFor(fingerprint: string): ScreenPlacement | null
+  defaultPlacement(): ScreenPlacement
 }): WebRtcEngine {
-  const frames = gnomeFrames() ? framesSocket() : null
   const gnome = process.platform === 'linux' && /gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? '')
-  const virtualScreen = gnome ? createLinuxVirtualScreen(frames) : null
+  // Um monitor virtual (e um socket de imagens) por aparelho conectado ao mesmo tempo.
+  const screens = gnome
+    ? (index: number) => {
+        const frames = gnomeFrames() ? framesSocket(index) : null
+        return { screen: createLinuxVirtualScreen(frames), frames }
+      }
+    : null
   const engine = new WebRtcEngine({
     windows: appWindows(),
     presence: {
       setSending: (info) => deps.presence.setSending(info),
       hosts: () => deps.presence.senders()
     },
-    virtualScreen,
-    frames,
+    screens,
     deviceName: deps.deviceName,
     kind: deps.kind,
     placementFor: deps.placementFor,
+    defaultPlacement: deps.defaultPlacement,
     screenSize: primarySize,
     ...(process.platform === 'linux' ? { prepareSystem: linuxFirewall } : {}),
     log

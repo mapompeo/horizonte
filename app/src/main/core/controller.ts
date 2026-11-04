@@ -10,6 +10,7 @@ import type {
 import type { EnginePort, MouseEngine, MousePlacement } from '../engine/port'
 import { isValidPin } from '../../shared/pin'
 import { approvalPin, reduce } from './machine'
+import { placeAll } from '../../shared/placement'
 import { parseSettings, type SettingsStore } from './settings'
 
 export interface ControllerDeps {
@@ -158,7 +159,7 @@ export async function createController({
       engine.abort().catch(() => undefined) // melhor esforço, o usuário já saiu daquela tela
     }
 
-    if (prev.screen === 'approve' && next.screen === 'ready') {
+    if (prev.screen === 'approve' && (next.screen === 'ready' || next.screen === 'connected')) {
       if (event.type === 'APPROVE') {
         const pin = approvalPin(prev, event)
         if (pin !== null || prev.fingerprint) {
@@ -183,9 +184,14 @@ export async function createController({
       }
     }
 
-    if (
+    // Parar um aparelho só (o resto segue) ou sair de vez da tela de conectado. Um pedido novo (o "Permitir") não
+    // derruba quem já estava vendo.
+    if (prev.screen === 'connected' && event.type === 'STOP' && event.fingerprint) {
+      engine.stopSending(event.fingerprint).catch(failIfStill(next, 'Não consegui parar o envio.'))
+    } else if (
       prev.screen === 'connected' &&
       next.screen !== 'connected' &&
+      next.screen !== 'approve' &&
       event.type !== 'CLIENT_DISCONNECTED'
     ) {
       engine.stopSending().catch(failIfStill(next, 'Não consegui parar o envio.'))
@@ -218,7 +224,7 @@ export async function createController({
     notify()
     runEffects(prev, next, event)
     if (!isSendLive(next)) queuedPairs = []
-    else if (next.screen === 'ready') {
+    else if (next.screen === 'ready' || next.screen === 'connected') {
       const queued = queuedPairs.shift()
       if (queued !== undefined) dispatch(queued)
     }
@@ -266,7 +272,11 @@ export async function createController({
     // Aparelho confiável (pelo certificado, ou com o PIN do Horizonte no motor antigo): aprova sem mostrar o pedido.
     // Se falhar, mostra como sempre.
     const verified = request.fingerprint || (request.pin && isValidPin(request.pin))
-    if (state.screen === 'ready' && verified && isTrusted(request)) {
+    if (
+      (state.screen === 'ready' || state.screen === 'connected') &&
+      verified &&
+      isTrusted(request)
+    ) {
       engine
         .approve({
           pairingId: request.pairingId,
@@ -276,7 +286,7 @@ export async function createController({
         .catch(() => dispatch(event))
       return
     }
-    if (state.screen !== 'approve' && state.screen !== 'connected') return dispatch(event)
+    if (state.screen !== 'approve') return dispatch(event)
     // O vigia já marcou este pedido como conhecido e não o anuncia de novo: guardamos para a vez dele.
     const shown = state.screen === 'approve' && state.pairingId === request.pairingId
     if (!shown && !queuedPairs.some((queued) => queued.pairingId === request.pairingId)) {
@@ -303,7 +313,9 @@ export async function createController({
     )
       trust({ ...known, screen: size })
   })
-  engine.onClientDisconnected(() => dispatch({ type: 'CLIENT_DISCONNECTED' }))
+  engine.onClientDisconnected((fingerprint) =>
+    dispatch({ type: 'CLIENT_DISCONNECTED', ...(fingerprint ? { fingerprint } : {}) })
+  )
   engine.onStreamEnded(() => dispatch({ type: 'STREAM_ENDED' }))
   mouse?.onRequest((request) => dispatch({ type: 'MOUSE_REQUEST', ...request }))
   mouse?.onEnded(() => dispatch({ type: 'MOUSE_ENDED' }))
@@ -322,11 +334,23 @@ export async function createController({
       const update = settingsQueue.then(async () => {
         const next = parseSettings({ ...settings, ...patch })
         const moved = next.extendSide !== settings.extendSide
-        // Motor próprio: mudou a posição da tela estendida com alguém conectado agora.
-        const placement = next.screenPlacement
-        const replaced =
-          state.screen === 'connected' &&
-          JSON.stringify(placement) !== JSON.stringify(settings.screenPlacement)
+        // Motor próprio: mudou a posição de alguma tela conectada agora (a própria ou, sem ela, a padrão).
+        const connected = state.screen === 'connected' ? state.devices : []
+        const before = placeAll(
+          connected.map((d) => d.fingerprint),
+          settings.screenPlacements,
+          settings.screenPlacement
+        )
+        const after = placeAll(
+          connected.map((d) => d.fingerprint),
+          next.screenPlacements,
+          next.screenPlacement
+        )
+        const movedScreens = connected.flatMap((d, i) =>
+          JSON.stringify(before[i]) !== JSON.stringify(after[i])
+            ? [{ fp: d.fingerprint, at: after[i] }]
+            : []
+        )
         const sharing = state.screen === 'mouse-active' && state.role === 'share'
         const mouseMoved =
           sharing &&
@@ -339,7 +363,8 @@ export async function createController({
         settings = { ...next, mode: settings.mode }
         notify()
         if (moved) await engine.placeDisplay?.(settings.extendSide).catch(() => undefined)
-        if (replaced) await engine.placeScreen?.(placement).catch(() => undefined)
+        for (const { fp, at } of movedScreens)
+          await engine.placeScreen?.(at, fp).catch(() => undefined)
         if (mouseMoved) await mouse?.setLayout(placementsFor(sharingWith)).catch(() => undefined)
         if (state.screen === 'connected' || state.screen === 'receiving') {
           // Ajuste ao vivo é melhor esforço: se falhar, a conexão segue com o valor anterior.

@@ -12,7 +12,7 @@ const approve: AppState = {
   pin: null
 }
 const approveWithPin: AppState = { ...approve, pin: '4821' }
-const connected: AppState = { screen: 'connected', mode: 'send', device: 'Notebook' }
+const connected: AppState = { screen: 'connected', mode: 'send', devices: [{ device: 'Notebook' }] }
 const discover: AppState = { screen: 'discover', mode: 'receive' }
 const receiving: AppState = {
   screen: 'receiving',
@@ -150,11 +150,6 @@ describe('reduce: erros', () => {
 describe('reduce: eventos no estado errado são ignorados', () => {
   const cases: [string, AppState, AppEvent][] = [
     [
-      'pedido de pareamento durante uma conexão',
-      connected,
-      { type: 'PAIR_REQUEST', device: 'Intruso', pairingId: 'x' }
-    ],
-    [
       'pedido de pareamento com outro já pendente',
       approve,
       { type: 'PAIR_REQUEST', device: 'Outro', pairingId: 'y' }
@@ -164,11 +159,6 @@ describe('reduce: eventos no estado errado são ignorados', () => {
     ['aprovar com PIN que não é número', approve, { type: 'APPROVE', pin: 'abcd' }],
     ['cancelamento de outro pedido', approve, { type: 'PAIR_CANCELLED', pairingId: 'outro' }],
     ['cancelamento sem pedido', ready, { type: 'PAIR_CANCELLED', pairingId: 'p1' }],
-    [
-      'cliente conecta com pedido pendente',
-      approve,
-      { type: 'CLIENT_CONNECTED', device: 'Notebook' }
-    ],
     ['aprovar sem pedido', ready, { type: 'APPROVE' }],
     ['recusar sem pedido', ready, { type: 'DENY' }],
     ['fim da preparação já pronto', ready, { type: 'PREP_DONE' }],
@@ -255,5 +245,45 @@ describe('primeira vez: nada é preparado antes de escolher o modo', () => {
     const install: AppState = { screen: 'install' }
     expect(reduce(install, { type: 'PREP_DONE' })).toBe(install)
     expect(reduce(install, { type: 'CHOOSE', mode: 'send' })).toBe(install)
+  })
+})
+
+describe('reduce: várias telas ao mesmo tempo', () => {
+  const one = { device: 'Notebook', fingerprint: 'A' }
+  const two = { device: 'iPhone', fingerprint: 'B' }
+  const both: AppState = { screen: 'connected', mode: 'send', devices: [one, two] }
+
+  it('outro aparelho conectando entra na lista; o mesmo de novo fica no lugar dele', () => {
+    const first = reduce(ready, { type: 'CLIENT_CONNECTED', device: 'Notebook', fingerprint: 'A' })
+    expect(reduce(first, { type: 'CLIENT_CONNECTED', device: 'iPhone', fingerprint: 'B' })).toEqual(
+      both
+    )
+    expect(
+      reduce(both, { type: 'CLIENT_CONNECTED', device: 'Notebook 2', fingerprint: 'A' })
+    ).toEqual({
+      ...both,
+      devices: [{ device: 'Notebook 2', fingerprint: 'A' }, two]
+    })
+  })
+
+  it('quem sai sai sozinho; sem ninguém, volta para pronto', () => {
+    const left = reduce(both, { type: 'CLIENT_DISCONNECTED', fingerprint: 'A' })
+    expect(left).toEqual({ ...both, devices: [two] })
+    expect(reduce(left, { type: 'STOP', fingerprint: 'B' })).toEqual(ready)
+    expect(reduce(both, { type: 'STOP' })).toEqual(ready)
+  })
+
+  it('um pedido durante a conexão pergunta e depois volta para quem já estava vendo', () => {
+    const asking = reduce(both, {
+      type: 'PAIR_REQUEST',
+      device: 'Tablet',
+      pairingId: 'p9',
+      fingerprint: 'C'
+    })
+    expect(asking).toMatchObject({ screen: 'approve', device: 'Tablet', connected: [one, two] })
+    expect(reduce(asking, { type: 'APPROVE' })).toEqual(both)
+    expect(reduce(asking, { type: 'DENY' })).toEqual(both)
+    const fewer = reduce(asking, { type: 'CLIENT_DISCONNECTED', fingerprint: 'B' })
+    expect(reduce(fewer, { type: 'DENY' })).toEqual({ ...both, devices: [one] })
   })
 })

@@ -72,7 +72,8 @@ interface Setup {
 
 async function setup(
   approve: (peer: Hello, cancelled: Promise<void>) => Promise<boolean> = async () => true,
-  offerWith: string = FP_SEND
+  offerWith: string = FP_SEND,
+  maxViewers?: number
 ): Promise<Setup> {
   const sendMedia: FakeMedia[] = []
   const sessions: Session[] = []
@@ -91,7 +92,8 @@ async function setup(
       sendMedia.push(media)
       return media
     },
-    onSession: (session) => sessions.push(session)
+    onSession: (session) => sessions.push(session),
+    ...(maxViewers ? { maxViewers } : {})
   })
   cleanup.push(() => sender.stop())
   return { sender, sendMedia, sessions, asked }
@@ -160,11 +162,25 @@ describe('sessão', () => {
     await expect(show(sender.port).session).rejects.toThrow(/não permitiu/)
   })
 
-  it('atende um por vez', async () => {
-    const { sender, sessions } = await setup()
+  it('atende vários aparelhos ao mesmo tempo, até o limite', async () => {
+    const { sender, sessions } = await setup(undefined, FP_SEND, 2)
+    const other = (n: string): string => `${n}:`.repeat(31) + n
+    await show(sender.port, { hello: hello('Notebook', other('0A')) }).session
+    await show(sender.port, { hello: hello('iPhone', other('0B')) }).session
+    await until(() => sessions.length === 2)
+    await expect(
+      show(sender.port, { hello: hello('Tablet', other('0C')) }).session
+    ).rejects.toThrow(/já está mostrando/)
+  })
+
+  it('o mesmo aparelho conectando de novo substitui a sessão antiga dele', async () => {
+    const { sender, sessions } = await setup(undefined, FP_SEND, 1)
     await show(sender.port).session
     await until(() => sessions.length === 1)
-    await expect(show(sender.port).session).rejects.toThrow(/já está mostrando/)
+    const ended = new Promise((resolve) => sessions[0].onEnded(resolve))
+    await show(sender.port).session
+    await ended
+    await until(() => sessions.length === 2)
   })
 
   it('volta a aceitar depois que a sessão acaba', async () => {

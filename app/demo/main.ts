@@ -11,7 +11,7 @@ const START: Record<string, AppState> = {
   choose: { screen: 'choose' },
   ready: { screen: 'ready', mode: 'send' },
   discover: { screen: 'discover', mode: 'receive' },
-  connected: { screen: 'connected', mode: 'send', device: 'Notebook' },
+  connected: { screen: 'connected', mode: 'send', devices: [{ device: 'Notebook' }] },
   receiving: { screen: 'receiving', mode: 'receive', host: '192.168.1.5', name: 'Desktop' }
 }
 

@@ -161,8 +161,15 @@ export interface WindowMediaHooks {
   onInput?(raw: string): void
 }
 
-/** Liga uma sessão à janela do motor. */
-export function windowMedia(window: BrowserWindow, hooks: WindowMediaHooks = {}): MediaSide {
+/**
+ * Liga uma sessão à janela do motor. Com `ready`, a sessão só começa quando a janela termina de carregar (uma janela
+ * criada para esta sessão ainda não escuta as mensagens).
+ */
+export function windowMedia(
+  window: BrowserWindow,
+  hooks: WindowMediaHooks = {},
+  ready: Promise<unknown> = Promise.resolve()
+): MediaSide {
   const id = window.webContents.id
   let run = 0
   const push = (message: unknown): void => {
@@ -173,7 +180,7 @@ export function windowMedia(window: BrowserWindow, hooks: WindowMediaHooks = {})
       const mine = ++run
       signalTargets.set(id, send)
       if (hooks.onInput) inputTargets.set(id, hooks.onInput)
-      void (hooks.beforeStart?.(want) ?? Promise.resolve()).then(
+      void Promise.all([hooks.beforeStart?.(want), ready]).then(([extra]) => extra).then(
         (extra) => mine === run && push({ t: 'start', want, ...(extra ?? {}) }),
         (error: unknown) => {
           const failure = error instanceof Error ? error : new Error(String(error))
@@ -223,10 +230,10 @@ function linuxHelperPath(): string {
 }
 
 /** Onde o auxiliar do GNOME publica as imagens da tela estendida (pasta do usuário, só ele acessa). */
-export function framesSocket(): string {
+export function framesSocket(index = 0): string {
   return join(
     process.env.XDG_RUNTIME_DIR ?? app.getPath('temp'),
-    `horizonte-tela-${process.pid}.sock`
+    `horizonte-tela-${process.pid}${index ? `-${index + 1}` : ''}.sock`
   )
 }
 

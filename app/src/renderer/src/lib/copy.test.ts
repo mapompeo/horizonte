@@ -74,9 +74,19 @@ describe('copyFor', () => {
   })
 
   it('conectado mostra o selo verde com o nome', () => {
-    const copy = copyFor({ screen: 'connected', mode: 'send', device: 'Notebook' })
+    const copy = copyFor({ screen: 'connected', mode: 'send', devices: [{ device: 'Notebook' }] })
     expect(copy.title).toBe('Tela estendida.')
     expect(copy.pill).toEqual({ tone: 'ok', text: 'Notebook conectado' })
+  })
+
+  it('várias telas conectadas: os nomes juntos, no plural', () => {
+    const copy = copyFor({
+      screen: 'connected',
+      mode: 'send',
+      devices: [{ device: 'Notebook' }, { device: 'iPhone' }, { device: 'Tablet' }]
+    })
+    expect(copy.title).toBe('Telas estendidas.')
+    expect(copy.pill).toEqual({ tone: 'ok', text: 'Notebook, iPhone e Tablet conectados' })
   })
 
   it('recebendo mostra o computador de origem', () => {

@@ -49,16 +49,37 @@ function deviceOf(agent: string): { name: string; kind: DeviceKind } {
   return { name: 'Navegador', kind: 'desktop' }
 }
 
-/** Tamanho da tela deste aparelho em pixels de verdade, par e dentro do que o protocolo aceita. */
+/**
+ * Tamanho da tela estendida em pixels de verdade, par e dentro do que o protocolo aceita. Deitado, é a área visível da
+ * página (no Safari do iPhone, sem as barras dele): a imagem preenche tudo, sem faixas pretas. Em pé, a tela toda
+ * deitada (a pessoa vira o aparelho para usar).
+ */
 function screenWant(): { width: number; height: number } {
   const ratio = Math.min(window.devicePixelRatio || 1, 2)
   const even = (value: number, max: number): number =>
     Math.max(160, Math.min(max, Math.round((value * ratio) / 2) * 2))
-  const landscape = window.screen.width >= window.screen.height
-  const [w, h] = landscape
-    ? [window.screen.width, window.screen.height]
-    : [window.screen.height, window.screen.width]
+  const view = window.visualViewport
+  const [vw, vh] = [view?.width ?? window.innerWidth, view?.height ?? window.innerHeight]
+  const [w, h] =
+    vw >= vh
+      ? [vw, vh]
+      : [
+          Math.max(window.screen.width, window.screen.height),
+          Math.min(window.screen.width, window.screen.height)
+        ]
   return { width: even(w, 3840), height: even(h, 2160) }
+}
+
+/**
+ * Escala da tela estendida: a do aparelho, mas sem deixar a área útil com menos de 720 pontos de altura. Num celular
+ * com escala 2, a tela teria uns 390 pontos de altura, e as janelas do computador (que têm um tamanho mínimo) não
+ * conseguiam maximizar.
+ */
+const MIN_POINTS = 720
+function screenScale(height: number): number | null {
+  const ratio = Math.min(window.devicePixelRatio || 1, 2)
+  const scale = Math.max(1, Math.min(ratio, height / MIN_POINTS))
+  return scale > 1 ? Math.round(scale * 100) / 100 : null
 }
 
 async function post(path: string, body: unknown): Promise<Response> {
@@ -96,7 +117,7 @@ async function connect(code: string): Promise<void> {
     fps: 60,
     bitrate: 20,
     codecs: videoMimes(RTCRtpReceiver.getCapabilities('video')?.codecs ?? []),
-    ...(window.devicePixelRatio > 1 ? { scale: Math.min(window.devicePixelRatio, 2) } : {}),
+    ...(screenScale(size.height) ? { scale: screenScale(size.height) as number } : {}),
     cursor: true
   }
 
@@ -189,6 +210,14 @@ form.addEventListener('submit', (event) => {
 })
 
 // Pelo QR code o código já vem no link: falta só o toque (a tela cheia precisa dele).
+// iPhone no Safari: as barras dele não saem (o Safari não deixa a página ficar em tela cheia). Aberto pela Tela de
+// Início, ele abre como app, sem barras.
+const standalone =
+  (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+  window.matchMedia('(display-mode: standalone)').matches
+if (/iPhone|iPod/.test(navigator.userAgent) && !standalone)
+  $<HTMLParagraphElement>('dica').hidden = false
+
 const fromLink = location.hash.replace(/\D/g, '')
 if (fromLink.length === 6) {
   input.value = fromLink

@@ -75,14 +75,21 @@ describe('pedidos de pareamento em sequência', () => {
     })
   })
 
-  it('um pedido que chega durante a conexão aparece quando ela termina', async () => {
+  it('um pedido que chega durante a conexão aparece na hora, sem derrubar quem já está vendo', async () => {
     const { controller, engine } = await setup(ready)
     engine.simulateClientConnected('Notebook')
     engine.simulatePairRequest('Tablet', 'p2')
-    expect(screen(controller)).toBe('connected')
-
-    engine.simulateClientDisconnected()
-    expect(controller.getSnapshot().state).toMatchObject({ screen: 'approve', pairingId: 'p2' })
+    expect(controller.getSnapshot().state).toMatchObject({
+      screen: 'approve',
+      pairingId: 'p2',
+      connected: [{ device: 'Notebook' }]
+    })
+    expect(engine.calls).not.toContain('stopSending')
+    controller.dispatch({ type: 'DENY' })
+    expect(controller.getSnapshot().state).toMatchObject({
+      screen: 'connected',
+      devices: [{ device: 'Notebook' }]
+    })
   })
 
   it('o pedido cancelado enquanto esperava na fila não aparece', async () => {
@@ -157,7 +164,7 @@ describe('fluxo de envio', () => {
     const { controller, engine } = await setup({
       screen: 'connected',
       mode: 'send',
-      device: 'Notebook'
+      devices: [{ device: 'Notebook' }]
     })
     engine.simulateClientDisconnected()
     expect(screen(controller)).toBe('ready')
@@ -230,20 +237,6 @@ describe('eventos no estado errado', () => {
     expect(engine.calls.filter((call) => call === 'approve')).toHaveLength(1)
   })
 
-  it('pedido de pareamento durante uma conexão é ignorado', async () => {
-    const { controller, engine } = await setup({
-      screen: 'connected',
-      mode: 'send',
-      device: 'Notebook'
-    })
-    engine.simulatePairRequest('Intruso')
-    expect(controller.getSnapshot().state).toEqual({
-      screen: 'connected',
-      mode: 'send',
-      device: 'Notebook'
-    })
-  })
-
   it('eventos do modo enviar no modo mostrar são ignorados', async () => {
     const { controller, engine } = await setup({ screen: 'discover', mode: 'receive' })
     engine.simulateClientConnected('Notebook')
@@ -257,7 +250,7 @@ describe('troca de modo', () => {
     const { controller, engine } = await setup({
       screen: 'connected',
       mode: 'send',
-      device: 'Notebook'
+      devices: [{ device: 'Notebook' }]
     })
     controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
     expect(screen(controller)).toBe('discover')
@@ -336,7 +329,7 @@ describe('falhas tardias e de limpeza', () => {
     expect(controller.getSnapshot().state).toEqual({
       screen: 'connected',
       mode: 'send',
-      device: 'Notebook'
+      devices: [{ device: 'Notebook' }]
     })
   })
 
@@ -488,7 +481,7 @@ describe('ajustes e assinantes', () => {
     const { controller, engine } = await setup({
       screen: 'connected',
       mode: 'send',
-      device: 'Notebook'
+      devices: [{ device: 'Notebook' }]
     })
     await controller.updateSettings({ bitrate: 50 })
     expect(engine.calls).toContain('bitrate:50')
@@ -909,9 +902,7 @@ describe('posição da tela estendida (motor próprio)', () => {
       initial: {
         screen: 'connected',
         mode: 'send',
-        device: 'Notebook',
-        fingerprint: FP,
-        peerScreen: { width: 1366, height: 768 }
+        devices: [{ device: 'Notebook', fingerprint: FP, peerScreen: { width: 1366, height: 768 } }]
       }
     })
     await controller.updateSettings({ screenPlacement: { side: 'left', offset: 0.1 } })
@@ -941,9 +932,7 @@ describe('posição da tela estendida (motor próprio)', () => {
     expect(controller.getSnapshot().state).toEqual({
       screen: 'connected',
       mode: 'send',
-      device: 'Notebook',
-      fingerprint: FP,
-      peerScreen: { width: 1366, height: 768 }
+      devices: [{ device: 'Notebook', fingerprint: FP, peerScreen: { width: 1366, height: 768 } }]
     })
   })
 

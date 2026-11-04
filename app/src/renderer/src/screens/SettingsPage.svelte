@@ -200,10 +200,17 @@
           {#if webrtc}
             <div class="adv-block">
               <PlacementMap
-                device="Tela estendida"
-                peerScreen={settings.trusted.findLast((device) => device.screen)?.screen ??
-                  UNKNOWN_SCREEN}
-                placement={settings.screenPlacement}
+                screens={[
+                  {
+                    key: '*',
+                    name: 'Tela estendida',
+                    screen:
+                      settings.trusted.findLast((device) => device.screen)?.screen ??
+                      UNKNOWN_SCREEN,
+                    placement: settings.screenPlacement
+                  }
+                ]}
+                placements={settings.screenPlacements}
                 height={200}
               />
             </div>
@@ -225,7 +232,7 @@
         </div>
         <p class="adv-note">
           {webrtc
-            ? 'Arraste para posicionar. Vale para todos os aparelhos.'
+            ? 'Arraste para posicionar. Vale para quem ainda não tem posição própria.'
             : 'Vale para todos os aparelhos.'}
         </p>
       </section>
