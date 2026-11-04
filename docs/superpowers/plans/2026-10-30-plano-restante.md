@@ -197,3 +197,7 @@ O README e o site passam a falar só do motor próprio. Isso vira a 0.3.
   - FlexFEC pelo field trial (`WebRTC-FlexFEC-03` e `-Advertised`) nos dois lados do app; com um navegador (F2), segue sem. O ULPFEC não vale para H.264 no Chromium.
   - Os números de quem mostra passam a ter `fecPackets` (pacotes de correção recebidos), e o teste do motor mostra "correção N pacotes" quando há.
   - Conferido: o `flexfec-03` aparece nas capacidades e a sessão em rede local segue a 60 fps; sem perda, nenhum pacote de correção (o WebRTC só manda quando o outro lado relata perda). Falta medir o p95 de atraso num Wi-Fi ruim, junto do C1.
+- **C4 medido e descartado (por ora).**
+  - Conversão para NV12 no auxiliar (laços que o compilador vetoriza, BT.709 em faixa limitada), com o `VideoFrame` já em NV12: o socket cai de 314 para 137 MB/s, mas o auxiliar sobe de 20% para 43% de um núcleo.
+  - No app de verdade (Começar → Enviar → Receber pelo navegador, com o mouse mexendo na tela estendida a 60 Hz), duas rodadas de cada: antes 180% e 188% de um núcleo para 37,1 e 39,8 quadros/s (4,86 e 4,72 por quadro); depois 165% e 158% para 35,5 e 34,8 quadros/s (4,65 e 4,55 por quadro). Uns 4% por quadro, com menos quadros chegando: não compensa.
+  - O caminho que vale testar depois é o DMA-BUF (sem cópia nenhuma). Para medir, o jeito que funcionou foi o app de verdade com a página do navegador num Chromium escondido mexendo o mouse (o relógio do teste não abre na tela estendida no Wayland).
