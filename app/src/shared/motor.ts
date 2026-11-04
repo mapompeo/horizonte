@@ -1,4 +1,5 @@
 import type { Message, Want } from '../main/engine/webrtc/protocol'
+import type { RawCursor } from './cursor'
 import type { RawFrame } from './frames'
 
 /** O que as janelas do motor de teste fazem: enviar, mostrar ou exibir o relógio da medição de atraso. */
@@ -70,7 +71,9 @@ export interface MotorFramesApi {
   open(
     path: string,
     onFrame: (frame: RawFrame) => void,
-    onClose: (reason: string) => void
+    onClose: (reason: string) => void,
+    /** Cursor à parte (o auxiliar com `--cursor`): posição a cada movimento, desenho quando muda. */
+    onCursor?: (cursor: RawCursor) => void
   ): () => void
 }
 

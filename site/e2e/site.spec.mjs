@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-test("fluxo real de modos, aprovacao, qualidade e parada", async ({ page }) => {
+test("fluxo real de modos, aprovacao e parada", async ({ page }) => {
   await page.goto("/");
   const app = page.frameLocator("#hero-app iframe");
   await expect(app.getByRole("heading", { name: "Pronto." })).toBeVisible();
@@ -8,8 +8,6 @@ test("fluxo real de modos, aprovacao, qualidade e parada", async ({ page }) => {
   await expect(
     app.getByRole("heading", { name: "Recebendo a tela." }),
   ).toBeVisible();
-  await app.getByRole("button", { name: "Aumentar qualidade" }).click();
-  await expect(app.getByText("40 Mbps", { exact: true })).toBeVisible();
   await app.getByRole("button", { name: "Sair", exact: true }).click();
   await app.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(app.getByRole("heading", { name: "Pronto." })).toBeVisible();

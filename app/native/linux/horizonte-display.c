@@ -28,8 +28,12 @@
  * "key <código evdev> <1|0>" e "touch <down|move|up> <dedo> <x> <y>". É assim que o mouse, o teclado e o toque do
  * aparelho que mostra agem na tela estendida.
  *
+ * Cursor à parte (--cursor, com --frames): o cursor não vem desenhado na imagem. O GNOME manda a posição e o desenho
+ * dele como informação separada, e o auxiliar repassa pelo mesmo socket (mensagem "HZC1") sem esperar uma imagem nova.
+ * Quem mostra desenha o cursor por cima do vídeo: ele anda com o atraso da rede, não com o de codificar e decodificar.
+ *
  * Uso: horizonte-display [--width 1920] [--height 1080] [--refresh 60] [--frames /run/user/1000/horizonte.sock]
- *                        [--scale 2] [--input]
+ *                        [--scale 2] [--input] [--cursor]
  * Saída 2: argumentos ou ambiente; 3: o Mutter recusou ou encerrou a sessão; 4: o PipeWire falhou; 5: o socket.
  */
 #include <errno.h>
@@ -40,6 +44,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include <signal.h>
+#include <spa/buffer/meta.h>
 #include <spa/param/buffers.h>
 #include <spa/param/video/format-utils.h>
 #include <spa/pod/builder.h>
@@ -57,7 +62,12 @@
 #define REMOTE "org.gnome.Mutter.RemoteDesktop"
 #define DISPLAY_CONFIG "org.gnome.Mutter.DisplayConfig"
 #define DISPLAY_CONFIG_PATH "/org/gnome/Mutter/DisplayConfig"
-#define FRAME_MAGIC 0x31465A48u /* "HZF1" */
+#define FRAME_MAGIC 0x31465A48u  /* "HZF1" */
+#define CURSOR_MAGIC 0x31435A48u /* "HZC1" */
+/* O maior cursor que o GNOME aceita mandar (o mesmo limite do gnome-remote-desktop). */
+#define CURSOR_MAX 384
+#define CURSOR_META_SIZE(w, h) \
+  ((int)(sizeof(struct spa_meta_cursor) + sizeof(struct spa_meta_bitmap) + (w) * (h) * 4))
 #define REPEAT_MS 1000
 
 struct app {
@@ -102,6 +112,13 @@ struct app {
   gboolean spare_ready;
   gboolean frame_new, frame_valid, sending, stopping;
   unsigned frames_in, frames_sent;
+
+  /* Cursor à parte (--cursor): a posição mais recente e, quando muda, o desenho (RGBA ou BGRA, sem folga por linha). */
+  gboolean cursor_meta;
+  gboolean cursor_new, cursor_visible, cursor_shape_new;
+  int32_t cursor_x, cursor_y, cursor_hot_x, cursor_hot_y;
+  uint32_t cursor_w, cursor_h, cursor_rgba;
+  uint8_t *cursor_pixels;
 };
 
 static void quit(struct app *app, int code, const char *message) {
@@ -147,6 +164,27 @@ static int send_frame(struct app *app, int fd) {
   return write_all(fd, app->frame, app->frame_size);
 }
 
+/* Mensagem do cursor: "HZC1", x, y, ponto do clique (x, y), opções (1 = visível, 2 = desenho em RGBA), largura e
+ * altura do desenho (16 bits cada) e o tamanho do desenho em bytes (0 quando não mudou); depois o desenho. */
+static int send_cursor(struct app *app, int fd) {
+  pthread_mutex_lock(&app->lock);
+  uint32_t size = app->cursor_shape_new ? app->cursor_w * app->cursor_h * 4 : 0;
+  uint32_t header[8] = { CURSOR_MAGIC,
+                         (uint32_t)app->cursor_x,
+                         (uint32_t)app->cursor_y,
+                         (uint32_t)app->cursor_hot_x,
+                         (uint32_t)app->cursor_hot_y,
+                         (app->cursor_visible ? 1u : 0u) | (app->cursor_rgba ? 2u : 0u),
+                         app->cursor_w | (app->cursor_h << 16),
+                         size };
+  uint8_t shape[CURSOR_MAX * CURSOR_MAX * 4];
+  if (size) memcpy(shape, app->cursor_pixels, size);
+  app->cursor_new = app->cursor_shape_new = FALSE;
+  pthread_mutex_unlock(&app->lock);
+  if (write_all(fd, header, sizeof(header)) < 0) return -1;
+  return size ? write_all(fd, shape, size) : 0;
+}
+
 static void *sender_main(void *data) {
   struct app *app = data;
   while (!app->stopping) {
@@ -163,7 +201,7 @@ static void *sender_main(void *data) {
         struct timespec until;
         clock_gettime(CLOCK_REALTIME, &until);
         until.tv_sec += REPEAT_MS / 1000;
-        while (!app->frame_new && !app->stopping &&
+        while (!app->frame_new && !app->cursor_new && !app->stopping &&
                pthread_cond_timedwait(&app->wake, &app->lock, &until) != ETIMEDOUT) {
         }
       }
@@ -171,6 +209,16 @@ static void *sender_main(void *data) {
       if (app->stopping) {
         pthread_mutex_unlock(&app->lock);
         break;
+      }
+      /* O cursor sai antes da imagem: são poucos bytes, e é ele que a pessoa acompanha com o olho. */
+      if (app->cursor_new) {
+        pthread_mutex_unlock(&app->lock);
+        if (send_cursor(app, client) < 0) break;
+        pthread_mutex_lock(&app->lock);
+        if (!app->frame_new) {
+          pthread_mutex_unlock(&app->lock);
+          continue;
+        }
       }
       if (!app->frame_valid) {
         pthread_mutex_unlock(&app->lock);
@@ -220,6 +268,7 @@ static int start_frames(struct app *app) {
     return -1;
   }
   app->frame = g_malloc((size_t)app->width * app->height * 4);
+  app->cursor_pixels = g_malloc(CURSOR_MAX * CURSOR_MAX * 4);
   app->spare = g_malloc((size_t)app->width * app->height * 4);
   pthread_mutex_init(&app->lock, NULL);
   pthread_cond_init(&app->wake, NULL);
@@ -250,6 +299,43 @@ static void on_process(void *data) {
   }
   if (!latest) return;
   app->frames_in++;
+
+  /* Cursor à parte: posição sempre que vier, desenho quando mudar. Vem também em quadros sem imagem nova. */
+  struct spa_meta_cursor *cursor =
+    app->cursor_meta ? spa_buffer_find_meta_data(latest->buffer, SPA_META_Cursor, sizeof(*cursor)) : NULL;
+  if (cursor && app->frames_path) {
+    pthread_mutex_lock(&app->lock);
+    if (spa_meta_cursor_is_valid(cursor)) {
+      app->cursor_visible = TRUE;
+      app->cursor_x = cursor->position.x;
+      app->cursor_y = cursor->position.y;
+      if (cursor->bitmap_offset >= sizeof(*cursor)) {
+        struct spa_meta_bitmap *bitmap = SPA_PTROFF(cursor, cursor->bitmap_offset, struct spa_meta_bitmap);
+        const uint32_t w = bitmap->size.width, h = bitmap->size.height;
+        if (spa_meta_bitmap_is_valid(bitmap) && bitmap->offset >= sizeof(*bitmap) && w > 0 && h > 0 &&
+            w <= CURSOR_MAX && h <= CURSOR_MAX && bitmap->stride >= (int32_t)(w * 4)) {
+          const uint8_t *rows = SPA_PTROFF(bitmap, bitmap->offset, const uint8_t);
+          for (uint32_t y = 0; y < h; y++) memcpy(app->cursor_pixels + y * w * 4, rows + y * bitmap->stride, w * 4);
+          app->cursor_w = w;
+          app->cursor_h = h;
+          app->cursor_hot_x = cursor->hotspot.x;
+          app->cursor_hot_y = cursor->hotspot.y;
+          app->cursor_rgba = bitmap->format == SPA_VIDEO_FORMAT_RGBA;
+          app->cursor_shape_new = TRUE;
+        } else if (bitmap->offset == 0) {
+          app->cursor_visible = FALSE; /* desenho vazio: cursor escondido */
+        }
+      }
+    } else {
+      /* id 0: nada novo sobre o cursor neste quadro */
+      pthread_mutex_unlock(&app->lock);
+      goto frame;
+    }
+    app->cursor_new = TRUE;
+    pthread_cond_signal(&app->wake);
+    pthread_mutex_unlock(&app->lock);
+  }
+frame:;
 
   /* O Mutter manda um quadro vazio quando nada mudou na tela; esses não interessam. */
   struct spa_data *in = &latest->buffer->datas[0];
@@ -287,13 +373,24 @@ static void on_param_changed(void *data, uint32_t id, const struct spa_pod *para
   struct spa_video_info_raw info;
   if (spa_format_video_raw_parse(param, &info) >= 0) app->input_format = info.format;
   /* Memória comum (e não DMA-BUF), para o processador poder ler os pixels. */
-  uint8_t buffer[256];
+  uint8_t buffer[512];
   struct spa_pod_builder builder = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
-  const struct spa_pod *params[1];
+  const struct spa_pod *params[3];
   params[0] = spa_pod_builder_add_object(
     &builder, SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
     SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int((1 << SPA_DATA_MemFd) | (1 << SPA_DATA_MemPtr)));
-  pw_stream_update_params(app->input, params, 1);
+  /* Cursor à parte: pede ao GNOME espaço para a posição e o desenho em cada quadro (como o gnome-remote-desktop). */
+  params[1] = spa_pod_builder_add_object(
+    &builder, SPA_TYPE_OBJECT_ParamMeta, SPA_PARAM_Meta,
+    SPA_PARAM_META_type, SPA_POD_Id(SPA_META_Header),
+    SPA_PARAM_META_size, SPA_POD_Int(sizeof(struct spa_meta_header)));
+  params[2] = spa_pod_builder_add_object(
+    &builder, SPA_TYPE_OBJECT_ParamMeta, SPA_PARAM_Meta,
+    SPA_PARAM_META_type, SPA_POD_Id(SPA_META_Cursor),
+    SPA_PARAM_META_size,
+    SPA_POD_CHOICE_RANGE_Int(CURSOR_META_SIZE(64, 64), CURSOR_META_SIZE(1, 1),
+                             CURSOR_META_SIZE(CURSOR_MAX, CURSOR_MAX)));
+  pw_stream_update_params(app->input, params, app->cursor_meta ? 3 : 1);
 }
 
 static void on_state_changed(void *data, enum pw_stream_state old, enum pw_stream_state state, const char *error) {
@@ -436,7 +533,8 @@ static int start_mutter(struct app *app) {
 
   GVariantBuilder record;
   g_variant_builder_init(&record, G_VARIANT_TYPE_VARDICT);
-  g_variant_builder_add(&record, "{sv}", "cursor-mode", g_variant_new_uint32(1)); /* cursor desenhado na imagem */
+  /* 1: cursor desenhado na imagem; 2 (--cursor): posição e desenho à parte, como informação do quadro. */
+  g_variant_builder_add(&record, "{sv}", "cursor-mode", g_variant_new_uint32(app->cursor_meta ? 2 : 1));
   g_variant_builder_add(&record, "{sv}", "is-platform", g_variant_new_boolean(TRUE));
   result = call(app, app->session, MUTTER ".Session", "RecordVirtual", g_variant_new("(a{sv})", &record), "(o)",
                 &error);
@@ -782,6 +880,11 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[i], "--input")) {
       app.with_input = TRUE;
       i--; /* não tem valor */
+      continue;
+    }
+    if (!strcmp(argv[i], "--cursor")) {
+      app.cursor_meta = TRUE;
+      i--;
       continue;
     }
     if (!strcmp(argv[i], "--scale")) {

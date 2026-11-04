@@ -28,7 +28,8 @@ export function createGnomeDisplay(deps: GnomeDisplayDeps): VirtualScreen {
     a.width === b.width &&
     a.height === b.height &&
     a.fps === b.fps &&
-    (a.scale ?? 1) === (b.scale ?? 1)
+    (a.scale ?? 1) === (b.scale ?? 1) &&
+    Boolean(a.cursor) === Boolean(b.cursor)
 
   return {
     async ensure(request) {

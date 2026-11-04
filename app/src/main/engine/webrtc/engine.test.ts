@@ -206,8 +206,9 @@ describe('WebRtcEngine', () => {
     expect(connected).toEqual(['Notebook'])
 
     // A tela estendida é criada no tamanho da tela de quem mostra, e a janela recebe a oferta.
+    // Quem mostra (desta versão) desenha o cursor: ele vem à parte, e não na imagem.
     await until(() => sendWindows.sent[0]?.started === true)
-    expect(screen.requests).toEqual([{ width: 1366, height: 768, fps: 60 }])
+    expect(screen.requests).toEqual([{ width: 1366, height: 768, fps: 60, cursor: true }])
     expect(sender.target()).toBe(77)
     await until(() => showWindows.receivers[0].shown[0]?.received.length === 1)
     expect(showWindows.receivers[0].shown[0].received[0]).toEqual({
