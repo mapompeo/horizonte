@@ -188,6 +188,10 @@ form.addEventListener('submit', (event) => {
   })
 })
 
+// Pelo QR code o código já vem no link: falta só o toque (a tela cheia precisa dele).
 const fromLink = location.hash.replace(/\D/g, '')
-if (fromLink.length === 6) input.value = fromLink
+if (fromLink.length === 6) {
+  input.value = fromLink
+  say('Toque em Conectar.')
+}
 input.focus()
