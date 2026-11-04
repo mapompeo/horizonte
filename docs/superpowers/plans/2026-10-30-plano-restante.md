@@ -193,3 +193,7 @@ O README e o site passam a falar só do motor próprio. Isso vira a 0.3.
   - No app, o botão "Receber pelo navegador" da tela Pronto mostra o endereço e o código também no motor próprio.
   - `e2e/web.mjs` (dentro de `npm run e2e:motor`): um Chromium escondido digita o código e confere o vídeo. Falta testar com um tablet e um celular de verdade.
   - O `e2e/web.mjs` fica pulado no Windows: lá o envio ainda é do motor antigo, e o app de teste do tablet (`e2e/web-check`) não chegou a abrir na CI (nem o registro em arquivo apareceu). Voltar a ligar junto com o item D.
+- **C2 ligado (falta medir no Wi-Fi).**
+  - FlexFEC pelo field trial (`WebRTC-FlexFEC-03` e `-Advertised`) nos dois lados do app; com um navegador (F2), segue sem. O ULPFEC não vale para H.264 no Chromium.
+  - Os números de quem mostra passam a ter `fecPackets` (pacotes de correção recebidos), e o teste do motor mostra "correção N pacotes" quando há.
+  - Conferido: o `flexfec-03` aparece nas capacidades e a sessão em rede local segue a 60 fps; sem perda, nenhum pacote de correção (o WebRTC só manda quando o outro lado relata perda). Falta medir o p95 de atraso num Wi-Fi ruim, junto do C1.

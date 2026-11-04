@@ -57,6 +57,7 @@ describe('summarize', () => {
       implementation: 'D3D11VideoDecoder',
       rttMs: 4,
       packetsLost: 2,
+      fecPackets: null,
       framesDropped: 1,
       jitterBufferMs: 15,
       latencyMs: 32,

@@ -64,6 +64,7 @@ export function summarize(
       str(sending ? rtp.encoderImplementation : rtp.decoderImplementation) ?? 'desconhecido',
     rttMs: rtt !== null ? Math.round(rtt * 1000) : null,
     packetsLost: num(rtp.packetsLost) ?? 0,
+    fecPackets: sending ? null : num(rtp.fecPacketsReceived),
     framesDropped: num(rtp.framesDropped) ?? 0,
     jitterBufferMs:
       delay !== null && emitted !== null && emitted > 0
