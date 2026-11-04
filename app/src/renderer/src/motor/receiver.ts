@@ -5,6 +5,7 @@ import { percentiles } from '../../../shared/percentiles'
 import { summarize, type StatEntry } from './stats'
 import { matchesTestColor } from './synthetic'
 import { attachInputCapture } from './input-capture'
+import { attachCursorOverlay } from './cursor-overlay'
 import { encodeInput, INPUT, INPUT_MOVES, type InputEvent } from '../../../shared/input'
 
 interface FrameMetadata {
@@ -25,6 +26,8 @@ export function createReceiver(
   video.playsInline = true
   video.className = 'motor-video'
   document.body.append(video)
+
+  const cursor = attachCursorOverlay(video)
 
   const panel = document.createElement('pre')
   panel.className = 'motor-panel'
@@ -129,6 +132,7 @@ export function createReceiver(
     pc.addEventListener('datachannel', ({ channel }) => {
       if (channel.label === INPUT || channel.label === INPUT_MOVES)
         channels.set(channel.label, channel)
+      else cursor.listen(channel)
     })
     pc.addEventListener('track', ({ track, receiver, streams }) => {
       // Sem buffer extra: na rede local, menos atraso vale mais que absorver variação.
@@ -167,6 +171,7 @@ export function createReceiver(
   }
 
   function stop(): void {
+    cursor.hide()
     if (statsTimer) clearInterval(statsTimer)
     statsTimer = null
     pc?.close()

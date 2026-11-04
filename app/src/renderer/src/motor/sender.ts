@@ -2,6 +2,15 @@ import { INPUT, INPUT_MOVES } from '../../../shared/input'
 import type { Want } from '../../../main/engine/webrtc/protocol'
 import type { MediaMessage, MotorApi } from '../../../shared/motor'
 import type { RawFrame } from '../../../shared/frames'
+import {
+  CURSOR,
+  CURSOR_SHAPE,
+  encodePosition,
+  encodeShape,
+  SHAPE_MAX_BYTES,
+  type CursorShape,
+  type RawCursor
+} from '../../../shared/cursor'
 import { BASE_ORDER, orderCodecList, rankCodecs, type CodecProbe } from './codecs'
 import type { Identity } from './identity'
 import {
@@ -54,7 +63,8 @@ async function probeCodecs(want: Want): Promise<CodecProbe[]> {
  */
 function framesStream(
   path: string,
-  onClose: (reason: string) => void
+  onClose: (reason: string) => void,
+  onCursor?: (cursor: RawCursor) => void
 ): { stream: MediaStream; stop(): void } {
   const frames = window.motorFrames
   if (!frames) throw new Error('Esta janela não lê as imagens da tela estendida.')
@@ -99,7 +109,8 @@ function framesStream(
         if (last) receive(last)
       }, SETTLE_MS)
     },
-    onClose
+    onClose,
+    onCursor
   )
   const stop = (): void => {
     if (settle) clearTimeout(settle)
@@ -164,9 +175,29 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
       console.log('[motor] conexão:', pc?.connectionState)
     )
 
+    // Cursor à parte (quem mostra desenha por cima do vídeo): a posição sem reenvio, só a mais recente importa; o
+    // desenho confiável, e de novo quando o canal abre (quem acabou de conectar ainda não tem nenhum).
+    const position = pc.createDataChannel(CURSOR, { ordered: false, maxRetransmits: 0 })
+    const shapes = pc.createDataChannel(CURSOR_SHAPE)
+    let shape: CursorShape | null = null
+    const sendShape = (): void => {
+      if (shape && shapes.readyState === 'open') shapes.send(encodeShape(shape))
+    }
+    shapes.addEventListener('open', sendShape)
+    const onCursor = (cursor: RawCursor): void => {
+      if (cursor.shape && cursor.shape.data.length <= SHAPE_MAX_BYTES) {
+        shape = { ...cursor.shape, data: cursor.shape.data.slice() }
+        sendShape()
+      }
+      if (position.readyState === 'open')
+        position.send(encodePosition(cursor.x / want.width, cursor.y / want.height, cursor.visible))
+    }
+
     if (frames) {
-      const source = framesStream(frames, (reason) =>
-        console.warn('[motor] imagens da tela:', reason)
+      const source = framesStream(
+        frames,
+        (reason) => console.warn('[motor] imagens da tela:', reason),
+        want.cursor ? onCursor : undefined
       )
       stream = source.stream
       stopFrames = source.stop

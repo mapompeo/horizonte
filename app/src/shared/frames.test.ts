@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createFrameParser, type RawFrame } from './frames'
+import type { RawCursor } from './cursor'
+import { createFrameParser, framePool, type RawFrame } from './frames'
 
 function encode(
   width: number,
@@ -64,5 +65,53 @@ describe('leitor de imagens da tela estendida', () => {
     const bad = encode(4, 2)
     new DataView(bad.buffer).setUint32(20, 999, true)
     expect(parse([bad]).errors).toHaveLength(1)
+  })
+
+  it('com as áreas reaproveitadas, a mesma área volta depois de três imagens', () => {
+    const frames: RawFrame[] = []
+    const push = createFrameParser(
+      (f) => frames.push(f),
+      () => undefined,
+      framePool()
+    )
+    for (let i = 0; i < 4; i++) push(encode(4, 2, 0, i))
+    expect(frames.map((f) => f.data[0])).toEqual([3, 1, 2, 3])
+    expect(frames[3].data).toBe(frames[0].data)
+    expect(frames[1].data).not.toBe(frames[0].data)
+  })
+
+  it('separa as mensagens do cursor das imagens, com o desenho só quando ele muda', () => {
+    const cursorMessage = (x: number, y: number, shape?: Uint8Array, w = 2, h = 1): Uint8Array => {
+      const out = new Uint8Array(32 + (shape?.length ?? 0))
+      const view = new DataView(out.buffer)
+      ;[0x31435a48, x, y, 1, 0, 1, w | (h << 16), shape?.length ?? 0].forEach((v, i) =>
+        view.setUint32(i * 4, v >>> 0, true)
+      )
+      if (shape) out.set(shape, 32)
+      return out
+    }
+    const frames: RawFrame[] = []
+    const cursors: RawCursor[] = []
+    const push = createFrameParser(
+      (f) => frames.push(f),
+      () => undefined,
+      undefined,
+      (c) => cursors.push(c)
+    )
+    // BGRA: azul, depois vermelho; o leitor entrega em RGBA.
+    const bgra = new Uint8Array([255, 0, 0, 255, 0, 0, 255, 255])
+    const all = new Uint8Array([
+      ...cursorMessage(10, 20, bgra),
+      ...encode(4, 2),
+      ...cursorMessage(-5, 3)
+    ])
+    // Em pedaços de 5 bytes, para partir os cabeçalhos no meio.
+    for (let i = 0; i < all.length; i += 5) push(all.subarray(i, i + 5))
+    expect(frames).toHaveLength(1)
+    expect(cursors).toHaveLength(2)
+    expect(cursors[0]).toMatchObject({ x: 10, y: 20, visible: true })
+    expect(cursors[0].shape).toMatchObject({ width: 2, height: 1, hotX: 1, hotY: 0 })
+    expect([...(cursors[0].shape?.data ?? [])]).toEqual([0, 0, 255, 255, 255, 0, 0, 255])
+    expect(cursors[1]).toEqual({ x: -5, y: 3, visible: true })
   })
 })

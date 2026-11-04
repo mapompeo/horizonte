@@ -117,4 +117,18 @@ describe('parseMessage', () => {
     expect(line.endsWith('\n')).toBe(true)
     expect(line.slice(0, -1)).not.toContain('\n')
   })
+
+  it('want: o cursor à parte só como sim ou não', () => {
+    const base = {
+      t: 'want',
+      width: 1920,
+      height: 1080,
+      fps: 60,
+      bitrate: 30,
+      codecs: ['video/H264']
+    }
+    expect(parseMessage(JSON.stringify({ ...base, cursor: true }))).toMatchObject({ cursor: true })
+    expect(parseMessage(JSON.stringify({ ...base, cursor: false }))).not.toHaveProperty('cursor')
+    expect(parseMessage(JSON.stringify({ ...base, cursor: 'sim' }))).toBeNull()
+  })
 })
