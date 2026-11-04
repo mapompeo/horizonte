@@ -6,6 +6,13 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
+// No Windows, quem envia ainda usa o motor antigo (o próprio é o item D do plano), e o app de teste do tablet não
+// chega a abrir na CI de lá: o teste volta junto com o envio pelo motor próprio no Windows.
+if (process.platform === 'win32') {
+  console.log('PULADO navegador: o envio pelo motor próprio ainda não existe no Windows')
+  process.exit(0)
+}
+
 const require = createRequire(import.meta.url)
 const electronPath = require('electron')
 const OUT = resolve('e2e-out')

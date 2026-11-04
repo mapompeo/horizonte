@@ -192,3 +192,4 @@ O README e o site passam a falar só do motor próprio. Isso vira a 0.3.
   - `renderer/web.html` e `src/web/main.ts`: o tablet manda o `hello`, espera o Permitir, pede a tela no tamanho dele e usa o mesmo receptor do app (com toque e teclado). Confere a impressão digital da oferta contra o `hello` do computador.
   - No app, o botão "Receber pelo navegador" da tela Pronto mostra o endereço e o código também no motor próprio.
   - `e2e/web.mjs` (dentro de `npm run e2e:motor`): um Chromium escondido digita o código e confere o vídeo. Falta testar com um tablet e um celular de verdade.
+  - O `e2e/web.mjs` fica pulado no Windows: lá o envio ainda é do motor antigo, e o app de teste do tablet (`e2e/web-check`) não chegou a abrir na CI (nem o registro em arquivo apareceu). Voltar a ligar junto com o item D.
