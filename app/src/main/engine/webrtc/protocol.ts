@@ -36,11 +36,6 @@ export interface Want {
   codecs: string[]
   /** Densidade da tela de quem mostra (2 em Retina e notebooks 2x): a tela estendida nasce com essa escala. */
   scale?: number
-  /**
-   * Quem mostra desenha o cursor por cima do vídeo: o cursor vem à parte (canais `cursor` e `cursor-shape`) e não na
-   * imagem. Sem isso (versões antigas), o cursor continua desenhado na imagem.
-   */
-  cursor?: boolean
 }
 
 export type Message =
@@ -94,9 +89,8 @@ function parseHello(raw: Record<string, unknown>): Hello | null {
 }
 
 function parseWant(raw: Record<string, unknown>): Want | null {
-  const { width, height, fps, bitrate, codecs, scale, cursor } = raw
+  const { width, height, fps, bitrate, codecs, scale } = raw
   if (scale !== undefined && !isNumber(scale, 1, 4)) return null
-  if (cursor !== undefined && typeof cursor !== 'boolean') return null
   if (!isInt(width, 160, 8192) || !isInt(height, 120, 8192) || !isInt(fps, 1, 240)) return null
   if (!isNumber(bitrate, 0.5, 500)) return null
   if (!Array.isArray(codecs) || codecs.length > 16) return null
@@ -108,8 +102,7 @@ function parseWant(raw: Record<string, unknown>): Want | null {
     fps,
     bitrate,
     codecs: [...new Set(codecs as string[])],
-    ...(scale !== undefined ? { scale } : {}),
-    ...(cursor ? { cursor } : {})
+    ...(scale !== undefined ? { scale } : {})
   }
 }
 

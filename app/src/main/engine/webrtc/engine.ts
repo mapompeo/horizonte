@@ -222,8 +222,7 @@ export class WebRtcEngine implements EnginePort {
           width: want.width,
           height: want.height,
           fps: want.fps,
-          ...(want.scale !== undefined ? { scale: want.scale } : {}),
-          ...(want.cursor ? { cursor: true } : {})
+          ...(want.scale !== undefined ? { scale: want.scale } : {})
         })
         const placement = this.deps.placementFor?.(peer.fp)
         if (placement) await virtual.place?.(placement)
@@ -314,8 +313,7 @@ export class WebRtcEngine implements EnginePort {
       fps: settings.fps,
       bitrate: settings.bitrate,
       codecs: window.codecs,
-      ...(window.scale && window.scale > 1 ? { scale: window.scale } : {}),
-      cursor: true
+      ...(window.scale && window.scale > 1 ? { scale: window.scale } : {})
     }
     try {
       const session = await connect({

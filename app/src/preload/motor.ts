@@ -1,6 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { NetConnectOpts } from 'node:net'
-import { createFrameParser, framePool } from '../shared/frames'
+import { createFrameParser } from '../shared/frames'
 import {
   MOTOR_CHANNELS,
   type MotorApi,
@@ -24,7 +23,7 @@ const api: MotorApi = {
 
 /** Lê as imagens que o auxiliar do Linux manda pelo socket local (só na janela de envio, que tem o Node). */
 const frames: MotorFramesApi = {
-  open(path, onFrame, onClose, onCursor) {
+  open(path, onFrame, onClose) {
     let closed = false
     let destroy = (): void => undefined
     const close = (reason: string): void => {
@@ -36,18 +35,10 @@ const frames: MotorFramesApi = {
     void import('node:net').then(
       ({ createConnection }) => {
         if (closed) return
-        const push = createFrameParser(onFrame, close, framePool(), onCursor)
-        // Lê direto numa área fixa de 1 MB (sem um Buffer novo por pedaço) e junta nas áreas reaproveitadas.
-        const scratch = Buffer.allocUnsafe(1 << 20)
-        // `onread` vale para qualquer socket, mas os tipos do Node só o declaram para TCP.
-        const socket = createConnection({
-          path,
-          onread: {
-            buffer: scratch,
-            callback: (size: number, buffer: Uint8Array) => void push(buffer.subarray(0, size))
-          }
-        } as unknown as NetConnectOpts)
+        const socket = createConnection(path)
         destroy = () => socket.destroy()
+        const push = createFrameParser(onFrame, close)
+        socket.on('data', (chunk: Buffer) => push(chunk))
         socket.on('error', (error) => close(error.message))
         socket.on('close', () => close('fechado'))
       },

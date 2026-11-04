@@ -42,17 +42,3 @@ body {
   font-variant-numeric: tabular-nums;
   background: #101012;
 }
-
-/* O cursor da tela estendida, desenhado por cima do vídeo quando vem à parte; não pega o mouse. */
-.motor-cursor {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 5;
-  pointer-events: none;
-  transform-origin: 0 0;
-  image-rendering: auto;
-}
-.motor-cursor[hidden] {
-  display: none;
-}
