@@ -9,6 +9,8 @@
   let { kind }: { kind: string } = $props()
   let snapshot = $state<Snapshot | null>(null)
   onMount(() => {
+    // Só as prévias pequenas do site ficam sem fundo; a demonstração inteira usa o fundo do app.
+    document.body.classList.add('preview-body')
     void window.horizonte.getSnapshot().then((next) => (snapshot = next))
     return window.horizonte.onSnapshot((next) => (snapshot = next))
   })
@@ -54,7 +56,7 @@
 </div>
 
 <style>
-  :global(body) {
+  :global(body.preview-body) {
     background: transparent;
     overflow: hidden;
   }
