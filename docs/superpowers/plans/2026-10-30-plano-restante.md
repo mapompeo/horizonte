@@ -204,3 +204,8 @@ O README e o site passam a falar só do motor próprio. Isso vira a 0.3.
 - **C5 feito.**
   - Quem mostra manda a densidade da tela no `want` (`scale`, de 1 a 4; o app pelo `scaleFactor`, a página do navegador pelo `devicePixelRatio`). O auxiliar recebe `--scale` e, ao posicionar a tela, usa a escala mais perto entre as que o GNOME aceita no modo dela.
   - Conferido no GNOME daqui: 2560x1600 com `--scale 2` nasce como `Meta-0` em escala 2.0, à direita do monitor principal e centrada (1280x800 lógicos).
+- **Teste de verdade no notebook (2026-11-04), sem `sudo`:** AppImage extraído no notebook (`--appimage-extract`, sem FUSE lá), desktop com o app instalado.
+  - O notebook achou o desktop sozinho, Estender → Permitir no desktop → "Tela estendida" nos dois. Vídeo a 1920x1080, ~29 fps, sem perda; captura até a tela com mediana de 107 ms e p95 de 1,1 s.
+  - O C5 agiu de verdade: o notebook tem escala 1,25, e o auxiliar recebeu `--scale 1.25`.
+  - **Defeito achado e corrigido:** com a escala, o mouse do notebook caía 25% além do ponto (o Mutter conta a posição em pixels lógicos). Conferido pela imagem que chega: pedindo 15% e 85%, o cursor fica em 15% e 86%.
+  - Falta: o p95 de atraso (1,1 s) e o teste com teclado numa janela de verdade (não digitei nada para não mexer nas janelas abertas).
