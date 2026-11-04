@@ -10,6 +10,8 @@ export interface UpdateEvents {
 
 export function createUpdater(deps: {
   supported: boolean
+  /** Baixa sozinho quando acha versão nova; aí só falta reiniciar. */
+  autoDownload?: boolean
   currentVersion: string
   listen(events: UpdateEvents): void
   check(): Promise<unknown>
@@ -32,8 +34,20 @@ export function createUpdater(deps: {
   }
   const fail = (): void =>
     set({ phase: 'error', message: 'Não consegui atualizar. Confira a conexão e tente de novo.' })
+  const startDownload = async (): Promise<void> => {
+    set({ phase: 'downloading', percent: 0 })
+    try {
+      await deps.download()
+    } catch {
+      fail()
+    }
+  }
   deps.listen({
-    available: (version) => set({ phase: 'available', version }),
+    available: (version) => {
+      if (state.phase === 'downloading' || state.phase === 'ready') return
+      set({ phase: 'available', version })
+      if (deps.autoDownload) void startDownload()
+    },
     current: () => set({ phase: 'current' }),
     progress: (percent) =>
       set({ phase: 'downloading', percent: Math.min(100, Math.max(0, percent)) }),
@@ -52,13 +66,12 @@ export function createUpdater(deps: {
       if (!deps.supported || state.phase === 'checking' || state.phase === 'downloading')
         return state
       try {
-        if (action === 'check') {
+        if (action === 'check' && state.phase !== 'ready') {
           set({ phase: 'checking' })
           await deps.check()
           if ((state as UpdateStatus).phase === 'checking') set({ phase: 'current' })
         } else if (action === 'download' && state.phase === 'available') {
-          set({ phase: 'downloading', percent: 0 })
-          await deps.download()
+          await startDownload()
         } else if (action === 'install' && state.phase === 'ready') {
           if (deps.canInstall()) deps.install()
           else set({ message: 'Encerre a conexão antes de instalar a atualização.' })
