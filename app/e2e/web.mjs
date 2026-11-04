@@ -1,7 +1,7 @@
 // Teste de ponta a ponta do receber pelo navegador: quem envia manda o quadro de teste e abre a página (porta 47920);
 // um Chromium escondido (e2e/web-check) faz o papel do tablet, digita o código e confere que o vídeo chega. Precisa do `npm run build`.
 import { spawn } from 'node:child_process'
-import { createWriteStream, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -19,7 +19,7 @@ function launch(label, args, onLine = () => undefined) {
   const log = createWriteStream(join(OUT, `web-${label}.log`))
   const child = spawn(electronPath, full, {
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, ELECTRON_ENABLE_LOGGING: '1' }
+    env: { ...process.env, ELECTRON_ENABLE_LOGGING: '1', HZ_WEB_TRACE: join(OUT, 'web-trace.log') }
   })
   for (const stream of [child.stdout, child.stderr])
     stream.on('data', (chunk) => {
@@ -59,7 +59,14 @@ const code = await new Promise((resolveCode) => {
     })
   }, 200)
 })
-if (code !== 0) console.log(readFileSync(join(OUT, 'web-navegador.log'), 'utf8').slice(-4000))
+if (code !== 0)
+  for (const file of ['web-trace.log', 'web-navegador.log'])
+    console.log(
+      `--- ${file}\n` +
+        (existsSync(join(OUT, file))
+          ? readFileSync(join(OUT, file), 'utf8').slice(-4000)
+          : '(não existe)')
+    )
 browser?.kill()
 sender.kill()
 console.log(
