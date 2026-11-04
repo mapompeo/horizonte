@@ -3,7 +3,7 @@
   import { onMount } from 'svelte'
   import type { WebAccess } from '../../../shared/types'
   import { copyFor, readySubtitle } from '../lib/copy'
-  import Pill from '../components/Pill.svelte'
+  import QrCode from '../components/QrCode.svelte'
   import { changeWebAccess } from '../lib/store'
 
   interface Props {
@@ -35,34 +35,23 @@
   }
 </script>
 
-{#if copy.pill}<Pill tone={copy.pill.tone}>{copy.pill.text}</Pill>{/if}
 <h1 class="title">{copy.title}</h1>
 <p class="subtitle">{readySubtitle(deviceName)}</p>
 <VideoHint />
 
-<div class="stack gap-sm">
+{#if web.on && web.url}
+  <div class="web-card">
+    <!-- O código vai junto no link: a página já abre com ele preenchido. -->
+    <QrCode text={`${web.url}/#${web.code}`} />
+    <div class="web-info">
+      <span class="web-url">{web.url.replace(/^https?:\/\//, '')}</span>
+      <span class="web-code">{web.code}</span>
+      <button class="link" onclick={toggle} disabled={busy}>Parar</button>
+    </div>
+  </div>
+{:else}
   <button class="btn btn-outline btn-sm" onclick={toggle} disabled={busy}>
-    {busy
-      ? web.on
-        ? 'Desligando…'
-        : 'Ligando…'
-      : web.on
-        ? 'Parar de receber pelo navegador'
-        : 'Receber pelo navegador (sem instalar nada)'}
+    {busy ? 'Abrindo…' : 'Mostrar num celular ou tablet'}
   </button>
-  {#if web.on && web.user}
-    <p class="hint">
-      No outro dispositivo, abra
-      {#if web.url}<strong>{web.url}</strong>{:else}o endereço deste dispositivo na porta 8080{/if}
-      e entre com o usuário <strong>{web.user}</strong> e o código <strong>{web.code}</strong>.
-    </p>
-  {:else if web.on}
-    <p class="hint">
-      No tablet ou celular, abra
-      {#if web.url}<strong>{web.url}</strong>{:else}o endereço deste computador na porta 47920 (ou
-        uma das seguintes){/if}
-      no navegador e digite o código <strong>{web.code}</strong>.
-    </p>
-  {/if}
-  {#if web.error}<p class="hint hint-faint">{web.error}</p>{/if}
-</div>
+{/if}
+{#if web.error}<p class="hint">{web.error}</p>{/if}

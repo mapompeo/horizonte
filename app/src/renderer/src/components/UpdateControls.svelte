@@ -68,9 +68,9 @@
 </script>
 
 {#if compact}
+  <!-- Só com algo a fazer: a versão fica nos Ajustes. -->
   <footer class="version-foot">
-    {#if status}
-      <span>Horizonte {pretty(status.currentVersion)}</span>
+    {#if status && ['available', 'downloading', 'ready'].includes(status.phase)}
       {#if status.phase === 'available'}
         <button class="foot-link" onclick={() => perform('download')}
           >Atualizar para {pretty(status.version)}</button

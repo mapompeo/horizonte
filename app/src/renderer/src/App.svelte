@@ -96,7 +96,6 @@
           {:else if state.screen === 'connected'}
             <Connected
               device={state.device}
-              bitrate={settings.bitrate}
               fingerprint={state.fingerprint}
               peerScreen={state.peerScreen}
               placement={settings.screenPlacement}
@@ -104,7 +103,7 @@
           {:else if state.screen === 'discover'}
             <Discover />
           {:else if state.screen === 'receiving'}
-            <Receiving host={state.host} name={state.name} bitrate={settings.bitrate} />
+            <Receiving host={state.host} name={state.name} />
           {:else if state.screen === 'mouse'}
             <Mouse sides={settings.mouseSides} offsets={settings.mouseOffsets} />
           {:else if state.screen === 'mouse-request'}
