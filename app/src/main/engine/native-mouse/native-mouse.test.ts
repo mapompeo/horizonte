@@ -248,18 +248,24 @@ describe('modo Mouse sem Deskflow, de ponta a ponta', () => {
     await until(() => t.inject.sent.includes('move 0 -250\n'))
   })
 
-  it('se a conexão cair com o cursor lá, o mouse volta para cá na hora', async () => {
+  it('se a conexão cair com o cursor lá, o mouse volta para cá na hora e o outro reconecta sozinho', async () => {
     const t = await twoComputers()
     t.capture.emit('ENTER 0 1920 540')
     await until(() => t.inject.sent.length > 0)
     t.killClient()
     await until(() => t.capture.sent.some((l) => l.startsWith('release')))
-    await until(() => t.ended.includes('controlado'))
+    expect(t.ended).toEqual([])
+    // Reconectou: a próxima travessia chega lá de novo.
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const before = t.inject.sent.length
+    t.capture.emit('ENTER 0 1920 100')
+    await until(() => t.inject.sent.length > before)
+    expect(t.inject.sent.at(-1)).toMatch(/^warp 0 /)
   })
 
   it('sem o outro conectado, cruzar a borda não prende o cursor', async () => {
     const t = await twoComputers()
-    t.killClient()
+    t.client.stop()
     await new Promise((resolve) => setTimeout(resolve, 30))
     t.capture.emit('ENTER 0 1920 540')
     expect(t.capture.sent.at(-1)).toMatch(/^release 1918 /)

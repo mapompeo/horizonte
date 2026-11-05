@@ -131,9 +131,20 @@ static void on_signal(GDBusConnection *connection, const char *sender, const cha
     double x, y;
     g_variant_get(args, "(uu(dd))", &activation, &mutter, &x, &y);
     active = TRUE;
+    /* A barreira é a que está no ponto do cursor: o número que o GNOME manda muda (e até aponta outra) da segunda
+     * travessia em diante. */
+    (void)mutter;
     int id = -1;
-    for (int i = 0; i < barrier_count; i++)
-      if (barriers[i].mutter == mutter) id = barriers[i].id;
+    double best = G_MAXDOUBLE;
+    for (int i = 0; i < barrier_count; i++) {
+      const struct barrier *b = &barriers[i];
+      const double dx = x < b->x1 ? b->x1 - x : x > b->x2 ? x - b->x2 : 0;
+      const double dy = y < b->y1 ? b->y1 - y : y > b->y2 ? y - b->y2 : 0;
+      if (dx + dy < best) {
+        best = dx + dy;
+        id = b->id;
+      }
+    }
     printf("ENTER %d %.1f %.1f\n", id, x, y);
   } else if (!g_strcmp0(name, "Deactivated")) {
     active = FALSE;

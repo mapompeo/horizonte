@@ -90,6 +90,8 @@ export function createNativeMouseShare(deps: NativeShareDeps, now = Date.now): M
   let token = ''
   let pingTimer: ReturnType<typeof setInterval> | null = null
   let stopping = false
+  /** Muda a cada `follow` e `stop`: uma reconexão em andamento de antes para de tentar. */
+  let followRun = 0
 
   /** Com quem o cursor está agora. */
   let active: { peer: Peer; position: Point; screen: ScreenSize } | null = null
@@ -236,6 +238,7 @@ export function createNativeMouseShare(deps: NativeShareDeps, now = Date.now): M
   }
 
   function stopAll(): void {
+    followRun++
     stopping = true
     if (pingTimer) clearInterval(pingTimer)
     pingTimer = null
@@ -295,24 +298,31 @@ export function createNativeMouseShare(deps: NativeShareDeps, now = Date.now): M
         inject = null
         notifyEnded()
       })
-      let socket: Socket | null = null
-      for (let i = 0; i < CONNECT_TRIES && !socket; i++) {
-        socket = await deps.connect(serverAddress).catch(() => null)
-        if (!socket) await deps.sleep(CONNECT_WAIT_MS)
+      const session = ++followRun
+      const attach = async (): Promise<void> => {
+        let socket: Socket | null = null
+        for (let i = 0; i < CONNECT_TRIES && !socket && session === followRun; i++) {
+          socket = await deps.connect(serverAddress).catch(() => null)
+          if (!socket) await deps.sleep(CONNECT_WAIT_MS)
+        }
+        if (session !== followRun) return void socket?.destroy()
+        if (!socket) throw new Error('Não consegui conectar ao outro computador.')
+        const conn = await secureLink(socket, agreed ?? '', 'client')
+        client = conn
+        conn.onMessage((message) => {
+          if ((message as { t?: unknown }).t === 'ping') return conn.send({ t: 'pong' })
+          const line = injectLine(message)
+          if (line) child.send(line)
+        })
+        conn.onClose(() => {
+          if (client !== conn) return
+          client = null
+          // Um tropeço na rede não encerra o compartilhamento: tenta de novo. Se o outro saiu mesmo, acaba aqui (ele
+          // também avisa pelo canal dos pedidos).
+          attach().catch(() => notifyEnded())
+        })
       }
-      if (!socket) throw new Error('Não consegui conectar ao outro computador.')
-      const conn = await secureLink(socket, agreed ?? '', 'client')
-      client = conn
-      conn.onMessage((message) => {
-        if ((message as { t?: unknown }).t === 'ping') return conn.send({ t: 'pong' })
-        const line = injectLine(message)
-        if (line) child.send(line)
-      })
-      conn.onClose(() => {
-        if (client !== conn) return
-        client = null
-        notifyEnded()
-      })
+      await attach()
     },
     stop: stopAll,
     onEnded(listener) {
