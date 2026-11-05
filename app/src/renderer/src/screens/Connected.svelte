@@ -2,6 +2,7 @@
   import { copyFor, safeName } from '../lib/copy'
   import { send } from '../lib/actions'
   import Pill from '../components/Pill.svelte'
+  import VideoHint from '../components/VideoHint.svelte'
   import PlacementMap, { type MapScreen } from '../components/PlacementMap.svelte'
   import { placeAll } from '../../../shared/placement'
   import type { ConnectedDevice, ScreenPlacement } from '../../../shared/types'
@@ -41,6 +42,10 @@
     <PlacementMap {screens} {placements} height={220} />
     <p class="hint">Arraste para posicionar.</p>
   </div>
+  <!-- Conferido de novo quando alguma tela muda de lado. -->
+  {#key screens.map((s) => s.placement.side).join()}
+    <VideoHint />
+  {/key}
 {/if}
 {#if devices.length > 1}
   <!-- Várias telas: parar uma por vez, ou todas. -->

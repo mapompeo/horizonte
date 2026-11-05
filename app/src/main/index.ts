@@ -28,7 +28,7 @@ import trayTemplate2x from '../../resources/trayTemplate@2x.png?asset'
 import { CHANNELS, REPO_URL } from '../shared/api'
 import { isUiEvent } from '../shared/events'
 import { cleanName } from '../shared/names'
-import type { ScreenSize, Settings, SettingsPatch } from '../shared/types'
+import type { MouseSide, ScreenSize, Settings, SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
 import { createTrayFollower } from './core/tray'
@@ -38,12 +38,14 @@ import { buildReportDiagnostic, createDiagnosticReporter } from './core/report-d
 import { createDiagnosticHistory } from './core/diagnostic-history'
 import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
+import { dockEdgeHint } from './platform/linux/dock-edge'
+import { FIREWALL_COMMAND } from './platform/linux/firewall'
 import { parsePowerSave, wifiPowerHint } from './platform/linux/wifi-power'
 import { finishStartup, runStartup } from './startup'
 import { runDevDemo } from './dev-demo'
 import { MOTOR_USAGE, parseMotorArgs, type MotorArgs } from './motor/args'
 import { prepareMotorSwitches, runMotorBench } from './motor/bench'
-import { createAppWebRtcEngine } from './engine/webrtc/wire'
+import { createAppWebRtcEngine, firewallWasRefused } from './engine/webrtc/wire'
 import {
   DRIVER_DIRS,
   parseOsRelease,
@@ -248,7 +250,7 @@ function createWindow(controller: Controller): void {
 }
 
 /** Linux: confere se a placa de vídeo tem o driver VA-API (sem ele, o vídeo atrasa muito). */
-async function readVideoHint(): Promise<VideoHint | null> {
+async function readVideoHint(sides: MouseSide[]): Promise<VideoHint | null> {
   const cards = await readdir('/sys/class/drm').catch(() => [] as string[])
   const vendors = await Promise.all(
     cards
@@ -262,8 +264,33 @@ async function readVideoHint(): Promise<VideoHint | null> {
   ).flat()
   const os = parseOsRelease(await readFile('/etc/os-release', 'utf8').catch(() => ''))
   return (
-    videoDriverHint({ vendors: vendors.filter(Boolean), drivers, os }) ?? (await readWifiHint())
+    videoDriverHint({ vendors: vendors.filter(Boolean), drivers, os }) ??
+    (firewallWasRefused()
+      ? {
+          message: 'O firewall pode estar bloqueando a conexão. Libere com o comando:',
+          command: FIREWALL_COMMAND
+        }
+      : null) ??
+    (await readDockHint(sides)) ??
+    (await readWifiHint())
   )
+}
+
+/** O dock na mesma borda de uma tela encostada (ver `dock-edge.ts`). */
+async function readDockHint(sides: MouseSide[]): Promise<VideoHint | null> {
+  const key = (name: string): Promise<string> =>
+    new Promise((resolve) =>
+      execFile(
+        'gsettings',
+        ['get', 'org.gnome.shell.extensions.dash-to-dock', name],
+        { timeout: 2000 },
+        (error, stdout) => resolve(error ? '' : stdout)
+      )
+    )
+  const [position, autohide, pressure] = await Promise.all(
+    ['dock-position', 'autohide', 'require-pressure-to-show'].map(key)
+  )
+  return dockEdgeHint({ position, autohide, pressure }, sides)
 }
 
 /** Linux: confere a economia de energia de cada Wi-Fi conectado (`iw`, sem precisar de sudo para ler). */
@@ -728,7 +755,15 @@ async function boot(): Promise<void> {
     return presence.withKinds(peers)
   })
   ipcMain.handle(CHANNELS.mouseScreen, () => desktopSize(virtualDisplay()))
-  ipcMain.handle(CHANNELS.videoHint, () => (process.platform === 'linux' ? readVideoHint() : null))
+  ipcMain.handle(CHANNELS.videoHint, () => {
+    if (process.platform !== 'linux') return null
+    const { screenPlacement, screenPlacements, mouseSides } = controller.getSnapshot().settings
+    return readVideoHint([
+      screenPlacement.side,
+      ...Object.values(screenPlacements).map((p) => p.side),
+      ...Object.values(mouseSides)
+    ])
+  })
   ipcMain.handle(CHANNELS.deviceKind, async (_event, address: unknown, name: unknown) => {
     if (typeof name !== 'string') return kindReady
     const where = typeof address === 'string' ? address : undefined

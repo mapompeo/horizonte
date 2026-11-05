@@ -22,11 +22,15 @@ import { WebRtcEngine, type MotorWindows, type ReceiverWindow } from './engine'
 
 const log = (...parts: unknown[]): void => console.log('[motor]', ...parts)
 
+let firewallRefused = false
+
 /**
  * Linux: libera a sinalização e a página do navegador no ufw, se ele estiver ligado (o sistema pede a senha uma vez).
  * A v1 só liberava a sinalização: quem já tinha liberado libera de novo, agora com a página.
  */
 export async function linuxFirewall(): Promise<void> {
+  // Recusou nesta execução: não pergunta de novo a cada tela, e o aviso mostra o comando.
+  if (firewallRefused) return
   const marker = join(app.getPath('userData'), 'firewall-motor-v3')
   const result = await ensureMotorFirewall({
     readConfig: () => readFile('/etc/ufw/ufw.conf', 'utf8').catch(() => null),
@@ -38,9 +42,17 @@ export async function linuxFirewall(): Promise<void> {
           error ? reject(error) : resolve()
         )
       )
+  }).catch((error: unknown) => {
+    // As portas podem já estar liberadas à mão: recusar a senha não pode travar o app.
+    log('firewall não liberado:', error)
+    firewallRefused = true
+    return 'refused' as const
   })
   if (result === 'opened') log('firewall liberado para a conexão')
 }
+
+/** A pessoa recusou liberar o firewall nesta execução? */
+export const firewallWasRefused = (): boolean => firewallRefused
 
 /**
  * As janelas do motor no app: uma oculta para enviar a cada aparelho conectado (a primeira fica aberta e também diz a

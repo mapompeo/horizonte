@@ -20,6 +20,11 @@ const PING_MS = 1000
 const SILENCE_MS = 3000
 const CONNECT_TRIES = 8
 const CONNECT_WAIT_MS = 500
+/**
+ * Logo depois de entrar no outro computador, o cursor não volta: ele entra colado na borda, e qualquer tremida da mão o
+ * devolvia na hora, e parecia travado na passagem.
+ */
+const ENTER_GRACE_MS = 200
 
 /** O auxiliar `horizonte-mouse` (linhas na entrada e na saída padrão). */
 export interface LineProcess {
@@ -94,7 +99,7 @@ export function createNativeMouseShare(deps: NativeShareDeps, now = Date.now): M
   let followRun = 0
 
   /** Com quem o cursor está agora. */
-  let active: { peer: Peer; position: Point; screen: ScreenSize } | null = null
+  let active: { peer: Peer; position: Point; screen: ScreenSize; since: number } | null = null
   const buttons = new Set<number>()
   const keys = new Set<number>()
 
@@ -143,13 +148,18 @@ export function createNativeMouseShare(deps: NativeShareDeps, now = Date.now): M
     const barrier = peer.barrier
     if (!peer.conn || !screen) {
       // Ainda não conectou (ou caiu): o cursor não some, fica aqui.
-      active = { peer, position: { x: 0, y: 0 }, screen: screen ?? { width: 1, height: 1 } }
+      active = {
+        peer,
+        position: { x: 0, y: 0 },
+        screen: screen ?? { width: 1, height: 1 },
+        since: now()
+      }
       const entry = entryPoint(peer.link.side, barrier, at, active.screen, peer.link.ranges)
       active.position = entry
       return comeBack(returnPoint(peer.link.side, barrier, entry, active.screen, peer.link.ranges))
     }
     const position = entryPoint(peer.link.side, barrier, at, screen, peer.link.ranges)
-    active = { peer, position, screen }
+    active = { peer, position, screen, since: now() }
     peer.conn.send({ t: 'enter', x: position.x, y: position.y })
   }
 
@@ -158,7 +168,8 @@ export function createNativeMouseShare(deps: NativeShareDeps, now = Date.now): M
     const { position, screen, peer } = active
     const next = { x: position.x + dx, y: position.y + dy }
     // Arrastando alguma coisa, o cursor não volta: soltaria o que está sendo arrastado no meio do caminho.
-    if (crossedBack(peer.link.side, next, screen) && buttons.size === 0) {
+    const settled = now() - active.since >= ENTER_GRACE_MS
+    if (crossedBack(peer.link.side, next, screen) && buttons.size === 0 && settled) {
       active.position = next
       return returnHere()
     }

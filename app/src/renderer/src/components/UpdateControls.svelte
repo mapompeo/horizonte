@@ -89,6 +89,7 @@
         </div>
       {:else if status.phase === 'ready'}
         <button class="foot-link" onclick={() => perform('install')}>Reiniciar e atualizar</button>
+        {#if status.message}<span role="status">{status.message}</span>{/if}
       {/if}
     {/if}
   </footer>

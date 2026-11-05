@@ -99,7 +99,8 @@ export function returnPoint(
   const edge = horizontal(side) ? peer.width : peer.height
   const pct = ((horizontal(side) ? from.x : from.y) / edge) * 100
   const along = end > start ? Math.min(1, Math.max(0, (pct - start) / (end - start))) : 0
-  const INSIDE = 2
+  // Longe o bastante da barreira para a tremida da mão não fazer o cursor cruzar de novo sem querer.
+  const INSIDE = 6
   if (horizontal(side))
     return {
       x: barrier.x1 + (barrier.x2 - barrier.x1) * along,
