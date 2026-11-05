@@ -10,6 +10,8 @@ import { BROWSER_PORT_LAST } from '../../web/browser'
 export const MOTOR_FIREWALL_SCRIPT = [
   'for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12; do',
   `  ufw allow from "$net" to any port ${SIGNALING_PORT}:${BROWSER_PORT_LAST} proto tcp`,
+  // Modo Mouse: o Deskflow, o canal dos pedidos e o caminho sem Deskflow.
+  '  ufw allow from "$net" to any port 24800,47901,47902 proto tcp',
   'done'
 ].join('\n')
 

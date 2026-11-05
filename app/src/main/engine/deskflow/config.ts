@@ -68,6 +68,9 @@ export interface DeskflowLink {
   name: string
   side: MouseSide
   ranges?: EdgeRanges
+  /** Para o modo Mouse sem Deskflow: onde ele está na rede e o tamanho da área de trabalho dele. */
+  address?: string
+  screen?: ScreenSize
 }
 
 /**

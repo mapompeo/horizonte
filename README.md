@@ -38,6 +38,8 @@ No Linux, o Horizonte transmite sozinho: WebRTC entre os dois aparelhos, sem ins
 - **Tablet ou celular, sem instalar nada:** no computador que envia, toque em "Receber pelo navegador". No outro aparelho, abra o endereço que aparece (porta 47920, ou uma das seguintes se ela estiver ocupada) e digite o código de 6 dígitos (ou aponte a câmera para o QR code). O computador ainda pergunta se pode. No iPhone, para usar a tela inteira sem as barras do Safari: Compartilhar › Adicionar à Tela de Início.
 - **Qualidade automática:** o perfil escolhido (Econômico, Equilibrado ou Máximo) é o teto. Quando o Wi-Fi perde pacotes, o vídeo baixa sozinho e volta quando a rede melhora.
 
+No modo Mouse, entre dois computadores com GNOME 46 ou mais novo, o mouse e o teclado passam direto, por um canal cifrado, sem instalar nada. Com Windows, Mac ou outros Linux, o Horizonte usa o [Deskflow](https://github.com/deskflow/deskflow).
+
 No Windows e no Mac, por enquanto, o Horizonte ainda instala e configura o [Sunshine](https://github.com/LizardByte/Sunshine), o [Moonlight](https://github.com/moonlight-stream/moonlight-qt) e o [Virtual Display Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver). O motor próprio chega a eles depois de testado nesses sistemas.
 
 ## Desenvolver

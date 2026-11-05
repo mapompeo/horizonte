@@ -24,9 +24,9 @@ export interface MouseShareDeps {
 
 export interface MouseShare {
   /** Este computador empresta o mouse e o teclado aos computadores encostados nele (`links`). */
-  share(options: { name: string; links: DeskflowLink[] }): Promise<void>
+  share(options: { name: string; links: DeskflowLink[]; token?: string }): Promise<void>
   /** Este computador passa a ser controlado pelo mouse do outro. */
-  follow(options: { name: string; serverAddress: string }): Promise<void>
+  follow(options: { name: string; serverAddress: string; token?: string }): Promise<void>
   stop(): void
   /** O Deskflow terminou sozinho (erro, ou o outro lado fechou). */
   onEnded(listener: () => void): () => void

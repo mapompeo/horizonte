@@ -32,6 +32,11 @@ export interface MouseEngineDeps {
   /** Área de trabalho deste computador (todas as telas juntas), para acertar onde as bordas se encostam. */
   ownScreen?: () => ScreenSize
   /**
+   * Este computador faz o modo Mouse sem Deskflow? Com os dois lados podendo, o compartilhamento usa o caminho próprio
+   * (cifrado), combinado por este segredo novo a cada vez; sem isso, o Deskflow.
+   */
+  nativeToken?: () => string | null
+  /**
    * Texto copiado que o Deskflow não leva (no GNOME antes do 51, do Linux para o outro PC não vai): `start` avisa
    * cada texto copiado aqui, `write` põe na área de transferência o que veio do outro.
    */
@@ -49,12 +54,16 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
   let pending: Host | null = null
   /** Nome com que o servidor do outro lado espera este PC (o Deskflow recusa nomes desconhecidos). */
   let pendingAs = ''
+  /** Segredo do pedido, quando o outro lado propôs o caminho sem Deskflow. */
+  let pendingToken: string | undefined
   /** Os outros lados do compartilhamento em andamento, pelo endereço (aqui servidor: vários; aqui controlado: um). */
   const peers = new Map<string, Host>()
   /** Compartilhamento em que este PC é o servidor: onde cada um fica, para refazer sem encerrar. */
-  let serving: { name: string; placements: MousePlacement[] } | null = null
+  let serving: { name: string; placements: MousePlacement[]; token?: string } | null = null
   /** Tamanho da tela que cada computador anunciou na última procura, pelo endereço. */
   const screens = new Map<string, ScreenSize>()
+  /** Quem anunciou que faz o modo Mouse sem Deskflow. */
+  const natives = new Set<string>()
   const requestListeners = new Set<(request: { device: string; address: string }) => void>()
   const endedListeners = new Set<() => void>()
 
@@ -66,6 +75,8 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       return {
         name: host.name,
         side,
+        address: host.address,
+        ...(screen ? { screen } : {}),
         ...(own ? { ranges: edgeRanges(side, own, screen ?? own, offset) } : {})
       }
     })
@@ -113,7 +124,11 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       notifyEnded()
       return
     }
-    await deps.share.share({ name: serving.name, links: linksFor(serving.placements) })
+    await deps.share.share({
+      name: serving.name,
+      links: linksFor(serving.placements),
+      ...(serving.token ? { token: serving.token } : {})
+    })
     startClipboards()
   }
 
@@ -127,6 +142,9 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       if (!device) return false
       pending = { name: device, address }
       pendingAs = cleanName(String((body as Record<string, unknown>).as ?? ''))
+      const offered = (body as Record<string, unknown>).native
+      pendingToken =
+        typeof offered === 'string' && /^[0-9a-f]{32,128}$/.test(offered) ? offered : undefined
       for (const listener of [...requestListeners]) listener({ device, address })
       return true
     }
@@ -190,20 +208,39 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
     },
     async listPeers() {
       const found = await deps.browse()
-      for (const host of found) if (host.screen) screens.set(host.address, host.screen)
+      for (const host of found) {
+        if (host.screen) screens.set(host.address, host.screen)
+        if (host.nativeMouse) natives.add(host.address)
+        else natives.delete(host.address)
+      }
       return found
     },
     async share(placements, ownName) {
       if (placements.length === 0) throw new Error('Arraste um computador para perto deste.')
+      // Sem Deskflow só se todos os lados puderem (e o tamanho da tela de cada um for conhecido).
+      const allNative = placements.every(
+        ({ host }) =>
+          (host.nativeMouse ?? natives.has(host.address)) &&
+          (host.screen ?? screens.get(host.address))
+      )
+      const token = allNative ? (deps.nativeToken?.() ?? undefined) : undefined
       // O servidor sobe antes dos pedidos: quando cada um aceitar, já há onde se conectar.
-      await deps.share.share({ name: ownName, links: linksFor(placements) })
-      serving = { name: ownName, placements: [...placements] }
+      await deps.share.share({
+        name: ownName,
+        links: linksFor(placements),
+        ...(token ? { token } : {})
+      })
+      serving = { name: ownName, placements: [...placements], ...(token ? { token } : {}) }
       for (const { host } of placements) peers.set(host.address, host)
       startClipboards()
       const answers = await Promise.all(
         placements.map(({ host }) =>
           deps.channel
-            .send(host.address, '/mouse/request', { device: ownName, as: host.name })
+            .send(host.address, '/mouse/request', {
+              device: ownName,
+              as: host.name,
+              ...(token ? { native: token } : {})
+            })
             .then(() => true)
             .catch(() => false)
         )
@@ -228,7 +265,11 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       peers.set(other.address, other)
       startClipboards()
       // Entra com o nome que o servidor espera: adicionado pelo IP, ele só conhece o endereço.
-      await deps.share.follow({ name: pendingAs || ownName, serverAddress: other.address })
+      await deps.share.follow({
+        name: pendingAs || ownName,
+        serverAddress: other.address,
+        ...(pendingToken ? { token: pendingToken } : {})
+      })
     },
     async deny() {
       const other = pending
@@ -242,7 +283,11 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
         (p) => placements.find((next) => next.host.address === p.host.address) ?? p
       )
       serving.placements = current
-      await deps.share.share({ name: serving.name, links: linksFor(current) })
+      await deps.share.share({
+        name: serving.name,
+        links: linksFor(current),
+        ...(serving.token ? { token: serving.token } : {})
+      })
     },
     end: () => finish(true),
     onRequest(callback) {
