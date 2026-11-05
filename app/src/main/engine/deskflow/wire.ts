@@ -26,6 +26,7 @@ import {
 } from './mouse-engine'
 import { createMouseShare, type DeskflowCommand, type MouseShare } from './session'
 import { createNativeMouseShare, NATIVE_MOUSE_PORT } from '../native-mouse/native-share'
+import { linuxFirewall } from '../webrtc/wire'
 import { downloadVerified } from '../../platform/windows/download'
 import { ensureDeskflowLinux, FLATPAK_APP } from './linux-install'
 import { DESKFLOW_WINDOWS, deskflowLinuxFor } from './versions'
@@ -421,7 +422,7 @@ export function createRealMouseEngine(deps: {
   const text = textClipboard(deps)
   const helper = nativeMouseHelper()
   const native = helper ? realNativeShare(helper) : null
-  return createMouseEngine({
+  const engine = createMouseEngine({
     share: native ? routedShare(deskflow, native) : deskflow,
     channel,
     advertise: (name) => advertise(name, deps.ownScreen(), deps.ownKind(), native !== null),
@@ -431,4 +432,14 @@ export function createRealMouseEngine(deps: {
     text,
     ownScreen: deps.ownScreen
   })
+  if (!native) return engine
+  return {
+    ...engine,
+    // O modo Mouse pode ser usado sem nunca passar por Enviar: as portas dele também precisam estar liberadas aqui.
+    // Se a pessoa recusar, segue: quem conecta de saída ainda funciona, e o erro aparece ao tentar.
+    async start(name) {
+      await linuxFirewall().catch((error: unknown) => console.warn('modo Mouse:', error))
+      await engine.start(name)
+    }
+  }
 }
