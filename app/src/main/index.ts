@@ -14,7 +14,7 @@ import {
   shell,
   Tray
 } from 'electron'
-import { execFile, spawn } from 'node:child_process'
+import { execFile, spawn, spawnSync } from 'node:child_process'
 import { randomInt } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
@@ -38,6 +38,7 @@ import { buildReportDiagnostic, createDiagnosticReporter } from './core/report-d
 import { createDiagnosticHistory } from './core/diagnostic-history'
 import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
+import { CLEAN_START_ENV, cleanStartCommand, hasNoNewPrivs } from './platform/linux/clean-start'
 import { dockEdgeHint } from './platform/linux/dock-edge'
 import { FIREWALL_COMMAND } from './platform/linux/firewall'
 import { parsePowerSave, wifiPowerHint } from './platform/linux/wifi-power'
@@ -868,6 +869,18 @@ function readMotorArgs(): MotorArgs | null | 'invalid' {
 }
 const motor = readMotorArgs()
 
+/** No Linux empacotado, com a trava ligada e sem já ter tentado: pede a abertura limpa. Devolve se pediu. */
+function restartWithoutPrivilegeLock(): boolean {
+  if (process.platform !== 'linux' || !app.isPackaged || process.env[CLEAN_START_ENV]) return false
+  try {
+    if (!hasNoNewPrivs(readFileSync('/proc/self/status', 'utf8'))) return false
+    const { command, args } = cleanStartCommand(process.execPath, process.argv.slice(1))
+    return spawnSync(command, args, { timeout: 5000, stdio: 'ignore' }).status === 0
+  } catch {
+    return false
+  }
+}
+
 /**
  * Motor próprio (WebRTC): o padrão no Linux. No Windows e no Mac, só com HORIZONTE_ENGINE=webrtc até ser testado
  * nesses sistemas. HORIZONTE_ENGINE=sunshine volta ao motor antigo no Linux; =fake abre o motor de mentira do
@@ -884,6 +897,10 @@ if (motor === 'invalid') {
 } else if (motor) {
   prepareMotorSwitches()
   void runMotorBench(motor)
+}
+// Aberto com a trava do reinício (ver `clean-start.ts`): reabre limpo antes de qualquer janela.
+else if (restartWithoutPrivilegeLock()) {
+  app.exit(0)
 }
 // Só uma cópia do app por vez (o instalador já abre uma): abrir de novo traz a janela existente para a frente.
 else if (!app.isPackaged || app.requestSingleInstanceLock()) {
