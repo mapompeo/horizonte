@@ -96,7 +96,7 @@ jobs:
       - run: npm ci
       - name: Bibliotecas do auxiliar do monitor virtual (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-dev libglib2.0-dev
+        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-dev libglib2.0-dev libei-dev
       - name: Usar a versão escolhida
         run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm run ${{ matrix.script }}

@@ -1,7 +1,11 @@
-import { execFile, spawn } from 'node:child_process'
+import { app } from 'electron'
+import { execFile, spawn, spawnSync } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import { createReadStream, createWriteStream, existsSync, readdirSync, readFileSync } from 'node:fs'
 import { mkdir, rm, stat, writeFile } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
+import { connect as netConnect, createServer as createNetServer, type Socket } from 'node:net'
+import { createInterface } from 'node:readline'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -20,7 +24,8 @@ import {
   type MouseChannel,
   type MouseEngineDeps
 } from './mouse-engine'
-import { createMouseShare, type DeskflowCommand } from './session'
+import { createMouseShare, type DeskflowCommand, type MouseShare } from './session'
+import { createNativeMouseShare, NATIVE_MOUSE_PORT } from '../native-mouse/native-share'
 import { downloadVerified } from '../../platform/windows/download'
 import { ensureDeskflowLinux, FLATPAK_APP } from './linux-install'
 import { DESKFLOW_WINDOWS, deskflowLinuxFor } from './versions'
@@ -97,16 +102,23 @@ async function browse(): Promise<Host[]> {
       name,
       address,
       ...(screen ? { screen } : {}),
-      ...(isDeviceKind(txt.k) ? { kind: txt.k } : {})
+      ...(isDeviceKind(txt.k) ? { kind: txt.k } : {}),
+      ...(txt.n === '1' ? { nativeMouse: true } : {})
     }
   })
 }
 
-function advertise(name: string, screen: ScreenSize, kind: DeviceKind): () => void {
+function advertise(
+  name: string,
+  screen: ScreenSize,
+  kind: DeviceKind,
+  native: boolean
+): () => void {
   return advertiseService(name, SERVICE_TYPE, MOUSE_CHANNEL_PORT, {
     w: String(screen.width),
     h: String(screen.height),
-    k: kind
+    k: kind,
+    ...(native ? { n: '1' } : {})
   })
 }
 
@@ -270,6 +282,74 @@ function textClipboard(deps: {
   }
 }
 
+/** O auxiliar `horizonte-mouse`, se existe aqui e este GNOME captura o mouse; senão, null (fica o Deskflow). */
+function nativeMouseHelper(): string | null {
+  if (process.platform !== 'linux' || !/gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? ''))
+    return null
+  const path = app.isPackaged
+    ? join(process.resourcesPath, 'horizonte-mouse')
+    : join(app.getAppPath(), 'native', 'linux', 'build', 'horizonte-mouse')
+  if (!existsSync(path)) return null
+  return spawnSync(path, ['--check'], { timeout: 3000 }).status === 0 ? path : null
+}
+
+/** O modo Mouse sem Deskflow, com o auxiliar e a rede de verdade. */
+function realNativeShare(helper: string): MouseShare {
+  return createNativeMouseShare({
+    spawn(mode) {
+      const child = spawn(helper, [`--${mode}`], { stdio: ['pipe', 'pipe', 'inherit'] })
+      const lines = createInterface({ input: child.stdout })
+      child.stdin.on('error', () => undefined)
+      return {
+        send: (line) => void (child.stdin.writable && child.stdin.write(line)),
+        onLine: (listener) => void lines.on('line', listener),
+        onExit: (listener) => void child.once('exit', listener),
+        kill: () => void child.kill()
+      }
+    },
+    listen: (onSocket) =>
+      new Promise((resolve, reject) => {
+        const server = createNetServer((socket) =>
+          onSocket(socket, (socket.remoteAddress ?? '').replace(/^::ffff:/i, ''))
+        )
+        server.once('error', reject)
+        server.listen(NATIVE_MOUSE_PORT, () => resolve(() => void server.close()))
+      }),
+    connect: (address) =>
+      new Promise<Socket>((resolve, reject) => {
+        const socket = netConnect(NATIVE_MOUSE_PORT, address)
+        socket.once('connect', () => resolve(socket))
+        socket.once('error', reject)
+      }),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    log: (message) => console.warn(message)
+  })
+}
+
+/** Com segredo combinado, o caminho próprio; sem ele, o Deskflow (o outro lado não pode, ou é Windows ou Mac). */
+function routedShare(deskflow: MouseShare, native: MouseShare): MouseShare {
+  let current: MouseShare = deskflow
+  const use = (next: MouseShare): void => {
+    if (current !== next) current.stop()
+    current = next
+  }
+  return {
+    async share(options) {
+      use(options.token ? native : deskflow)
+      await current.share(options)
+    },
+    async follow(options) {
+      use(options.token ? native : deskflow)
+      await current.follow(options)
+    },
+    stop: () => current.stop(),
+    onEnded(listener) {
+      const stops = [deskflow.onEnded(listener), native.onEnded(listener)]
+      return () => stops.forEach((stop) => stop())
+    }
+  }
+}
+
 export function createRealMouseEngine(deps: {
   userData: string
   download(zip: string): Promise<void>
@@ -283,7 +363,7 @@ export function createRealMouseEngine(deps: {
   ownKind(): DeviceKind
 }): MouseEngine {
   const dir = join(deps.userData, 'deskflow')
-  const share = createMouseShare({
+  const deskflow = createMouseShare({
     command: deskflowCommand({ dir, download: deps.download, extract: deps.extract }),
     dir,
     writeFile: async (path, text) => {
@@ -339,10 +419,13 @@ export function createRealMouseEngine(deps: {
     offer: (to, offered) => channel.send(to, '/mouse/files', { files: offered })
   })
   const text = textClipboard(deps)
+  const helper = nativeMouseHelper()
+  const native = helper ? realNativeShare(helper) : null
   return createMouseEngine({
-    share,
+    share: native ? routedShare(deskflow, native) : deskflow,
     channel,
-    advertise: (name) => advertise(name, deps.ownScreen(), deps.ownKind()),
+    advertise: (name) => advertise(name, deps.ownScreen(), deps.ownKind(), native !== null),
+    ...(native ? { nativeToken: () => randomBytes(32).toString('hex') } : {}),
     browse,
     files,
     text,
