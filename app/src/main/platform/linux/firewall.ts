@@ -15,6 +15,9 @@ export const MOTOR_FIREWALL_SCRIPT = [
   'done'
 ].join('\n')
 
+/** Para liberar à mão, se a pessoa recusou a janela de senha. */
+export const FIREWALL_COMMAND = `sudo ufw allow from 192.168.0.0/16 to any port 24800,47901,47902,${SIGNALING_PORT}:${BROWSER_PORT_LAST} proto tcp`
+
 export interface FirewallDeps {
   /** Conteúdo de /etc/ufw/ufw.conf (legível sem administrador), ou null se não existe. */
   readConfig(): Promise<string | null>

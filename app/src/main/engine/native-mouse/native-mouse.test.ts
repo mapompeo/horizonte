@@ -60,7 +60,7 @@ describe('geometria das barreiras', () => {
     const entry = entryPoint('right', barrier, { x: 1920, y: 539.5 }, peer)
     expect(entry).toEqual({ x: 0, y: 384 })
     const back = returnPoint('right', barrier, { x: -1, y: 384 }, peer)
-    expect(back.x).toBe(1918)
+    expect(back.x).toBe(1914)
     expect(back.y).toBeCloseTo(539.6, 0)
     expect(crossedBack('right', { x: -1, y: 0 }, peer)).toBe(true)
     expect(crossedBack('right', { x: 0, y: 0 }, peer)).toBe(false)
@@ -226,9 +226,14 @@ describe('modo Mouse sem Deskflow, de ponta a ponta', () => {
     const t = await twoComputers()
     t.capture.emit('ENTER 0 1920 540')
     t.capture.emit('key 42 1')
+    // Logo depois de entrar, uma tremida da mão não devolve o cursor.
+    t.capture.emit('move -5 0')
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(t.capture.sent.some((l) => l.startsWith('release'))).toBe(false)
+    await new Promise((resolve) => setTimeout(resolve, 220))
     t.capture.emit('move -5 0')
     await until(() => t.capture.sent.some((l) => l.startsWith('release')))
-    expect(t.capture.sent.find((l) => l.startsWith('release'))).toMatch(/^release 1918 5\d\d/)
+    expect(t.capture.sent.find((l) => l.startsWith('release'))).toMatch(/^release 1914 5\d\d/)
     await until(() => t.inject.sent.includes('key 42 0\n'))
     // Depois de voltar, nada mais vai para lá.
     const before = t.inject.sent.length
@@ -268,6 +273,6 @@ describe('modo Mouse sem Deskflow, de ponta a ponta', () => {
     t.client.stop()
     await new Promise((resolve) => setTimeout(resolve, 30))
     t.capture.emit('ENTER 0 1920 540')
-    expect(t.capture.sent.at(-1)).toMatch(/^release 1918 /)
+    expect(t.capture.sent.at(-1)).toMatch(/^release 1914 /)
   })
 })
