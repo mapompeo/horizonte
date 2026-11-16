@@ -152,14 +152,21 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       const list =
         typeof body === 'object' && body !== null ? (body as { files?: unknown }).files : null
       const files = Array.isArray(list)
-        ? list.filter(
-            (file): file is OfferedFile =>
-              typeof file === 'object' &&
-              file !== null &&
-              typeof (file as OfferedFile).id === 'string' &&
-              typeof (file as OfferedFile).name === 'string' &&
-              Number.isFinite((file as OfferedFile).size)
-          )
+        ? list
+            .filter(
+              (file): file is OfferedFile =>
+                typeof file === 'object' &&
+                file !== null &&
+                typeof (file as OfferedFile).id === 'string' &&
+                typeof (file as OfferedFile).name === 'string' &&
+                Number.isFinite((file as OfferedFile).size)
+            )
+            .map(({ id, name, size, image }) => ({
+              id,
+              name,
+              size,
+              ...(image === true ? { image } : {})
+            }))
         : []
       if (files.length === 0 || !peers.has(address)) return false
       void deps.files?.receive(files, address).catch(() => undefined)

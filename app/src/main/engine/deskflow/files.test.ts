@@ -8,12 +8,14 @@ import {
 
 function harness(sizes: Record<string, number | null> = {}): {
   deps: FileClipboardDeps
-  copy(paths: string[]): Promise<void>
+  copy(paths: string[], image?: boolean): Promise<void>
   offers: { to: string; files: OfferedFile[] }[]
   downloads: { from: string; name: string; dest: string }[]
   clipboard: string[][]
+  images: boolean[]
 } {
-  let onChange: ((paths: string[]) => void) | null = null
+  let onChange: ((paths: string[], image?: boolean) => void) | null = null
+  const images: boolean[] = []
   const offers: { to: string; files: OfferedFile[] }[] = []
   const downloads: { from: string; name: string; dest: string }[] = []
   const clipboard: string[][] = []
@@ -21,8 +23,9 @@ function harness(sizes: Record<string, number | null> = {}): {
     offers,
     downloads,
     clipboard,
-    copy: async (paths) => {
-      onChange?.(paths)
+    images,
+    copy: async (paths, image) => {
+      onChange?.(paths, image)
       await new Promise((resolve) => setTimeout(resolve, 0))
     },
     deps: {
@@ -30,7 +33,10 @@ function harness(sizes: Record<string, number | null> = {}): {
         onChange = listener
         return () => (onChange = null)
       },
-      setClipboard: async (paths) => void clipboard.push(paths),
+      setClipboard: async (paths, image) => {
+        clipboard.push(paths)
+        images.push(image === true)
+      },
       sizeOf: async (path) => (path in sizes ? (sizes[path] ?? null) : 10),
       baseName: (path) => path.split(/[\\/]/).pop() ?? '',
       newInbox: async () => 'C:/recebidos/1',
@@ -42,6 +48,17 @@ function harness(sizes: Record<string, number | null> = {}): {
 }
 
 describe('copiar e colar arquivos entre os PCs', () => {
+  it('uma imagem copiada vai marcada como imagem e chega como imagem para colar, não como arquivo', async () => {
+    const h = harness()
+    const files = createFileClipboard(h.deps)
+    files.start(['192.168.1.6'])
+    await h.copy(['/run/user/1000/imagem-1.png'], true)
+    expect(h.offers[0]!.files[0]).toMatchObject({ name: 'imagem-1.png', image: true })
+    await files.receive(h.offers[0]!.files, '192.168.1.6')
+    await files.receive([{ id: 'a', name: 'foto.png', size: 3 }], '192.168.1.6')
+    expect(h.images).toEqual([true, false])
+  })
+
   it('copiar arquivos aqui oferece ao outro PC, que pode baixar cada um pelo id', async () => {
     const h = harness()
     const files = createFileClipboard(h.deps)

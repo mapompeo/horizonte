@@ -1,8 +1,8 @@
-import { app } from 'electron'
+import { app, clipboard, ClipboardItem } from 'electron'
 import { execFile, spawn, spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { createReadStream, createWriteStream, existsSync, readdirSync, readFileSync } from 'node:fs'
-import { mkdir, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
 import { connect as netConnect, createServer as createNetServer, type Socket } from 'node:net'
 import { createInterface } from 'node:readline'
@@ -16,7 +16,7 @@ import { isDeviceKind, type DeviceKind } from '../../../shared/device'
 import type { Host, ScreenSize } from '../../../shared/types'
 import type { MouseEngine } from '../port'
 import { createFileClipboard, type FileClipboardDeps } from './files'
-import { LINUX_TEXT_SCRIPT } from './linux-text'
+import { LINUX_CLIPBOARD_SCRIPT } from './linux-clipboard'
 import {
   createMouseEngine,
   MAX_TEXT_CHARS,
@@ -197,10 +197,6 @@ const WATCH_SCRIPT = [
 function windowsClipboard(
   runPowerShell: (script: string) => Promise<unknown>
 ): Pick<FileClipboardDeps, 'watch' | 'setClipboard'> {
-  if (process.platform !== 'win32') {
-    // Linux: só o texto copiado vai junto por enquanto (pelo próprio Deskflow).
-    return { watch: () => () => undefined, setClipboard: async () => undefined }
-  }
   return {
     watch(onChange) {
       const child = spawn(
@@ -223,7 +219,11 @@ function windowsClipboard(
       })
       return () => void child.kill()
     },
-    async setClipboard(paths) {
+    async setClipboard(paths, image) {
+      if (image) {
+        const png = new Blob([await readFile(paths[0])], { type: 'image/png' })
+        return clipboard.write([new ClipboardItem({ 'image/png': png })])
+      }
       const list = paths.map((path) => `'${path.replace(/'/g, "''")}'`).join(',')
       await runPowerShell(`Set-Clipboard -Path ${list}`)
     }
@@ -231,14 +231,17 @@ function windowsClipboard(
 }
 
 /**
- * Texto copiado que o Deskflow não leva. Linux (GNOME): um observador do Mutter avisa cada texto copiado aqui;
- * o que vem do outro PC o próprio Deskflow já põe no Linux. Windows: o texto que vem do Linux vai para a área de
- * transferência (o que sai do Windows o Deskflow leva).
+ * Texto copiado que o Deskflow não leva. Linux (GNOME): o observador do Mutter avisa cada texto copiado aqui e põe
+ * o que vem do outro PC (no modo Mouse próprio não há Deskflow). Windows: o texto que vem do Linux vai para a área
+ * de transferência (o que sai do Windows o Deskflow leva).
  */
-function textClipboard(deps: {
-  writeText(text: string): void
-  readText(): Promise<string> | string
-}): NonNullable<MouseEngineDeps['text']> {
+function textClipboard(
+  deps: {
+    writeText(text: string): void
+    readText(): Promise<string> | string
+  },
+  linux: ReturnType<typeof linuxClipboard>
+): NonNullable<MouseEngineDeps['text']> {
   if (process.platform !== 'linux') {
     return {
       start: () => undefined,
@@ -250,36 +253,77 @@ function textClipboard(deps: {
           .catch(() => undefined)
     }
   }
+  return linux.text
+}
+
+/** Uma imagem copiada vai inteira; acima disso fica de fora. */
+const MAX_IMAGE_BYTES = 64 * 1024 ** 2
+
+/**
+ * Linux (GNOME): um processo só, o observador do Mutter, para texto, imagens e arquivos nos dois sentidos. Fica de pé
+ * enquanto o texto ou os arquivos estiverem sendo observados (só durante o compartilhamento).
+ */
+function linuxClipboard(inbox: string): {
+  text: NonNullable<MouseEngineDeps['text']>
+  files: Pick<FileClipboardDeps, 'watch' | 'setClipboard'>
+} {
   let child: ReturnType<typeof spawn> | null = null
-  return {
-    start(onCopied) {
-      child?.kill()
-      const current = spawn('python3', ['-c', LINUX_TEXT_SCRIPT, String(MAX_TEXT_CHARS)], {
-        stdio: ['pipe', 'pipe', 'ignore']
-      })
-      current.on('error', () => undefined)
-      let buffer = ''
-      current.stdout?.on('data', (chunk: Buffer) => {
-        buffer += chunk.toString('utf8')
-        let line: number
-        while ((line = buffer.indexOf('\n')) >= 0) {
-          const raw = buffer.slice(0, line)
-          buffer = buffer.slice(line + 1)
-          try {
-            const { text } = JSON.parse(raw) as { text?: unknown }
-            if (typeof text === 'string') onCopied(text)
-          } catch {
-            // Linha que não é JSON: ignora.
-          }
-        }
-      })
-      child = current
-    },
-    stop() {
+  let onText: ((text: string) => void) | null = null
+  let onFiles: ((paths: string[], image?: boolean) => void) | null = null
+  const send = (message: unknown): void =>
+    void (child?.stdin?.writable && child.stdin.write(`${JSON.stringify(message)}\n`))
+  const update = (): void => {
+    if (!onText && !onFiles) {
       child?.kill()
       child = null
+      return
+    }
+    if (child) return
+    const current = spawn(
+      'python3',
+      ['-c', LINUX_CLIPBOARD_SCRIPT, String(MAX_TEXT_CHARS), String(MAX_IMAGE_BYTES), inbox],
+      { stdio: ['pipe', 'pipe', 'ignore'] }
+    )
+    current.on('error', () => undefined)
+    current.stdin?.on('error', () => undefined)
+    createInterface({ input: current.stdout! }).on('line', (raw) => {
+      try {
+        const message = JSON.parse(raw) as { text?: unknown; files?: unknown; image?: unknown }
+        if (typeof message.text === 'string') onText?.(message.text)
+        else if (Array.isArray(message.files))
+          onFiles?.(
+            message.files.filter((path): path is string => typeof path === 'string'),
+            message.image === true
+          )
+      } catch {
+        // Linha que não é JSON: ignora.
+      }
+    })
+    child = current
+  }
+  return {
+    text: {
+      start(onCopied) {
+        onText = onCopied
+        update()
+      },
+      stop() {
+        onText = null
+        update()
+      },
+      write: (text) => send({ text })
     },
-    write: () => undefined
+    files: {
+      watch(onChange) {
+        onFiles = onChange
+        update()
+        return () => {
+          onFiles = null
+          update()
+        }
+      },
+      setClipboard: async (paths, image) => send({ files: paths, ...(image ? { image } : {}) })
+    }
   }
 }
 
@@ -392,8 +436,10 @@ export function createRealMouseEngine(deps: {
     }
   })
   const channel = createChannel()
+  // Imagens copiadas no Linux ficam aqui até o outro PC baixar (só esta pessoa lê a pasta).
+  const linux = linuxClipboard(join(dir, 'copiadas'))
   const files = createFileClipboard({
-    ...windowsClipboard(deps.runPowerShell),
+    ...(process.platform === 'win32' ? windowsClipboard(deps.runPowerShell) : linux.files),
     sizeOf: async (path) => {
       const info = await stat(path).catch(() => null)
       return info?.isFile() ? info.size : null
@@ -419,7 +465,7 @@ export function createRealMouseEngine(deps: {
     },
     offer: (to, offered) => channel.send(to, '/mouse/files', { files: offered })
   })
-  const text = textClipboard(deps)
+  const text = textClipboard(deps, linux)
   const helper = nativeMouseHelper()
   const native = helper ? realNativeShare(helper) : null
   const engine = createMouseEngine({

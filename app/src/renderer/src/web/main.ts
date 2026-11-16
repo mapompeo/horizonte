@@ -85,7 +85,8 @@ async function post(path: string, body: unknown): Promise<Response> {
 
 async function connect(code: string): Promise<void> {
   // De uma conexão anterior (ao girar o aparelho, por exemplo), o vídeo e o cursor velhos ficariam por cima do novo.
-  for (const old of document.querySelectorAll('.motor-video, .motor-cursor, .motor-panel')) old.remove()
+  for (const old of document.querySelectorAll('.motor-video, .motor-cursor, .motor-panel'))
+    old.remove()
   button.disabled = true
   say('Conectando…')
   const opened = await post('/api/abrir', { codigo: code })

@@ -7,13 +7,18 @@ export interface OfferedFile {
   id: string
   name: string
   size: number
+  /** Uma imagem copiada (um print, uma foto do navegador): do outro lado vira imagem para colar, não arquivo. */
+  image?: true
 }
 
 export interface FileClipboardDeps {
-  /** Avisa sempre que a lista de arquivos copiados muda (lista vazia: nada copiado); devolve como parar. */
-  watch(onChange: (paths: string[]) => void): () => void
-  /** Põe estes arquivos na área de transferência, prontos para colar. */
-  setClipboard(paths: string[]): Promise<void>
+  /**
+   * Avisa sempre que a lista de arquivos copiados muda (lista vazia: nada copiado); `image` quando é uma imagem
+   * copiada, guardada num arquivo. Devolve como parar.
+   */
+  watch(onChange: (paths: string[], image?: boolean) => void): () => void
+  /** Põe estes arquivos (ou, com `image`, a imagem deste arquivo) na área de transferência, prontos para colar. */
+  setClipboard(paths: string[], image?: boolean): Promise<void>
   /** Tamanho do arquivo, ou null se não for um arquivo comum (pasta, atalho quebrado). */
   sizeOf(path: string): Promise<number | null>
   baseName(path: string): string
@@ -44,7 +49,7 @@ export function createFileClipboard(deps: FileClipboardDeps): {
   let offered = new Map<string, string>()
   let placedByUs = ''
 
-  async function onCopied(paths: string[]): Promise<void> {
+  async function onCopied(paths: string[], image = false): Promise<void> {
     const key = paths.join('\n')
     if (peers.length === 0 || paths.length === 0 || key === placedByUs) return
     const files: OfferedFile[] = []
@@ -57,7 +62,12 @@ export function createFileClipboard(deps: FileClipboardDeps): {
       if (total > MAX_TOTAL_BYTES) return
       const id = randomUUID()
       next.set(id, path)
-      files.push({ id, name: deps.baseName(path), size })
+      files.push({
+        id,
+        name: deps.baseName(path),
+        size,
+        ...(image ? { image: true as const } : {})
+      })
     }
     if (files.length === 0) return
     offered = next
@@ -68,7 +78,7 @@ export function createFileClipboard(deps: FileClipboardDeps): {
     start(peerAddresses) {
       peers = [...peerAddresses]
       unwatch?.()
-      unwatch = deps.watch((paths) => void onCopied(paths))
+      unwatch = deps.watch((paths, image) => void onCopied(paths, image))
     },
     stop() {
       peers = []
@@ -94,7 +104,7 @@ export function createFileClipboard(deps: FileClipboardDeps): {
         paths.push(dest)
       }
       placedByUs = paths.join('\n')
-      await deps.setClipboard(paths)
+      await deps.setClipboard(paths, files.length === 1 && files[0].image === true)
     }
   }
 }
