@@ -112,3 +112,17 @@ document.querySelectorAll("[data-preview]").forEach((root) => {
   root.append(frame);
   fit();
 });
+
+// Copiar o comando do terminal (seção de baixar).
+for (const button of document.querySelectorAll("[data-copy]")) {
+  button.addEventListener("click", async () => {
+    const text = document.getElementById(button.dataset.copy)?.textContent ?? "";
+    try {
+      await navigator.clipboard.writeText(text);
+      button.textContent = "Copiado";
+    } catch {
+      button.textContent = "Selecione e copie";
+    }
+    setTimeout(() => (button.textContent = "Copiar"), 2000);
+  });
+}
