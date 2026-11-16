@@ -102,8 +102,11 @@ export interface SenderOptions extends LinkOptions {
   maxViewers?: number
 }
 
-/** Até quatro telas sem fio ao mesmo tempo: além disso, o GNOME e a rede local começam a sofrer. */
-export const MAX_VIEWERS = 4
+/**
+ * Quantas telas sem fio ao mesmo tempo. Não há limite de verdade além do que o computador e a rede aguentam; este só
+ * segura uma enxurrada de pedidos.
+ */
+export const MAX_VIEWERS = 16
 
 export interface Sender {
   readonly port: number

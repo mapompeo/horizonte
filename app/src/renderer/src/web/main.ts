@@ -50,25 +50,21 @@ function deviceOf(agent: string): { name: string; kind: DeviceKind } {
 }
 
 /**
- * Tamanho da tela estendida em pixels de verdade, par e dentro do que o protocolo aceita. Deitado, é a área visível da
- * página (no Safari do iPhone, sem as barras dele): a imagem preenche tudo, sem faixas pretas. Em pé, a tela toda
- * deitada (a pessoa vira o aparelho para usar).
+ * Tamanho da tela estendida em pixels de verdade, par e dentro do que o protocolo aceita: a área visível da página (no
+ * Safari do iPhone, sem as barras dele), deitada ou em pé, do jeito que o aparelho está. A imagem preenche tudo.
  */
 function screenWant(): { width: number; height: number } {
   const ratio = Math.min(window.devicePixelRatio || 1, 2)
-  const even = (value: number, max: number): number =>
-    Math.max(160, Math.min(max, Math.round((value * ratio) / 2) * 2))
+  const even = (value: number): number =>
+    Math.max(160, Math.min(3840, Math.round((value * ratio) / 2) * 2))
   const view = window.visualViewport
-  const [vw, vh] = [view?.width ?? window.innerWidth, view?.height ?? window.innerHeight]
-  const [w, h] =
-    vw >= vh
-      ? [vw, vh]
-      : [
-          Math.max(window.screen.width, window.screen.height),
-          Math.min(window.screen.width, window.screen.height)
-        ]
-  return { width: even(w, 3840), height: even(h, 2160) }
+  return {
+    width: even(view?.width ?? window.innerWidth),
+    height: even(view?.height ?? window.innerHeight)
+  }
 }
+
+const landscape = (): boolean => window.innerWidth >= window.innerHeight
 
 /**
  * Escala da tela estendida: a do aparelho, mas sem deixar a área útil com menos de 720 pontos de altura. Num celular
@@ -76,9 +72,10 @@ function screenWant(): { width: number; height: number } {
  * conseguiam maximizar.
  */
 const MIN_POINTS = 720
-function screenScale(height: number): number | null {
+function screenScale(size: { width: number; height: number }): number | null {
   const ratio = Math.min(window.devicePixelRatio || 1, 2)
-  const scale = Math.max(1, Math.min(ratio, height / MIN_POINTS))
+  // O lado menor: deitado é a altura, em pé é a largura.
+  const scale = Math.max(1, Math.min(ratio, Math.min(size.width, size.height) / MIN_POINTS))
   return scale > 1 ? Math.round(scale * 100) / 100 : null
 }
 
@@ -87,6 +84,8 @@ async function post(path: string, body: unknown): Promise<Response> {
 }
 
 async function connect(code: string): Promise<void> {
+  // De uma conexão anterior (ao girar o aparelho, por exemplo), o vídeo e o cursor velhos ficariam por cima do novo.
+  for (const old of document.querySelectorAll('.motor-video, .motor-cursor, .motor-panel')) old.remove()
   button.disabled = true
   say('Conectando…')
   const opened = await post('/api/abrir', { codigo: code })
@@ -117,21 +116,33 @@ async function connect(code: string): Promise<void> {
     fps: 60,
     bitrate: 20,
     codecs: videoMimes(RTCRtpReceiver.getCapabilities('video')?.codecs ?? []),
-    ...(screenScale(size.height) ? { scale: screenScale(size.height) as number } : {}),
+    ...(screenScale(size) ? { scale: screenScale(size) as number } : {}),
     cursor: true
   }
 
   let peer: Hello | null = null
   let ended = false
+  live = {
+    session,
+    code,
+    landscape: landscape(),
+    // Girou o aparelho: sai sem derrubar a tela cheia e entra de novo, com a tela estendida do jeito novo.
+    turn: () => {
+      send({ t: 'bye', reason: 'user' })
+      finish('Girando a tela…', false, true)
+    }
+  }
   const events = new EventSource(`/api/eventos?sessao=${session}`)
-  const finish = (message: string, error = false): void => {
+  const finish = (message: string, error = false, keepScreen = false): void => {
     if (ended) return
     ended = true
+    if (live?.session === session) live = null
     events.close()
     side.stop()
     void post(`/api/fechar?sessao=${session}`, {}).catch(() => undefined)
     document.body.classList.remove('web-live')
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined)
+    if (document.fullscreenElement && !keepScreen)
+      void document.exitFullscreen().catch(() => undefined)
     start.hidden = false
     button.disabled = false
     say(message, error)
@@ -196,6 +207,19 @@ async function connect(code: string): Promise<void> {
   })
   send(hello)
 }
+
+/** A sessão em andamento, para reconectar quando o aparelho gira. */
+let live: { session: string; code: string; landscape: boolean; turn(): void } | null = null
+let turning: ReturnType<typeof setTimeout> | null = null
+window.addEventListener('resize', () => {
+  if (turning) clearTimeout(turning)
+  turning = setTimeout(() => {
+    const current = live
+    if (!current || current.landscape === landscape()) return
+    current.turn()
+    connect(current.code).catch(() => say('Não consegui falar com o computador.', true))
+  }, 700)
+})
 
 form.addEventListener('submit', (event) => {
   event.preventDefault()
