@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { snapRect, sideOf, type Rect } from '../../../shared/placement'
+  import { overlap, snapRect, sideOf, type Rect } from '../../../shared/placement'
   import type { ScreenPlacement, ScreenSize } from '../../../shared/types'
   import { safeName } from '../lib/copy'
 
@@ -9,6 +9,8 @@
     name: string
     size: ScreenSize
     placement: ScreenPlacement
+    /** Uma linha pequena embaixo do nome (a resolução, por exemplo). */
+    detail?: string
   }
 
   interface Props {
@@ -16,10 +18,13 @@
     own: ScreenSize
     screens: FreeScreen[]
     onPlace: (key: string, placement: ScreenPlacement) => void
+    /** Com ele, cada tela ganha um ✕ para parar. */
+    onStop?: (key: string) => void
+    ownDetail?: string
     height?: number
   }
 
-  let { own, screens, onPlace, height = 220 }: Props = $props()
+  let { own, screens, onPlace, onStop, ownDetail, height = 220 }: Props = $props()
 
   let width = $state(480)
   const me: Rect = $derived({ x: 0, y: 0, w: own.width, h: own.height })
@@ -41,9 +46,25 @@
   }
 
   let drag = $state<{ key: string; rect: Rect; px: number; py: number } | null>(null)
-  const rects = $derived(
-    screens.map((s) => ({ s, r: drag?.key === s.key ? drag.rect : rectOf(s) }))
-  )
+  /**
+   * Onde cada tela aparece. Posições guardadas que caem em cima de outra (de antes, só pelo lado) vão para a borda
+   * livre mais perto: no mapa nenhuma tela fica sobre a outra. A que está sendo arrastada segue o mouse.
+   */
+  const rects = $derived.by(() => {
+    const placed: Rect[] = [me]
+    const out: { s: FreeScreen; r: Rect }[] = []
+    for (const s of screens) {
+      if (drag?.key === s.key) {
+        out.push({ s, r: drag.rect })
+        continue
+      }
+      let r = rectOf(s)
+      if (placed.some((p) => overlap(r, p))) r = snapRect(r, placed)
+      placed.push(r)
+      out.push({ s, r })
+    }
+    return out
+  })
 
   /** Uma escala só para tudo (proporção real), com folga de uma tela em volta para arrastar. */
   const view = $derived.by(() => {
@@ -111,7 +132,10 @@
 </script>
 
 <div class="map" bind:clientWidth={width} style="height:{height}px">
-  <div class="tile own" style={box(me)}><span>Este computador</span></div>
+  <div class="tile own" style={box(me)}>
+    <span class="name">Este computador</span>
+    {#if ownDetail}<span class="detail">{ownDetail}</span>{/if}
+  </div>
   {#each rects as { s, r } (s.key)}
     <div
       class="tile peer"
@@ -126,7 +150,16 @@
       onpointercancel={() => up(s)}
       onkeydown={(event) => key(event, s, r)}
     >
-      <span>{safeName(s.name)}</span>
+      {#if onStop}
+        <button
+          class="stop"
+          aria-label="Parar {safeName(s.name)}"
+          onpointerdown={(event) => event.stopPropagation()}
+          onclick={() => onStop(s.key)}>✕</button
+        >
+      {/if}
+      <span class="name"><span class="dot" aria-hidden="true"></span>{safeName(s.name)}</span>
+      {#if s.detail}<span class="detail">{s.detail}</span>{/if}
     </div>
   {/each}
 </div>
@@ -142,6 +175,8 @@
   .tile {
     position: absolute;
     display: flex;
+    flex-direction: column;
+    gap: 2px;
     align-items: center;
     justify-content: center;
     padding: 4px;
@@ -150,11 +185,52 @@
     overflow: hidden;
     user-select: none;
   }
-  .tile span {
+  .name,
+  .detail {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 100%;
+  }
+  .detail {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 5px;
+    border-radius: 50%;
+    background: var(--ok-dot);
+    vertical-align: middle;
+  }
+  .stop {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--card);
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 18px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  .stop:hover {
+    color: var(--danger-fg);
+  }
+  /* Área de toque maior que o círculo desenhado. */
+  .stop::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
   }
   .own {
     background: var(--seg);

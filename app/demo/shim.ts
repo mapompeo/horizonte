@@ -144,6 +144,9 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     },
     openRepo: async () => void window.open(REPO_URL, '_blank', 'noopener'),
     uninstall: async () => 'unavailable',
+    copyText: async (text) => {
+      await navigator.clipboard.writeText(text).catch(() => undefined)
+    },
     reportDiagnostic: async () => {
       throw new Error('A demonstração não envia diagnósticos.')
     },

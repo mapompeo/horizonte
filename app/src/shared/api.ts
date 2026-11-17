@@ -25,6 +25,7 @@ export const CHANNELS = {
   openRepo: 'horizonte:open-repo',
   uninstall: 'horizonte:uninstall',
   reportDiagnostic: 'horizonte:report-diagnostic',
+  copyText: 'horizonte:copy-text',
   push: 'horizonte:push',
   update: 'horizonte:update',
   updateStatus: 'horizonte:update-status',
@@ -59,6 +60,8 @@ export interface HorizonteApi {
   uninstall(): Promise<import('./uninstall').UninstallResult>
   /** Manda o diagnóstico (só versão, sistema e códigos de erro) para quem mantém o Horizonte. */
   reportDiagnostic(): Promise<void>
+  /** Copia um texto pela área de transferência do sistema (a da página não funciona em todo sistema). */
+  copyText(text: string): Promise<void>
   getUpdateStatus(): Promise<UpdateStatus>
   update(action: UpdateAction): Promise<UpdateStatus>
   onUpdate(callback: (status: UpdateStatus) => void): () => void

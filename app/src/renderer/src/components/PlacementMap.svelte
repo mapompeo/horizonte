@@ -17,18 +17,24 @@
     /** As posições guardadas de cada aparelho (para juntar a nova às outras). */
     placements: Record<string, ScreenPlacement>
     height?: number
+    /** Com ele, cada tela no mapa tem um ✕ para parar. */
+    onStop?: (key: string) => void
   }
 
-  let { screens, placements, height = 240 }: Props = $props()
+  let { screens, placements, height = 240, onStop }: Props = $props()
 
   /** Este computador em pontos (a área de trabalho dividida pela escala da tela). */
   let own = $state<ScreenSize | null>(null)
+  let ownPixels = $state<ScreenSize | null>(null)
   onMount(() => {
     void window.horizonte.ownScreen().then((size) => {
       const ratio = window.devicePixelRatio || 1
+      ownPixels = size
       own = { width: size.width / ratio, height: size.height / ratio }
     })
   })
+  const resolution = (size: ScreenSize): string =>
+    `${Math.round(size.width)} × ${Math.round(size.height)}`
 
   /**
    * A tela estendida em pontos, com a mesma conta do motor (web/main.ts, screenScale): escala do aparelho, sem deixar o
@@ -48,7 +54,8 @@
       key: s.key,
       name: s.name,
       size: points(s.screen),
-      placement: s.placement
+      placement: s.placement,
+      detail: resolution(s.screen)
     }))
   )
 
@@ -62,5 +69,12 @@
 </script>
 
 {#if own}
-  <FreeScreenMap {own} screens={free} onPlace={place} {height} />
+  <FreeScreenMap
+    {own}
+    screens={free}
+    onPlace={place}
+    {onStop}
+    ownDetail={ownPixels ? resolution(ownPixels) : undefined}
+    {height}
+  />
 {/if}

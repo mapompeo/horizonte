@@ -43,7 +43,8 @@ export interface Rect {
   h: number
 }
 
-const overlap = (a: Rect, b: Rect): boolean =>
+/** As duas telas ocupam algum pedaço do mesmo lugar (encostar na borda não conta). */
+export const overlap = (a: Rect, b: Rect): boolean =>
   a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5
 
 /**

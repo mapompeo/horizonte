@@ -555,6 +555,10 @@ async function boot(): Promise<void> {
       )?.ok === true
   })
   ipcMain.handle(CHANNELS.reportDiagnostic, () => reports.send())
+  // Só texto curto (o link da página): nada de conteúdo grande vindo da janela.
+  ipcMain.handle(CHANNELS.copyText, (_event, text: unknown) => {
+    if (typeof text === 'string' && text.length <= 2000) clipboard.writeText(text)
+  })
   // A página do receptor vem deste app (main/web/browser.ts).
   const webAccess = createBrowserAccess({
     pagesDir: join(__dirname, '../renderer'),

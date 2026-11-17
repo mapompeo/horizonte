@@ -15,7 +15,7 @@ test("fluxo real de modos, aprovacao e parada", async ({ page }) => {
     .getByRole("button", { name: "Pedir conexão", exact: true })
     .click();
   await app.getByRole("button", { name: "Permitir", exact: true }).click();
-  await expect(app.getByRole("heading", { name: "Conectado" })).toBeVisible();
+  await expect(app.getByRole("heading", { name: "1 tela conectada" })).toBeVisible();
   await expect(app.getByText("Notebook", { exact: true })).toBeVisible();
   // O cartão do QR encolhe ao conectar e a lista sobe: espera a animação assentar antes de clicar.
   await page.waitForTimeout(600);
@@ -65,7 +65,7 @@ test("menos movimento mantem interface real", async ({ page }) => {
   await expect(
     page
       .frameLocator("#app iframe")
-      .getByRole("heading", { name: "Conectado" }),
+      .getByRole("heading", { name: "1 tela conectada" }),
   ).toBeVisible();
   expect(
     await page.evaluate(() =>

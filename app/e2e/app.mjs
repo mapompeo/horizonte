@@ -182,9 +182,9 @@ try {
     await step('envio completo: pedido, aprovar e o aparelho na lista de conectados', async () => {
       await app.waitText(/Permitir o Notebook/, 30_000)
       await app.click(/^Permitir$/)
-      const text = await app.waitText(/Conectado/, 30_000)
+      const text = await app.waitText(/tela conectada/, 30_000)
       if (!/Notebook/.test(text)) throw new Error('o aparelho não aparece na lista')
-      if (!/\d{4}/.test(text)) throw new Error(`o código do QR sumiu ao conectar; tela: ${text.slice(0, 300)}`)
+      if (!/Adicionar/.test(text)) throw new Error(`sem o botão Adicionar ao conectar; tela: ${text.slice(0, 300)}`)
       // Conectado, o Horizonte sai da frente e fica nos ícones ocultos. No Linux ele só minimiza (sem extensão não há
       // bandeja), e a CI não tem gerenciador de janelas para minimizar.
       if (process.platform !== 'linux') {

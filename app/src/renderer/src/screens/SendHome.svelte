@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { flip } from 'svelte/animate'
   import { fade, fly } from 'svelte/transition'
   import type {
     ConnectedDevice,
@@ -64,25 +63,33 @@
   async function copyLink(): Promise<void> {
     if (!link) return
     try {
-      await navigator.clipboard.writeText(link)
+      await window.horizonte.copyText(link)
       copied = true
       setTimeout(() => (copied = false), 2000)
     } catch {
       // Sem área de transferência: o endereço continua à vista para digitar.
     }
   }
+  /** Aberto o "Adicionar": o QR, o código e o link para mais um aparelho. */
+  let adding = $state(false)
+  /** Quem não tem tela no mapa (sem tamanho ou impressão digital): fica numa lista simples. */
+  const unmapped = $derived(devices.filter((d) => !d.fingerprint || !d.peerScreen))
+  function stop(fingerprint?: string): void {
+    void send({ type: 'STOP', ...(fingerprint ? { fingerprint } : {}) })
+  }
+
   const prepNote = $derived(
     progress?.permission ? 'Confirme a permissão do sistema' : progress?.note || 'Preparando'
   )
 </script>
 
-<div class="home">
-  <section class="hero card" class:compact={connected}>
-    <div class="qr-card" class:compact={connected}>
+{#snippet hero(compact: boolean)}
+  <section class="hero card" class:compact class:vertical={!compact}>
+    <div class="qr-card" class:compact>
       {#if link}
-        <QrCode text={link} size={connected ? 112 : 176} />
+        <QrCode text={link} size={compact ? 112 : 176} />
       {:else if preparing}
-        <div class="qr-prep" class:compact={connected} role="status">
+        <div class="qr-prep" class:compact role="status">
           <div class="bar">
             <div
               class="bar-fill"
@@ -92,14 +99,27 @@
           <span class="hint">{prepNote}</span>
         </div>
       {:else}
-        <div class="qr-empty" class:compact={connected} aria-hidden="true"></div>
+        <div class="qr-empty" class:compact aria-hidden="true"></div>
       {/if}
     </div>
     <div class="hero-text" aria-live="polite">
-      <h1 class="title">
-        {connected ? 'Conectado' : preparing ? 'Preparando' : 'Aponte a câmera'}
-      </h1>
-      {#if link && web.url}
+      {#if !compact}
+        <h1 class="title">{preparing ? 'Preparando' : 'Aponte a câmera do celular'}</h1>
+      {/if}
+      {#if link && web.url && !compact}
+        <!-- Sem câmera (outro PC, tablet): o endereço para digitar no navegador, e o código que a página pede. -->
+        <div class="browse">
+          <span class="hint">Ou digite no navegador de outro aparelho</span>
+          <span class="address">
+            <span class="address-text">{web.url.replace(/^https?:\/\//, '')}</span>
+            <button class="link link-sm" onclick={copyLink}>{copied ? 'Copiado' : 'Copiar'}</button>
+          </span>
+          <span class="hint">e o código</span>
+          <span class="code" role="img" aria-label="Código {web.code?.split('').join(' ')}"
+            >{code}</span
+          >
+        </div>
+      {:else if link && web.url}
         <span class="code" role="img" aria-label="Código {web.code?.split('').join(' ')}"
           >{code}</span
         >
@@ -118,35 +138,127 @@
       {/if}
     </div>
   </section>
+{/snippet}
 
+<div class="home">
   {#if connected}
-    <ul class="card list" role="list" aria-live="polite" aria-label="Aparelhos conectados">
-      {#each devices as d (d.fingerprint ?? d.device)}
-        <li
-          class="row"
-          animate:flip={{ duration: ms(240) }}
-          in:fly={{ y: 8, duration: ms(260) }}
-          out:fade={{ duration: ms(120) }}
-        >
-          <span class="peer-dot" aria-hidden="true"></span>
-          <span class="peer-name">{safeName(d.device)}</span>
-          <button
-            class="row-action danger"
-            aria-label="Parar {safeName(d.device)}"
-            onclick={() =>
-              send({ type: 'STOP', ...(d.fingerprint ? { fingerprint: d.fingerprint } : {}) })}
-            >Parar</button
-          >
-        </li>
-      {/each}
-    </ul>
-    {#if screens.length}
-      <div class="card card-pad">
-        <PlacementMap {screens} {placements} height={180} />
+    <!-- Conectado: a mesa é a tela. O QR só aparece para adicionar mais um. -->
+    <div class="status">
+      <h1 class="title">
+        {devices.length}
+        {devices.length === 1 ? 'tela conectada' : 'telas conectadas'}
+      </h1>
+      <button class="add" aria-expanded={adding} onclick={() => (adding = !adding)}
+        >{adding ? 'Fechar' : '+ Adicionar'}</button
+      >
+    </div>
+    {#if adding}
+      <div in:fly={{ y: -6, duration: ms(220) }} out:fade={{ duration: ms(120) }}>
+        {@render hero(true)}
       </div>
     {/if}
+    {#if screens.length}
+      <div class="card card-pad">
+        <PlacementMap {screens} {placements} height={adding ? 220 : 320} onStop={stop} />
+      </div>
+      <p class="hint center">Arraste cada tela para onde ela fica na mesa</p>
+    {/if}
+    {#if unmapped.length}
+      <ul class="card list" role="list" aria-live="polite" aria-label="Aparelhos conectados">
+        {#each unmapped as d (d.fingerprint ?? d.device)}
+          <li class="row">
+            <span class="peer-dot" aria-hidden="true"></span>
+            <span class="peer-name">{safeName(d.device)}</span>
+            <button
+              class="row-action danger"
+              aria-label="Parar {safeName(d.device)}"
+              onclick={() => stop(d.fingerprint)}>Parar</button
+            >
+          </li>
+        {/each}
+      </ul>
+    {/if}
   {:else}
-    <p class="hint">Ou escolha {safeName(deviceName)} no outro aparelho</p>
+    {@render hero(false)}
+    <p class="hint center">
+      Outro computador com o Horizonte: toque em Receber e escolha {safeName(deviceName)}
+    </p>
   {/if}
   <VideoHint />
 </div>
+
+<style>
+  .status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .status .title {
+    margin: 0;
+    text-align: left;
+  }
+  .add {
+    flex: none;
+    min-height: 32px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+    font-size: var(--t-small);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .add:hover {
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  .center {
+    text-align: center;
+  }
+  /* Sem ninguém conectado: tudo em coluna, centralizado (QR, pedido, endereço e código). */
+  :global(.hero.vertical) {
+    flex-direction: column;
+    gap: 18px;
+    padding: 28px 32px 30px;
+    text-align: center;
+  }
+  :global(.hero.vertical .hero-text) {
+    align-items: center;
+    gap: 14px;
+  }
+  :global(.hero.vertical .title) {
+    text-align: center;
+  }
+  .browse {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .address {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px 6px 14px;
+    border-radius: 12px;
+    background: var(--seg);
+  }
+  .address-text {
+    font-size: 17px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    user-select: all;
+  }
+  .web-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .link-sm {
+    min-height: 32px;
+    padding: 0 4px;
+    font-size: var(--t-small);
+  }
+</style>

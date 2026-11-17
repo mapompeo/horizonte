@@ -18,6 +18,7 @@ const api: HorizonteApi = {
   openRepo: () => ipcRenderer.invoke(CHANNELS.openRepo),
   uninstall: () => ipcRenderer.invoke(CHANNELS.uninstall),
   reportDiagnostic: () => ipcRenderer.invoke(CHANNELS.reportDiagnostic),
+  copyText: (text) => ipcRenderer.invoke(CHANNELS.copyText, text),
   getUpdateStatus: () => ipcRenderer.invoke(CHANNELS.updateStatus),
   update: (action) => ipcRenderer.invoke(CHANNELS.update, action),
   onUpdate: (callback) => {
