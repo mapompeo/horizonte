@@ -424,6 +424,7 @@ async function boot(): Promise<void> {
       !['connected', 'receiving', 'preparing', 'approve'].includes(
         controller.getSnapshot().state.screen
       ),
+    stop: () => controller.dispatch({ type: 'STOP' }),
     listen: (events) => {
       autoUpdater.on('update-available', (info) => events.available(info.version))
       autoUpdater.on('update-not-available', events.current)

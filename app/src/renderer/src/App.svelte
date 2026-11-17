@@ -126,7 +126,6 @@
         >
           {#if state.screen === 'preparing' || state.screen === 'ready'}
             <SendHome
-              deviceName={settings.deviceName}
               devices={[]}
               placement={settings.screenPlacement}
               placements={settings.screenPlacements}
@@ -142,7 +141,6 @@
             />
           {:else if state.screen === 'connected'}
             <SendHome
-              deviceName={settings.deviceName}
               devices={state.devices}
               placement={settings.screenPlacement}
               placements={settings.screenPlacements}

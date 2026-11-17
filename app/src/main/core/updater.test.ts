@@ -5,12 +5,14 @@ function setup(autoDownload = false): {
   updater: ReturnType<typeof createUpdater>
   events: UpdateEvents
   install: ReturnType<typeof vi.fn>
+  stop: ReturnType<typeof vi.fn>
   download: ReturnType<typeof vi.fn>
   busy(): void
 } {
   let events!: UpdateEvents
   let idle = true
   const install = vi.fn()
+  const stop = vi.fn()
   const download = vi.fn(async () => undefined)
   const updater = createUpdater({
     supported: true,
@@ -24,12 +26,14 @@ function setup(autoDownload = false): {
     },
     download,
     install,
-    canInstall: () => idle
+    canInstall: () => idle,
+    stop
   })
   return {
     updater,
     events,
     install,
+    stop,
     download,
     busy: () => {
       idle = false
@@ -52,20 +56,23 @@ describe('atualização', () => {
     t.events.downloaded()
     expect(t.updater.status().phase).toBe('ready')
   })
-  it('não instala durante uma conexão nem antes de baixar', async () => {
+  it('não instala antes de baixar; durante uma conexão, encerra ela sozinho e instala', async () => {
     const t = setup()
     await t.updater.perform('install')
     expect(t.install).not.toHaveBeenCalled()
     t.events.downloaded()
     t.busy()
-    expect(await t.updater.perform('install')).toMatchObject({ phase: 'ready' })
-    expect(t.install).not.toHaveBeenCalled()
+    await t.updater.perform('install')
+    expect(t.stop).toHaveBeenCalledOnce()
+    expect(t.install).toHaveBeenCalledOnce()
+    expect(t.stop.mock.invocationCallOrder[0]).toBeLessThan(t.install.mock.invocationCallOrder[0])
   })
   it('instala somente o pacote já baixado quando o app está livre', async () => {
     const t = setup()
     t.events.downloaded()
     await t.updater.perform('install')
     expect(t.install).toHaveBeenCalledOnce()
+    expect(t.stop).not.toHaveBeenCalled()
   })
   it('sozinho, baixa ao achar versão nova e depois só falta reiniciar', async () => {
     const t = setup(true)

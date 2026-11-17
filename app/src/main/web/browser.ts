@@ -208,7 +208,8 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
   }
 
   async function page(path: string, res: ServerResponse): Promise<void> {
-    const relative = path === '/' ? 'web.html' : normalize(path.slice(1))
+    // "/8775": o link já com o código abre a mesma página, que lê o código do endereço.
+    const relative = path === '/' || /^\/\d{4}$/.test(path) ? 'web.html' : normalize(path.slice(1))
     const allowed =
       relative === 'web.html' ||
       (relative.startsWith(`assets${sep}`) &&

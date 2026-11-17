@@ -77,6 +77,9 @@ test('serve a página e os arquivos dela, e mais nada da pasta', async () => {
   expect((await fetch(`${base}/`)).status).toBe(200)
   expect(await (await fetch(`${base}/assets/web.js`)).text()).toBe('console.log(1)')
   expect((await fetch(`${base}/segredo.txt`)).status).toBe(404)
+  // O link com o código ("/1234") abre a mesma página; outros caminhos continuam fechados.
+  expect(await (await fetch(`${base}/1234`)).text()).toContain('<title>Horizonte</title>')
+  expect((await fetch(`${base}/12345`)).status).toBe(404)
   expect((await fetch(`${base}/assets/../segredo.txt`)).status).toBe(404)
   expect((await fetch(`${base}/assets/%2e%2e/segredo.txt`)).status).toBe(404)
 })

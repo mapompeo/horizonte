@@ -18,6 +18,8 @@ export function createUpdater(deps: {
   download(): Promise<unknown>
   install(): void
   canInstall(): boolean
+  /** Encerra a conexão em andamento: o botão de atualizar faz isso sozinho, sem pedir. */
+  stop(): void
 }): {
   status(): UpdateStatus
   perform(action: UpdateAction): Promise<UpdateStatus>
@@ -73,8 +75,8 @@ export function createUpdater(deps: {
         } else if (action === 'download' && state.phase === 'available') {
           await startDownload()
         } else if (action === 'install' && state.phase === 'ready') {
-          if (deps.canInstall()) deps.install()
-          else set({ message: 'Encerre a conexão antes de instalar a atualização.' })
+          if (!deps.canInstall()) deps.stop()
+          deps.install()
         }
       } catch {
         fail()

@@ -16,7 +16,6 @@
   import PlacementMap, { type MapScreen } from '../components/PlacementMap.svelte'
 
   interface Props {
-    deviceName: string
     devices: ConnectedDevice[]
     placement: ScreenPlacement
     placements: Record<string, ScreenPlacement>
@@ -25,7 +24,7 @@
     progress?: PrepProgress
   }
 
-  let { deviceName, devices, placement, placements, preparing = false, progress }: Props = $props()
+  let { devices, placement, placements, preparing = false, progress }: Props = $props()
 
   /** O QR fica sempre ligado: a página abre sozinha, sem botão. */
   let web = $state<WebAccess>({ on: false })
@@ -54,7 +53,7 @@
       placement: at[i]
     }))
   })
-  const link = $derived(web.on && web.url ? `${web.url}/#${web.code}` : null)
+  const link = $derived(web.on && web.url ? `${web.url}/${web.code}` : null)
   const code = $derived(web.code ?? '')
   const connected = $derived(devices.length > 0)
 
@@ -109,7 +108,7 @@
       {#if link && web.url && !compact}
         <!-- Sem câmera (outro PC, tablet): o endereço e o código numa linha só; Copiar leva os dois juntos. -->
         <span class="address" title="Abra no navegador de outro aparelho">
-          <span class="address-text">{web.url.replace(/^https?:\/\//, '')}</span>
+          <span class="address-text">{web.url.replace(/^https?:\/\//, '')}/</span>
           <span class="address-code" aria-label="Código {web.code?.split('').join(' ')}"
             >{code}</span
           >
@@ -180,9 +179,6 @@
     {/if}
   {:else}
     {@render hero(false)}
-    <p class="hint center">
-      No outro computador: Receber › {safeName(deviceName)}
-    </p>
   {/if}
   <VideoHint />
 </div>
@@ -218,6 +214,11 @@
   }
   /* Sem ninguém conectado: tudo em coluna, centralizado (QR, pedido, endereço e código). */
   :global(.hero.vertical) {
+    /* Do tamanho do que tem dentro (QR, pedido e endereço), centralizado: sem sobra cinza dos lados. */
+    align-self: center;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
     flex-direction: column;
     gap: 18px;
     padding: 28px 32px 30px;
@@ -240,6 +241,8 @@
     max-width: 100%;
   }
   .address-code {
+    /* Colado na barra: "192.168.1.7:47920/8775" se lê como um endereço só. */
+    margin-left: -11px;
     font-size: 17px;
     font-weight: 600;
     letter-spacing: 0.12em;

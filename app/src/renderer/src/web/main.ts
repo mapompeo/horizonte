@@ -244,7 +244,7 @@ const standalone =
 if (/iPhone|iPod/.test(navigator.userAgent) && !standalone)
   $<HTMLParagraphElement>('dica').hidden = false
 
-const fromLink = location.hash.replace(/\D/g, '')
+const fromLink = (/^\/(\d{4})$/.exec(location.pathname)?.[1] ?? location.hash).replace(/\D/g, '')
 if (fromLink.length === 4) {
   input.value = fromLink
   say('Toque em Conectar.')
