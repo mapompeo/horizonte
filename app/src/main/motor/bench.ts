@@ -6,6 +6,9 @@ import type { MotorRole, MotorStats } from '../../shared/motor'
 import { percentiles } from '../../shared/percentiles'
 import {
   createLinuxVirtualScreen,
+  createMacVirtualScreen,
+  createWindowsScreen,
+  macHelperPath,
   framesSocket,
   gnomeFrames,
   handleCaptureRequests,
@@ -83,10 +86,19 @@ function recorder(role: MotorRole): {
 }
 
 async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void> {
-  if (args.extend && process.platform !== 'linux')
-    throw new Error('O modo estender do teste ainda só existe no Linux com GNOME.')
-  const frames = args.extend && gnomeFrames() ? framesSocket() : null
-  const virtual = args.extend ? createLinuxVirtualScreen(frames) : null
+  const frames = args.extend && process.platform === 'linux' && gnomeFrames() ? framesSocket() : null
+  // A mesma tela virtual que o app usa em cada sistema: GNOME, a tela virtual do Mac ou o driver do Windows.
+  const macHelper = args.extend && process.platform === 'darwin' ? macHelperPath() : null
+  const virtual = !args.extend
+    ? null
+    : process.platform === 'linux'
+      ? createLinuxVirtualScreen(frames)
+      : macHelper
+        ? createMacVirtualScreen(macHelper, 0)
+        : process.platform === 'win32'
+          ? createWindowsScreen()
+          : null
+  if (args.extend && !virtual) throw new Error('Este sistema não tem como criar a tela estendida.')
   /** A tela que a janela captura: a do monitor virtual, quando estende; senão a principal. */
   let target: number | null = null
   const wayland = process.platform === 'linux' && Boolean(process.env.WAYLAND_DISPLAY)
