@@ -9,7 +9,7 @@
 Horizonte é um monitor sem fio: seu notebook, tablet, celular ou outro computador vira a segunda tela do seu PC.<br>
 Sem cabo, sem conta e sem configurar nada.
 
-[Baixar](https://github.com/mapompeo/horizonte/releases) · [Site](https://horizonte.vercel.app) · [Como funciona](#como-funciona)
+[Baixar](https://github.com/mapompeo/horizonte/releases) · [Site](https://horizonte-monitor.vercel.app) · [Como funciona](#como-funciona)
 
 ![Horizonte: notebook, tablet e celular como segunda tela do PC](site/og.png)
 

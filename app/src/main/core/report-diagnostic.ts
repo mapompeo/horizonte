@@ -2,7 +2,7 @@ import type { Snapshot } from '../../shared/types'
 import { buildDiagnostic, diagnosticErrorCode, type DiagnosticEnv } from './diagnostic'
 
 /** Recebe o diagnóstico no site do Horizonte (sem conta no GitHub para quem envia). */
-export const DIAGNOSTIC_URL = 'https://horizonte.vercel.app/api/diagnostico'
+export const DIAGNOSTIC_URL = 'https://horizonte-monitor.vercel.app/api/diagnostico'
 const ERROR_LINE =
   /^Erro: (?:MONITOR_VIRTUAL_NAO_ENCONTRADO|DRIVER_INSTALACAO_FALHOU|ERRO_NAO_CLASSIFICADO)$/
 

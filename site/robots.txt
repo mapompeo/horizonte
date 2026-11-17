@@ -23,4 +23,4 @@ Allow: /
 Disallow: /app/
 Disallow: /api/
 
-Sitemap: https://horizonte.vercel.app/sitemap.xml
+Sitemap: https://horizonte-monitor.vercel.app/sitemap.xml

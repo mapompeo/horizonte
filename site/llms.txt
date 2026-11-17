@@ -2,7 +2,7 @@
 
 > Monitor sem fio gratuito e de código aberto. Transforma notebook, tablet, celular ou outro computador em segunda tela estendida do seu PC, sem cabo e sem configurar nada.
 
-- Site: https://horizonte.vercel.app/
+- Site: https://horizonte-monitor.vercel.app/
 - Código e downloads: https://github.com/mapompeo/horizonte
 - Envia a tela de: Windows, Linux e macOS. O Linux é o mais testado; o macOS ainda está em teste.
 - Recebe em: Windows, Linux, macOS (em teste) e qualquer navegador (Android, iPhone, iPad), sem instalar nada no aparelho que recebe.
