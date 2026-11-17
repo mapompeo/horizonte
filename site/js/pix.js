@@ -2,7 +2,7 @@
 // Sponsors, como um link comum.
 
 // A chave Pix de quem recebe (e-mail, telefone com +55, CPF/CNPJ ou chave aleatória).
-export const PIX_KEY = ''
+export const PIX_KEY = 'matheuspompeo13@gmail.com'
 
 const field = (id, value) => `${id}${String(value.length).padStart(2, '0')}${value}`
 
