@@ -10,7 +10,7 @@ else
   flags="$(pkg-config --cflags --libs libpipewire-0.3 gio-2.0 gio-unix-2.0)"
 fi
 # shellcheck disable=SC2086
-cc -O2 -pthread -Wall -Wextra -Wno-missing-field-initializers -o build/horizonte-display horizonte-display.c $flags
+cc -O2 -pthread -Wall -Wextra -Wno-missing-field-initializers -o build/horizonte-display horizonte-display.c $flags -lm
 echo "build/horizonte-display"
 # O auxiliar do modo Mouse precisa também da libei-dev (GNOME 46 ou mais novo); sem ela, o modo Mouse não compartilha.
 if [ -n "$HZ_MOUSE_CFLAGS" ]; then
