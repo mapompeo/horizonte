@@ -41,7 +41,7 @@ export function mountHeroBackground(canvas) {
 
   // Quanto o caractere aparece: quase nada atrás do título, cheio nas bordas.
   const veil = (x, y) => {
-    const dx = (x - s.w / 2) / (s.w * 0.34)
+    const dx = (x - s.w / 2) / (Math.min(s.w, 1100) * 0.34)
     const dy = (y - s.h * 0.42) / (s.h * 0.26)
     return Math.min(1, Math.hypot(dx, dy) * 0.85)
   }
@@ -97,13 +97,17 @@ export function mountHeroBackground(canvas) {
   fit()
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', readColor)
   new MutationObserver(readColor).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-  const host = canvas.parentElement
-  host?.addEventListener('pointermove', (e) => {
-    const r = canvas.getBoundingClientRect()
-    s.mx = e.clientX - r.left
-    s.my = e.clientY - r.top
-  })
-  host?.addEventListener('pointerleave', () => {
+  // O mouse em qualquer lugar da janela, não só sobre o texto do topo.
+  addEventListener(
+    'pointermove',
+    (e) => {
+      const r = canvas.getBoundingClientRect()
+      s.mx = e.clientX - r.left
+      s.my = e.clientY - r.top
+    },
+    { passive: true }
+  )
+  document.documentElement.addEventListener('pointerleave', () => {
     s.mx = s.my = -1e4
   })
 

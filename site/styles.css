@@ -3261,3 +3261,7 @@ footer .wrap::after { right: -20px; background: radial-gradient(circle at 100% 0
 }
 @keyframes apoio-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
 @media (prefers-reduced-motion: reduce) { .apoio[open] { animation: none; } }
+
+/* Fundo do topo na largura da janela inteira, não só na do conteúdo: sem corte reto no efeito do mouse. */
+.hero-bg { left: calc(50% - 50vw); right: auto; width: 100vw; }
+html, body { overflow-x: clip; }
