@@ -2379,3 +2379,130 @@ body {
 .cmp tbody th { font-weight: 500; color: var(--muted); }
 .cmp td:nth-child(2), .cmp thead th:nth-child(2) { color: var(--fg); font-weight: 600; }
 .cmp-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+
+/* ============ Barra do topo em notch ============
+   Um recorte que nasce da borda de cima (cantos curvos para fora, como a ilha do iPhone). No topo da página ele fica
+   aberto, com os links; ao descer, encolhe para a marca e o Baixar; ao subir ou passar o mouse, abre de novo. */
+:root {
+  --notch: #000000;
+  --notch-ring: transparent;
+  --notch-fg: #ffffff;
+  --notch-muted: rgba(255, 255, 255, 0.68);
+  --notch-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --notch: #1c1c1e;
+    --notch-ring: rgba(255, 255, 255, 0.09);
+  }
+}
+:root[data-theme="dark"] {
+  --notch: #1c1c1e;
+  --notch-ring: rgba(255, 255, 255, 0.09);
+}
+.top {
+  display: flex;
+  justify-content: center;
+  height: 52px;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: none;
+}
+.top .wrap {
+  position: relative;
+  pointer-events: auto;
+  width: min(760px, calc(100% - 32px));
+  max-width: none;
+  height: 48px;
+  margin: 0;
+  padding: 0 8px 0 20px;
+  background: var(--notch);
+  color: var(--notch-fg);
+  border-radius: 0 0 22px 22px;
+  box-shadow: 0 0 0 1px var(--notch-ring), 0 10px 30px rgba(0, 0, 0, 0.18);
+  transition: width 0.55s var(--notch-ease), height 0.55s var(--notch-ease);
+}
+/* Cantos curvos para fora, ligando o recorte à borda de cima. */
+.top .wrap::before,
+.top .wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+.top .wrap::before {
+  left: -20px;
+  background: radial-gradient(circle at 0 100%, transparent 19.5px, var(--notch) 20px);
+}
+.top .wrap::after {
+  right: -20px;
+  background: radial-gradient(circle at 100% 100%, transparent 19.5px, var(--notch) 20px);
+}
+.top .brand {
+  color: var(--notch-fg);
+  white-space: nowrap;
+}
+.top .nav {
+  align-items: center;
+  gap: 22px;
+}
+.top .nav a {
+  color: var(--notch-muted);
+  white-space: nowrap;
+  transition: color 0.2s, opacity 0.3s;
+}
+.top .nav a:hover {
+  color: var(--notch-fg);
+}
+/* Baixar: pílula branca, como os botões do app. */
+.top .nav a[href="#baixar"] {
+  color: #000;
+  background: #fff;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 999px;
+}
+.top .nav a[href="#baixar"]:hover {
+  color: #000;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22);
+}
+/* Encolhido: só a marca e o Baixar. */
+.top.compact .wrap {
+  width: min(300px, calc(100% - 32px));
+  height: 44px;
+}
+.top.compact .nav .hide-sm,
+.top.compact .nav .gh {
+  display: none;
+}
+@media (hover: hover) {
+  .top.compact .wrap:hover {
+    width: min(760px, calc(100% - 32px));
+    height: 48px;
+  }
+  .top.compact .wrap:hover .nav .hide-sm,
+  .top.compact .wrap:hover .nav .gh {
+    display: inline-flex;
+  }
+}
+@media (max-width: 760px) {
+  .top .wrap,
+  .top.compact .wrap {
+    width: min(320px, calc(100% - 32px));
+  }
+  .top.compact .wrap:hover .nav .hide-sm {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .top .wrap {
+    transition: none;
+  }
+}
+/* Rolar até um ponto (links de seção, foco) deixa folga para o notch: nada fica escondido embaixo dele. */
+html {
+  scroll-padding-top: 64px;
+}

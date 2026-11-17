@@ -88,18 +88,15 @@ export function startScenes(M) {
     M.animate(tilt, { rotateY: 0, rotateX: 0 }, soft),
   );
 
-  /* ============ 2. Barra do topo some ao descer ============ */
+  /* ============ 2. Barra do topo: o notch encolhe ao descer e abre ao subir ============ */
   let lastY = scrollY;
-  let hidden = false;
+  const topbar = document.getElementById("topbar");
   addEventListener(
     "scroll",
     () => {
       const y = scrollY;
-      const down = y > lastY && y > 120;
-      if (down !== hidden) {
-        hidden = down;
-        M.animate("#topbar", { y: down ? -60 : 0 }, spring);
-      }
+      if (Math.abs(y - lastY) < 4) return;
+      topbar.classList.toggle("compact", y > lastY && y > 120);
       lastY = y;
     },
     { passive: true },
