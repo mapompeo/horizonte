@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   createFileClipboard,
   MAX_TOTAL_BYTES,
@@ -153,5 +153,25 @@ describe('linha do observador do Windows e do Mac', () => {
     })
     expect(parseWatchLine('')).toEqual({ paths: [], image: false })
     expect(parseWatchLine('I')).toEqual({ paths: [], image: false })
+  })
+})
+
+describe('texto copiado no Windows e no Mac', () => {
+  it('avisa o texto copiado depois de começar, uma vez, e não devolve o que veio do outro PC', async () => {
+    vi.useFakeTimers()
+    const { pollText } = await import('./clipboard-watch')
+    let clip = 'antes'
+    const copied: string[] = []
+    const text = pollText({ readText: () => clip, writeText: (value) => (clip = value) }, 10)
+    text.start((value) => copied.push(value))
+    await vi.advanceTimersByTimeAsync(30)
+    clip = 'oi'
+    await vi.advanceTimersByTimeAsync(30)
+    text.write('do outro PC')
+    await vi.advanceTimersByTimeAsync(30)
+    text.stop()
+    vi.useRealTimers()
+    expect(copied).toEqual(['oi'])
+    expect(clip).toBe('do outro PC')
   })
 })

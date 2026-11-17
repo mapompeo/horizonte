@@ -80,3 +80,45 @@ export function parseWatchLine(raw: string): { paths: string[]; image: boolean }
   if (kind === 'F' && rest) return { paths: rest.split('|').filter(Boolean), image: false }
   return { paths: [], image: false }
 }
+
+/**
+ * Windows e Mac: o texto copiado, olhado a cada meio segundo só enquanto o mouse está compartilhado. O que veio do
+ * outro PC não volta para ele.
+ */
+export function pollText(
+  deps: { writeText(text: string): void; readText(): Promise<string> | string },
+  every = 500
+): {
+  start(onCopied: (text: string) => void): void
+  stop(): void
+  write(text: string): void
+} {
+  let timer: ReturnType<typeof setInterval> | null = null
+  let last: string | null = null
+  return {
+    start(onCopied) {
+      if (timer) clearInterval(timer)
+      // O que já estava copiado antes de compartilhar não vai.
+      void Promise.resolve(deps.readText()).then((text) => (last ??= text))
+      timer = setInterval(() => {
+        void Promise.resolve(deps.readText())
+          .then((text) => {
+            if (last === null || text === last) return
+            last = text
+            if (text) onCopied(text)
+          })
+          .catch(() => undefined)
+      }, every)
+    },
+    stop() {
+      if (timer) clearInterval(timer)
+      timer = null
+      last = null
+    },
+    write(text) {
+      if (text === last) return
+      last = text
+      deps.writeText(text)
+    }
+  }
+}

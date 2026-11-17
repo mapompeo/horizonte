@@ -17,7 +17,7 @@ import type { Host, ScreenSize } from '../../../shared/types'
 import type { MouseEngine } from '../port'
 import { createFileClipboard, type FileClipboardDeps } from './files'
 import { LINUX_CLIPBOARD_SCRIPT } from './linux-clipboard'
-import { parseWatchLine, PLACE_MAC, WATCH_MAC, WATCH_WINDOWS } from './clipboard-watch'
+import { parseWatchLine, PLACE_MAC, pollText, WATCH_MAC, WATCH_WINDOWS } from './clipboard-watch'
 import {
   createMouseEngine,
   MAX_TEXT_CHARS,
@@ -260,17 +260,7 @@ function textClipboard(
   },
   linux: ReturnType<typeof linuxClipboard>
 ): NonNullable<MouseEngineDeps['text']> {
-  if (process.platform !== 'linux') {
-    return {
-      start: () => undefined,
-      stop: () => undefined,
-      // Igual ao que já está: não escreve de novo, senão o Deskflow manda de volta a cada troca de tela.
-      write: (text) =>
-        void Promise.resolve(deps.readText())
-          .then((current) => current !== text && deps.writeText(text))
-          .catch(() => undefined)
-    }
-  }
+  if (process.platform !== 'linux') return pollText(deps)
   return linux.text
 }
 
