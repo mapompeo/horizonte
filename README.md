@@ -9,7 +9,7 @@
 Monitor sem fio grátis e de código aberto: o notebook, o tablet, o celular ou outro computador vira a segunda tela do seu PC.<br>
 Sem cabo, sem conta e sem configurar nada.
 
-[**Baixar**](https://github.com/mapompeo/horizonte/releases) · [Site](https://horizonte-monitor.vercel.app) · [Como funciona](#como-funciona) · [Apoiar ♥](https://github.com/sponsors/mapompeo)
+[**Baixar**](https://github.com/mapompeo/horizonte/releases) · [Site](https://horizonte-monitor.vercel.app) · [Como funciona](#como-funciona) · [Apoiar](https://github.com/sponsors/mapompeo)
 
 <br>
 
@@ -23,7 +23,7 @@ Sem cabo, sem conta e sem configurar nada.
 - **Quantas telas você tiver.** Notebook, tablet e celular ao mesmo tempo. Arraste cada um no mapa para onde ele fica na sua mesa, e os tamanhos seguem a tela de verdade.
 - **Copiar e colar entre os computadores.** Texto, imagens e arquivos. O mouse e o teclado passam de um para o outro pela borda da tela.
 - **Deitado ou em pé.** Gire o celular ou o tablet e a tela acompanha.
-- **Tudo seu.** Motor próprio (WebRTC), direto pela rede local. Nada passa por servidor nem depende de programa de terceiros.
+- **Tudo seu.** Motor próprio (WebRTC), direto pela rede local e criptografado. Nada passa por servidor nem depende de programa de terceiros.
 - **Atualiza sozinho.** Quando sai versão nova, aparece um botão branco no rodapé: um clique e pronto.
 
 ## Telas
@@ -79,7 +79,7 @@ Em **Ajustes › Enviar diagnóstico**. Um clique, sem conta: vão só a versão
 
 ## Apoie o projeto
 
-O Horizonte é gratuito e vai continuar assim. Se ele te ajuda, [apoie pelo GitHub Sponsors](https://github.com/sponsors/mapompeo) ♥
+O Horizonte é gratuito e vai continuar assim. Se ele te ajuda, dá para apoiar pelo [GitHub Sponsors](https://github.com/sponsors/mapompeo) ou por Pix, no botão **Apoiar** do [site](https://horizonte-monitor.vercel.app).
 
 ## Desenvolver
 

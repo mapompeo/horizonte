@@ -13,7 +13,7 @@ for (const m of html.matchAll(/data-i18n="([^"]+)"/g)) keys.add(m[1])
 for (const m of html.matchAll(/data-i18n-attr="([^"]+)"/g)) for (const pair of m[1].split(';')) keys.add(pair.slice(pair.indexOf(':') + 1))
 for (const file of readdirSync(new URL('../js/', import.meta.url)).filter((f) => f.endsWith('.js') && f !== 'i18n.js')) {
   const src = readFileSync(new URL(`../js/${file}`, import.meta.url), 'utf8')
-  for (const m of src.matchAll(/["']((?:file|dl|copy|iframe)\.[A-Za-z0-9]+)["']/g)) keys.add(m[1])
+  for (const m of src.matchAll(/["']((?:file|dl|copy|iframe|ap)\.[A-Za-z0-9]+)["']/g)) keys.add(m[1])
 }
 
 test('toda chave do HTML e dos scripts existe em en e es, sem vazio nem travessão', () => {

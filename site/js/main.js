@@ -1,4 +1,5 @@
 import { mountMatrix } from "./matrix.js";
+import { mountSupport } from "./pix.js";
 import { detectOs, OS_LABEL } from "./os.js";
 import {
   buildDownloads,
@@ -163,3 +164,5 @@ for (const button of document.querySelectorAll("[data-copy]")) {
     setTimeout(() => (button.textContent = t("copy.label", "Copiar")), 2000);
   });
 }
+
+mountSupport();

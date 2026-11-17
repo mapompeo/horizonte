@@ -3236,3 +3236,28 @@ footer .wrap::after { right: -20px; background: radial-gradient(circle at 100% 0
 @media (max-width: 760px) {
   .top .nav .gh { display: none; }
 }
+
+/* ============ Apoiar: Pix e GitHub Sponsors ============ */
+.apoio {
+  width: min(360px, calc(100% - 32px));
+  padding: 28px 24px 22px;
+  border: 0;
+  border-radius: 28px;
+  background: var(--card);
+  color: var(--fg);
+  text-align: center;
+  box-shadow: 0 0 0 1px var(--line), 0 40px 80px -30px rgba(0, 0, 0, 0.5);
+}
+.apoio[open] { display: flex; flex-direction: column; align-items: center; gap: 14px; animation: apoio-in 0.35s var(--ease); }
+.apoio::backdrop { background: rgba(0, 0, 0, 0.45); }
+.apoio h2 { margin: 0; font-size: 1.4rem; letter-spacing: -0.02em; }
+.apoio p { margin: -6px 0 0; color: var(--muted); font-size: 15px; line-height: 1.4; }
+.apoio-qr { width: 200px; height: 200px; padding: 14px; border-radius: 20px; background: #fff; color: #000; }
+.apoio-qr svg { display: block; width: 100%; height: 100%; }
+.apoio .pillbtn { width: 100%; justify-content: center; border: 0; cursor: pointer; font-family: var(--font); }
+.apoio-x {
+  position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border: 0; border-radius: 999px;
+  background: var(--seg); color: var(--fg); font-size: 18px; line-height: 1; cursor: pointer;
+}
+@keyframes apoio-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+@media (prefers-reduced-motion: reduce) { .apoio[open] { animation: none; } }
