@@ -35,10 +35,7 @@ test('textos sem travessão e sem o seletor de tema da prévia', () => {
   assert.doesNotMatch(css, /theme-dock/)
 })
 
-test('números e estados vistos funcionando, nada além', () => {
-  assert.match(html, /data-count="60"/)
-  assert.match(html, /data-count="0"[\s\S]*?contas/)
-  assert.match(html, /data-count="1"[\s\S]*?QR code/)
+test('estados vistos funcionando, nada além', () => {
   assert.match(html, /data-os="linux"[\s\S]*?Disponível/)
   assert.match(html, /data-os="mac"[\s\S]*?Em teste/)
   assert.match(html, /data-os="windows"[\s\S]*?Disponível/)
@@ -93,7 +90,7 @@ test('comando do terminal usa o pacote em minúsculas e a tabela de comparação
 })
 
 test('grades bento e a história com lista, pontos clicáveis e dica de rolagem', () => {
-  assert.equal((html.match(/data-bento/g) || []).length, 5)
+  assert.equal((html.match(/data-bento/g) || []).length, 4)
   assert.equal((html.match(/data-go="/g) || []).length, 10)
   assert.match(html, /id="hint"/)
   assert.match(html, /id="sbar"/)

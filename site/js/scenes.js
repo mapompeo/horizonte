@@ -56,15 +56,12 @@ export function startScenes(M) {
   );
 
   /* ============ 2. Barra do topo: o notch encolhe ao descer e abre ao subir ============ */
-  let lastY = scrollY;
   const topbar = document.getElementById("topbar");
   addEventListener(
     "scroll",
     () => {
-      const y = scrollY;
-      if (Math.abs(y - lastY) < 4) return;
-      topbar.classList.toggle("compact", y > lastY && y > 120);
-      lastY = y;
+      // Encolhe ao sair do topo e fica assim: nada muda de lugar enquanto a pessoa mira um botão.
+      topbar.classList.toggle("compact", scrollY > 120);
     },
     { passive: true },
   );
@@ -253,22 +250,6 @@ export function startScenes(M) {
       });
     }),
   );
-
-  /* ============ 6. Números que contam ============ */
-  document.querySelectorAll("[data-count]").forEach((el) => {
-    const to = Number(el.dataset.count);
-    M.inView(
-      el,
-      () => {
-        M.animate(0, to, {
-          duration: 1.4,
-          ease: [0.16, 1, 0.3, 1],
-          onUpdate: (v) => (el.textContent = String(Math.round(v))),
-        });
-      },
-      { amount: 0.6 },
-    );
-  });
 
   /* ============ 6b. Barra de progresso, sistemas, radar e recursos ============ */
   M.scroll(M.animate("#progress", { scaleX: [0, 1] }, { ease: "linear" }));

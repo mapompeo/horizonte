@@ -2348,30 +2348,17 @@ body {
 }
 /* Encolhido: só a marca e o Baixar. */
 .top.compact .wrap {
-  width: min(350px, calc(100% - 72px));
+  width: min(390px, calc(100% - 72px));
   height: 44px;
 }
 .top.compact .nav .hide-sm,
 .top.compact .nav .gh {
   display: none;
 }
-@media (hover: hover) {
-  .top.compact .wrap:hover {
-    width: min(760px, calc(100% - 72px));
-    height: 48px;
-  }
-  .top.compact .wrap:hover .nav .hide-sm,
-  .top.compact .wrap:hover .nav .gh {
-    display: inline-flex;
-  }
-}
 @media (max-width: 760px) {
   .top .wrap,
   .top.compact .wrap {
     width: min(350px, calc(100% - 24px));
-  }
-  .top.compact .wrap:hover .nav .hide-sm {
-    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -3133,3 +3120,119 @@ main .lede,
 .top .nav .support { border: 0; background: var(--seg); color: var(--notch-fg); }
 .top .nav .lang-btn:hover,
 .top .nav .support:hover { background: var(--seg); color: var(--notch-fg); box-shadow: 0 0 0 1px var(--line); }
+
+/* ============ Galeria solta (Novidades e Tudo no lugar) ============
+   Cartões de tamanhos diferentes, como nos destaques da Apple: um grande, um alto, um largo. A ilustração ocupa o
+   espaço de cima e o texto fica embaixo, sem nada sobreposto. */
+.nov-grid,
+.bento {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 230px;
+  gap: 16px;
+}
+.nov-grid { grid-template-areas: 'a a b c' 'a a f c' 'e d d d'; }
+.bento { grid-template-areas: 'a a b c' 'd e e c' 'd f f f'; }
+.nov-grid > :nth-child(1), .bento > :nth-child(1) { grid-area: a; }
+.nov-grid > :nth-child(2), .bento > :nth-child(2) { grid-area: b; }
+.nov-grid > :nth-child(3), .bento > :nth-child(3) { grid-area: c; }
+.nov-grid > :nth-child(4), .bento > :nth-child(4) { grid-area: d; }
+.nov-grid > :nth-child(5), .bento > :nth-child(5) { grid-area: e; }
+.nov-grid > :nth-child(6), .bento > :nth-child(6) { grid-area: f; }
+.nov-grid .bt,
+.bento .bt { min-height: 0; padding: 24px; }
+.nov-grid .glyph,
+.bento .glyph {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  margin-bottom: 14px;
+}
+.g-art svg { width: 64px; height: 64px; }
+.g-art svg[viewBox="0 0 120 72"] { width: 132px; height: 80px; }
+.nov-grid > :nth-child(1) .g-art svg { width: 220px; height: 132px; }
+.g-art .hl { stroke: var(--accent); }
+.g-art .w1, .g-art .w2 { stroke: var(--accent); animation: pulse 2.4s ease-in-out infinite; }
+.g-art .w2 { animation-delay: 0.4s; }
+.g-art .cross { animation: nudge 2.4s var(--ease) infinite; }
+.g-art .spin { transform-origin: 24px 24px; animation: turn 6s linear infinite; }
+@keyframes nudge { 50% { transform: translateX(4px); } }
+@keyframes turn { to { transform: rotate(360deg); } }
+
+/* Wi-Fi: as ondas acendem de dentro para fora. */
+.g-wifi { overflow: visible; }
+.g-wifi svg { width: 72px; height: 72px; color: var(--fg); }
+.g-wifi path { stroke: var(--accent); opacity: 0.2; animation: pulse 2.4s ease-in-out infinite; }
+.g-wifi .w2 { animation-delay: 0.3s; }
+.g-wifi .w3 { animation-delay: 0.6s; }
+@keyframes pulse { 0%, 100% { opacity: 0.2; } 30%, 55% { opacity: 1; } }
+.rt .g-wifi svg { width: 56px; height: 56px; }
+
+@media (max-width: 900px) {
+  .nov-grid, .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 220px; }
+  .nov-grid { grid-template-areas: 'a a' 'b c' 'f c' 'd d' 'e e'; }
+  .bento { grid-template-areas: 'a a' 'b c' 'd e' 'f f'; }
+}
+@media (max-width: 600px) {
+  .nov-grid, .bento { grid-template-columns: minmax(0, 1fr); grid-template-areas: none; grid-auto-rows: auto; }
+  .nov-grid > *, .bento > * { grid-area: auto; min-height: 230px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .g-art *, .g-wifi path { animation: none; opacity: 1; }
+}
+
+/* ============ Rodapé em notch, o espelho da barra do topo ============ */
+footer { padding: 80px 0 0; border-top: 0; }
+footer .wrap {
+  position: relative;
+  width: min(1000px, calc(100% - 72px));
+  max-width: none;
+  margin: 0 auto;
+  padding: 16px 24px;
+  background: var(--notch);
+  color: var(--notch-muted);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 0 0 1px var(--notch-ring);
+  clip-path: inset(-1px -40px 0 -40px);
+}
+footer .wrap::before,
+footer .wrap::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+footer .wrap::before { left: -20px; background: radial-gradient(circle at 0 0, transparent 19.5px, var(--notch) 20px); }
+footer .wrap::after { right: -20px; background: radial-gradient(circle at 100% 0, transparent 19.5px, var(--notch) 20px); }
+@media (max-width: 760px) {
+  footer .wrap { width: calc(100% - 40px); justify-content: center; text-align: center; }
+}
+
+/* Barra: todos os botões com a mesma altura de 30 px e centrados na linha; GitHub vira um botão só com o ícone. */
+.top .nav { align-items: center; }
+.top .nav .lang-btn,
+.top .nav .support,
+.top .nav a[href="#baixar"],
+.top .nav .gh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font: 600 12px/1 var(--font);
+  box-sizing: border-box;
+}
+.top .nav .gh,
+.top .nav .lang-btn { width: 30px; min-width: 30px; padding: 0; }
+.top .nav .gh { background: var(--seg); color: var(--notch-fg); }
+.top .nav .gh .ico { width: 16px; height: 16px; }
+.top.compact .nav .gh { display: none; }
+.top.compact .nav .support-t,
+.top .nav .support-t { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+@media (max-width: 760px) {
+  .top .nav .gh { display: none; }
+}
