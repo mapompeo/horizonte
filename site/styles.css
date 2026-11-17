@@ -545,10 +545,6 @@ h1 .l2 {
 }
 
 /* ---------- A história presa na tela ---------- */
-.story-head {
-  text-align: center;
-  padding-block: 40px 0;
-}
 h2 {
   margin: 0;
   font-size: var(--step-3);
