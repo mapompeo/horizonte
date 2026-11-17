@@ -4,7 +4,9 @@ Lista para ir fazendo aos poucos. Marque `[x]` quando estiver na main e provado.
 
 ## Ajustes e coisas sem prova
 
-- [ ] Testar em máquinas de verdade: Windows num PC comum (o driver só foi provado na CI), Mac com as permissões dadas e copiar e colar entre o PC e o notebook.
+- [x] Envio de verdade provado na CI nos três sistemas: o app captura a tela real e a tela estendida (driver no Windows, tela virtual no Mac) e um Chrome recebe pelo link com código (`app/e2e/web.mjs`).
+- [ ] Ainda falta em máquina de pessoa: o pedido de permissão do Windows (UAC) e do Mac na primeira vez, e copiar e colar e o mouse entre dois computadores.
+- [ ] Windows: a tela estendida veio em 800x600 quando o pedido foi 1024x640 (o driver só tem alguns tamanhos). Escrever o `vdd_settings.xml` com o tamanho do aparelho.
 - [ ] Assinar os instaladores: Windows com assinatura gratuita para código aberto (SignPath); Mac com notarização (conta de desenvolvedor da Apple, US$ 99/ano). Tira o SmartScreen e o `xattr`.
 - [ ] Ligar o botão Sponsor do repositório (Settings › General › Sponsorships).
 - [ ] Seção de apoiadores no README para o nível de $25 do Sponsors (pode ser automática com uma GitHub Action).
