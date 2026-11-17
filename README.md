@@ -1,29 +1,51 @@
 <div align="center">
 
-<img src="site/icon.png" width="96" alt="Horizonte">
+<img src="site/icon.png" width="88" alt="Horizonte">
 
 # Horizonte
 
-**Monitor sem fio. Grátis e de código aberto.**
+**Sua segunda tela. Sem fio.**
 
-Horizonte é um monitor sem fio: seu notebook, tablet, celular ou outro computador vira a segunda tela do seu PC.<br>
+Monitor sem fio grátis e de código aberto: o notebook, o tablet, o celular ou outro computador vira a segunda tela do seu PC.<br>
 Sem cabo, sem conta e sem configurar nada.
 
-[Baixar](https://github.com/mapompeo/horizonte/releases) · [Site](https://horizonte-monitor.vercel.app) · [Como funciona](#como-funciona)
+[**Baixar**](https://github.com/mapompeo/horizonte/releases) · [Site](https://horizonte-monitor.vercel.app) · [Como funciona](#como-funciona) · [Apoiar ♥](https://github.com/sponsors/mapompeo)
 
-![Horizonte: notebook, tablet e celular como segunda tela do PC](site/og.png)
+<br>
+
+<img src=".github/screenshots/hero.png" alt="Horizonte no computador com duas telas conectadas no mapa da mesa, e a página de receber no celular" width="900">
 
 </div>
 
 ## Por que o Horizonte
 
-- **Um QR code e pronto.** Abra o Horizonte no computador e aponte a câmera do celular ou do tablet. A tela estendida abre no navegador, sem instalar nada no aparelho.
-- **Quantas telas você tiver.** Notebook, tablet e celular ao mesmo tempo, cada um com a sua tela. Arraste cada uma para onde ela fica na mesa.
-- **Deitado ou em pé.** Gire o celular ou o tablet e a tela acompanha.
+- **Um QR code e pronto.** Abra o Horizonte e aponte a câmera do celular ou do tablet. A tela estendida abre no navegador, sem instalar nada no aparelho.
+- **Quantas telas você tiver.** Notebook, tablet e celular ao mesmo tempo. Arraste cada um no mapa para onde ele fica na sua mesa, e os tamanhos seguem a tela de verdade.
 - **Copiar e colar entre os computadores.** Texto, imagens e arquivos. O mouse e o teclado passam de um para o outro pela borda da tela.
+- **Deitado ou em pé.** Gire o celular ou o tablet e a tela acompanha.
 - **Tudo seu.** Motor próprio (WebRTC), direto pela rede local. Nada passa por servidor nem depende de programa de terceiros.
-- **Tema claro e escuro.** Segue o sistema, ou escolha nos Ajustes.
-- **Atualiza sozinho.** Quando sai versão nova, aparece um botão branco no canto: um clique e pronto.
+- **Atualiza sozinho.** Quando sai versão nova, aparece um botão branco no rodapé: um clique e pronto.
+
+## Telas
+
+<table>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/enviar-claro.png" alt="Tela Enviar com o QR code, o endereço e o código"></td>
+    <td width="50%"><img src=".github/screenshots/mesa-escuro.png" alt="Duas telas conectadas no mapa da mesa, no tema escuro"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Enviar</b><br><sub>Aponte a câmera, ou copie o link para outro aparelho</sub></td>
+    <td align="center"><b>A mesa</b><br><sub>Cada tela no lugar dela, do tamanho dela</sub></td>
+  </tr>
+  <tr>
+    <td><img src=".github/screenshots/ajustes-claro.png" alt="Ajustes em grupos: aparência, imagem, posição e este computador"></td>
+    <td><img src=".github/screenshots/receber-escuro.png" alt="Tela Receber com o computador encontrado na rede"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Ajustes</b><br><sub>Tema, qualidade e posição, sem jargão</sub></td>
+    <td align="center"><b>Receber</b><br><sub>Acha o outro computador sozinho</sub></td>
+  </tr>
+</table>
 
 ## Funciona em
 
@@ -37,17 +59,27 @@ Sem cabo, sem conta e sem configurar nada.
 
 ## Como funciona
 
-1. [Baixe](https://github.com/mapompeo/horizonte/releases) e abra o Horizonte no computador. Ele abre direto em Enviar, com o QR code sempre visível.
-2. No celular ou tablet, aponte a câmera para o QR code. Em outro computador, abra o Horizonte e toque em Receber.
+1. [Baixe](https://github.com/mapompeo/horizonte/releases) e abra o Horizonte no computador. Ele já abre mostrando o QR code.
+2. No celular ou no tablet, aponte a câmera. Sem câmera, toque em **Copiar link** e abra no navegador do outro aparelho. Em outro computador com o Horizonte, toque em **Receber**.
 3. Pronto. A tela nova já está do lado da sua.
 
 Na primeira vez, cada sistema pede uma permissão, uma vez só: o Windows instala o driver de tela virtual (código aberto, [Virtual Display Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver)) e o macOS pede Gravação de Tela e Acessibilidade.
+
+No Linux, pelo terminal, na pasta onde o arquivo foi baixado:
+
+```bash
+sudo apt install ./horizonte_*.deb
+```
 
 > O instalador ainda não tem assinatura paga. No Windows, clique em **Mais informações › Executar assim mesmo**. No Mac, depois de arrastar para Aplicativos, rode uma vez `xattr -cr /Applications/Horizonte.app`.
 
 ## Algo deu errado?
 
 Em **Ajustes › Enviar diagnóstico**. Um clique, sem conta: vão só a versão, o sistema e os códigos de erro.
+
+## Apoie o projeto
+
+O Horizonte é gratuito e vai continuar assim. Se ele te ajuda, [apoie pelo GitHub Sponsors](https://github.com/sponsors/mapompeo) ♥
 
 ## Desenvolver
 
