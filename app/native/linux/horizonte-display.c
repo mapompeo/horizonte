@@ -18,7 +18,8 @@
  * Escala (--scale): com a tela de quem mostra em alta densidade (Retina, notebooks 2x), a tela estendida recebe a
  * escala mais perto da pedida entre as que o GNOME aceita no modo dela, para o texto não ficar minúsculo.
  *
- * Posição: pela entrada padrão, uma linha por pedido, "place <left|right|above|below> [início]". O início é onde a
+ * Posição: pela entrada padrão, uma linha por pedido, "place <left|right|above|below> [início]" ou "at <x> <y>" (posição
+ * livre, em frações da caixa das telas de verdade; encosta na tela mais perto). O início é onde a
  * tela estendida começa ao longo da borda das outras telas, em fração dessa borda; sem ele, fica centralizada. A
  * disposição é aplicada como temporária (sem o aviso "manter alterações" do GNOME) e responde "PLACED" ou, no erro
  * padrão, o motivo.
@@ -701,7 +702,42 @@ static gboolean attached(const struct logical *items, int count, int index) {
   return FALSE;
 }
 
-static gboolean place(struct app *app, const char *side, gboolean centered, double start, char **why) {
+/* Posição livre (pedido "at"): a tela vai para a posição encostada mais perto da pedida, na borda de qualquer outra
+ * tela (inclusive de outro aparelho), sem ficar por cima de nenhuma e com um pedaço da borda em comum. */
+static void snap_free(struct logical *items, int count, int mine) {
+  struct logical *v = &items[mine];
+  const int want_x = v->x, want_y = v->y;
+  double best = 1e18;
+  int bx = v->x, by = v->y;
+  for (int i = 0; i < count; i++) {
+    if (i == mine) continue;
+    const struct logical *o = &items[i];
+    const int min_x = MIN(v->w, o->w) / 10, min_y = MIN(v->h, o->h) / 10;
+    const int sx = MIN(MAX(want_x, o->x - v->w + min_x), o->x + o->w - min_x);
+    const int sy = MIN(MAX(want_y, o->y - v->h + min_y), o->y + o->h - min_y);
+    const int cx[4] = { o->x - v->w, o->x + o->w, sx, sx };
+    const int cy[4] = { sy, sy, o->y - v->h, o->y + o->h };
+    for (int c = 0; c < 4; c++) {
+      struct logical t = *v;
+      t.x = cx[c];
+      t.y = cy[c];
+      gboolean hit = FALSE;
+      for (int k = 0; k < count && !hit; k++)
+        if (k != mine && overlaps(&t, &items[k])) hit = TRUE;
+      if (hit) continue;
+      const double d = hypot(t.x - want_x, t.y - want_y);
+      if (d < best) {
+        best = d;
+        bx = t.x;
+        by = t.y;
+      }
+    }
+  }
+  v->x = bx;
+  v->y = by;
+}
+
+static gboolean place(struct app *app, const char *side, gboolean centered, double start, double free_y, char **why) {
   struct logical items[16];
   guint32 serial = 0;
   int count = read_layout(app, &serial, items, 16);
@@ -747,6 +783,12 @@ static gboolean place(struct app *app, const char *side, gboolean centered, doub
     v->scale = best;
   }
   app->applied_scale = v->scale > 0 ? v->scale : 1;
+  if (!g_strcmp0(side, "at")) {
+    v->x = left + (int)lround(start * (right - left));
+    v->y = top + (int)lround(free_y * (bottom - top));
+    snap_free(items, count, mine);
+    goto positioned;
+  }
   const gboolean along_x = !g_strcmp0(side, "above") || !g_strcmp0(side, "below");
   const int edge = along_x ? right - left : bottom - top;
   const int peer = along_x ? v->w : v->h;
@@ -770,6 +812,7 @@ static gboolean place(struct app *app, const char *side, gboolean centered, doub
     if (!moved) break;
   }
 
+positioned:
   /* O GNOME recusa a disposição inteira se alguma tela fica solta, sem encostar em outra. Um monitor de outro aparelho
    * que ficou solto (estava encostado onde este estava antes) vai para a direita de tudo; o auxiliar dele o devolve ao
    * lugar dele logo em seguida. */
@@ -893,6 +936,25 @@ static gboolean on_command(GIOChannel *channel, GIOCondition condition, gpointer
   }
   char side[16] = "";
   char start_text[32] = "";
+  char at_x[32] = "", at_y[32] = "";
+  if (sscanf(line, "at %31s %31s", at_x, at_y) == 2) {
+    g_free(line);
+    char *end_x = NULL, *end_y = NULL;
+    const double fx = g_ascii_strtod(at_x, &end_x), fy = g_ascii_strtod(at_y, &end_y);
+    if (*end_x || *end_y || fabs(fx) > 8 || fabs(fy) > 8) {
+      fprintf(stderr, "pedido de posição inválido\n");
+      return G_SOURCE_CONTINUE;
+    }
+    char *why = NULL;
+    if (place(app, "at", FALSE, fx, fy, &why)) {
+      printf("PLACED at\n");
+      fflush(stdout);
+    } else {
+      fprintf(stderr, "não consegui posicionar a tela estendida: %s\n", why);
+      g_free(why);
+    }
+    return G_SOURCE_CONTINUE;
+  }
   const int fields = sscanf(line, "place %15s %31s", side, start_text);
   g_free(line);
   if (fields < 1 || (strcmp(side, "left") && strcmp(side, "right") && strcmp(side, "above") && strcmp(side, "below"))) {
@@ -904,7 +966,7 @@ static gboolean on_command(GIOChannel *channel, GIOCondition condition, gpointer
   double start = fields == 2 ? g_ascii_strtod(start_text, &end) : 0;
   const gboolean centered = fields < 2 || !end || *end || start < -4 || start > 4;
   char *why = NULL;
-  if (place(app, side, centered, start, &why)) {
+  if (place(app, side, centered, start, 0, &why)) {
     printf("PLACED %s\n", side);
     fflush(stdout);
   } else {

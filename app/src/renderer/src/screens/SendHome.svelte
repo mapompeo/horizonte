@@ -106,7 +106,9 @@
         <!-- Outro PC ou aparelho sem câmera: o mesmo link, para abrir no navegador (o código já vai junto). -->
         <span class="web-link">
           <span class="hint">{web.url.replace(/^https?:\/\//, '')}</span>
-          <button class="link link-sm" onclick={copyLink}>{copied ? 'Copiado' : 'Copiar link'}</button>
+          <button class="link link-sm" onclick={copyLink}
+            >{copied ? 'Copiado' : 'Copiar link'}</button
+          >
         </span>
       {:else if web.error}
         <span class="hint danger-text">{web.error}</span>

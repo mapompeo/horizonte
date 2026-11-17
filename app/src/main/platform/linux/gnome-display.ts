@@ -12,8 +12,11 @@ export interface GnomeDisplayDeps {
   appearTimeoutMs?: number
 }
 
-/** O pedido que o auxiliar entende: "place <lado> [início]" (sem início: centralizada). */
+/** O pedido que o auxiliar entende: "place <lado> [início]" (sem início: centralizada) ou "at <x> <y>". */
 export function placeCommand(placement: ScreenPlacement): string {
+  // Posição livre do mapa: "at <x> <y>" em frações das telas de verdade; o auxiliar encosta na tela mais perto.
+  if (placement.x !== undefined && placement.y !== undefined)
+    return `at ${placement.x.toFixed(4)} ${placement.y.toFixed(4)}\n`
   const start = placement.offset === undefined ? '' : ` ${placement.offset.toFixed(4)}`
   return `place ${placement.side}${start}\n`
 }

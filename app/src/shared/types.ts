@@ -132,6 +132,12 @@ export interface TrustedDevice {
 export interface ScreenPlacement {
   side: MouseSide
   offset?: number
+  /**
+   * Posição livre (arrastada no mapa): canto de cima à esquerda da tela, em frações da área de trabalho deste
+   * computador (0,0 é o canto dela; 1 é a largura ou a altura inteira). Com ela, `side` é só a direção aproximada.
+   */
+  x?: number
+  y?: number
 }
 
 export interface Settings {

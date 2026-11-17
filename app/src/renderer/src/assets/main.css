@@ -655,13 +655,13 @@ h1[tabindex='-1']:focus {
   font-size: var(--t-body);
   text-align: left;
 }
-/* Divisória de 0,5 px que começa 16 px adentro, como nas listas do iOS. */
+/* Divisória de 0,5 px com o mesmo recuo dos dois lados (o do texto da linha). */
 .row ~ .row::before {
   content: '';
   position: absolute;
   top: 0;
   left: 16px;
-  right: 0;
+  right: 16px;
   height: 0.5px;
   background: var(--line);
 }

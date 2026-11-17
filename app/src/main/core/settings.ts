@@ -59,7 +59,14 @@ function parsePlacement(value: unknown): ScreenPlacement | null {
   const { side, offset } = value as Record<string, unknown>
   if (!['left', 'right', 'above', 'below'].includes(side as string)) return null
   const valid = typeof offset === 'number' && Number.isFinite(offset) && Math.abs(offset) <= 4
-  return { side: side as MouseSide, ...(valid ? { offset } : {}) }
+  // Posição livre: as duas frações juntas, num intervalo de até 8 áreas de trabalho para cada lado.
+  const { x, y } = value as { x?: unknown; y?: unknown }
+  const free = [x, y].every((v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 8)
+  return {
+    side: side as MouseSide,
+    ...(valid ? { offset } : {}),
+    ...(free ? { x: x as number, y: y as number } : {})
+  }
 }
 
 /** Até 20 aparelhos (pela impressão digital), cada um com uma posição válida; o resto é descartado. */
