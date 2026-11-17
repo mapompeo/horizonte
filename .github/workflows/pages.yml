@@ -8,10 +8,9 @@ on:
     paths: ['site/**', 'app/src/**', 'app/demo/**', 'app/vite.demo.config.ts', 'app/package.json', 'app/package-lock.json', '.github/workflows/pages.yml', '.github/scripts/configure-ci-apt.sh']
   workflow_dispatch:
 
+# O site é publicado pela Vercel a cada push na main; aqui só os testes.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   test:
@@ -49,31 +48,3 @@ jobs:
         with:
           name: site-browser-tests
           path: site/test-results
-
-  deploy:
-    needs: test
-    if: github.event_name != 'pull_request'
-    # Só a publicação entra na fila, e uma publicação em andamento nunca é cancelada.
-    concurrency:
-      group: pages
-      cancel-in-progress: false
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      # A página mostra o app de verdade, compilado do código atual do projeto (site/app não vai para o git).
-      - run: npm ci --ignore-scripts
-        working-directory: app
-      - run: npm run build:demo
-        working-directory: app
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-      - id: deployment
-        uses: actions/deploy-pages@v4

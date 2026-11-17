@@ -1,59 +1,63 @@
+<div align="center">
+
+<img src="site/icon.png" width="96" alt="">
+
 # Horizonte
 
-**Estenda sua tela. Sem fio.**
+**Monitor sem fio. Grátis e de código aberto.**
 
-O notebook do seu lado vira a segunda tela do computador, sem configurar nada. Gratuito e de código aberto.
+Seu notebook, tablet, celular ou outro computador vira a segunda tela do seu PC.<br>
+Sem cabo, sem conta e sem configurar nada.
+
+[Baixar](https://github.com/mapompeo/horizonte/releases) · [Site](https://horizonte.vercel.app) · [Como funciona](#como-funciona)
 
 ![Horizonte](site/og.png)
 
-**Site:** https://mapompeo.github.io/horizonte/
+</div>
 
-## Baixar
+## Por que o Horizonte
 
-A versão mais recente fica em [Releases](https://github.com/mapompeo/horizonte/releases).
+- **Um QR code e pronto.** Abra o Horizonte no computador e aponte a câmera do celular ou do tablet. A tela estendida abre no navegador, sem instalar nada no aparelho.
+- **Quantas telas você tiver.** Notebook, tablet e celular ao mesmo tempo, cada um com a sua tela. Arraste cada uma para onde ela fica na mesa.
+- **Deitado ou em pé.** Gire o celular ou o tablet e a tela acompanha.
+- **Copiar e colar entre os computadores.** Texto, imagens e arquivos. O mouse e o teclado passam de um para o outro pela borda da tela.
+- **Tudo seu.** Motor próprio (WebRTC), direto pela rede local. Nada passa por servidor nem depende de programa de terceiros.
+- **Atualiza sozinho.** Quando sai versão nova, aparece um botão branco no canto: um clique e pronto.
 
-| Sistema | Arquivo | Estado |
-|---|---|---|
-| Windows 10 e 11 | `Horizonte-<versão>-setup.exe` | Disponível |
-| Linux (Ubuntu, Debian 13, Fedora, openSUSE, Arch e derivados; Xorg ou Wayland) | `.AppImage` ou `.deb` | Envia e recebe; em Wayland espelha a tela principal (sem monitor extra); em teste |
-| macOS (chip Apple e Intel) | `.dmg` | Envia (com monitor virtual próprio) e recebe; em teste |
+## Funciona em
 
-Depois de instalado, o Horizonte se atualiza sozinho no Windows e no Linux: confere ao abrir e a cada 4 horas, baixa a versão nova em segundo plano e avisa quando ela estiver pronta para reiniciar. No `.deb`, o sistema pede a senha numa janela ao instalar. No Mac, por falta de assinatura da Apple, baixe a versão nova em Releases.
-
-O instalador ainda não é assinado. No Windows aparece "O Windows protegeu o computador": clique em Mais informações e depois em Executar assim mesmo.
-
-No Mac, o primeiro "Abrir" pode ser recusado ("danificado" ou "desenvolvedor não identificado"). Arraste o Horizonte para Aplicativos e rode uma vez no Terminal: `xattr -cr /Applications/Horizonte.app`. Depois abra normalmente. Para enviar a tela, o macOS pede a permissão de Gravação de Tela na primeira vez.
+| | Envia a tela | Recebe a tela |
+|---|:---:|:---:|
+| Windows 10 e 11 | ✓ | ✓ |
+| macOS (Apple e Intel) | ✓ | ✓ |
+| Linux (GNOME, Xorg ou Wayland) | ✓ | ✓ |
+| Android, iPhone e iPad | | ✓ pelo navegador |
+| Qualquer navegador | | ✓ |
 
 ## Como funciona
 
-1. Instale nos dois computadores.
-2. Em um, escolha Enviar. No outro, Mostrar.
-3. Clique em Estender.
+1. [Baixe](https://github.com/mapompeo/horizonte/releases) e abra o Horizonte no computador.
+2. No celular ou tablet, aponte a câmera para o QR code. Em outro computador, abra o Horizonte e toque em Receber.
+3. Pronto. A tela nova já está do lado da sua.
 
-Tudo fica na sua rede local, sem conta e sem nuvem.
+Na primeira vez, cada sistema pede uma permissão, uma vez só: o Windows instala o driver de tela virtual (código aberto, [Virtual Display Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver)) e o macOS pede Gravação de Tela e Acessibilidade.
 
-Nos três sistemas, o Horizonte transmite sozinho: WebRTC entre os dois aparelhos. No Linux, sem instalar nada além dele. No GNOME, a tela estendida é um monitor virtual de verdade, criado sem nenhum diálogo. Use a placa de vídeo nos dois lados; em Intel, instale o `intel-media-va-driver`.
+> O instalador ainda não tem assinatura paga. No Windows, clique em **Mais informações › Executar assim mesmo**. No Mac, depois de arrastar para Aplicativos, rode uma vez `xattr -cr /Applications/Horizonte.app`.
 
-- **Várias telas ao mesmo tempo:** cada aparelho que conecta (notebook, tablet, celular) vira uma tela estendida só dele. Quem ainda não tem posição vai para um lado livre; arraste cada uma no mapa para onde ela fica na mesa.
-- **Tablet ou celular, sem instalar nada:** no computador que envia, toque em "Receber pelo navegador". No outro aparelho, abra o endereço que aparece (porta 47920, ou uma das seguintes se ela estiver ocupada) e digite o código de 6 dígitos (ou aponte a câmera para o QR code). O computador ainda pergunta se pode. No iPhone, para usar a tela inteira sem as barras do Safari: Compartilhar › Adicionar à Tela de Início.
-- **Qualidade automática:** o perfil escolhido (Econômico, Equilibrado ou Máximo) é o teto. Quando o Wi-Fi perde pacotes, o vídeo baixa sozinho e volta quando a rede melhora.
+## Algo deu errado?
 
-No modo Mouse, entre dois computadores com GNOME 46 ou mais novo, o mouse e o teclado passam direto, por um canal cifrado, sem instalar nada. Com Windows, Mac ou outros Linux, o Horizonte usa o [Deskflow](https://github.com/deskflow/deskflow).
-
-No Windows, o Horizonte instala o [Virtual Display Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver) para criar a tela estendida.
+Em **Ajustes › Enviar diagnóstico**. Um clique, sem conta: vão só a versão, o sistema e os códigos de erro.
 
 ## Desenvolver
-
-O app fica em `app/` (Electron, Svelte e TypeScript):
 
 ```bash
 cd app
 npm install
-npm run dev
-npm test
+npm run dev     # o app
+npm test        # testes
 ```
 
-O site fica em `site/` (HTML, CSS e JavaScript, sem build):
+O site fica em `site/` (HTML, CSS e JavaScript, publicado pela Vercel):
 
 ```bash
 cd site
@@ -62,4 +66,4 @@ npm test
 
 ## Licença
 
-GPL-3.0-or-later.
+[GPL-3.0](LICENSE). Feito no Brasil.

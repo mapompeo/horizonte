@@ -7,10 +7,10 @@ const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8')
 
 test('idioma, título, descrição e imagem de compartilhamento', () => {
   assert.match(html, /<html lang="pt-BR">/)
-  assert.match(html, /<title>Horizonte<\/title>/)
+  assert.match(html, /<title>Horizonte: monitor sem fio[^<]*<\/title>/)
   assert.match(html, /<meta name="description" content="[^"]{60,160}">/)
-  assert.match(html, /<meta property="og:image" content="https:\/\/mapompeo\.github\.io\/horizonte\/og\.png">/)
-  assert.match(html, /<link rel="canonical" href="https:\/\/mapompeo\.github\.io\/horizonte\/">/)
+  assert.match(html, /<meta property="og:image" content="https:\/\/horizonte\.vercel\.app\/og\.png">/)
+  assert.match(html, /<link rel="canonical" href="https:\/\/horizonte\.vercel\.app\/">/)
 })
 
 test('sem JavaScript: links de download funcionam e nada nasce escondido', () => {
@@ -23,7 +23,7 @@ test('sem JavaScript: links de download funcionam e nada nasce escondido', () =>
 
 test('só carrega coisas do próprio site', () => {
   const sources = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1])
-  const external = sources.filter((s) => /^https?:/.test(s) && !s.startsWith('https://github.com/mapompeo/horizonte') && !s.startsWith('https://mapompeo.github.io/horizonte/'))
+  const external = sources.filter((s) => /^https?:/.test(s) && !s.startsWith('https://github.com/mapompeo/horizonte') && !s.startsWith('https://horizonte.vercel.app/'))
   assert.deepEqual(external, [])
   assert.match(html, /<script src="\.\/vendor\/motion\.min\.js"><\/script>/)
   assert.match(html, /<script type="module" src="\.\/js\/main\.js"><\/script>/)
@@ -66,9 +66,9 @@ test('imagem de compartilhamento, robots e sitemap existem', () => {
   assert.ok(existsSync(og))
   assert.ok(statSync(og).size > 10_000)
   const robots = readFileSync(new URL('../robots.txt', import.meta.url), 'utf8')
-  assert.match(robots, /Sitemap: https:\/\/mapompeo\.github\.io\/horizonte\/sitemap\.xml/)
+  assert.match(robots, /Sitemap: https:\/\/horizonte\.vercel\.app\/sitemap\.xml/)
   const sitemap = readFileSync(new URL('../sitemap.xml', import.meta.url), 'utf8')
-  assert.match(sitemap, /<loc>https:\/\/mapompeo\.github\.io\/horizonte\/<\/loc>/)
+  assert.match(sitemap, /<loc>https:\/\/horizonte\.vercel\.app\/<\/loc>/)
 })
 
 test('a história interativa é acessível e os desenhos de dispositivos são decorativos', () => {
