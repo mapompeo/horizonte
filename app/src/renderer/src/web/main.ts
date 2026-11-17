@@ -226,7 +226,7 @@ window.addEventListener('resize', () => {
 form.addEventListener('submit', (event) => {
   event.preventDefault()
   const code = input.value.replace(/\D/g, '')
-  if (code.length !== 6) return say('O código tem 6 números.', true)
+  if (code.length !== 4) return say('O código tem 4 números.', true)
   // Tela cheia precisa do toque da pessoa: pede agora, e a tela entra assim que o vídeo chega.
   void document.documentElement.requestFullscreen?.().catch(() => undefined)
   connect(code).catch(() => {
@@ -245,7 +245,7 @@ if (/iPhone|iPod/.test(navigator.userAgent) && !standalone)
   $<HTMLParagraphElement>('dica').hidden = false
 
 const fromLink = location.hash.replace(/\D/g, '')
-if (fromLink.length === 6) {
+if (fromLink.length === 4) {
   input.value = fromLink
   say('Toque em Conectar.')
 } else input.focus()

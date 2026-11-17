@@ -11,7 +11,7 @@ import { MAX_LINE_BYTES, parseMessage } from '../engine/webrtc/protocol'
  * deste próprio aparelho, como se fosse mais um aparelho da rede. O resto não muda: o pedido "Permitir?", a
  * confiança pela impressão digital e o WebRTC são os mesmos dos aparelhos com o app.
  *
- * O navegador não abre TCP, então a sinalização vai por HTTP: `POST /api/abrir` com o código de 6 dígitos mostrado
+ * O navegador não abre TCP, então a sinalização vai por HTTP: `POST /api/abrir` com o código de 4 dígitos mostrado
  * no app devolve uma sessão; `GET /api/eventos` (Server-Sent Events) traz as mensagens; `POST /api/enviar` leva as
  * mensagens, uma por pedido, conferidas pelo mesmo `parseMessage` da sinalização.
  */
@@ -76,10 +76,11 @@ interface Tunnel {
   idle: ReturnType<typeof setTimeout>
 }
 
-const sixDigits = (): string => String(randomInt(0, 1_000_000)).padStart(6, '0')
+/** Quatro dígitos bastam: 5 erros travam por um minuto, e o computador ainda precisa permitir. */
+const fourDigits = (): string => String(randomInt(0, 10_000)).padStart(4, '0')
 
 function sameCode(given: unknown, code: string): boolean {
-  if (typeof given !== 'string' || !/^\d{6}$/.test(given)) return false
+  if (typeof given !== 'string' || !/^\d{4}$/.test(given)) return false
   return timingSafeEqual(Buffer.from(given), Buffer.from(code))
 }
 
@@ -103,7 +104,7 @@ function reply(res: ServerResponse, status: number, body?: unknown): void {
 }
 
 export async function startBrowserBridge(options: BrowserBridgeOptions): Promise<BrowserBridge> {
-  const code = (options.generateCode ?? sixDigits)()
+  const code = (options.generateCode ?? fourDigits)()
   const now = options.now ?? Date.now
   const tunnels = new Map<string, Tunnel>()
   let wrong = 0

@@ -56,7 +56,7 @@
     }))
   })
   const link = $derived(web.on && web.url ? `${web.url}/#${web.code}` : null)
-  const code = $derived(web.code ? `${web.code.slice(0, 3)} ${web.code.slice(3)}` : '')
+  const code = $derived(web.code ?? '')
   const connected = $derived(devices.length > 0)
 
   /** Copia o link da página (com o código): para colar no navegador de outro PC. */

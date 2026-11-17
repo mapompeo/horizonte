@@ -2,7 +2,6 @@
   import type { Mode } from '../../../shared/types'
   import { chooseMode, openSettings } from '../lib/actions'
   import Segmented from './Segmented.svelte'
-  import UpdateControls from './UpdateControls.svelte'
 
   interface Props {
     mode: Mode
@@ -59,5 +58,5 @@
       onSelect={(value) => chooseMode(value as Mode)}
     />
   {/if}
-  <div class="topbar-right"><UpdateControls compact /></div>
+  <div class="topbar-right"></div>
 </header>

@@ -45,7 +45,7 @@ const sender = launch(
   'envia',
   ['.', '--motor-send', '--motor-synthetic', '--motor-browser', `--motor-port=${PORT}`],
   (line) => {
-    const match = /no navegador: http:\/\/\S+:(\d+) código (\d{6})/.exec(line)
+    const match = /no navegador: http:\/\/\S+:(\d+) código (\d{4})/.exec(line)
     if (match && !browser)
       browser = launch('navegador', [
         resolve('e2e/web-check'),

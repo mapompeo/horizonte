@@ -36,7 +36,7 @@ beforeEach(async () => {
     signalingPort: () => signalingPort,
     port: 0,
     host: '127.0.0.1',
-    generateCode: () => '123456'
+    generateCode: () => '1234'
   })
   base = `http://127.0.0.1:${bridge.port}`
 })
@@ -88,13 +88,13 @@ test('manifesto: adicionada à tela de início, a página abre como app em tela 
 })
 
 test('código errado não abre; cinco erros travam até o código certo', async () => {
-  expect((await open('000000')).status).toBe(403)
-  for (let i = 0; i < 4; i++) await open('000000')
-  expect((await open('123456')).status).toBe(429)
+  expect((await open('0000')).status).toBe(403)
+  for (let i = 0; i < 4; i++) await open('0000')
+  expect((await open('1234')).status).toBe(429)
 })
 
 test('com o código, liga o navegador à sinalização nos dois sentidos', async () => {
-  const res = await open('123456')
+  const res = await open('1234')
   expect(res.status).toBe(200)
   const { sessao } = (await res.json()) as { sessao: string }
   expect(await readEvents(sessao, 1)).toEqual(['{"t":"pending"}'])
@@ -108,7 +108,7 @@ test('com o código, liga o navegador à sinalização nos dois sentidos', async
 })
 
 test('mensagem fora do formato da sinalização não passa', async () => {
-  const { sessao } = (await (await open('123456')).json()) as { sessao: string }
+  const { sessao } = (await (await open('1234')).json()) as { sessao: string }
   const sent = await fetch(`${base}/api/enviar?sessao=${sessao}`, {
     method: 'POST',
     body: JSON.stringify({ t: 'qualquer', x: 1 })
@@ -119,7 +119,7 @@ test('mensagem fora do formato da sinalização não passa', async () => {
 
 test('sem o computador esperando conexão, avisa', async () => {
   signalingPort = null
-  expect((await open('123456')).status).toBe(409)
+  expect((await open('1234')).status).toBe(409)
 })
 
 test('sessão que não existe não recebe nem manda', async () => {

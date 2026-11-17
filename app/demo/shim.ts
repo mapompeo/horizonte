@@ -139,7 +139,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     deviceKind: async (_address, name) => (name ? guessKind(name) : 'desktop'),
     getWebAccess: async () => web,
     setWebAccess: async (on) => {
-      web = on ? { on: true, url: 'http://192.168.1.5:47920', code: '482193' } : { on: false }
+      web = on ? { on: true, url: 'http://192.168.1.5:47920', code: '4821' } : { on: false }
       return web
     },
     openRepo: async () => void window.open(REPO_URL, '_blank', 'noopener'),

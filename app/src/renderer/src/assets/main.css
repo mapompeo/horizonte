@@ -1080,7 +1080,8 @@ h1[tabindex='-1']:focus {
   font-variant-numeric: tabular-nums;
 }
 .foot-link {
-  height: 30px;
+  height: 32px;
+  white-space: nowrap;
   border: 0.5px solid rgba(0, 0, 0, 0.12);
   border-radius: 999px;
   background: #ffffff;

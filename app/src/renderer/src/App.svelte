@@ -6,6 +6,7 @@
   import { route, snapshot, startSync, syncError } from './lib/store'
   import { ms } from './lib/motion'
   import TopBar from './components/TopBar.svelte'
+  import UpdateControls from './components/UpdateControls.svelte'
   import SendHome from './screens/SendHome.svelte'
   import Approve from './screens/Approve.svelte'
   import Discover from './screens/Discover.svelte'
@@ -161,6 +162,8 @@
           {/if}
         </main>
       {/key}
+      <!-- Atualização no rodapé: só aparece com algo a fazer (baixar ou reiniciar). -->
+      {#if mode}<UpdateControls compact />{/if}
     </div>
   {/if}
 {:else}
