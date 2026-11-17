@@ -15,13 +15,13 @@ export function safeName(raw: string): string {
 export function copyFor(state: AppState): ScreenCopy {
   switch (state.screen) {
     case 'install':
-      return { title: 'Estenda sua tela,\nsem fio.' }
+      return { title: 'Estenda sua tela,\nsem fio' }
     case 'choose':
       return { title: 'Este dispositivo vai…' }
     case 'preparing':
-      return { title: 'Preparando.' }
+      return { title: 'Preparando' }
     case 'ready':
-      return { title: 'Pronto.' }
+      return { title: 'Pronto' }
     case 'approve':
       return {
         title: `Permitir o ${safeName(state.device)}?`,
@@ -32,17 +32,17 @@ export function copyFor(state: AppState): ScreenCopy {
       const many = names.length > 1
       const list = many ? `${names.slice(0, -1).join(', ')} e ${names.at(-1)}` : names[0]
       return {
-        title: many ? 'Telas estendidas.' : 'Tela estendida.',
+        title: many ? 'Telas estendidas' : 'Tela estendida',
         pill: { tone: 'ok', text: `${list} ${many ? 'conectados' : 'conectado'}` }
       }
     }
     case 'discover':
       return { title: 'Na sua rede' }
     case 'receiving':
-      return { title: 'Recebendo a tela.', pill: { tone: 'ok', text: safeName(state.name) } }
+      return { title: 'Recebendo a tela', pill: { tone: 'ok', text: safeName(state.name) } }
     case 'mouse':
       return {
-        title: 'Um mouse, vários computadores.'
+        title: 'Um mouse, vários computadores'
       }
     case 'mouse-request':
       return {
@@ -52,12 +52,12 @@ export function copyFor(state: AppState): ScreenCopy {
     case 'mouse-active':
       return state.role === 'share'
         ? {
-            title: 'Mouse compartilhado.',
+            title: 'Mouse compartilhado',
             subtitle: 'Passe o mouse pela borda da tela.',
             pill: { tone: 'ok', text: safeName(state.device) }
           }
         : {
-            title: 'Controlado pelo outro mouse.',
+            title: 'Controlado pelo outro mouse',
             pill: { tone: 'ok', text: safeName(state.device) }
           }
     case 'error':

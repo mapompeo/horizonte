@@ -137,7 +137,7 @@
   }
   h1 {
     margin: 0;
-    font-size: 26px;
+    font-size: var(--t-title);
     font-weight: 700;
     letter-spacing: -0.4px;
   }

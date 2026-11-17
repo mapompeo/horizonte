@@ -24,60 +24,31 @@ const browser = await chromium.launch()
 try {
   const page = await browser.newPage()
   await page.goto(`${url}/?auto=0`)
-  await page.getByRole('heading', { name: 'Pronto.' }).waitFor()
+  await page.getByRole('heading', { name: 'Aponte a câmera' }).waitFor()
   await page.evaluate(async () => {
     await window.__demo.reset({
       screen: 'error',
       mode: 'send',
       error: { message: 'Falha de teste' }
     })
-    window.reportCalls = []
-    window.horizonte.getDiagnosticDraft = async (history) =>
-      history ? 'Horizonte 1\nTela: error\nHistórico revisado' : 'Horizonte 1\nTela: error'
-    window.horizonte.reportDiagnostic = async (text) => {
-      window.reportCalls.push(text)
-      return 'copied'
+    window.reportCalls = 0
+    window.horizonte.reportDiagnostic = async () => {
+      window.reportCalls++
+      throw new Error('rede')
     }
   })
-  await page.getByRole('button', { name: 'Enviar diagnóstico', exact: true }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.waitFor()
-  assert.match(await dialog.textContent(), /pública/)
-  assert.match(await dialog.textContent(), /entrar no GitHub/)
-  assert.equal(await page.evaluate(() => window.reportCalls.length), 0)
-  assert.equal(await dialog.getByRole('textbox').inputValue(), 'Horizonte 1\nTela: error')
-  await dialog.getByRole('button', { name: 'Cancelar' }).click()
-  assert.equal(await page.evaluate(() => window.reportCalls.length), 0)
-  await page.getByRole('button', { name: 'Enviar diagnóstico', exact: true }).click()
-  await dialog.getByRole('checkbox').check()
-  await page.waitForFunction(() =>
-    document.querySelector('#report-text').value.includes('Histórico revisado')
-  )
-  await dialog.getByRole('button', { name: 'Abrir issue no GitHub' }).click()
-  await dialog.getByText(/Cole o texto/).waitFor()
-  assert.deepEqual(await page.evaluate(() => window.reportCalls), [
-    'Horizonte 1\nTela: error\nHistórico revisado'
-  ])
+  const button = page.getByRole('button', { name: /diagnóstico|Tentar de novo/ })
+  await button.click()
+  await page.getByText('Não deu para enviar. Tentar de novo').waitFor()
   await page.evaluate(() => {
     window.horizonte.reportDiagnostic = async () => {
-      throw new Error('navegador')
+      window.reportCalls++
     }
   })
-  await dialog.getByRole('button', { name: 'Abrir issue no GitHub' }).click()
-  await dialog.getByText(/Não consegui abrir/).waitFor()
-  await dialog.getByRole('button', { name: 'Cancelar' }).click()
-  await page.evaluate(() => {
-    window.horizonte.getDiagnosticDraft = async () => {
-      throw new Error('consulta')
-    }
-  })
-  await page.getByRole('button', { name: 'Enviar diagnóstico', exact: true }).click()
-  await dialog.getByText(/Não consegui preparar/).waitFor()
-  assert.equal(
-    await dialog.getByRole('button', { name: 'Abrir issue no GitHub' }).isDisabled(),
-    true
-  )
-  console.log('Revisão, cancelamento, histórico opcional, fallback e rejeições: OK')
+  await page.getByRole('button', { name: 'Não deu para enviar. Tentar de novo' }).click()
+  await page.getByText('Diagnóstico enviado. Obrigado').waitFor()
+  assert.equal(await page.evaluate(() => window.reportCalls), 2)
+  console.log('Um clique: falha com tentar de novo e envio confirmado: OK')
 } finally {
   await browser.close()
   await server.close()

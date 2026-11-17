@@ -39,7 +39,7 @@ describe('safeName', () => {
 describe('copyFor', () => {
   it('instalar', () => {
     const copy = copyFor({ screen: 'install' })
-    expect(copy.title).toBe('Estenda sua tela,\nsem fio.')
+    expect(copy.title).toBe('Estenda sua tela,\nsem fio')
     expect(copy.subtitle).toBeUndefined()
   })
 
@@ -49,7 +49,7 @@ describe('copyFor', () => {
 
   it('pronto: só o título, sem selo repetindo a mesma coisa', () => {
     const copy = copyFor({ screen: 'ready', mode: 'send' })
-    expect(copy.title).toBe('Pronto.')
+    expect(copy.title).toBe('Pronto')
     expect(copy.pill).toBeUndefined()
   })
 
@@ -75,7 +75,7 @@ describe('copyFor', () => {
 
   it('conectado mostra o selo verde com o nome', () => {
     const copy = copyFor({ screen: 'connected', mode: 'send', devices: [{ device: 'Notebook' }] })
-    expect(copy.title).toBe('Tela estendida.')
+    expect(copy.title).toBe('Tela estendida')
     expect(copy.pill).toEqual({ tone: 'ok', text: 'Notebook conectado' })
   })
 
@@ -85,7 +85,7 @@ describe('copyFor', () => {
       mode: 'send',
       devices: [{ device: 'Notebook' }, { device: 'iPhone' }, { device: 'Tablet' }]
     })
-    expect(copy.title).toBe('Telas estendidas.')
+    expect(copy.title).toBe('Telas estendidas')
     expect(copy.pill).toEqual({ tone: 'ok', text: 'Notebook, iPhone e Tablet conectados' })
   })
 
@@ -96,7 +96,7 @@ describe('copyFor', () => {
       host: '192.168.1.3',
       name: 'Desktop'
     })
-    expect(copy.title).toBe('Recebendo a tela.')
+    expect(copy.title).toBe('Recebendo a tela')
     expect(copy.pill).toEqual({ tone: 'ok', text: 'Desktop' })
   })
 
@@ -115,7 +115,7 @@ describe('copyFor', () => {
 
   it('demais telas', () => {
     expect(copyFor({ screen: 'choose' }).title).toBe('Este dispositivo vai…')
-    expect(copyFor({ screen: 'preparing', mode: 'send', step: 'engine' }).title).toBe('Preparando.')
+    expect(copyFor({ screen: 'preparing', mode: 'send', step: 'engine' }).title).toBe('Preparando')
     expect(copyFor({ screen: 'discover', mode: 'receive' }).title).toBe('Na sua rede')
   })
 })

@@ -6,7 +6,7 @@ test("fluxo real de modos, aprovacao e parada", async ({ page }) => {
   await app.getByRole("button", { name: "Receber", exact: true }).click();
   await app.getByRole("button", { name: "Estender", exact: true }).click();
   await expect(
-    app.getByRole("heading", { name: "Recebendo a tela." }),
+    app.getByRole("heading", { name: "Recebendo a tela" }),
   ).toBeVisible();
   await app.getByRole("button", { name: "Sair", exact: true }).click();
   await app.getByRole("button", { name: "Enviar", exact: true }).click();
@@ -77,7 +77,7 @@ test("menos movimento mantem interface real", async ({ page }) => {
   await expect(
     page
       .frameLocator("#app iframe")
-      .getByRole("heading", { name: "Tela estendida." }),
+      .getByRole("heading", { name: "Tela estendida" }),
   ).toBeVisible();
   expect(
     await page.evaluate(() =>

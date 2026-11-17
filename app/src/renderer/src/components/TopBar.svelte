@@ -33,15 +33,20 @@
       </svg>
     </button>
   </div>
-  <Segmented
-    compact
-    label="Modo"
-    value={mode}
-    options={[
-      { value: 'send', text: 'Enviar' },
-      { value: 'receive', text: 'Receber' }
-    ]}
-    onSelect={(value) => chooseMode(value as Mode)}
-  />
+  {#if mode === 'mouse'}
+    <!-- O modo Mouse fica nos Ajustes: aqui só o caminho de volta. -->
+    <button class="back" onclick={() => chooseMode('send')}>Voltar para Enviar</button>
+  {:else}
+    <Segmented
+      compact
+      label="Modo"
+      value={mode}
+      options={[
+        { value: 'send', text: 'Enviar' },
+        { value: 'receive', text: 'Receber' }
+      ]}
+      onSelect={(value) => chooseMode(value as Mode)}
+    />
+  {/if}
   <div class="topbar-right"><UpdateControls compact /></div>
 </header>

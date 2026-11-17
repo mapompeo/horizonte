@@ -13,7 +13,7 @@
   --danger-fg: #ff3b30;
   --radius-group: 20px;
   /* Três tamanhos de texto e nada mais: título, texto e detalhe. */
-  --t-title: 22px;
+  --t-title: 26px;
   --t-body: 14px;
   --t-small: 12px;
   --font:
@@ -128,7 +128,8 @@ input:focus-visible {
   margin: 0 auto;
   font-size: var(--t-title);
   font-weight: 700;
-  line-height: 28px;
+  line-height: 32px;
+  letter-spacing: -0.4px;
   white-space: pre-line;
   max-width: 560px;
 }
@@ -136,7 +137,7 @@ input:focus-visible {
 .title-lg,
 .title-md {
   font-size: var(--t-title);
-  line-height: 28px;
+  line-height: 32px;
 }
 
 .subtitle {
@@ -1160,4 +1161,9 @@ input,
   background-image: linear-gradient(var(--line), var(--line));
   background-size: 100% 1px;
   background-repeat: no-repeat;
+}
+
+/* Voltar do modo Mouse, no meio do topo: clicável, fora da área de arrastar a janela. */
+.topbar .back {
+  -webkit-app-region: no-drag;
 }
