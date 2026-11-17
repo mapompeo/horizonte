@@ -2940,3 +2940,134 @@ footer .support {
     gap: 14px;
   }
 }
+
+/* ============ Identidade única ============
+   Uma regra só para a página inteira: títulos de seção do mesmo tamanho e centralizados, destaque numa cor só (o
+   azul do tema, sem degradê), texto de apoio igual, o mesmo respiro entre seções e um único tipo de cartão. */
+:root {
+  --h2-size: clamp(2.25rem, 1.25rem + 3.8vw, 4.25rem);
+  --lede-size: clamp(1.05rem, 0.95rem + 0.45vw, 1.25rem);
+  --section-gap: clamp(88px, 11vw, 140px);
+  --card-radius: 24px;
+  --card-border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+}
+
+/* Títulos de seção */
+main h2,
+.values h2,
+.matrix h2,
+.radar-sec h2,
+.bento-sec h2,
+.download h2,
+.faq-wrap h2,
+.usos h2,
+.nov h2 {
+  font-size: var(--h2-size);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.04;
+  text-align: center;
+  max-width: 18ch;
+  margin-inline: auto;
+  text-wrap: balance;
+}
+/* Destaque: uma cor só. */
+.grad,
+.values .grad,
+.radar-sec h2 .grad,
+.matrix h2 .grad {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: var(--accent);
+}
+h2 .l2 {
+  color: var(--faint);
+}
+
+/* Texto de apoio */
+main .lede,
+.radar-copy p,
+.values p {
+  margin: 20px auto 0;
+  max-width: 44ch;
+  font-size: var(--lede-size);
+  line-height: 1.5;
+  color: var(--muted);
+  text-align: center;
+  text-wrap: balance;
+}
+/* Rótulo pequeno em cima do título (onde houver). */
+.nov-tag {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: center;
+}
+
+/* Respiro igual entre as seções */
+.nov,
+.matrix,
+.radar-sec,
+.bento-sec,
+.values,
+.usos,
+.download,
+.faq-wrap,
+.recap-sec {
+  padding-block: var(--section-gap);
+}
+.statement {
+  padding-block: var(--section-gap);
+  text-align: center;
+}
+.statement .scrub {
+  margin-inline: auto;
+  font-size: clamp(1.75rem, 1.1rem + 2.4vw, 3rem);
+  max-width: 22ch;
+}
+
+/* Radar: texto em cima, centralizado, e o radar embaixo, como as outras seções. */
+.radar-sec {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+  gap: 48px;
+}
+.radar-sec .radar {
+  width: min(100%, 420px);
+}
+
+/* Sem conta, sem nuvem: centralizado como o resto. */
+.values {
+  text-align: center;
+}
+.values h2 {
+  max-width: 14ch;
+}
+
+/* Um único tipo de cartão */
+.glass,
+.bt,
+.os,
+.rt,
+.faq details,
+.usos-grid > * {
+  border-radius: var(--card-radius);
+  background: var(--card);
+  border: var(--card-border);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.os.mine {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 20px 50px -24px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+/* O cartão azul do resumo continua azul. */
+.rt.rt-hero {
+  background: linear-gradient(135deg, #1a8cff, #0a52e0 60%, #0a2a8a);
+  border-color: transparent;
+}
