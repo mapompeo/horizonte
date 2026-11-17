@@ -31,10 +31,9 @@ for (const [name, userAgent, touches] of [
       await expect(page.locator('#baixar .you')).toHaveCount(0);
       const guidance = page.locator('#browser-guidance');
       await expect(guidance).toBeVisible();
-      await expect(guidance).toContainText('Neste dispositivo, receba pelo navegador.');
-      await expect(guidance).toContainText('Windows');
-      await expect(guidance).toContainText('mesma rede');
-      await expect(guidance).toContainText('Receber pelo navegador');
+      await expect(guidance).toContainText('Neste aparelho não precisa instalar nada');
+      await expect(guidance).toContainText('QR code');
+      await expect(guidance).toContainText('navegador');
     } finally {
       await context.close();
     }

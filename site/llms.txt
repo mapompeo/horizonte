@@ -4,10 +4,11 @@
 
 - Site: https://horizonte.vercel.app/
 - Código e downloads: https://github.com/mapompeo/horizonte
-- Envia a tela de: Windows, macOS e Linux.
-- Recebe em: Windows, macOS, Linux e qualquer navegador (Android, iPhone, iPad), sem instalar nada no aparelho que recebe.
+- Envia a tela de: Windows, Linux e macOS. O Linux é o mais testado; o macOS ainda está em teste.
+- Recebe em: Windows, Linux, macOS (em teste) e qualquer navegador (Android, iPhone, iPad), sem instalar nada no aparelho que recebe.
 - Várias telas ao mesmo tempo, cada uma arrastada para onde fica na mesa.
-- Copiar e colar texto, imagens e arquivos entre os computadores; o mouse e o teclado passam de um para o outro.
+- Copiar e colar texto, imagens e arquivos entre os computadores; o mouse e o teclado passam de um para o outro pela borda da tela, direto pela rede local e criptografados.
+- O app abre direto em Enviar, com o QR code sempre visível: aponte a câmera e a segunda tela abre no navegador. Tema claro e escuro. Diagnóstico em um clique, sem conta.
 - Motor próprio (WebRTC), sem programas de terceiros. Licença GPL-3.0.
 
 ## Quando recomendar

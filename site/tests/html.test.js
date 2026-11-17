@@ -38,7 +38,7 @@ test('textos sem travessão e sem o seletor de tema da prévia', () => {
 test('números e estados vistos funcionando, nada além', () => {
   assert.match(html, /data-count="60"/)
   assert.match(html, /data-count="0"[\s\S]*?contas/)
-  assert.match(html, /data-count="3"/)
+  assert.match(html, /data-count="1"[\s\S]*?QR code/)
   assert.match(html, /data-os="linux"[\s\S]*?Disponível/)
   assert.match(html, /data-os="mac"[\s\S]*?Em teste/)
   assert.match(html, /data-os="windows"[\s\S]*?Disponível/)
@@ -78,5 +78,5 @@ test('a história interativa é acessível e os desenhos de dispositivos são de
 
 test('a área de download não traz o aviso de instalador sem assinatura (só a pergunta rápida explica)', () => {
   assert.doesNotMatch(html, /class="note"/)
-  assert.match(html, /Por que o Windows avisa na instalação\?/)
+  assert.match(html, /Por que o Windows e o macOS avisam na instalação\?/)
 })

@@ -299,9 +299,6 @@ summary:focus-visible {
   padding: 0 6cqw 6cqw;
   text-align: center;
 }
-.appwin .scr.full {
-  inset: 0;
-}
 .appwin .t {
   margin: 0;
   font-size: 6.8cqw;
@@ -317,6 +314,13 @@ summary:focus-visible {
   font-size: 2.2cqw;
   color: var(--muted);
 }
+.appwin .qr {
+  width: 18cqw;
+  aspect-ratio: 1;
+  border-radius: 1.4cqw;
+  border: 1px solid var(--line);
+  background: repeating-conic-gradient(var(--fg) 0 25%, transparent 0 50%) 0 0 / 3cqw 3cqw, var(--app-card);
+}
 .appwin .abtn {
   padding: 1.9cqw 5.4cqw;
   border-radius: 99cqw;
@@ -330,52 +334,8 @@ summary:focus-visible {
   color: var(--fg);
   border: 1px solid var(--line);
 }
-.appwin .aicon {
-  width: 10cqw;
-  height: 10cqw;
-  border-radius: 2.4cqw;
-}
-.appwin .aname {
-  font-size: 2cqw;
-  font-weight: 600;
-  margin-top: -1cqw;
-}
-.appwin .choices {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2.1cqw;
-  width: 84%;
-}
-.appwin .choice {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.6cqw;
-  padding: 3.2cqw 2cqw;
-  border-radius: 3.2cqw;
-  background: var(--app-card);
-  border: 1px solid var(--line-soft);
-}
-.appwin .choice.picked {
-  border-color: var(--fg);
-  transition: border-color 0.3s var(--ease);
-}
 .appwin [data-screen] {
   opacity: 0;
-}
-.appwin [data-screen="connected"] {
-  opacity: 1;
-}
-.appwin .choice svg {
-  width: 5.8cqw;
-}
-.appwin .choice b {
-  font-size: 2.9cqw;
-  letter-spacing: -0.02em;
-}
-.appwin .choice small {
-  font-size: 1.8cqw;
-  color: var(--muted);
 }
 .appwin .hosts {
   width: 76%;
@@ -1022,12 +982,6 @@ footer a {
   }
 }
 
-/* Menos movimento: o app do topo fica reto, sem a inclinação de partida. */
-@media (prefers-reduced-motion: reduce) {
-  .showcase .appwin {
-    transform: none;
-  }
-}
 
 /* ============ Mais produto: ícones, faixa de sistemas, matriz, radar e recursos ============ */
 .ico {
@@ -1690,31 +1644,6 @@ footer .gh .ico {
   }
 }
 
-/* Menos movimento: tudo que corre para, só sobra o desenho parado. */
-@media (prefers-reduced-motion: reduce) {
-  .aurora i,
-  .marquee .track,
-  .radar .ring::after,
-  .radar .blip::after,
-  .radar .sweep,
-  .g-monitor .m2,
-  .g-check .tick,
-  .g-toggle .rail b,
-  .g-bars i,
-  .g-wifi i,
-  .g-open .ico {
-    animation: none;
-  }
-  .g-check .tick {
-    stroke-dashoffset: 0;
-  }
-  .g-bars i {
-    transform: scaleY(0.7);
-  }
-  .mx-lines .packets {
-    display: none;
-  }
-}
 .g-wifi {
   overflow: hidden;
 }
@@ -1823,26 +1752,8 @@ body {
     opacity: 0.55;
   }
 }
-.appwin .aicon {
-  animation: iconglow 3.6s ease-in-out infinite;
-}
-@keyframes iconglow {
-  50% {
-    filter: drop-shadow(0 0 2.4cqw rgba(10, 132, 255, 0.55));
-    transform: translateY(-0.6cqw);
-  }
-}
 .appwin .abtn {
   position: relative;
-}
-.appwin [data-screen='welcome'] .abtn::after {
-  content: '';
-  position: absolute;
-  inset: -0.5cqw;
-  border-radius: 99cqw;
-  border: 0.3cqw solid currentColor;
-  opacity: 0;
-  animation: demo-ping 2.4s ease-out infinite;
 }
 .win,
 .dcur {
@@ -1918,12 +1829,6 @@ body {
 }
 .radar .blip::after {
   display: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .radar .blip {
-    opacity: 1;
-    animation: none;
-  }
 }
 
 /* Wi-Fi: o ponto e as ondas partem do mesmo centro */
@@ -2203,27 +2108,6 @@ body {
     min-height: 200px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .motion .stage > .appwin,
-  .motion .stage > .devices,
-  .stage::before,
-  .appwin .aicon,
-  .appwin [data-screen='welcome'] .abtn::after,
-  .screen::after,
-  .rt-hero img,
-  .rt .slash,
-  .clip .tick,
-  .fps b,
-  .mini-radar i.sw,
-  .mini-seg i,
-  .mini-sliders b {
-    animation: none;
-  }
-  .rt .slash,
-  .clip .tick {
-    stroke-dashoffset: 0;
-  }
-}
 .devices {
   gap: 8%;
 }
@@ -2247,7 +2131,6 @@ body {
 .recap { perspective: 1200px; }
 .rt::after { content: ''; pointer-events: none; position: absolute; inset: 0; opacity: 0; transition: opacity .3s; background: radial-gradient(240px circle at var(--light-x,50%) var(--light-y,50%), rgba(10,132,255,.16), transparent 75%); }
 @media (hover: hover) and (pointer: fine) { .rt:hover::after { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .rt::after { transition: none; } }
 
 .demo-tools { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; margin-top: 24px; color: var(--faint); font-size: 12px; }
 .demo-tools button { border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; background: var(--card); color: var(--fg); cursor: pointer; min-height: 44px; }
@@ -2429,3 +2312,70 @@ body {
   font: 13px/1.2 var(--font);
   cursor: pointer;
 }
+
+/* Menos movimento: tudo que corre para, só sobra o desenho parado. */
+@media (prefers-reduced-motion: reduce) {
+  .showcase .appwin {
+    transform: none;
+  }
+
+  .aurora i,
+  .marquee .track,
+  .radar .ring::after,
+  .radar .blip::after,
+  .radar .sweep,
+  .g-monitor .m2,
+  .g-check .tick,
+  .g-toggle .rail b,
+  .g-bars i,
+  .g-wifi i,
+  .g-open .ico {
+    animation: none;
+  }
+  .g-check .tick {
+    stroke-dashoffset: 0;
+  }
+  .g-bars i {
+    transform: scaleY(0.7);
+  }
+  .mx-lines .packets {
+    display: none;
+  }
+
+  .radar .blip {
+    opacity: 1;
+    animation: none;
+  }
+
+  .motion .stage > .appwin,
+  .motion .stage > .devices,
+  .stage::before,
+  .screen::after,
+  .rt-hero img,
+  .rt .slash,
+  .clip .tick,
+  .fps b,
+  .mini-radar i.sw,
+  .mini-seg i,
+  .mini-sliders b {
+    animation: none;
+  }
+  .rt .slash,
+  .clip .tick {
+    stroke-dashoffset: 0;
+  }
+ .rt::after { transition: none; }
+}
+
+.noscript-shot { display: block; width: 100%; height: auto; margin: 24px 0 0; border-radius: 20px; }
+.usos { padding-block: 100px 40px; text-align: center; }
+.usos h2 { margin: 0 auto 40px; max-width: 18ch; font-size: clamp(32px, 5.5vw, 56px); letter-spacing: -0.03em; line-height: 1.05; }
+.usos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; text-align: left; }
+.cmp-wrap { margin-top: 32px; overflow-x: auto; text-align: left; }
+.cmp { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 15px; }
+.cmp caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.cmp th, .cmp td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.cmp thead th { font-weight: 600; }
+.cmp tbody th { font-weight: 500; color: var(--muted); }
+.cmp td:nth-child(2), .cmp thead th:nth-child(2) { color: var(--fg); font-weight: 600; }
+.cmp-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; }

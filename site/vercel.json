@@ -3,5 +3,11 @@
   "installCommand": "cd ../app && npm ci --ignore-scripts",
   "buildCommand": "cd ../app && npm run build:demo",
   "outputDirectory": ".",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/app/(.*)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    }
+  ]
 }

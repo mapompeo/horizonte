@@ -1,17 +1,17 @@
 <div align="center">
 
-<img src="site/icon.png" width="96" alt="">
+<img src="site/icon.png" width="96" alt="Horizonte">
 
 # Horizonte
 
 **Monitor sem fio. Grátis e de código aberto.**
 
-Seu notebook, tablet, celular ou outro computador vira a segunda tela do seu PC.<br>
+Horizonte é um monitor sem fio: seu notebook, tablet, celular ou outro computador vira a segunda tela do seu PC.<br>
 Sem cabo, sem conta e sem configurar nada.
 
 [Baixar](https://github.com/mapompeo/horizonte/releases) · [Site](https://horizonte.vercel.app) · [Como funciona](#como-funciona)
 
-![Horizonte](site/og.png)
+![Horizonte: notebook, tablet e celular como segunda tela do PC](site/og.png)
 
 </div>
 
@@ -22,6 +22,7 @@ Sem cabo, sem conta e sem configurar nada.
 - **Deitado ou em pé.** Gire o celular ou o tablet e a tela acompanha.
 - **Copiar e colar entre os computadores.** Texto, imagens e arquivos. O mouse e o teclado passam de um para o outro pela borda da tela.
 - **Tudo seu.** Motor próprio (WebRTC), direto pela rede local. Nada passa por servidor nem depende de programa de terceiros.
+- **Tema claro e escuro.** Segue o sistema, ou escolha nos Ajustes.
 - **Atualiza sozinho.** Quando sai versão nova, aparece um botão branco no canto: um clique e pronto.
 
 ## Funciona em
@@ -29,14 +30,14 @@ Sem cabo, sem conta e sem configurar nada.
 | | Envia a tela | Recebe a tela |
 |---|:---:|:---:|
 | Windows 10 e 11 | ✓ | ✓ |
-| macOS (Apple e Intel) | ✓ | ✓ |
+| macOS (Apple e Intel), em teste | ✓ | ✓ |
 | Linux (GNOME, Xorg ou Wayland) | ✓ | ✓ |
 | Android, iPhone e iPad | | ✓ pelo navegador |
 | Qualquer navegador | | ✓ |
 
 ## Como funciona
 
-1. [Baixe](https://github.com/mapompeo/horizonte/releases) e abra o Horizonte no computador.
+1. [Baixe](https://github.com/mapompeo/horizonte/releases) e abra o Horizonte no computador. Ele abre direto em Enviar, com o QR code sempre visível.
 2. No celular ou tablet, aponte a câmera para o QR code. Em outro computador, abra o Horizonte e toque em Receber.
 3. Pronto. A tela nova já está do lado da sua.
 

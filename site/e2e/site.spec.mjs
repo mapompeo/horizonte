@@ -24,28 +24,12 @@ test("resumo interativo sem recortes nem erros", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/#resumo");
-  await page.locator('[data-preview="quality"]').scrollIntoViewIfNeeded();
-  const quality = page.frameLocator('[data-preview="quality"] iframe');
-  await quality.getByRole("button", { name: "Aumentar qualidade" }).click();
-  await expect(quality.getByText("40 Mbps", { exact: true })).toBeVisible();
-  await page.locator('[data-preview="pair"]').scrollIntoViewIfNeeded();
-  const pair = page.frameLocator('[data-preview="pair"] iframe');
-  await pair.getByRole("button", { name: "Permitir", exact: true }).click();
-  await expect(
-    pair.getByText("Notebook conectado", { exact: true }),
-  ).toBeVisible();
   await page.locator('[data-preview="host"]').scrollIntoViewIfNeeded();
   const host = page.frameLocator('[data-preview="host"] iframe');
   await host.getByRole("button", { name: "Estender", exact: true }).click();
   await expect(
     host.getByText("Desktop conectado", { exact: true }),
   ).toBeVisible();
-  await page.locator('[data-preview="mode"]').scrollIntoViewIfNeeded();
-  const mode = page.frameLocator('[data-preview="mode"] iframe');
-  await mode.getByRole("button", { name: "Mostrar", exact: true }).click();
-  await expect(
-    mode.getByRole("button", { name: "Mostrar", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
   const overflow = await page.evaluate(() => ({
     width: innerWidth,
     scroll: document.documentElement.scrollWidth,

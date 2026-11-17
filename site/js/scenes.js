@@ -154,7 +154,7 @@ export function startScenes(M) {
   let frameReady = false;
   const states = [
     { screen: "ready", mode: "send" },
-    { screen: "approve", mode: "send", device: "Notebook", pairingId: "p1", pin: "4821" },
+    { screen: "approve", mode: "send", device: "Notebook", pairingId: "p1" },
     { screen: "discover", mode: "receive" },
     null,
     { screen: "connected", mode: "send", devices: [{ device: "Notebook" }] },

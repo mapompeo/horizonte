@@ -15,7 +15,7 @@ if (['ios', 'android', 'chromeos'].includes(os)) {
   const guidance = document.createElement('p');
   guidance.id = 'browser-guidance';
   guidance.className = 'lede';
-  guidance.textContent = 'Neste dispositivo, receba pelo navegador. No Windows que envia, ative “Receber pelo navegador” e abra aqui o endereço mostrado pelo app, na mesma rede.';
+  guidance.textContent = 'Neste aparelho não precisa instalar nada: no computador com o Horizonte, aponte a câmera para o QR code e a segunda tela abre no navegador.';
   document.querySelector('#baixar .lede').after(guidance);
 }
 
@@ -91,22 +91,16 @@ if (window.Motion && !reduce) {
 
 mountMatrix(document.getElementById("mx"));
 
-// O resumo reutiliza componentes Svelte do produto, inclusive suas interações.
+// O resumo reutiliza o componente Svelte do produto, inclusive a interação.
 document.querySelectorAll("[data-preview]").forEach((root) => {
   const frame = document.createElement("iframe");
-  const kind = root.dataset.preview;
-  frame.title = {
-    pair: "Permitir dispositivo",
-    quality: "Ajustar qualidade",
-    mode: "Escolher modo",
-    host: "Conectar ao Desktop",
-  }[kind];
-  frame.src = "./app/?auto=0&preview=" + kind;
+  frame.title = "Conectar ao Desktop";
+  frame.src = "./app/?auto=0&preview=host";
   frame.loading = "lazy";
-  frame.width = kind === "mode" ? 260 : 400;
-  frame.height = kind === "pair" ? 220 : 160;
+  frame.width = 400;
+  frame.height = 160;
   const fit = () => {
-    frame.style.transform = `translate(-50%, -50%) scale(${Math.min(root.clientWidth / Number(frame.width), root.clientHeight / Number(frame.height))})`;
+    frame.style.transform = `translate(-50%, -50%) scale(${Math.min(root.clientWidth / 400, root.clientHeight / 160)})`;
   };
   new ResizeObserver(fit).observe(root);
   root.append(frame);
