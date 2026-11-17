@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { fly, slide } from 'svelte/transition'
+  import { fade, fly, scale, slide } from 'svelte/transition'
+  import { backOut } from 'svelte/easing'
   import type {
     ConnectedDevice,
     PrepProgress,
@@ -69,6 +70,10 @@
       // Sem área de transferência: o endereço continua à vista para digitar.
     }
   }
+  /** QR ampliado: ocupa a janela toda, para a câmera achar de longe. */
+  let zoomed = $state(false)
+  let viewport = $state({ w: 800, h: 600 })
+  const bigQr = $derived(Math.max(176, Math.min(viewport.w, viewport.h) - 200))
   /** Aberto o "Adicionar": o QR, o código e o link para mais um aparelho. */
   let adding = $state(false)
   /** Quem não tem tela no mapa (sem tamanho ou impressão digital): fica numa lista simples. */
@@ -86,7 +91,9 @@
   <section class="hero card" class:compact class:vertical={!compact}>
     <div class="qr-card" class:compact>
       {#if link}
-        <QrCode text={link} size={compact ? 112 : 176} />
+        <button class="qr-zoom" aria-label="Ampliar o QR code" onclick={() => (zoomed = true)}
+          ><QrCode text={link} size={compact ? 112 : 176} /></button
+        >
       {:else if preparing}
         <div class="qr-prep" class:compact role="status">
           <div class="bar">
@@ -113,7 +120,11 @@
             >{code}</span
           >
           <button class="copy" class:done={copied} onclick={copyLink}
-            >{copied ? 'Copiado' : 'Copiar link'}</button
+            >{#key copied}<span
+                class="copy-label"
+                in:scale={{ start: 0.7, duration: ms(260), easing: backOut }}
+                >{copied ? 'Copiado' : 'Copiar link'}</span
+              >{/key}</button
           >
         </span>
       {:else if link && web.url}
@@ -182,6 +193,25 @@
   {/if}
   <VideoHint />
 </div>
+
+<svelte:window
+  bind:innerWidth={viewport.w}
+  bind:innerHeight={viewport.h}
+  onkeydown={(e) => e.key === 'Escape' && (zoomed = false)}
+/>
+{#if zoomed && link}
+  <!-- Toque em qualquer lugar (ou Esc) e o QR volta para o cartão. -->
+  <button
+    class="qr-big"
+    aria-label="Fechar o QR ampliado"
+    onclick={() => (zoomed = false)}
+    transition:fade={{ duration: ms(200) }}
+  >
+    <span class="qr-big-card" transition:scale={{ start: 0.6, duration: ms(380), easing: backOut }}>
+      <QrCode text={link} size={bigQr} />
+    </span>
+  </button>
+{/if}
 
 <style>
   .status {
@@ -290,5 +320,35 @@
     min-height: 32px;
     padding: 0 4px;
     font-size: var(--t-small);
+  }
+  .copy-label {
+    display: inline-block;
+  }
+  .qr-zoom {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
+    border-radius: inherit;
+  }
+  .qr-big {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    backdrop-filter: blur(18px);
+    cursor: zoom-out;
+    -webkit-app-region: no-drag;
+  }
+  .qr-big-card {
+    display: block;
+    padding: 22px;
+    border-radius: 32px;
+    background: #fff;
+    box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.5);
   }
 </style>
