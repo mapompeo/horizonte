@@ -118,7 +118,5 @@ test("recomecar funciona a partir dos ajustes", async ({ page }) => {
   const app = page.frameLocator("#hero-app iframe");
   await app.getByRole("button", { name: "Ajustes", exact: true }).click();
   await page.getByRole("button", { name: "Recomeçar", exact: true }).click();
-  await expect(
-    app.getByRole("button", { name: "Começar", exact: true }),
-  ).toBeVisible();
+  await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
 });

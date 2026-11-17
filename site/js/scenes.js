@@ -153,8 +153,8 @@ export function startScenes(M) {
   let current = -1;
   let frameReady = false;
   const states = [
-    { screen: "install", status: "idle" },
-    { screen: "choose" },
+    { screen: "ready", mode: "send" },
+    { screen: "approve", mode: "send", device: "Notebook", pairingId: "p1", pin: "4821" },
     { screen: "discover", mode: "receive" },
     null,
     { screen: "connected", mode: "send", devices: [{ device: "Notebook" }] },

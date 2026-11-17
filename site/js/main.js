@@ -63,7 +63,7 @@ import("./live.js")
         document
           .getElementById("demo-restart")
           .addEventListener("click", () =>
-            demo.frame.contentWindow.__demo?.reset({ screen: "install" }),
+            demo.frame.contentWindow.__demo?.reset({ screen: "ready", mode: "send" }),
           );
         document
           .getElementById("demo-connect")
