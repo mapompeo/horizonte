@@ -655,15 +655,19 @@ h1[tabindex='-1']:focus {
   font-size: var(--t-body);
   text-align: left;
 }
-/* Divisória de 0,5 px de ponta a ponta do cartão. */
+/* Divisória como no iOS: começa onde o texto começa e vai até a borda direita do cartão. */
 .row ~ .row::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
+  left: 16px;
   right: 0;
   height: 0.5px;
   background: var(--line);
+}
+/* Com um ponto na frente, a linha começa depois dele, alinhada ao nome. */
+.row:has(> .peer-dot) ~ .row:has(> .peer-dot)::before {
+  left: 40px;
 }
 .row-value {
   max-width: 60%;
