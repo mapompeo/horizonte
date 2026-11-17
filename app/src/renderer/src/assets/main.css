@@ -1317,3 +1317,87 @@ input,
     transform: scale(0.98);
   }
 }
+
+/* ============ Motion no resto do app ============
+   Toda peça tocável responde: sobe um pouco no hover, afunda no clique, e as setas apontam para onde vão. */
+@media (prefers-reduced-motion: no-preference) {
+  .switch-thumb {
+    transition:
+      transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+      width 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .link,
+  .row-action,
+  .add,
+  .foot-link {
+    transition:
+      transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+      filter 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease;
+  }
+  .link:active,
+  .row-action:active,
+  .add:active {
+    transform: scale(0.94);
+    opacity: 0.7;
+  }
+  .add:hover,
+  .foot-link:hover {
+    transform: translateY(-1px);
+  }
+  .foot-link:active {
+    transform: scale(0.95);
+  }
+  /* Voltar: a seta puxa para a esquerda. */
+  .back svg {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .back:hover svg {
+    transform: translateX(-3px);
+  }
+  .back:active {
+    transform: scale(0.95);
+  }
+  /* Linhas com seta: a seta anda para a direita. */
+  .row-button::after,
+  .chevron {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .row-button:hover::after,
+  .row-button:hover .chevron {
+    transform: translateX(3px);
+  }
+  /* Computadores achados na rede: o cartão sobe e o ícone cresce. */
+  .host:hover {
+    transform: translateY(-2px);
+  }
+  .host-icon {
+    transition:
+      transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+      background-color 0.2s ease;
+  }
+  .host:hover .host-icon {
+    transform: scale(1.08);
+  }
+  /* Telas do mapa: a de outro aparelho se destaca ao passar o mouse. */
+  .tile.peer {
+    transition:
+      box-shadow 0.25s ease,
+      filter 0.2s ease;
+  }
+  .tile.peer:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.5);
+  }
+  .tile .stop {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .tile .stop:hover {
+    transform: scale(1.15);
+  }
+}
