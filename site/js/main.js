@@ -7,33 +7,56 @@ import {
   pickLatest,
 } from "./releases.js";
 
+// Textos que o script escreve passam pelo i18n.js (hzT); sem ele, ficam em português.
+const t = (key, fallback) => globalThis.hzT?.(key, fallback) ?? fallback;
+const FILE_KEY = {
+  "Instalador .exe": "file.exe",
+  "Mac com chip Apple (.dmg)": "file.macArm",
+  "Mac com chip Intel (.dmg)": "file.macX64",
+};
+const fileText = (name) => {
+  const label = fileLabel(name);
+  return FILE_KEY[label] ? t(FILE_KEY[label], label) : label;
+};
+
 const os = detectOs(navigator.userAgent, navigator.maxTouchPoints);
 const mine = document.querySelector(`.os[data-os="${os}"] h3`);
 if (mine)
-  mine.insertAdjacentHTML("afterend", '<span class="you">Seu sistema</span>');
+  mine.insertAdjacentHTML(
+    "afterend",
+    `<span class="you" data-i18n="dl.you">${t("dl.you", "Seu sistema")}</span>`,
+  );
 if (['ios', 'android', 'chromeos'].includes(os)) {
   const guidance = document.createElement('p');
   guidance.id = 'browser-guidance';
   guidance.className = 'lede';
-  guidance.textContent = 'Neste aparelho não precisa instalar nada: no computador com o Horizonte, aponte a câmera para o QR code e a segunda tela abre no navegador.';
+  guidance.dataset.i18n = 'dl.guidance';
+  guidance.textContent = t('dl.guidance', 'Neste aparelho não precisa instalar nada: no computador com o Horizonte, aponte a câmera para o QR code e a segunda tela abre no navegador.');
   document.querySelector('#baixar .lede').after(guidance);
 }
 
 /** Uma linha por arquivo, cada uma com o próprio link (o Linux tem .AppImage e .deb). Montado com DOM, sem HTML em texto. */
 function fillMeta(meta, files) {
   meta.replaceChildren();
+  meta.dataset.live = "1"; // o i18n.js não sobrescreve os links
   files.forEach((f, i) => {
     if (i > 0) meta.append(document.createElement("br"));
     const link = document.createElement("a");
     link.href = f.url;
-    link.textContent = `${fileLabel(f.name)} · ${f.mb} MB`;
+    link.textContent = `${fileText(f.name)} · ${f.mb} MB`;
     meta.append(link);
   });
 }
 
+let downloads = null;
+
 async function fillDownloads() {
-  const downloads = buildDownloads(pickLatest(await loadReleases()));
-  if (downloads.version === null) return; // sem API: ficam os links e textos fixos do HTML
+  downloads = buildDownloads(pickLatest(await loadReleases()));
+  paintDownloads();
+}
+
+function paintDownloads() {
+  if (!downloads || downloads.version === null) return; // sem API: ficam os links e textos fixos do HTML
   for (const key of Object.keys(OS_LABEL)) {
     document.querySelectorAll(`[data-dl="${key}"]`).forEach((link) => {
       link.href = link.dataset.chip
@@ -44,7 +67,11 @@ async function fillDownloads() {
     // Sem o arquivo desse sistema na versão, o link vai para a página da versão: o texto fixo mentiria.
     if (meta && downloads[key].files.length > 0)
       fillMeta(meta, downloads[key].files);
-    else if (meta) meta.textContent = "Veja na página da versão";
+    else if (meta) {
+      delete meta.dataset.live;
+      meta.dataset.i18n = "dl.release";
+      meta.textContent = t("dl.release", "Veja na página da versão");
+    }
   }
   document
     .querySelectorAll("[data-version]")
@@ -52,6 +79,7 @@ async function fillDownloads() {
 }
 
 fillDownloads();
+document.addEventListener("hz:lang", paintDownloads);
 
 // O app do topo é o app de verdade (compilado do código do projeto), rodando com um motor de mentira.
 import("./live.js")
@@ -94,7 +122,8 @@ mountMatrix(document.getElementById("mx"));
 // O resumo reutiliza o componente Svelte do produto, inclusive a interação.
 document.querySelectorAll("[data-preview]").forEach((root) => {
   const frame = document.createElement("iframe");
-  frame.title = "Conectar ao Desktop";
+  frame.dataset.i18nAttr = "title:iframe.host";
+  frame.title = t("iframe.host", "Conectar ao Desktop");
   frame.src = "./app/?auto=0&preview=host";
   frame.loading = "lazy";
   frame.width = 400;
@@ -113,10 +142,10 @@ for (const button of document.querySelectorAll("[data-copy]")) {
     const text = document.getElementById(button.dataset.copy)?.textContent ?? "";
     try {
       await navigator.clipboard.writeText(text);
-      button.textContent = "Copiado";
+      button.textContent = t("copy.done", "Copiado");
     } catch {
-      button.textContent = "Selecione e copie";
+      button.textContent = t("copy.fail", "Selecione e copie");
     }
-    setTimeout(() => (button.textContent = "Copiar"), 2000);
+    setTimeout(() => (button.textContent = t("copy.label", "Copiar")), 2000);
   });
 }

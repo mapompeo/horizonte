@@ -108,3 +108,18 @@ test("recomecar funciona a partir dos ajustes", async ({ page }) => {
   await page.getByRole("button", { name: "Recomeçar", exact: true }).click();
   await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
 });
+
+for (const [lang, title, htmlLang] of [
+  ["en", /Your second screen\.\s*Wireless\./, "en"],
+  ["es", /Tu segunda pantalla\.\s*Sin cables\./, "es"],
+]) {
+  test(`?lang=${lang} traduz o título do hero e o seletor volta ao português`, async ({ page }) => {
+    await page.goto(`/?lang=${lang}`);
+    await expect(page.locator("#hero-title")).toHaveText(title);
+    await expect(page.locator("html")).toHaveAttribute("lang", htmlLang);
+    await page.locator('footer [data-lang="pt"]').click();
+    await expect(page.locator("#hero-title")).toHaveText(/Sua segunda tela\.\s*Sem fio\./);
+    await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
+    expect(page.url()).toContain("lang=pt");
+  });
+}

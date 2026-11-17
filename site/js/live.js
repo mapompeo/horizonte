@@ -14,7 +14,9 @@ export function scaleFor(width) {
 export function mountLive(root, { hash = "", auto = true } = {}) {
   const frame = document.createElement("iframe");
   frame.className = "live";
-  frame.title = "Horizonte, funcionando. Clique para experimentar.";
+  const text = "Horizonte, funcionando. Clique para experimentar.";
+  frame.dataset.i18nAttr = "title:iframe.live";
+  frame.title = globalThis.hzT?.("iframe.live", text) ?? text;
   frame.width = APP_W;
   frame.height = APP_H;
   frame.setAttribute("loading", "eager");

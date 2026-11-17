@@ -1155,7 +1155,9 @@ main {
 }
 .chip {
   position: absolute;
-  transform: translateY(-50%);
+  /* "translate" à parte (e não em transform): a animação de pulsar mexe no transform sem tirar a pílula do centro
+     da linha. */
+  translate: 0 -50%;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2504,4 +2506,59 @@ body {
 /* Rolar até um ponto (links de seção, foco) deixa folga para o notch: nada fica escondido embaixo dele. */
 html {
   scroll-padding-top: 64px;
+}
+
+/* ============ Idioma ============ */
+.newpill span.np-t {
+  color: inherit;
+}
+.top .nav .lang-btn {
+  flex: none;
+  min-width: 34px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--notch-muted);
+  font: 600 12px/1 var(--font);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.top .nav .lang-btn:hover,
+.top .nav .lang-btn:focus-visible {
+  color: var(--notch-fg);
+  border-color: var(--notch-fg);
+}
+@media (max-width: 760px) {
+  .top .nav {
+    gap: 10px;
+  }
+  .top .nav .gh span {
+    display: none;
+  }
+}
+.lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.lang button {
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.lang button:hover {
+  color: var(--fg);
+}
+.lang button[aria-pressed="true"] {
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }

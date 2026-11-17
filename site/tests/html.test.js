@@ -8,7 +8,7 @@ const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8')
 test('idioma, título, descrição e imagem de compartilhamento', () => {
   assert.match(html, /<html lang="pt-BR">/)
   assert.match(html, /<title>Horizonte: monitor sem fio[^<]*<\/title>/)
-  assert.match(html, /<meta name="description" content="[^"]{60,160}">/)
+  assert.match(html, /<meta name="description" content="[^"]{60,160}"[^>]*>/)
   assert.match(html, /<meta property="og:image" content="https:\/\/horizonte-monitor\.vercel\.app\/og\.png">/)
   assert.match(html, /<link rel="canonical" href="https:\/\/horizonte-monitor\.vercel\.app\/">/)
 })
@@ -58,7 +58,7 @@ test('estrutura inteira: uma página, um rodapé, três cartões de download', (
   assert.equal(count(/data-dl="/g), 4)
   assert.equal(count(/data-dl-meta="/g), 3)
   assert.equal(count(/class="spec-line"/g), 1)
-  assert.match(html, /<\/footer>\s*<script src="\.\/vendor\/motion\.min\.js"><\/script>/)
+  assert.match(html, /<\/footer>\s*<script src="\.\/js\/i18n\.js"><\/script>\s*<script src="\.\/vendor\/motion\.min\.js"><\/script>/)
 })
 
 test('imagem de compartilhamento, robots e sitemap existem', () => {
@@ -72,7 +72,7 @@ test('imagem de compartilhamento, robots e sitemap existem', () => {
 })
 
 test('a história interativa é acessível e os desenhos de dispositivos são decorativos', () => {
-  assert.match(html, /<div class="appwin" id="app" role="group" aria-label="Demonstração interativa do Horizonte">/)
+  assert.match(html, /<div class="appwin" id="app" role="group" aria-label="Demonstração interativa do Horizonte"[^>]*>/)
   assert.match(html, /<div class="devices" id="devices" aria-hidden="true">/)
 })
 
