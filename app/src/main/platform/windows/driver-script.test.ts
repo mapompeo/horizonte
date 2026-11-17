@@ -27,12 +27,13 @@ describe.runIf(process.platform === 'win32')('roteiro do driver no PowerShell de
   })
 
   it('vincula o driver mesmo quando o dispositivo já existe sem driver', () => {
-    const body = DRIVER_INSTALL_SCRIPT.slice(DRIVER_INSTALL_SCRIPT.indexOf('$thumb ='))
+    const body = DRIVER_INSTALL_SCRIPT.slice(DRIVER_INSTALL_SCRIPT.indexOf('$cert ='))
     const harness = String.raw`
 Add-Type -TypeDefinition 'public static class HzDev { public static int Calls; public static bool UpdateDriverForPlugAndPlayDevicesW(System.IntPtr h, string id, string inf, int flags, out bool reboot) { Calls++; reboot=false; return true; } }'
-function Get-PfxCertificate { [pscustomobject]@{ Thumbprint='fixture' } }
-function Test-Path { $true }
-function Import-Certificate { }
+function Hz-Cert { [pscustomobject]@{ Thumbprint='fixture' } }
+function Hz-Has { $true }
+function Hz-Add { }
+function Hz-Remove { }
 function pnputil.exe { $global:LASTEXITCODE=0 }
 function Get-PnpDevice { [pscustomobject]@{ HardwareID=@('Root\MttVDD'); Class=$null; Status='OK' } }
 $inf=[pscustomobject]@{ FullName='fixture.inf' }

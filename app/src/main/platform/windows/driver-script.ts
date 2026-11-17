@@ -19,15 +19,29 @@ public static class HzDev {
 }
 '@`
 
+/**
+ * Certificados pelo .NET, sem a unidade `Cert:`: ela some quando o PowerShell herda o `PSModulePath` do PowerShell 7
+ * (visto na CI do GitHub em 17/11/2026), e aí o driver nunca era confiado e a instalação passava calada.
+ */
+const CERT_API = [
+  '$ErrorActionPreference = "Stop"',
+  "$env:PSModulePath = [Environment]::GetEnvironmentVariable('PSModulePath', 'Machine')",
+  "function Hz-Store($name) { $s = New-Object System.Security.Cryptography.X509Certificates.X509Store($name, 'LocalMachine'); $s.Open('ReadWrite'); $s }",
+  'function Hz-Cert($path) { New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($path) }',
+  'function Hz-Has($name, $cert) { $s = Hz-Store $name; try { @($s.Certificates | Where-Object { $_.Thumbprint -eq $cert.Thumbprint }).Count -gt 0 } finally { $s.Close() } }',
+  'function Hz-Add($name, $cert) { $s = Hz-Store $name; try { $s.Add($cert) } finally { $s.Close() } }',
+  'function Hz-Remove($name, $cert) { $s = Hz-Store $name; try { $s.Remove($cert) } finally { $s.Close() } }'
+].join('\n')
+
 /** Pressupõe `$inf` e `$cer` (FileInfo do pacote já extraído). */
 export const DRIVER_INSTALL_SCRIPT = [
   DEVICE_API,
-  '$thumb = (Get-PfxCertificate -FilePath $cer.FullName).Thumbprint',
-  `$rootPath = "Cert:\\LocalMachine\\Root\\$thumb"`,
-  '$rootWasThere = Test-Path $rootPath',
+  CERT_API,
+  '$cert = Hz-Cert $cer.FullName',
+  '$rootWasThere = Hz-Has Root $cert',
   'try {',
-  `  Import-Certificate -FilePath $cer.FullName -CertStoreLocation 'Cert:\\LocalMachine\\TrustedPublisher' | Out-Null`,
-  `  if (-not $rootWasThere) { Import-Certificate -FilePath $cer.FullName -CertStoreLocation 'Cert:\\LocalMachine\\Root' | Out-Null }`,
+  '  Hz-Add TrustedPublisher $cert',
+  '  if (-not $rootWasThere) { Hz-Add Root $cert }',
   '  pnputil.exe /add-driver $inf.FullName /install | Out-Null',
   '  if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { throw "pnputil terminou com o código $LASTEXITCODE" }',
   `  if (-not (Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.HardwareID -contains 'Root\\MttVDD' })) {`,
@@ -45,6 +59,6 @@ export const DRIVER_INSTALL_SCRIPT = [
   '  $reboot = $false',
   `  if (-not [HzDev]::UpdateDriverForPlugAndPlayDevicesW([IntPtr]::Zero, 'Root\\MttVDD', $inf.FullName, 1, [ref]$reboot)) { throw 'O Windows recusou o driver do monitor virtual.' }`,
   '} finally {',
-  '  if (-not $rootWasThere) { Remove-Item -Path $rootPath -ErrorAction SilentlyContinue }',
+  '  if (-not $rootWasThere) { Hz-Remove Root $cert }',
   '}'
 ].join('\n')
