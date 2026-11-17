@@ -10,6 +10,7 @@ import type { createPresence } from '../presence'
 import {
   createLinuxVirtualScreen,
   createMacVirtualScreen,
+  createWindowsScreen,
   macHelperPath,
   framesSocket,
   gnomeFrames,
@@ -161,7 +162,10 @@ export function createAppWebRtcEngine(deps: {
       }
     : macHelper
       ? (index: number) => ({ screen: createMacVirtualScreen(macHelper, index), frames: null })
-      : null
+      : process.platform === 'win32'
+        ? // O driver tem um monitor só: o primeiro aparelho estende, os outros espelham a tela principal.
+          (index: number) => (index === 0 ? { screen: createWindowsScreen(), frames: null } : null)
+        : null
   const engine = new WebRtcEngine({
     windows: appWindows(),
     presence: {

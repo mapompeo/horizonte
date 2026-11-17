@@ -75,7 +75,8 @@ export interface WebRtcEngineDeps {
    * O monitor virtual de número `index` (0, 1, 2…): um por aparelho conectado. Sem isso (null), a tela principal é
    * espelhada.
    */
-  screens: ((index: number) => ScreenSlot) | null
+  /** A tela de cada aparelho; null para um aparelho a mais do que o sistema consegue estender (espelha). */
+  screens: ((index: number) => ScreenSlot | null) | null
   deviceName(): string
   kind(): DeviceKind
   screenSize(): ScreenSize
@@ -170,10 +171,10 @@ export class WebRtcEngine implements EnginePort {
     if (!this.deps.screens) return null
     let slot = this.slots.get(index)
     if (!slot) {
-      slot = this.deps.screens(index)
-      this.slots.set(index, slot)
+      slot = this.deps.screens(index) ?? undefined
+      if (slot) this.slots.set(index, slot)
     }
-    return slot
+    return slot ?? null
   }
 
   private log(...parts: unknown[]): void {

@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  dialog,
   desktopCapturer,
   ipcMain,
   screen,
@@ -12,6 +13,15 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { hostname } from 'node:os'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { downloadVerified } from '../../platform/windows/download'
+import { createElevation, runWithUac } from '../../platform/windows/elevation'
+import { runPowerShell } from '../../platform/windows/probes'
+import { VIRTUAL_DISPLAY_DRIVER } from '../../platform/windows/versions'
+import {
+  createWindowsVirtualScreen,
+  driverInstallScript
+} from '../../platform/windows/virtual-screen'
 import { guessKind, type DeviceKind } from '../../../shared/device'
 import {
   MOTOR_CHANNELS,
@@ -301,6 +311,40 @@ export function createMacVirtualScreen(helper: string, index: number): VirtualSc
       size = ''
     }
   }
+}
+
+/** Windows: o monitor do driver de tela virtual (instalado na primeira vez, com a autorização da pessoa). */
+export function createWindowsScreen(): VirtualScreen {
+  return createWindowsVirtualScreen({
+    run: (script) => runPowerShell(script, 30_000),
+    async installDriver() {
+      const answer = await dialog.showMessageBox({
+        type: 'warning',
+        title: 'Autorizar o monitor virtual',
+        message: 'Para estender a tela, o Windows precisa de um driver de monitor virtual.',
+        detail:
+          'O driver é de código aberto (Virtual Display Driver) e tem certificado próprio, que o Windows só aceita se for confiado como autoridade raiz. O Horizonte confia nele apenas durante a instalação e o remove em seguida. Só continue se você confia nessa origem.',
+        buttons: ['Autorizar e instalar', 'Cancelar'],
+        defaultId: 1,
+        cancelId: 1,
+        noLink: true
+      })
+      if (answer.response !== 0)
+        throw new Error('Sem o driver do monitor virtual, a tela não estende.')
+      const zip = join(tmpdir(), VIRTUAL_DISPLAY_DRIVER.fileName)
+      await downloadVerified(VIRTUAL_DISPLAY_DRIVER, zip)
+      await createElevation({ run: runWithUac, tmpDir: tmpdir() }).runElevated([
+        {
+          description: 'Instalar o monitor virtual',
+          script: driverInstallScript(VIRTUAL_DISPLAY_DRIVER, zip)
+        }
+      ])
+    },
+    displayAt: (x, y) =>
+      screen.getAllDisplays().find((d) => d.nativeOrigin.x === x && d.nativeOrigin.y === y)?.id ??
+      null,
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+  })
 }
 
 /** Monitor virtual do GNOME pelo auxiliar; com `frames`, ele também manda as imagens por esse socket. */
