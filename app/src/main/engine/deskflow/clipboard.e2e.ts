@@ -25,6 +25,9 @@ function watcher(dir: string): { next(): Promise<string>; stop(): void } {
       )
     : spawn('osascript', ['-l', 'JavaScript', '-e', WATCH_MAC], { env })
   const waiting: ((line: string) => void)[] = []
+  let errors = ''
+  child.stderr.on('data', (chunk: Buffer) => (errors += chunk.toString()))
+  child.on('exit', (code) => (errors += ` (saiu: ${code})`))
   createInterface({ input: child.stdout }).on('line', (line) => {
     if (line.trim()) waiting.shift()?.(line)
   })
@@ -32,7 +35,7 @@ function watcher(dir: string): { next(): Promise<string>; stop(): void } {
     next: () =>
       new Promise((resolve, reject) => {
         waiting.push(resolve)
-        setTimeout(() => reject(new Error('o observador não avisou a cópia')), 30_000)
+        setTimeout(() => reject(new Error(`o observador não avisou a cópia: ${errors}`)), 30_000)
       }),
     stop: () => void child.kill()
   }

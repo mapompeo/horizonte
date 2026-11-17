@@ -124,7 +124,8 @@ describe.runIf(process.platform === 'darwin')('monitor virtual no Mac de verdade
       )
       let out = ''
       child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()))
-      child.stderr.on('data', (chunk: Buffer) => console.log('auxiliar', serial, chunk.toString()))
+      child.stderr.on('data', (chunk: Buffer) => (out += `[erro] ${chunk.toString()}`))
+      child.on('exit', (code) => (out += `[saiu ${code}]`))
       return { out: () => out, kill: () => void child.kill('SIGTERM') }
     }
     const one = start(1, 1920, 1080)
