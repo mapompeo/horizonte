@@ -58,7 +58,9 @@ describe.runIf(process.platform === 'win32')('monitor virtual do Windows de verd
           [
             "Get-PnpDevice -ErrorAction SilentlyContinue | Where-Object { $_.HardwareID -contains 'Root\\MttVDD' -or $_.Class -eq 'Display' } | Format-List FriendlyName,Status,Problem,InstanceId,HardwareID | Out-String -Width 300",
             'Get-CimInstance Win32_VideoController | Format-List Name,Status,PNPDeviceID | Out-String -Width 300',
-            "Get-ChildItem 'C:\\VirtualDisplayDriver' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName"
+            "Get-ChildItem 'C:\\VirtualDisplayDriver' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName",
+            'pnputil.exe /enum-drivers | Select-String -Context 0,6 MttVDD | Out-String -Width 300',
+            'exit 0'
           ].join('\n'),
           60_000
         )
