@@ -199,7 +199,11 @@ function createWindow(controller: Controller): void {
     }
   )
 
+  // Aparência escolhida nos Ajustes: o Electron faz a página (prefers-color-scheme) e as barras seguirem.
+  nativeTheme.themeSource = controller.getSnapshot().settings.theme
   const unsubscribe = controller.subscribe((snapshot) => {
+    if (nativeTheme.themeSource !== snapshot.settings.theme)
+      nativeTheme.themeSource = snapshot.settings.theme
     if (window.isDestroyed()) return
     window.webContents.send(CHANNELS.push, snapshot)
     followTray(snapshot.state)

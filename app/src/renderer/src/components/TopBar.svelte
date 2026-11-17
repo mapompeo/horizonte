@@ -2,6 +2,7 @@
   import type { Mode } from '../../../shared/types'
   import { chooseMode, openSettings } from '../lib/actions'
   import Segmented from './Segmented.svelte'
+  import UpdateControls from './UpdateControls.svelte'
 
   interface Props {
     mode: Mode
@@ -38,10 +39,9 @@
     value={mode}
     options={[
       { value: 'send', text: 'Enviar' },
-      { value: 'receive', text: 'Mostrar' },
-      { value: 'mouse', text: 'Mouse' }
+      { value: 'receive', text: 'Receber' }
     ]}
     onSelect={(value) => chooseMode(value as Mode)}
   />
-  <span></span>
+  <div class="topbar-right"><UpdateControls compact /></div>
 </header>

@@ -158,7 +158,11 @@ export interface Settings {
   screenPlacements: Record<string, ScreenPlacement>
   /** Último modo escolhido neste aparelho; null até a pessoa escolher pela primeira vez. */
   mode: Mode | null
+  /** Aparência: a do sistema, ou sempre clara, ou sempre escura. */
+  theme: Theme
 }
+
+export type Theme = 'system' | 'light' | 'dark'
 
 /** O perfil é sempre derivado do bitrate, por isso não pode ser alterado diretamente. */
 export type SettingsPatch = Partial<Omit<Settings, 'profile' | 'mode'>>

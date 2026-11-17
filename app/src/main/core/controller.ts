@@ -36,11 +36,11 @@ const isSendIdle = (state: AppState): boolean =>
 
 const isSendLive = (state: AppState): boolean => isSendIdle(state) || state.screen === 'connected'
 
+/** Sem modo escolhido ainda (primeira vez), abre direto em Enviar: nada de tela de boas-vindas nem de escolha. */
 function startFor(mode: Settings['mode']): AppState {
-  if (mode === 'send') return { screen: 'preparing', mode: 'send', step: 'engine' }
   if (mode === 'receive') return { screen: 'discover', mode: 'receive' }
   if (mode === 'mouse') return { screen: 'mouse', mode: 'mouse' }
-  return { screen: 'install' }
+  return { screen: 'preparing', mode: 'send', step: 'engine' }
 }
 
 function describeError(cause: unknown): string {

@@ -35,7 +35,7 @@ describe('parseSettings', () => {
       screenPlacement: { side: 'below', offset: 0.5 },
       screenPlacements: { ['AB:'.repeat(31) + 'CD']: { side: 'left' } }
     }
-    expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null })
+    expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null, theme: 'system' })
   })
 
   it('lado de cada computador no modo Mouse: só lados válidos, no máximo 20', () => {
@@ -226,5 +226,13 @@ describe('nome padrão do dispositivo', () => {
       { name: 'Notebook', address: '192.168.1.9', screen: { width: 1366, height: 768 } },
       { name: 'Tablet', address: '192.168.1.8' }
     ])
+  })
+})
+
+describe('tema', () => {
+  it('guarda claro ou escuro; qualquer outra coisa volta para o do sistema', () => {
+    expect(parseSettings({ theme: 'dark' }).theme).toBe('dark')
+    expect(parseSettings({ theme: 'light' }).theme).toBe('light')
+    expect(parseSettings({ theme: 'roxo' }).theme).toBe('system')
   })
 })

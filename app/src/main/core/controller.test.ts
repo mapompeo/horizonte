@@ -505,9 +505,9 @@ describe('ajustes e assinantes', () => {
 })
 
 describe('abrir o app depois de instalado', () => {
-  it('primeira vez (nenhum modo escolhido ainda): mostra a tela de começar', async () => {
+  it('primeira vez (nenhum modo escolhido ainda): abre direto enviando, sem boas-vindas nem escolha', async () => {
     const { controller } = await startWith(null)
-    expect(screen(controller)).toBe('install')
+    expect(['preparing', 'ready']).toContain(screen(controller))
   })
 
   it('último modo foi mostrar: abre direto procurando aparelhos', async () => {
@@ -527,9 +527,7 @@ describe('abrir o app depois de instalado', () => {
 
   it('escolher um modo grava para a próxima abertura', async () => {
     const { controller, saved } = await startWith(null)
-    controller.dispatch({ type: 'INSTALL_DONE' })
     await settle(200)
-    expect(screen(controller)).toBe('choose')
     controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
     await settle()
     expect(saved.at(-1)?.mode).toBe('receive')

@@ -31,7 +31,8 @@ export const DEFAULT_SETTINGS: Settings = {
   trusted: [],
   screenPlacement: { side: 'right' },
   screenPlacements: {},
-  mode: null
+  mode: null,
+  theme: 'system'
 }
 
 const LEGACY_DEFAULT_NAMES = ['Computador']
@@ -166,6 +167,7 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
     encoding: oneOf<Encoding>(input.encoding, ['auto', 'gpu', 'cpu'], DEFAULT_SETTINGS.encoding),
     codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
     autostart: typeof input.autostart === 'boolean' ? input.autostart : DEFAULT_SETTINGS.autostart,
+    theme: input.theme === 'light' || input.theme === 'dark' ? input.theme : 'system',
     trusted: parseTrusted(input.trusted),
     screenPlacement: parseScreenPlacement(
       input.screenPlacement,

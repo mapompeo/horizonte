@@ -3,13 +3,10 @@
   import type { AppState, Mode } from '../../shared/types'
   import { route, snapshot, startSync, syncError } from './lib/store'
   import TopBar from './components/TopBar.svelte'
-  import UpdateControls from './components/UpdateControls.svelte'
   import Install from './screens/Install.svelte'
   import Choose from './screens/Choose.svelte'
-  import Preparing from './screens/Preparing.svelte'
-  import Ready from './screens/Ready.svelte'
+  import SendHome from './screens/SendHome.svelte'
   import Approve from './screens/Approve.svelte'
-  import Connected from './screens/Connected.svelte'
   import Discover from './screens/Discover.svelte'
   import Receiving from './screens/Receiving.svelte'
   import Mouse from './screens/Mouse.svelte'
@@ -82,10 +79,14 @@
             <Install />
           {:else if state.screen === 'choose'}
             <Choose />
-          {:else if state.screen === 'preparing'}
-            <Preparing step={state.step} progress={state.progress} />
-          {:else if state.screen === 'ready'}
-            <Ready deviceName={settings.deviceName} />
+          {:else if state.screen === 'preparing' || state.screen === 'ready'}
+            <SendHome
+              deviceName={settings.deviceName}
+              devices={[]}
+              placement={settings.screenPlacement}
+              placements={settings.screenPlacements}
+              preparing={state.screen === 'preparing'}
+            />
           {:else if state.screen === 'approve'}
             <Approve
               device={state.device}
@@ -94,7 +95,8 @@
               fingerprint={state.fingerprint}
             />
           {:else if state.screen === 'connected'}
-            <Connected
+            <SendHome
+              deviceName={settings.deviceName}
               devices={state.devices}
               placement={settings.screenPlacement}
               placements={settings.screenPlacements}
@@ -114,7 +116,6 @@
           {/if}
         </main>
       {/key}
-      {#if mode}<UpdateControls compact />{/if}
     </div>
   {/if}
 {:else}

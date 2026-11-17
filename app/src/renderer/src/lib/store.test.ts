@@ -20,7 +20,8 @@ const current: Snapshot = {
     trusted: [],
     screenPlacement: { side: 'right' },
     screenPlacements: {},
-    mode: 'send'
+    mode: 'send',
+    theme: 'system'
   }
 }
 

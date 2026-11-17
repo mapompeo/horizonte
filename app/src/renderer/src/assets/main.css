@@ -22,8 +22,9 @@
   color-scheme: light dark;
 }
 
+/* Escuro pelo sistema, ou à força pelo tema (o app usa o do Electron; a demonstração do site, data-theme). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #000000;
     --fg: #ffffff;
     --muted: rgba(235, 235, 245, 0.6);
@@ -35,6 +36,18 @@
     --accent: #0a84ff;
     --danger-fg: #ff453a;
   }
+}
+:root[data-theme='dark'] {
+  --bg: #000000;
+  --fg: #ffffff;
+  --muted: rgba(235, 235, 245, 0.6);
+  --line: rgba(84, 84, 88, 0.6);
+  --card: #1c1c1e;
+  --seg: rgba(118, 118, 128, 0.24);
+  --seg-on: #636366;
+  --ok-dot: #30d158;
+  --accent: #0a84ff;
+  --danger-fg: #ff453a;
 }
 
 * {
@@ -872,13 +885,31 @@ input[type='range'] {
   font-variant-numeric: tabular-nums;
 }
 .foot-link {
-  border: 0;
-  background: transparent;
-  color: var(--accent);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #000000;
   font-size: var(--t-small);
   font-weight: 600;
-  padding: 6px 4px;
+  padding: 7px 14px;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  -webkit-app-region: no-drag;
+}
+.foot-link:hover {
+  transform: scale(1.03);
+}
+
+/* Direita do topo: a atualização, longe dos botões da janela (Windows e Linux). */
+.topbar-right {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  padding-right: 150px;
+  -webkit-app-region: no-drag;
+}
+[data-platform='darwin'] .topbar-right {
+  padding-right: 16px;
 }
 
 .about-link {
