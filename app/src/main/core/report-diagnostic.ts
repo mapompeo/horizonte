@@ -1,11 +1,8 @@
-import { REPO_URL } from '../../shared/api'
-import type { DiagnosticReportResult } from '../../shared/api'
 import type { Snapshot } from '../../shared/types'
 import { buildDiagnostic, diagnosticErrorCode, type DiagnosticEnv } from './diagnostic'
 
-const ISSUE_URL = `${REPO_URL}/issues/new?labels=diagnostico`
-// Orçamento local conservador, não uma garantia do limite de todos os navegadores/servidores.
-const MAX_URL = 6000
+/** Recebe o diagnóstico no site do Horizonte (sem conta no GitHub para quem envia). */
+export const DIAGNOSTIC_URL = 'https://horizonte.vercel.app/api/diagnostico'
 const ERROR_LINE =
   /^Erro: (?:MONITOR_VIRTUAL_NAO_ENCONTRADO|DRIVER_INSTALACAO_FALHOU|ERRO_NAO_CLASSIFICADO)$/
 
@@ -34,36 +31,15 @@ export function reportSummary(text: string): string {
     .join('\n')
 }
 
+/** Um clique: monta o resumo (sem textos livres) e manda. */
 export function createDiagnosticReporter(deps: {
-  text(includeHistory: boolean): Promise<string>
-  open(url: string): Promise<unknown>
-  copy(text: string): void
-}): {
-  prepare(includeHistory: unknown): Promise<string>
-  report(text: unknown): Promise<DiagnosticReportResult>
-} {
-  let reviewed: string | null = null
+  text(): Promise<string>
+  post(text: string): Promise<boolean>
+}): { send(): Promise<void> } {
   return {
-    async prepare(includeHistory) {
-      reviewed = null
-      if (typeof includeHistory !== 'boolean') throw new Error('Opção de histórico inválida.')
-      const text = reportSummary(await deps.text(includeHistory))
-      reviewed = text
-      return text
-    },
-    async report(text) {
-      if (typeof text !== 'string' || !text || text !== reviewed)
-        throw new Error('Revise o diagnóstico antes de abrir o GitHub.')
-      const url = new URL(ISSUE_URL)
-      url.searchParams.set('title', 'Diagnóstico do Horizonte')
-      url.searchParams.set('body', text)
-      if (url.href.length > MAX_URL) {
-        deps.copy(text)
-        await deps.open(ISSUE_URL)
-        return 'copied'
-      }
-      await deps.open(url.href)
-      return 'opened'
+    async send() {
+      const text = reportSummary(await deps.text())
+      if (!(await deps.post(text))) throw new Error('Não consegui enviar agora.')
     }
   }
 }

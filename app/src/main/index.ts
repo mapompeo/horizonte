@@ -32,7 +32,11 @@ import { createUpdater } from './core/updater'
 import { createTrayFollower } from './core/tray'
 import { createUninstaller } from './core/uninstall'
 import { buildDiagnostic } from './core/diagnostic'
-import { buildReportDiagnostic, createDiagnosticReporter } from './core/report-diagnostic'
+import {
+  buildReportDiagnostic,
+  createDiagnosticReporter,
+  DIAGNOSTIC_URL
+} from './core/report-diagnostic'
 import { createDiagnosticHistory } from './core/diagnostic-history'
 import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
@@ -549,20 +553,19 @@ async function boot(): Promise<void> {
   })
   ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
   const reports = createDiagnosticReporter({
-    text: async (includeHistory) => {
-      const snapshot = controller.getSnapshot()
-      return (
-        buildReportDiagnostic(diagnosticEnv, snapshot) +
-        (includeHistory ? `\n\n${await history.summary()}` : '')
-      )
-    },
-    open: (url) => shell.openExternal(url),
-    copy: (text) => clipboard.writeText(text)
+    text: async () =>
+      `${buildReportDiagnostic(diagnosticEnv, controller.getSnapshot())}\n\n${await history.summary()}`,
+    post: async (texto) =>
+      (
+        await fetch(DIAGNOSTIC_URL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ texto }),
+          signal: AbortSignal.timeout(15_000)
+        }).catch(() => null)
+      )?.ok === true
   })
-  ipcMain.handle(CHANNELS.diagnosticDraft, (_event, includeHistory: unknown) =>
-    reports.prepare(includeHistory)
-  )
-  ipcMain.handle(CHANNELS.reportDiagnostic, (_event, text: unknown) => reports.report(text))
+  ipcMain.handle(CHANNELS.reportDiagnostic, () => reports.send())
   // A área de transferência do navegador falha em alguns sistemas (visto no macOS): a cópia é feita aqui.
   ipcMain.handle(CHANNELS.copyDiagnostic, async () => {
     try {

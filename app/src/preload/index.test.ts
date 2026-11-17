@@ -11,8 +11,6 @@ vi.mock('electron', () => ({
 test('preload expõe consulta e relatório pelos canais tipados, sem URL recebida', async () => {
   await import('./index')
   const api = expose.mock.calls[0][1] as HorizonteApi
-  await api.getDiagnosticDraft(true)
-  expect(invoke).toHaveBeenLastCalledWith(CHANNELS.diagnosticDraft, true)
-  expect(await api.reportDiagnostic('revisado')).toBe('opened')
-  expect(invoke).toHaveBeenLastCalledWith(CHANNELS.reportDiagnostic, 'revisado')
+  await api.reportDiagnostic()
+  expect(invoke).toHaveBeenLastCalledWith(CHANNELS.reportDiagnostic)
 })

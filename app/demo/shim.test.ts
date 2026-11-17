@@ -25,11 +25,9 @@ test('falha de clipboard nao afirma sucesso', async () => {
   await installDemo({ auto: false })
   expect(await window.horizonte.copyDiagnostic()).toBe(false)
 })
-test('diagnóstico da demo é fictício e não abre issue real', async () => {
+test('a demo não envia diagnóstico de verdade', async () => {
   await installDemo({ auto: false })
-  const text = await window.horizonte.getDiagnosticDraft(false)
-  expect(text).toContain('demonstração')
-  await expect(window.horizonte.reportDiagnostic(text)).rejects.toThrow('não envia')
+  await expect(window.horizonte.reportDiagnostic()).rejects.toThrow('não envia')
 })
 test('trocar para Mostrar cancela pedido automatico', async () => {
   await installDemo({ initial: { screen: 'ready', mode: 'send' }, auto: true })

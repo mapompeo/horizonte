@@ -72,124 +72,28 @@ describe('diagnóstico revisado', () => {
       'Erro: MONITOR_VIRTUAL_NAO_ENCONTRADO\nErro: DRIVER_INSTALACAO_FALHOU\nErro: ERRO_NAO_CLASSIFICADO'
     )
   })
-  it('limite considera a URL codificada inteira: 6000 abre preenchida, 6001 usa cópia', async () => {
-    const base = new URL('https://github.com/mapompeo/horizonte/issues/new')
-    base.searchParams.set('labels', 'diagnostico')
-    base.searchParams.set('title', 'Diagnóstico do Horizonte')
-    base.searchParams.set('body', 'Horizonte ')
-    for (const size of [6000, 6001]) {
-      const opened: string[] = [],
-        copied: string[] = []
-      const text = `Horizonte ${'x'.repeat(size - base.href.length)}`
-      const reporter = createDiagnosticReporter({
-        text: async () => text,
-        open: async (url) => {
-          opened.push(url)
-        },
-        copy: (value) => {
-          copied.push(value)
-        }
-      })
-      expect(await reporter.report(await reporter.prepare(false))).toBe(
-        size === 6000 ? 'opened' : 'copied'
-      )
-      expect(copied).toEqual(size === 6000 ? [] : [text])
-      if (size === 6000) expect(opened[0]).toHaveLength(6000)
-    }
-  })
-  it('rejeita opção de histórico inválida e invalida revisão anterior se a consulta falhar', async () => {
-    let fail = false
-    const reporter = createDiagnosticReporter({
-      text: async () => {
-        if (fail) throw new Error('leitura')
-        return 'Horizonte 1'
-      },
-      open: async () => undefined,
-      copy: () => undefined
-    })
-    const draft = await reporter.prepare(false)
-    fail = true
-    await expect(reporter.prepare(true)).rejects.toThrow('leitura')
-    await expect(reporter.report(draft)).rejects.toThrow('Revise')
-    await expect(reporter.prepare('yes')).rejects.toThrow('inválida')
-  })
   it('não inclui mensagens, detalhes ou linhas arbitrárias do histórico', () => {
     expect(
       reportSummary('Horizonte 1\nTela: error\nErro: token=segredo\nDetalhe: log\nsenha secreta')
     ).toBe('Horizonte 1\nTela: error')
   })
-  it('abre somente o destino fixo com Unicode e caracteres especiais preservados', async () => {
-    const urls: string[] = []
+  it('um clique manda só o resumo (sem textos livres) para o endereço fixo', async () => {
+    const sent: string[] = []
     const reporter = createDiagnosticReporter({
-      text: async () => 'Horizonte 1\nTela: error\nSistema: ação & # +',
-      open: async (url) => {
-        urls.push(url)
-      },
-      copy: () => undefined
-    })
-    const draft = await reporter.prepare(false)
-    expect(urls).toHaveLength(0)
-    expect(await reporter.report(draft)).toBe('opened')
-    const url = new URL(urls[0])
-    expect(url.origin + url.pathname).toBe('https://github.com/mapompeo/horizonte/issues/new')
-    expect(url.searchParams.get('body')).toBe(draft)
-  })
-  it('rejeita texto não revisado ou adulterado sem abrir navegador', async () => {
-    const reporter = createDiagnosticReporter({
-      text: async () => 'Horizonte 1',
-      open: async () => {
-        throw new Error('não deveria abrir')
-      },
-      copy: () => undefined
-    })
-    await expect(reporter.report('https://evil.example')).rejects.toThrow()
-    await reporter.prepare(false)
-    for (const value of [null, {}, '', 'Horizonte 1\nAuthorization: Bearer segredo'])
-      await expect(reporter.report(value)).rejects.toThrow()
-  })
-  it('URL longa copia apenas o texto revisado e abre formulário vazio, sem truncamento', async () => {
-    const urls: string[] = [],
-      copies: string[] = []
-    const reporter = createDiagnosticReporter({
-      text: async () => `Horizonte ${'á'.repeat(1500)}`,
-      open: async (url) => {
-        urls.push(url)
-      },
-      copy: (text) => {
-        copies.push(text)
+      text: async () => 'Horizonte 1\nTela: error\nDetalhe: token=segredo',
+      post: async (text) => {
+        sent.push(text)
+        return true
       }
     })
-    const draft = await reporter.prepare(true)
-    expect(await reporter.report(draft)).toBe('copied')
-    expect(copies).toEqual([draft])
-    expect(new URL(urls[0]).searchParams.has('body')).toBe(false)
+    await reporter.send()
+    expect(sent).toEqual(['Horizonte 1\nTela: error'])
   })
-  it('propaga rejeições de consulta, clipboard e navegador', async () => {
+  it('se o envio falhar, avisa com erro (o botão oferece tentar de novo)', async () => {
     const reporter = createDiagnosticReporter({
-      text: async () => {
-        throw new Error('leitura')
-      },
-      open: async () => undefined,
-      copy: () => undefined
-    })
-    await expect(reporter.prepare(false)).rejects.toThrow('leitura')
-    const failing = createDiagnosticReporter({
       text: async () => 'Horizonte 1',
-      open: async () => {
-        throw new Error('navegador')
-      },
-      copy: () => undefined
+      post: async () => false
     })
-    await expect(failing.report(await failing.prepare(false))).rejects.toThrow('navegador')
-    const clipboard = createDiagnosticReporter({
-      text: async () => `Horizonte ${'á'.repeat(1500)}`,
-      open: async () => {
-        throw new Error('não deveria abrir')
-      },
-      copy: () => {
-        throw new Error('clipboard')
-      }
-    })
-    await expect(clipboard.report(await clipboard.prepare(false))).rejects.toThrow('clipboard')
+    await expect(reporter.send()).rejects.toThrow('Não consegui enviar')
   })
 })
