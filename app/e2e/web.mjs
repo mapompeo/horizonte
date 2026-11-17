@@ -6,18 +6,17 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-// No Windows, quem envia ainda usa o motor antigo (o próprio é o item D do plano), e o app de teste do tablet não
-// chega a abrir na CI de lá: o teste volta junto com o envio pelo motor próprio no Windows.
-if (process.platform === 'win32') {
-  console.log('PULADO navegador: o envio pelo motor próprio ainda não existe no Windows')
-  process.exit(0)
-}
 
 const require = createRequire(import.meta.url)
 const electronPath = require('electron')
 const OUT = resolve('e2e-out')
 mkdirSync(OUT, { recursive: true })
 const PORT = 47918
+// HZ_WEB_MODE: synthetic (quadro de teste, padrão), screen (a tela de verdade) ou extend (uma tela estendida nova,
+// pelo driver do Windows ou pela tela virtual do Mac). Os dois últimos são o uso real, com a captura do sistema.
+const MODE = process.env.HZ_WEB_MODE ?? 'synthetic'
+const MODE_ARGS = { synthetic: ['--motor-synthetic'], screen: [], extend: ['--motor-extend'] }[MODE]
+if (!MODE_ARGS) throw new Error(`HZ_WEB_MODE desconhecido: ${MODE}`)
 const TIMEOUT_MS = 90_000
 
 function launch(label, args, onLine = () => undefined) {
@@ -43,7 +42,7 @@ function launch(label, args, onLine = () => undefined) {
 let browser = null
 const sender = launch(
   'envia',
-  ['.', '--motor-send', '--motor-synthetic', '--motor-browser', `--motor-port=${PORT}`],
+  ['.', '--motor-send', ...MODE_ARGS, '--motor-browser', `--motor-port=${PORT}`],
   (line) => {
     const match = /no navegador: http:\/\/\S+:(\d+) código (\d{4})/.exec(line)
     if (match && !browser)
@@ -67,7 +66,7 @@ const code = await new Promise((resolveCode) => {
   }, 200)
 })
 if (code !== 0)
-  for (const file of ['web-trace.log', 'web-navegador.log'])
+  for (const file of ['web-trace.log', 'web-navegador.log', 'web-envia.log'])
     console.log(
       `--- ${file}\n` +
         (existsSync(join(OUT, file))
@@ -77,6 +76,8 @@ if (code !== 0)
 browser?.kill()
 sender.kill()
 console.log(
-  code === 0 ? 'OK   navegador: a página recebeu o vídeo' : `FALHA navegador (código ${code})`
+  code === 0
+    ? `OK   navegador (${MODE}): a página recebeu o vídeo`
+    : `FALHA navegador (${MODE}, código ${code})`
 )
 process.exit(code)

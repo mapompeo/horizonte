@@ -212,7 +212,7 @@ try {
       for (const part of ['Escuro', 'Nome', 'Enviar diagnóstico', 'GitHub'])
         if (!text.toLowerCase().includes(part.toLowerCase())) throw new Error(`os Ajustes não têm "${part}"`)
       await app.click(/Desinstalar Horizonte/)
-      await app.waitText(/Remova nos Ajustes do sistema/)
+      await app.waitText(/não foi instalado por um instalador/)
       await app.shot('04-ajustes')
     })
     await app.close()

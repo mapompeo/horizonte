@@ -24,11 +24,18 @@ app.whenReady().then(async () => {
     height: 640,
     webPreferences: { offscreen: true }
   })
-  trace(`abrindo ${url}`)
-  await win.loadURL(url)
+  // O link que o app copia e o QR abre: endereço/código. A página já vem com o código; falta só o toque em Conectar.
+  const link = `${url.replace(/\/$/, '')}/${code}`
+  trace(`abrindo ${link}`)
+  await win.loadURL(link)
   const run = (js) => win.webContents.executeJavaScript(js)
-  await run(`document.getElementById('codigo').value = ${JSON.stringify(code)}
-    document.getElementById('form').requestSubmit()`)
+  const filled = await run(`document.getElementById('codigo').value`)
+  if (filled !== code) {
+    trace(`o link não preencheu o código (veio "${filled}")`)
+    app.exit(1)
+    return
+  }
+  await run(`document.getElementById('form').requestSubmit()`)
   for (let i = 0; i < 60; i++) {
     await new Promise((resolve) => setTimeout(resolve, 500))
     const video = await run(`(() => {

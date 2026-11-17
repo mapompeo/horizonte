@@ -108,6 +108,26 @@ jobs:
       - name: Motor novo (transmissão WebRTC entre dois Electron)
         if: ${{ success() }}
         run: npm run e2e:motor
+      # O uso de verdade, sem quadro de teste: o app captura a tela do sistema e um navegador (o papel do celular)
+      # abre o link com o código e recebe o vídeo. No Windows a tela estendida usa o driver que os testes acima instalaram.
+      - name: Envio de verdade ao navegador (Windows)
+        if: ${{ success() && runner.os == 'Windows' }}
+        shell: bash
+        run: |
+          HZ_WEB_MODE=screen node e2e/web.mjs
+          HZ_WEB_MODE=extend node e2e/web.mjs
+      - name: Permissão de Gravação de Tela para o Electron (macOS)
+        if: ${{ success() && runner.os == 'macOS' }}
+        continue-on-error: true
+        run: |
+          db="/Library/Application Support/com.apple.TCC/TCC.db"
+          sudo sqlite3 "$db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceScreenCapture','com.github.Electron',0,2,4,1,NULL,NULL,0,'UNUSED',NULL,0,$(date +%s),NULL,NULL,'UNUSED',0);"
+          sudo sqlite3 "$db" "SELECT service, client, auth_value FROM access WHERE service='kTCCServiceScreenCapture';"
+      - name: Envio de verdade ao navegador (macOS)
+        if: ${{ success() && runner.os == 'macOS' }}
+        run: |
+          HZ_WEB_MODE=screen node e2e/web.mjs
+          HZ_WEB_MODE=extend node e2e/web.mjs
       - name: Empacotar o app (sem instalador)
         if: ${{ success() }}
         env:
