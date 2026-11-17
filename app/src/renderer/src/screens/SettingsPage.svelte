@@ -86,9 +86,9 @@
             label="Fluidez"
             value={settings.fps}
             options={[
-              { value: 30, text: '30' },
-              { value: 60, text: '60' },
-              { value: 120, text: '120' }
+              { value: 30, text: '30 fps' },
+              { value: 60, text: '60 fps' },
+              { value: 120, text: '120 fps' }
             ]}
             onSelect={(value) => patchSettings({ fps: value as Fps })}
           />
