@@ -1,5 +1,5 @@
 /*
- * horizonte-mouse (Windows): o modo Mouse sem Deskflow, com o mesmo protocolo de linhas do auxiliar do Linux.
+ * horizonte-mouse (Windows): o modo Mouse, com o mesmo protocolo de linhas do auxiliar do Linux.
  *
  *   --check    sai com 0 (o Windows sempre deixa capturar e injetar sem permissão extra).
  *   --capture  imprime as telas (ZONE largura altura x y, depois ZONES) e recebe barreiras (barrier id x1 y1 x2 y2,

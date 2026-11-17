@@ -55,16 +55,13 @@ import {
   videoDriverHint,
   type VideoHint
 } from './platform/linux/video-driver'
-import { createRealMouseEngine } from './engine/deskflow/wire'
+import { createRealMouseEngine } from './engine/mouse/wire'
 import { advertiseService, browseService } from './engine/lan'
 import { createPresence } from './engine/presence'
 import { detectDeviceKind } from './platform/device-kind'
 import type { DeviceKind } from '../shared/device'
-import { DESKFLOW_WINDOWS } from './engine/deskflow/versions'
 import { FakeEngine } from './engine/fake'
 import type { EnginePort } from './engine/port'
-import { downloadVerified } from './platform/windows/download'
-import { psQuote } from './platform/windows/elevation'
 import { runPowerShell } from './platform/windows/probes'
 import { lanAddress } from './web/wire'
 import { createBrowserAccess } from './web/browser'
@@ -94,7 +91,7 @@ function trayImage(): Electron.NativeImage {
 }
 
 /** Os botões de janela ficam por cima da interface, na cor do fundo e discretos. */
-/** Área de trabalho em pixels de verdade, com todas as telas juntas (é o que o Deskflow enxerga). */
+/** Área de trabalho em pixels de verdade, com todas as telas juntas (é o que o auxiliar do mouse enxerga). */
 function desktopSize(exclude: number | null = null): ScreenSize {
   const boxes = screen
     .getAllDisplays()
@@ -371,17 +368,10 @@ async function boot(): Promise<void> {
   }).then((kind) => (ownKind = kind))
   app.on('before-quit', () => presence.stop())
 
-  // Mouse e teclado compartilhados: Deskflow nos três sistemas, e o caminho próprio entre dois GNOME.
+  // Mouse e teclado compartilhados, com o auxiliar horizonte-mouse de cada sistema.
   // No Mac, o próprio sistema pede uma vez a permissão de Acessibilidade para o mouse.
   const mouse = createRealMouseEngine({
     userData: app.getPath('userData'),
-    download: (zip) => downloadVerified(DESKFLOW_WINDOWS, zip),
-    extract: async (zip, into) => {
-      await runPowerShell(
-        `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(into)} -Force`,
-        120_000
-      )
-    },
     runPowerShell: (script) => runPowerShell(script, 30_000),
     ownScreen: desktopSize,
     ownKind: () => ownKind,

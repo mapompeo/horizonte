@@ -1,12 +1,11 @@
 import { app, clipboard, ClipboardItem } from 'electron'
 import { execFile, spawn, spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { createReadStream, createWriteStream, existsSync, readdirSync, readFileSync } from 'node:fs'
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { createReadStream, createWriteStream, existsSync } from 'node:fs'
+import { mkdir, readFile, rm, stat } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
 import { connect as netConnect, createServer as createNetServer, type Socket } from 'node:net'
 import { createInterface } from 'node:readline'
-import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
@@ -25,13 +24,9 @@ import {
   type MouseChannel,
   type MouseEngineDeps
 } from './mouse-engine'
-import { createMouseShare, type DeskflowCommand, type MouseShare } from './session'
 import { createNativeMouseShare, NATIVE_MOUSE_PORT } from '../native-mouse/native-share'
+import type { MouseShare } from '../native-mouse/types'
 import { linuxFirewall } from '../webrtc/wire'
-import { downloadVerified } from '../../platform/windows/download'
-import { ensureDeskflowLinux, FLATPAK_APP } from './linux-install'
-import { DESKFLOW_MAC, DESKFLOW_WINDOWS, deskflowLinuxFor } from './versions'
-import { ensureMacApp } from '../../platform/macos/mac-app'
 
 const SERVICE_TYPE = 'horizonte-mouse'
 /** Cabe um texto copiado inteiro (até MAX_TEXT_CHARS, em UTF-8 e com escapes do JSON). */
@@ -125,77 +120,6 @@ function advertise(
   })
 }
 
-/** Roda e rejeita com a mensagem de erro do processo. */
-const run = (command: string, args: string[], timeout: number): Promise<void> =>
-  new Promise((resolve, reject) =>
-    execFile(command, args, { timeout }, (error, _out, stderr) =>
-      error ? reject(new Error(String(stderr).trim() || error.message)) : resolve()
-    )
-  )
-
-const succeeds = (command: string, args: string[]): Promise<boolean> =>
-  new Promise((resolve) => execFile(command, args, { timeout: 15_000 }, (error) => resolve(!error)))
-
-/**
- * Como chamar o `deskflow-core`. Mac: tirado do disco do app, conferido. Windows: zip portátil baixado e conferido, numa pasta por versão. Linux: o
- * Deskflow instalado, ou instalado agora (pacote nativo, ou o Flatpak onde não há pacote).
- */
-function deskflowCommand(deps: {
-  dir: string
-  download(zip: string): Promise<void>
-  extract(zip: string, into: string): Promise<void>
-}): () => Promise<DeskflowCommand> {
-  return async () => {
-    if (process.platform === 'darwin') {
-      // Do disco do app só se usa o `deskflow-core`; fica na pasta do Horizonte, sem administrador.
-      const command = await ensureMacApp({
-        dir: join(deps.dir, DESKFLOW_MAC.arm64.version),
-        workDir: tmpdir(),
-        artifact: process.arch === 'arm64' ? DESKFLOW_MAC.arm64 : DESKFLOW_MAC.x64,
-        appName: 'Deskflow.app',
-        executable: 'deskflow-core',
-        exists: (path) => Promise.resolve(existsSync(path)),
-        download: (artifact, dest) => downloadVerified(artifact, dest),
-        run: (script) => run('sh', ['-c', script], 600_000).then(() => '')
-      })
-      return { command, prefix: [] }
-    }
-    if (process.platform === 'win32') {
-      const into = join(deps.dir, DESKFLOW_WINDOWS.version)
-      const find = (): string | null => {
-        if (!existsSync(into)) return null
-        for (const entry of readdirSync(into)) {
-          const exe = join(into, entry, 'deskflow-core.exe')
-          if (existsSync(exe)) return exe
-        }
-        return null
-      }
-      let exe = find()
-      if (!exe) {
-        const zip = join(deps.dir, DESKFLOW_WINDOWS.fileName)
-        await mkdir(deps.dir, { recursive: true })
-        await deps.download(zip)
-        await deps.extract(zip, into)
-        exe = find()
-      }
-      if (!exe) throw new Error('O pacote do Deskflow veio sem o deskflow-core.exe.')
-      return { command: exe, prefix: [] }
-    }
-    return ensureDeskflowLinux({
-      has: (command) => succeeds('sh', ['-c', `command -v ${command}`]),
-      flatpakHasApp: () => succeeds('flatpak', ['info', FLATPAK_APP]),
-      // Lido só na hora de instalar: o arquivo existe apenas no Linux.
-      pkg: () => deskflowLinuxFor(readFileSync('/etc/os-release', 'utf8'), process.arch),
-      download: (pkg, dest) => downloadVerified(pkg, dest),
-      // O pkexec mostra o aviso de senha do sistema (polkit) uma única vez.
-      runPrivileged: (script) => run('pkexec', ['sh', '-c', script], 600_000),
-      runUser: (script) => run('sh', ['-c', script], 600_000),
-      workDir: tmpdir(),
-      configDir: deps.dir
-    })
-  }
-}
-
 function systemClipboard(
   inbox: string,
   runPowerShell: (script: string) => Promise<unknown>
@@ -249,9 +173,8 @@ function systemClipboard(
 }
 
 /**
- * Texto copiado que o Deskflow não leva. Linux (GNOME): o observador do Mutter avisa cada texto copiado aqui e põe
- * o que vem do outro PC (no modo Mouse próprio não há Deskflow). Windows: o texto que vem do Linux vai para a área
- * de transferência (o que sai do Windows o Deskflow leva).
+ * Texto copiado. Linux (GNOME): o observador do Mutter avisa cada texto copiado aqui e põe o que vem do outro PC.
+ * Windows e Mac: `pollText` olha a área de transferência.
  */
 function textClipboard(
   deps: {
@@ -335,7 +258,7 @@ function linuxClipboard(inbox: string): {
   }
 }
 
-/** O auxiliar `horizonte-mouse` deste sistema (no Linux, só no GNOME que captura o mouse); senão, null (fica o Deskflow). */
+/** O auxiliar `horizonte-mouse` deste sistema (no Linux, só no GNOME que captura o mouse); senão, null. */
 function nativeMouseHelper(): string | null {
   const linux = process.platform === 'linux'
   if (linux && !/gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? '')) return null
@@ -348,7 +271,7 @@ function nativeMouseHelper(): string | null {
   return spawnSync(path, ['--check'], { timeout: 3000 }).status === 0 ? path : null
 }
 
-/** O modo Mouse sem Deskflow, com o auxiliar e a rede de verdade. */
+/** O modo Mouse, com o auxiliar e a rede de verdade. */
 function realNativeShare(helper: string): MouseShare {
   return createNativeMouseShare({
     spawn(mode) {
@@ -381,34 +304,15 @@ function realNativeShare(helper: string): MouseShare {
   })
 }
 
-/** Com segredo combinado, o caminho próprio; sem ele, o Deskflow (o outro lado não pode, ou é Windows ou Mac). */
-function routedShare(deskflow: MouseShare, native: MouseShare): MouseShare {
-  let current: MouseShare = deskflow
-  const use = (next: MouseShare): void => {
-    if (current !== next) current.stop()
-    current = next
-  }
-  return {
-    async share(options) {
-      use(options.token ? native : deskflow)
-      await current.share(options)
-    },
-    async follow(options) {
-      use(options.token ? native : deskflow)
-      await current.follow(options)
-    },
-    stop: () => current.stop(),
-    onEnded(listener) {
-      const stops = [deskflow.onEnded(listener), native.onEnded(listener)]
-      return () => stops.forEach((stop) => stop())
-    }
-  }
+/** Sem o auxiliar (ex.: Linux fora do GNOME), o modo Mouse aparece, mas não compartilha. */
+function unavailableShare(): MouseShare {
+  const fail = (): Promise<never> =>
+    Promise.reject(new Error('Este computador ainda não consegue compartilhar o mouse.'))
+  return { share: fail, follow: fail, stop: () => undefined, onEnded: () => () => undefined }
 }
 
 export function createRealMouseEngine(deps: {
   userData: string
-  download(zip: string): Promise<void>
-  extract(zip: string, into: string): Promise<void>
   runPowerShell(script: string): Promise<unknown>
   writeText(text: string): void
   readText(): Promise<string> | string
@@ -417,34 +321,7 @@ export function createRealMouseEngine(deps: {
   /** Tipo deste aparelho, anunciado junto (o ícone nos outros PCs). */
   ownKind(): DeviceKind
 }): MouseEngine {
-  const dir = join(deps.userData, 'deskflow')
-  const deskflow = createMouseShare({
-    command: deskflowCommand({ dir, download: deps.download, extract: deps.extract }),
-    dir,
-    writeFile: async (path, text) => {
-      await mkdir(dir, { recursive: true })
-      await writeFile(path, text)
-    },
-    join,
-    spawn: async (command, args) => {
-      // A saída do Deskflow vai para um log da última sessão, para entender quando não conecta.
-      await mkdir(dir, { recursive: true })
-      const log = createWriteStream(
-        join(dir, `${args.includes('server') ? 'server' : 'client'}.log`)
-      )
-      const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
-      child.stdout?.pipe(log)
-      child.stderr?.pipe(log)
-      await new Promise<void>((resolve, reject) => {
-        child.once('spawn', resolve)
-        child.once('error', reject)
-      })
-      return {
-        kill: () => void child.kill(),
-        onExit: (listener) => void child.once('exit', listener)
-      }
-    }
-  })
+  const dir = join(deps.userData, 'mouse')
   const channel = createChannel()
   // Imagens copiadas aqui ficam nesta pasta até o outro PC baixar (só esta pessoa lê a pasta).
   const copied = join(dir, 'copiadas')
@@ -480,10 +357,10 @@ export function createRealMouseEngine(deps: {
   const helper = nativeMouseHelper()
   const native = helper ? realNativeShare(helper) : null
   const engine = createMouseEngine({
-    share: native ? routedShare(deskflow, native) : deskflow,
+    share: native ?? unavailableShare(),
     channel,
     advertise: (name) => advertise(name, deps.ownScreen(), deps.ownKind(), native !== null),
-    ...(native ? { nativeToken: () => randomBytes(32).toString('hex') } : {}),
+    nativeToken: () => randomBytes(32).toString('hex'),
     browse,
     files,
     text,

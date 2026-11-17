@@ -12,7 +12,7 @@ fi
 # shellcheck disable=SC2086
 cc -O2 -pthread -Wall -Wextra -Wno-missing-field-initializers -o build/horizonte-display horizonte-display.c $flags
 echo "build/horizonte-display"
-# O auxiliar do modo Mouse precisa também da libei-dev (GNOME 46 ou mais novo); sem ela, o modo Mouse usa o Deskflow.
+# O auxiliar do modo Mouse precisa também da libei-dev (GNOME 46 ou mais novo); sem ela, o modo Mouse não compartilha.
 if [ -n "$HZ_MOUSE_CFLAGS" ]; then
   mouse="$HZ_MOUSE_CFLAGS $HZ_MOUSE_LIBS"
 elif pkg-config --exists libei-1.0 2>/dev/null; then

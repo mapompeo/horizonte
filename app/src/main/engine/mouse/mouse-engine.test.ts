@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Host } from '../../../shared/types'
 import { createMouseEngine, type MouseChannel } from './mouse-engine'
-import type { MouseShare } from './session'
+import type { MouseShare } from '../native-mouse/types'
 import type { MousePlacement } from '../port'
 
 /** Um computador só, encostado do lado `side`. */
@@ -10,7 +10,7 @@ const one = (
   address: string,
   side: MousePlacement['side'] = 'right',
   offset?: number
-): MousePlacement[] => [{ host: { name, address }, side, offset }]
+): MousePlacement[] => [{ host: { name, address, nativeMouse: true }, side, offset }]
 
 /** Rede de mentira: cada endereço tem um canal, e o send entrega na hora para o outro lado. */
 function network(): { channel(address: string): MouseChannel } {
@@ -73,6 +73,7 @@ function pc(
   const engine = createMouseEngine({
     share,
     channel: net.channel(address),
+    nativeToken: () => 'a'.repeat(32),
     advertise: () => () => undefined,
     browse: async () => peers,
     text: {
@@ -103,7 +104,7 @@ describe('modo Mouse entre dois PCs', () => {
     expect(notebook.share.calls).toEqual(['follow:192.168.1.4:Notebook'])
   })
 
-  it('adicionado pelo IP: o outro entra com o nome que o servidor conhece, senão o Deskflow recusa', async () => {
+  it('adicionado pelo IP: o outro entra com o nome que o servidor conhece, senão o servidor recusa', async () => {
     const net = network()
     const desktop = pc(net, '192.168.1.4')
     const linux = pc(net, '192.168.1.7')
@@ -165,7 +166,7 @@ describe('modo Mouse entre dois PCs', () => {
     expect(desktop.share.calls).toEqual(['share:Notebook', 'stop'])
   })
 
-  it('o Deskflow caindo sozinho avisa o outro PC', async () => {
+  it('o auxiliar caindo sozinho avisa o outro PC', async () => {
     const net = network()
     const desktop = pc(net, '192.168.1.4')
     const notebook = pc(net, '192.168.1.6')
@@ -177,6 +178,22 @@ describe('modo Mouse entre dois PCs', () => {
     await new Promise((resolve) => setTimeout(resolve, 10))
     expect(desktop.ended).toHaveBeenCalledOnce()
     expect(notebook.ended).toHaveBeenCalledOnce()
+  })
+
+  it('sem o segredo do caminho próprio, o pedido é recusado; e quem não anuncia o modo Mouse nem é chamado', async () => {
+    const net = network()
+    const desktop = pc(net, '192.168.1.4')
+    const notebook = pc(net, '192.168.1.6')
+    await notebook.engine.start('Notebook')
+    await net.channel('192.168.1.4').send('192.168.1.6', '/mouse/request', { device: 'Desktop' })
+    expect(notebook.requests).toEqual([])
+    await expect(
+      desktop.engine.share(
+        [{ host: { name: 'Antigo', address: '192.168.1.9' }, side: 'right' }],
+        'Desktop'
+      )
+    ).rejects.toThrow('Antigo ainda não consegue compartilhar o mouse.')
+    expect(desktop.share.calls).toEqual([])
   })
 
   it('pedido sem nome é recusado pelo canal', async () => {
@@ -200,7 +217,7 @@ describe('modo Mouse entre dois PCs', () => {
     expect(desktop.share.calls).toEqual(['share:Trabalho:left', 'share:Trabalho:above'])
   })
 
-  it('com os tamanhos das telas, manda ao Deskflow só o trecho da borda onde o outro encosta', async () => {
+  it('com os tamanhos das telas, manda só o trecho da borda onde o outro encosta', async () => {
     const net = network()
     const ranges: unknown[] = []
     const engine = createMouseEngine({
@@ -209,9 +226,15 @@ describe('modo Mouse entre dois PCs', () => {
         share: async (options) => void ranges.push(options.links[0]?.ranges)
       },
       channel: net.channel('192.168.1.4'),
+      nativeToken: () => 'a'.repeat(32),
       advertise: () => () => undefined,
       browse: async () => [
-        { name: 'Trabalho', address: '192.168.1.7', screen: { width: 1366, height: 768 } }
+        {
+          name: 'Trabalho',
+          address: '192.168.1.7',
+          nativeMouse: true,
+          screen: { width: 1366, height: 768 }
+        }
       ],
       ownScreen: () => ({ width: 3840, height: 1080 })
     })
@@ -258,8 +281,8 @@ describe('modo Mouse entre dois PCs', () => {
     await notebook.engine.start('Notebook')
     await desktop.engine.share(
       [
-        { host: { name: 'Trabalho', address: '192.168.1.7' }, side: 'left' },
-        { host: { name: 'Notebook', address: '192.168.1.6' }, side: 'below' }
+        { host: { name: 'Trabalho', address: '192.168.1.7', nativeMouse: true }, side: 'left' },
+        { host: { name: 'Notebook', address: '192.168.1.6', nativeMouse: true }, side: 'below' }
       ],
       'Desktop'
     )
@@ -284,8 +307,8 @@ describe('modo Mouse entre dois PCs', () => {
     await notebook.engine.start('Notebook')
     await desktop.engine.share(
       [
-        { host: { name: 'Trabalho', address: '192.168.1.7' }, side: 'left' },
-        { host: { name: 'Notebook', address: '192.168.1.6' }, side: 'right' }
+        { host: { name: 'Trabalho', address: '192.168.1.7', nativeMouse: true }, side: 'left' },
+        { host: { name: 'Notebook', address: '192.168.1.6', nativeMouse: true }, side: 'right' }
       ],
       'Desktop'
     )
@@ -307,8 +330,8 @@ describe('modo Mouse entre dois PCs', () => {
     await linux.engine.start('Trabalho')
     await desktop.engine.share(
       [
-        { host: { name: 'Trabalho', address: '192.168.1.7' }, side: 'left' },
-        { host: { name: 'Desligado', address: '192.168.1.99' }, side: 'right' }
+        { host: { name: 'Trabalho', address: '192.168.1.7', nativeMouse: true }, side: 'left' },
+        { host: { name: 'Desligado', address: '192.168.1.99', nativeMouse: true }, side: 'right' }
       ],
       'Desktop'
     )

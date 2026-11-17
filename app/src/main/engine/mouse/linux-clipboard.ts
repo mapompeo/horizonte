@@ -1,6 +1,5 @@
 /**
- * GNOME: copiar e colar entre os PCs pela área de transferência do próprio Mutter, sem aviso de permissão (o portal
- * só entrega o aviso de cópia ao Deskflow a partir do GNOME 51, e o modo Mouse próprio nem usa o Deskflow).
+ * GNOME: copiar e colar entre os PCs pela área de transferência do próprio Mutter, sem aviso de permissão.
  *
  * Saída, uma linha JSON por cópia feita aqui: {"text": ...}, {"files": [caminhos]} ou, para uma imagem copiada,
  * {"files": [arquivo .png], "image": true} (a imagem vai para um arquivo na pasta do argv[3]).

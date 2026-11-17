@@ -1,5 +1,5 @@
 /*
- * Auxiliar do modo Mouse no GNOME, sem Deskflow e sem diálogo de permissão. Fala por linhas na entrada e na saída
+ * Auxiliar do modo Mouse no GNOME, sem diálogo de permissão. Fala por linhas na entrada e na saída
  * padrão; quando a entrada fecha (o Horizonte saiu), ele sai junto, e o GNOME devolve o mouse e o teclado na hora.
  *
  * --check: sai com 0 se este GNOME captura mouse e teclado (org.gnome.Mutter.InputCapture).

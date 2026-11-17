@@ -56,7 +56,7 @@
 
   const horizontal = (side: MouseSide): boolean => side === 'above' || side === 'below'
 
-  /** Mesmo limite do Deskflow: sempre sobra um pedaço encostado para o mouse passar. */
+  /** Mesmo limite de edgeRanges: sempre sobra um pedaço encostado para o mouse passar. */
   function clamp(side: MouseSide, peer: ScreenSize, value: number): number {
     const ownEdge = horizontal(side) ? own.width : own.height
     const peerEdge = horizontal(side) ? peer.width : peer.height

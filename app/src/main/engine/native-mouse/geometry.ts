@@ -1,5 +1,5 @@
 import type { MouseSide, ScreenSize } from '../../../shared/types'
-import type { EdgeRanges } from '../deskflow/config'
+import type { EdgeRanges } from './types'
 
 /** Uma tela deste computador, como o GNOME informa. */
 export interface Zone {

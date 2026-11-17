@@ -11,7 +11,7 @@ done
 lipo -create -output build/horizonte-display build/horizonte-display-arm64 build/horizonte-display-x86_64
 codesign --force --sign - build/horizonte-display
 lipo -info build/horizonte-display
-# O auxiliar do modo Mouse (captura e injeção de mouse e teclado, sem Deskflow).
+# O auxiliar do modo Mouse (captura e injeção de mouse e teclado).
 for arch in arm64 x86_64; do
   swiftc -O -target "$arch-apple-macos11.0" -framework ApplicationServices mouse/main.swift \
     -o "build/horizonte-mouse-$arch"

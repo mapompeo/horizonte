@@ -1,7 +1,6 @@
 import type { Socket } from 'node:net'
 import type { ScreenSize } from '../../../shared/types'
-import type { DeskflowLink } from '../deskflow/config'
-import type { MouseShare } from '../deskflow/session'
+import type { MouseLink, MouseShare } from './types'
 import {
   barrierFor,
   crossedBack,
@@ -13,7 +12,7 @@ import {
 } from './geometry'
 import { secureLink, type SecureLink } from './secure-link'
 
-/** Porta do modo Mouse sem Deskflow (ao lado do canal, 47901). */
+/** Porta do mouse (ao lado do canal, 47901). */
 export const NATIVE_MOUSE_PORT = 47902
 const PING_MS = 1000
 /** Sem resposta por este tempo, o outro computador sumiu: o mouse volta para cá na hora. */
@@ -76,7 +75,7 @@ export function injectLine(raw: unknown): string | null {
 }
 
 interface Peer {
-  link: DeskflowLink
+  link: MouseLink
   barrier: Barrier | null
   conn: SecureLink | null
   lastSeen: number
@@ -270,7 +269,7 @@ export function createNativeMouseShare(deps: NativeShareDeps, now = Date.now): M
 
   return {
     async share({ links, token: agreed }) {
-      token = agreed ?? token
+      token = agreed
       // Mudou a posição com o compartilhamento em andamento: quem já conectou continua.
       peers = links.map((link) => {
         const known = peers.find((p) => p.link.address === link.address)

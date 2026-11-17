@@ -179,7 +179,7 @@ export interface Host {
   screen?: ScreenSize
   /** Tipo de aparelho, quando ele anuncia (Horizonte); sem isso, o ícone vem de um palpite pelo nome. */
   kind?: DeviceKind
-  /** Modo Mouse: ele captura e recebe o mouse sem Deskflow. */
+  /** Modo Mouse: ele captura e recebe o mouse. */
   nativeMouse?: boolean
 }
 

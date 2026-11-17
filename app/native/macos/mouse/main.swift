@@ -1,4 +1,4 @@
-// horizonte-mouse (Mac): o modo Mouse sem Deskflow, com o mesmo protocolo de linhas do auxiliar do Linux.
+// horizonte-mouse (Mac): o modo Mouse, com o mesmo protocolo de linhas do auxiliar do Linux.
 //
 //   --check    pede (uma vez) a permissão de Acessibilidade e sai com 0.
 //   --capture  imprime as telas (ZONE largura altura x y, depois ZONES) e recebe barreiras (barrier id x1 y1 x2 y2,

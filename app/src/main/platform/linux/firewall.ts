@@ -10,13 +10,13 @@ import { BROWSER_PORT_LAST } from '../../web/browser'
 export const MOTOR_FIREWALL_SCRIPT = [
   'for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12; do',
   `  ufw allow from "$net" to any port ${SIGNALING_PORT}:${BROWSER_PORT_LAST} proto tcp`,
-  // Modo Mouse: o Deskflow, o canal dos pedidos e o caminho sem Deskflow.
-  '  ufw allow from "$net" to any port 24800,47901,47902 proto tcp',
+  // Modo Mouse: o canal dos pedidos e o caminho do mouse.
+  '  ufw allow from "$net" to any port 47901,47902 proto tcp',
   'done'
 ].join('\n')
 
 /** Para liberar à mão, se a pessoa recusou a janela de senha. */
-export const FIREWALL_COMMAND = `sudo ufw allow from 192.168.0.0/16 to any port 24800,47901,47902,${SIGNALING_PORT}:${BROWSER_PORT_LAST} proto tcp`
+export const FIREWALL_COMMAND = `sudo ufw allow from 192.168.0.0/16 to any port 47901,47902,${SIGNALING_PORT}:${BROWSER_PORT_LAST} proto tcp`
 
 export interface FirewallDeps {
   /** Conteúdo de /etc/ufw/ufw.conf (legível sem administrador), ou null se não existe. */

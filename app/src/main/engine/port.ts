@@ -34,7 +34,7 @@ export interface ApproveRequest {
   name: string
 }
 
-/** Compartilhar mouse e teclado com outro PC (Deskflow), pela rede local. */
+/** Compartilhar mouse e teclado com outro PC pela rede local. */
 /** Um computador encostado neste no modo Mouse: o lado e onde começa a borda dele (fração da borda deste). */
 export interface MousePlacement {
   host: Host

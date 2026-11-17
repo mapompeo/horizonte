@@ -1,9 +1,9 @@
 import type { Host, ScreenSize } from '../../../shared/types'
 import { cleanName } from '../../../shared/names'
 import type { MouseEngine, MousePlacement } from '../port'
-import { edgeRanges, type DeskflowLink } from './config'
+import { edgeRanges } from './config'
 import type { createFileClipboard, OfferedFile } from './files'
-import type { MouseShare } from './session'
+import type { MouseLink, MouseShare } from '../native-mouse/types'
 
 /** Porta do canal do modo Mouse: só "quero usar meu mouse aí" e "terminou". */
 export const MOUSE_CHANNEL_PORT = 47901
@@ -27,19 +27,13 @@ export interface MouseEngineDeps {
   /** Anuncia este PC na rede local; devolve como parar. */
   advertise(name: string): () => void
   browse(): Promise<Host[]>
-  /** Copiar e colar arquivos entre os PCs; sem ele, só o texto copiado vai junto (pelo Deskflow). */
+  /** Copiar e colar arquivos entre os PCs; sem ele, só o texto copiado vai junto. */
   files?: ReturnType<typeof createFileClipboard>
   /** Área de trabalho deste computador (todas as telas juntas), para acertar onde as bordas se encostam. */
   ownScreen?: () => ScreenSize
-  /**
-   * Este computador faz o modo Mouse sem Deskflow? Com os dois lados podendo, o compartilhamento usa o caminho próprio
-   * (cifrado), combinado por este segredo novo a cada vez; sem isso, o Deskflow.
-   */
-  nativeToken?: () => string | null
-  /**
-   * Texto copiado que o Deskflow não leva (no GNOME antes do 51, do Linux para o outro PC não vai): `start` avisa
-   * cada texto copiado aqui, `write` põe na área de transferência o que veio do outro.
-   */
+  /** Segredo novo a cada compartilhamento: o caminho próprio é cifrado com ele. */
+  nativeToken(): string
+  /** Texto copiado: `start` avisa cada texto copiado aqui, `write` põe na área de transferência o que veio do outro. */
   text?: { start(onCopied: (text: string) => void): void; stop(): void; write(text: string): void }
 }
 
@@ -52,23 +46,23 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
   let unadvertise: (() => void) | null = null
   /** Quem pediu para usar o mouse dele aqui e ainda não teve resposta. */
   let pending: Host | null = null
-  /** Nome com que o servidor do outro lado espera este PC (o Deskflow recusa nomes desconhecidos). */
+  /** Nome com que o servidor do outro lado espera este PC (o servidor recusa nomes desconhecidos). */
   let pendingAs = ''
-  /** Segredo do pedido, quando o outro lado propôs o caminho sem Deskflow. */
-  let pendingToken: string | undefined
+  /** Segredo do pedido, que o outro lado propôs. */
+  let pendingToken = ''
   /** Os outros lados do compartilhamento em andamento, pelo endereço (aqui servidor: vários; aqui controlado: um). */
   const peers = new Map<string, Host>()
   /** Compartilhamento em que este PC é o servidor: onde cada um fica, para refazer sem encerrar. */
-  let serving: { name: string; placements: MousePlacement[]; token?: string } | null = null
+  let serving: { name: string; placements: MousePlacement[]; token: string } | null = null
   /** Tamanho da tela que cada computador anunciou na última procura, pelo endereço. */
   const screens = new Map<string, ScreenSize>()
-  /** Quem anunciou que faz o modo Mouse sem Deskflow. */
+  /** Quem anunciou que faz o modo Mouse. */
   const natives = new Set<string>()
   const requestListeners = new Set<(request: { device: string; address: string }) => void>()
   const endedListeners = new Set<() => void>()
 
-  /** Ligações do Deskflow; sem saber o tamanho daqui, cada um encosta na borda inteira. */
-  function linksFor(placements: MousePlacement[]): DeskflowLink[] {
+  /** Ligações do compartilhamento; sem saber o tamanho daqui, cada um encosta na borda inteira. */
+  function linksFor(placements: MousePlacement[]): MouseLink[] {
     const own = deps.ownScreen?.()
     return placements.map(({ host, side, offset }) => {
       const screen = host.screen ?? screens.get(host.address)
@@ -127,7 +121,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
     await deps.share.share({
       name: serving.name,
       links: linksFor(serving.placements),
-      ...(serving.token ? { token: serving.token } : {})
+      token: serving.token
     })
     startClipboards()
   }
@@ -140,11 +134,12 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
           ? cleanName(String((body as Record<string, unknown>).device ?? ''))
           : ''
       if (!device) return false
+      const offered = (body as Record<string, unknown>).native
+      // Sem o segredo, o outro lado é um Horizonte antigo: o pedido é recusado.
+      if (typeof offered !== 'string' || !/^[0-9a-f]{32,128}$/.test(offered)) return false
       pending = { name: device, address }
       pendingAs = cleanName(String((body as Record<string, unknown>).as ?? ''))
-      const offered = (body as Record<string, unknown>).native
-      pendingToken =
-        typeof offered === 'string' && /^[0-9a-f]{32,128}$/.test(offered) ? offered : undefined
+      pendingToken = offered
       for (const listener of [...requestListeners]) listener({ device, address })
       return true
     }
@@ -224,20 +219,16 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
     },
     async share(placements, ownName) {
       if (placements.length === 0) throw new Error('Arraste um computador para perto deste.')
-      // Sem Deskflow só se todos os lados puderem (e o tamanho da tela de cada um for conhecido).
-      const allNative = placements.every(
-        ({ host }) =>
-          (host.nativeMouse ?? natives.has(host.address)) &&
-          (host.screen ?? screens.get(host.address))
-      )
-      const token = allNative ? (deps.nativeToken?.() ?? undefined) : undefined
+      const old = placements.find(({ host }) => !(host.nativeMouse ?? natives.has(host.address)))
+      if (old) throw new Error(`${old.host.name} ainda não consegue compartilhar o mouse.`)
+      const token = deps.nativeToken()
       // O servidor sobe antes dos pedidos: quando cada um aceitar, já há onde se conectar.
       await deps.share.share({
         name: ownName,
         links: linksFor(placements),
-        ...(token ? { token } : {})
+        token
       })
-      serving = { name: ownName, placements: [...placements], ...(token ? { token } : {}) }
+      serving = { name: ownName, placements: [...placements], token }
       for (const { host } of placements) peers.set(host.address, host)
       startClipboards()
       const answers = await Promise.all(
@@ -246,7 +237,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
             .send(host.address, '/mouse/request', {
               device: ownName,
               as: host.name,
-              ...(token ? { native: token } : {})
+              native: token
             })
             .then(() => true)
             .catch(() => false)
@@ -275,7 +266,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       await deps.share.follow({
         name: pendingAs || ownName,
         serverAddress: other.address,
-        ...(pendingToken ? { token: pendingToken } : {})
+        token: pendingToken
       })
     },
     async deny() {
@@ -293,7 +284,7 @@ export function createMouseEngine(deps: MouseEngineDeps): MouseEngine {
       await deps.share.share({
         name: serving.name,
         links: linksFor(current),
-        ...(serving.token ? { token: serving.token } : {})
+        token: serving.token
       })
     },
     end: () => finish(true),

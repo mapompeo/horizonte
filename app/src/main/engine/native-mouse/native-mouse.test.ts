@@ -204,7 +204,7 @@ async function twoComputers(): Promise<{
   return { capture, inject, ended, server, client, killClient: () => clientSocket?.destroy() }
 }
 
-describe('modo Mouse sem Deskflow, de ponta a ponta', () => {
+describe('modo Mouse, de ponta a ponta', () => {
   it('liga a barreira da borda e, ao cruzar, o cursor anda no outro computador', async () => {
     const t = await twoComputers()
     expect(t.capture.sent).toContain('barrier 0 1920 0 1920 1079\n')
