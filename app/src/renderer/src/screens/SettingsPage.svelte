@@ -1,13 +1,6 @@
 <script lang="ts">
   import { PROFILES } from '../../../shared/quality'
-  import type {
-    Codec,
-    Encoding,
-    ExtendSide,
-    Fps,
-    Resolution,
-    Settings
-  } from '../../../shared/types'
+  import type { Fps, Settings } from '../../../shared/types'
   import { closeSettings, patchSettings } from '../lib/actions'
   import CopyButton from '../components/CopyButton.svelte'
   import PlacementMap from '../components/PlacementMap.svelte'
@@ -44,8 +37,6 @@
   ] as const
   /** Tamanho de quem ainda não conectou desde que passou a ser guardado: o real chega na próxima conexão. */
   const UNKNOWN_SCREEN = { width: 1920, height: 1080 }
-  /** Motor próprio: sem os ajustes que só valiam para o Sunshine. */
-  const webrtc = window.horizonte.engine === 'webrtc'
 </script>
 
 <div class="sheet">
@@ -131,21 +122,6 @@
     <section class="group" aria-labelledby="g-advanced">
       <h2 class="group-label" id="g-advanced">Avançado</h2>
       <div class="card">
-        {#if !webrtc}
-          <div class="adv-block">
-            <span class="adv-label">Resolução</span>
-            <Segmented
-              label="Resolução"
-              value={settings.resolution}
-              options={[
-                { value: '720p', text: '720p' },
-                { value: '1080p', text: '1080p' },
-                { value: '1440p', text: '1440p' }
-              ]}
-              onSelect={(value) => patchSettings({ resolution: value as Resolution })}
-            />
-          </div>
-        {/if}
         <div class="adv-block">
           <span class="adv-label">Quadros por segundo</span>
           <Segmented
@@ -159,84 +135,30 @@
             onSelect={(value) => patchSettings({ fps: value as Fps })}
           />
         </div>
-        {#if !webrtc}
-          <div class="adv-block">
-            <span class="adv-label">Codificação</span>
-            <Segmented
-              label="Codificação"
-              value={settings.encoding}
-              options={[
-                { value: 'auto', text: 'Automática' },
-                { value: 'gpu', text: 'Placa de vídeo' },
-                { value: 'cpu', text: 'Processador' }
-              ]}
-              onSelect={(value) => patchSettings({ encoding: value as Encoding })}
-            />
-            <p class="adv-note">
-              Automática usa a placa de vídeo e cai para o processador se ela falhar.
-            </p>
-          </div>
-          <div class="adv-block">
-            <span class="adv-label">Codec</span>
-            <Segmented
-              label="Codec"
-              value={settings.codec}
-              options={[
-                { value: 'h264', text: 'H.264' },
-                { value: 'hevc', text: 'HEVC' },
-                { value: 'av1', text: 'AV1' }
-              ]}
-              onSelect={(value) => patchSettings({ codec: value as Codec })}
-            />
-          </div>
-        {/if}
       </div>
     </section>
 
-    {#if webrtc || window.horizonte.platform !== 'darwin'}
-      <section class="group" aria-labelledby="g-place">
-        <h2 class="group-label" id="g-place">Posição da tela estendida</h2>
-        <div class="card">
-          {#if webrtc}
-            <div class="adv-block">
-              <PlacementMap
-                screens={[
-                  {
-                    key: '*',
-                    name: 'Tela estendida',
-                    screen:
-                      settings.trusted.findLast((device) => device.screen)?.screen ??
-                      UNKNOWN_SCREEN,
-                    placement: settings.screenPlacement
-                  }
-                ]}
-                placements={settings.screenPlacements}
-                height={200}
-              />
-            </div>
-          {:else}
-            <div class="adv-block">
-              <span class="adv-label">Posição da tela estendida</span>
-              <Segmented
-                label="Posição da tela estendida"
-                value={settings.extendSide}
-                options={[
-                  { value: 'left', text: 'Esquerda' },
-                  { value: 'above', text: 'Acima' },
-                  { value: 'right', text: 'Direita' }
-                ]}
-                onSelect={(value) => patchSettings({ extendSide: value as ExtendSide })}
-              />
-            </div>
-          {/if}
+    <section class="group" aria-labelledby="g-place">
+      <h2 class="group-label" id="g-place">Posição da tela estendida</h2>
+      <div class="card">
+        <div class="adv-block">
+          <PlacementMap
+            screens={[
+              {
+                key: '*',
+                name: 'Tela estendida',
+                screen:
+                  settings.trusted.findLast((device) => device.screen)?.screen ?? UNKNOWN_SCREEN,
+                placement: settings.screenPlacement
+              }
+            ]}
+            placements={settings.screenPlacements}
+            height={200}
+          />
         </div>
-        <p class="adv-note">
-          {webrtc
-            ? 'Arraste para posicionar. Vale para quem ainda não tem posição própria.'
-            : 'Vale para todos os aparelhos.'}
-        </p>
-      </section>
-    {/if}
+      </div>
+      <p class="adv-note">Arraste para posicionar. Vale para quem ainda não tem posição própria.</p>
+    </section>
 
     <section class="group" aria-labelledby="g-about">
       <h2 class="group-label" id="g-about">Sobre</h2>

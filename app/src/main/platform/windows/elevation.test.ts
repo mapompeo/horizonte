@@ -36,7 +36,7 @@ function fakeRunner(result: string | null, seen: string[] = []): ElevationRunner
 }
 
 const steps = [
-  { description: 'Instalar o Sunshine', script: 'Write-Output um' },
+  { description: 'Instalar o driver', script: 'Write-Output um' },
   { description: 'Instalar o driver', script: 'Write-Output dois' }
 ]
 

@@ -52,7 +52,7 @@ describe('histórico de diagnóstico', () => {
   it('preserva erro após reiniciar e retira credenciais antes de gravar', async () => {
     const history = createDiagnosticHistory(file, env)
     await history.record(
-      failure('sunshine --creds usuario senhaSecreta\nC:/Users/amigo/engine.log')
+      failure('servidor --creds usuario senhaSecreta\nC:/Users/amigo/engine.log')
     )
     const raw = await readFile(file, 'utf8')
     expect(raw).not.toContain('senhaSecreta')

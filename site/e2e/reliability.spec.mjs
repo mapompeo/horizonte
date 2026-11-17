@@ -1,11 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-test('PIN é explicado só onde ainda existe (Windows e Mac); no Linux, basta permitir', async ({ page }) => {
+test('o site não fala de PIN: basta permitir', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#rede')).toContainText('Permitir');
-  await expect(page.locator('#rede')).toContainText('PIN');
-  await expect(page.locator('#rede')).not.toContainText(/sem PIN/i);
-  await expect(page.locator('#captions')).not.toContainText(/sem PIN/i);
+  await expect(page.locator('#rede')).not.toContainText(/PIN/);
+  await expect(page.locator('#captions')).not.toContainText(/PIN/);
 });
 
 test('Mac oferece escolha explícita de chip com links corretos', async ({ page }) => {

@@ -16,7 +16,7 @@ export class ElevationError extends Error {
 }
 
 export interface ElevatedStep {
-  /** Frase curta para a mensagem de erro, por exemplo "Instalar o Sunshine". */
+  /** Frase curta para a mensagem de erro, por exemplo "Instalar o driver". */
   description: string
   /** Trecho de PowerShell. Valores vindos de fora devem passar por `psQuote`. */
   script: string

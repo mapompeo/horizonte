@@ -8,17 +8,15 @@ import {
   nativeImage,
   Notification,
   nativeTheme,
-  safeStorage,
   screen,
   session,
   shell,
   Tray
 } from 'electron'
 import { execFile, spawn, spawnSync } from 'node:child_process'
-import { randomInt } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
-import { homedir, hostname, networkInterfaces, release as osRelease } from 'node:os'
+import { homedir, hostname, release as osRelease } from 'node:os'
 import { join } from 'node:path'
 import { autoUpdater } from 'electron-updater'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
@@ -53,43 +51,19 @@ import {
   videoDriverHint,
   type VideoHint
 } from './platform/linux/video-driver'
-import { composeEngine } from './engine/compose'
-import { createDiscovery } from './engine/discovery'
 import { createRealMouseEngine } from './engine/deskflow/wire'
-import { advertiseService, browseService, safeBonjour } from './engine/lan'
+import { advertiseService, browseService } from './engine/lan'
 import { createPresence } from './engine/presence'
 import { detectDeviceKind } from './platform/device-kind'
 import type { DeviceKind } from '../shared/device'
 import { DESKFLOW_WINDOWS } from './engine/deskflow/versions'
-import { createPinChannel, sendPin } from './engine/pin-channel'
 import { FakeEngine } from './engine/fake'
-import { waitForExit } from './engine/moonlight/run'
-import { createMoonlightClient } from './engine/moonlight/client'
-import { createPairedHostsStore } from './engine/moonlight/paired-hosts'
-import { ensureMoonlight } from './engine/moonlight/install'
 import type { EnginePort } from './engine/port'
-import { SunshineApi } from './engine/sunshine/api'
-import { SunshineEngine } from './engine/sunshine/engine'
-import { readLogTail } from './engine/sunshine/log-file'
-import { createEngineMemory } from './engine/sunshine/memory'
 import { downloadVerified } from './platform/windows/download'
 import { psQuote } from './platform/windows/elevation'
 import { runPowerShell } from './platform/windows/probes'
-import { MOONLIGHT } from './platform/windows/versions'
-import {
-  createLinuxPlatform,
-  createMoonlightLauncher as createLinuxMoonlightLauncher,
-  SUNSHINE_LOG as LINUX_SUNSHINE_LOG
-} from './platform/linux/wire'
-import { createRealGateway, lanAddress } from './web/wire'
+import { lanAddress } from './web/wire'
 import { createBrowserAccess } from './web/browser'
-import {
-  createMacPlatform,
-  createMoonlightLauncher,
-  SUNSHINE_LOG as MAC_SUNSHINE_LOG
-} from './platform/macos/wire'
-import { existingDisplay, existingInstaller, readDevEngineConfig } from './platform/existing'
-import { createWindowsPlatform, SUNSHINE_LOG, toCipher } from './platform/windows/wire'
 
 // O AppImage não tem o chrome-sandbox com permissão especial, e o Ubuntu 24.04+ (AppArmor) bloqueia o sandbox por
 // namespace de usuário: sem isto o app fecha ao abrir. O .deb instala o chrome-sandbox e não precisa disso.
@@ -98,11 +72,6 @@ if (process.platform === 'linux' && process.env.APPIMAGE) app.commandLine.append
 // motor; o gnome-libsecret fala com qualquer provedor do Secret Service (GNOME Keyring, KWallet, KeePassXC).
 if (process.platform === 'linux' && !process.env.XDG_CURRENT_DESKTOP)
   app.commandLine.appendSwitch('password-store', 'gnome-libsecret')
-
-// Um pareamento de verdade leva segundos; passou disso, o Moonlight travou (e o list confere se pareou).
-const PAIR_TIMEOUT_MS = 60_000
-// O list responde em segundos quando o aparelho está pareado.
-const LIST_TIMEOUT_MS = 20_000
 
 /**
  * Ícone da bandeja. No Mac, a marca de uma cor como "template": o sistema pinta de preto ou de branco conforme a
@@ -175,7 +144,6 @@ function createWindow(controller: Controller): void {
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#000000' : '#F2F2F7',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      additionalArguments: [`--horizonte-engine=${USE_WEBRTC ? 'webrtc' : 'sunshine'}`],
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false
@@ -358,99 +326,6 @@ async function boot(): Promise<void> {
     }
   }
   const fake = new FakeEngine(is.dev ? 700 : 0)
-  const dev = readDevEngineConfig(process.env)
-  const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
-  const memory = createEngineMemory(join(app.getPath('userData'), 'engine.json'))
-  // Instalação de verdade (baixa e pede administrador): só no app empacotado ou pedindo com HORIZONTE_ENGINE=install.
-  const real =
-    process.platform === 'win32' &&
-    (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
-  const realLinux =
-    process.platform === 'linux' &&
-    (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
-  const realMac =
-    process.platform === 'darwin' &&
-    (app.isPackaged || process.env['HORIZONTE_ENGINE'] === 'install')
-  const discovery = createDiscovery({
-    find: (interfaceAddress) => {
-      // A rota multicast padrao pode ser VirtualBox/WSL. Consulta cada interface explicitamente.
-      const bonjour = safeBonjour(interfaceAddress)
-      const browser = bonjour.find({ type: 'nvstream' })
-      return {
-        on: (_event, listener) => browser.on('up', listener),
-        stop: () => {
-          browser.stop()
-          bonjour.destroy()
-        }
-      }
-    },
-    ownAddresses: () =>
-      Object.values(networkInterfaces())
-        .flat()
-        .flatMap((i) => (i ? [i.address] : [])),
-    localNetworks: () =>
-      Object.values(networkInterfaces())
-        .flat()
-        .flatMap((i) =>
-          i && i.family === 'IPv4' ? [{ address: i.address, netmask: i.netmask }] : []
-        )
-  })
-  // O Moonlight portátil é baixado na primeira vez que a pessoa conecta (versão fixa, hash conferido).
-  // Uma pasta por versão: a troca para um Moonlight novo baixa sozinha, sem depender do que já estava lá.
-  const moonlightDir = join(app.getPath('userData'), 'moonlight', MOONLIGHT.version)
-  const windowsMoonlightExe = (): Promise<string> =>
-    ensureMoonlight({
-      dir: moonlightDir,
-      exists: async (path) => existsSync(path),
-      download: async (onProgress) => {
-        const zip = join(app.getPath('temp'), MOONLIGHT.fileName)
-        await downloadVerified(MOONLIGHT, zip, onProgress)
-        return zip
-      },
-      extract: async (zip, into) => {
-        await runPowerShell(
-          `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(into)} -Force`,
-          120_000
-        )
-      }
-    })
-  // Cada sistema tem o seu jeito de instalar o Moonlight (zip portátil no Windows, disco .dmg no Mac, AppImage no Linux).
-  const moonlightExe =
-    process.platform === 'darwin'
-      ? createMoonlightLauncher(app.getPath('userData'))
-      : process.platform === 'linux'
-        ? createLinuxMoonlightLauncher(app.getPath('userData'))
-        : windowsMoonlightExe
-  // O AppImage abre sem precisar do FUSE (que falta no Ubuntu 24.04 de fábrica).
-  const clientEnv =
-    process.platform === 'linux' ? { ...process.env, APPIMAGE_EXTRACT_AND_RUN: '1' } : process.env
-  const receiver = createMoonlightClient({
-    listHosts: discovery.listHosts,
-    sendPin,
-    pairedHosts: createPairedHostsStore(join(app.getPath('userData'), 'paired-hosts.json')),
-    // O Moonlight se apresenta ao outro lado com o nome do computador.
-    deviceName: () => cleanName(hostname()) || 'Dispositivo',
-    randomPin: () => String(randomInt(10_000)).padStart(4, '0'),
-    run: async (args) => {
-      const child = spawn(await moonlightExe(), args, { stdio: 'ignore', env: clientEnv })
-      return waitForExit(
-        { kill: () => void child.kill(), onExit: (l) => void child.once('exit', l) },
-        args[0] === 'list' ? LIST_TIMEOUT_MS : PAIR_TIMEOUT_MS,
-        (l) => void child.once('error', l)
-      )
-    },
-    spawn: async (args) => {
-      const child = spawn(await moonlightExe(), args, { stdio: 'ignore', env: clientEnv })
-      await new Promise<void>((resolve, reject) => {
-        child.once('spawn', resolve)
-        child.once('error', reject)
-      })
-      return {
-        kill: () => void child.kill(),
-        onExit: (listener) => void child.once('exit', listener)
-      }
-    }
-  })
   const presence = createPresence({ advertise: advertiseService, browse: browseService })
   // Tipo deste aparelho (ícone nos outros PCs): descoberto uma vez; até lá, computador de mesa.
   let ownKind: DeviceKind = 'desktop'
@@ -463,7 +338,7 @@ async function boot(): Promise<void> {
   /** Porta em que o motor próprio espera conexão (a página do navegador liga nela). */
   let signalingPort = (): number | null => null
   let engine: EnginePort = fake
-  if (USE_WEBRTC) {
+  if (!USE_FAKE) {
     const webrtc = createAppWebRtcEngine({
       presence,
       deviceName: () => ownName(),
@@ -475,107 +350,6 @@ async function boot(): Promise<void> {
     virtualDisplay = () => webrtc.target()
     signalingPort = () => webrtc.signalingPort()
     engine = webrtc
-  } else if (dev) {
-    engine = composeEngine(
-      new SunshineEngine({
-        installer: existingInstaller(),
-        display: existingDisplay(),
-        memory,
-        credentials: async () => dev.credentials,
-        createApi: (credentials) =>
-          new SunshineApi({
-            port: credentials.port,
-            username: credentials.username,
-            password: credentials.password
-          }),
-        readLog: () => readLogTail(dev.logPath),
-        sleep
-      }),
-      receiver
-    )
-  } else if (real) {
-    const platform = createWindowsPlatform({
-      userData: app.getPath('userData'),
-      cipher: toCipher(safeStorage),
-      sleep,
-      confirmDriverTrust: async () => {
-        const answer = await dialog.showMessageBox({
-          type: 'warning',
-          title: 'Autorizar o monitor virtual',
-          message: 'O Horizonte precisa instalar um driver de monitor virtual.',
-          detail:
-            'O driver é de código aberto (Virtual Display Driver) e tem certificado próprio, que o Windows só aceita se for confiado como autoridade raiz. O Horizonte confia nele apenas durante a instalação e o remove em seguida. Só continue se você confia nessa origem.',
-          buttons: ['Autorizar e instalar', 'Cancelar'],
-          defaultId: 1,
-          cancelId: 1,
-          noLink: true
-        })
-        return answer.response === 0
-      }
-    })
-    engine = composeEngine(
-      new SunshineEngine({
-        installer: platform.installer,
-        display: platform.display,
-        memory,
-        credentials: platform.credentials,
-        createApi: platform.createApi,
-        readLog: () => readLogTail(SUNSHINE_LOG),
-        sleep,
-        pins: createPinChannel(),
-        restart: platform.restart,
-        // Na primeira partida o motor testa todos os codificadores e leva mais de 30 segundos.
-        timing: { restartTimeoutMs: 120_000 }
-      }),
-      receiver
-    )
-  } else if (realLinux) {
-    const platform = createLinuxPlatform({
-      userData: app.getPath('userData'),
-      cipher: toCipher(safeStorage),
-      sleep
-    })
-    engine = composeEngine(
-      new SunshineEngine({
-        installer: platform.installer,
-        display: platform.display,
-        memory,
-        credentials: platform.credentials,
-        createApi: platform.createApi,
-        readLog: () => readLogTail(LINUX_SUNSHINE_LOG),
-        sleep,
-        pins: createPinChannel(),
-        restart: platform.restart,
-        timing: { restartTimeoutMs: 120_000 }
-      }),
-      receiver
-    )
-  } else if (realMac) {
-    const platform = createMacPlatform({
-      userData: app.getPath('userData'),
-      cipher: toCipher(safeStorage),
-      sleep,
-      // Empacotado, o auxiliar vem junto do app (extraResources); do código-fonte, da pasta onde ele é compilado.
-      helperPath: app.isPackaged
-        ? join(process.resourcesPath, 'horizonte-display')
-        : join(app.getAppPath(), 'native', 'macos', 'build', 'horizonte-display')
-    })
-    app.on('before-quit', () => platform.stopVirtualDisplay())
-    engine = composeEngine(
-      new SunshineEngine({
-        installer: platform.installer,
-        display: platform.display,
-        memory,
-        credentials: platform.credentials,
-        createApi: platform.createApi,
-        readLog: () => readLogTail(MAC_SUNSHINE_LOG),
-        sleep,
-        pins: createPinChannel(),
-        restart: platform.restart,
-        timing: { restartTimeoutMs: 120_000 }
-      }),
-      receiver
-    )
   }
   const kindReady = detectDeviceKind({
     platform: process.platform,
@@ -704,7 +478,7 @@ async function boot(): Promise<void> {
           title: 'Desinstalar Horizonte',
           message: 'Desinstalar o Horizonte deste dispositivo?',
           detail:
-            'O desinstalador do Windows será aberto. Sunshine, Moonlight e o driver virtual são componentes separados e permanecerão instalados.',
+            'O desinstalador do Windows será aberto. O driver virtual é um componente separado e permanecerá instalado.',
           buttons: ['Cancelar', 'Desinstalar'],
           defaultId: 0,
           cancelId: 0
@@ -798,20 +572,12 @@ async function boot(): Promise<void> {
       return false
     }
   })
-  const gateway = createRealGateway({
-    userData: app.getPath('userData'),
-    cipher: toCipher(safeStorage),
-    sleep,
-    deviceName: () => controller.getSnapshot().settings.deviceName
+  // A página do receptor vem deste app (main/web/browser.ts).
+  const webAccess = createBrowserAccess({
+    pagesDir: join(__dirname, '../renderer'),
+    signalingPort: () => signalingPort(),
+    lanAddress: () => lanAddress()
   })
-  // No motor próprio, a página do receptor vem deste app (main/web/browser.ts); no antigo, do gateway.
-  const webAccess = USE_WEBRTC
-    ? createBrowserAccess({
-        pagesDir: join(__dirname, '../renderer'),
-        signalingPort: () => signalingPort(),
-        lanAddress: () => lanAddress()
-      })
-    : gateway
   ipcMain.handle(CHANNELS.webAccess, () => webAccess.status())
   ipcMain.handle(CHANNELS.setWebAccess, (_event, on: unknown) =>
     on === true ? webAccess.start() : webAccess.stop().then(() => webAccess.status())
@@ -879,17 +645,8 @@ function restartWithoutPrivilegeLock(): boolean {
   }
 }
 
-/**
- * Motor próprio (WebRTC): o padrão no Linux e no Mac (tela virtual do próprio macOS, sem programa extra). No Windows,
- * só com HORIZONTE_ENGINE=webrtc: sem um driver de tela virtual, ele só espelha a tela, e o Sunshine estende.
- * HORIZONTE_ENGINE=sunshine volta ao motor antigo; =fake abre o motor de mentira do desenvolvimento (o teste do app
- * aberto usa o roteiro dele).
- */
-const USE_WEBRTC =
-  process.env['HORIZONTE_ENGINE'] === 'webrtc' ||
-  (process.platform !== 'win32' &&
-    process.env['HORIZONTE_ENGINE'] !== 'sunshine' &&
-    process.env['HORIZONTE_ENGINE'] !== 'fake')
+/** O motor próprio é o único; HORIZONTE_ENGINE=fake abre o motor de mentira do desenvolvimento (o teste do app aberto usa o roteiro dele). */
+const USE_FAKE = process.env['HORIZONTE_ENGINE'] === 'fake'
 
 if (motor === 'invalid') {
   app.exit(2)
@@ -911,7 +668,7 @@ else if (!app.isPackaged || app.requestSingleInstanceLock()) {
     window.show()
     window.focus()
   })
-  if (USE_WEBRTC) prepareMotorSwitches()
+  if (!USE_FAKE) prepareMotorSwitches()
   void runStartup(boot, (error) => {
     console.error(error)
     try {

@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { ensureMoonlightMac, type MacMoonlightDeps } from './moonlight'
+import { ensureMacApp, type MacAppDeps } from './mac-app'
 
 const ARTIFACT = {
   version: '6.1.0',
-  fileName: 'Moonlight-6.1.0.dmg',
-  url: 'https://example.test/Moonlight-6.1.0.dmg',
+  fileName: 'Exemplo-6.1.0.dmg',
+  url: 'https://example.test/Exemplo-6.1.0.dmg',
   sha256: 'abc'
 }
 
 interface Fake {
-  deps: MacMoonlightDeps
+  deps: MacAppDeps
   scripts: string[]
   downloads: string[]
   files: Set<string>
@@ -21,16 +21,17 @@ function setup(
   const files = new Set<string>()
   const scripts: string[] = []
   const downloads: string[] = []
-  const executable = options.executable ?? 'Moonlight'
-  const app = '/Users/ana/Library/Application Support/horizonte/Moonlight.app'
+  const executable = options.executable ?? 'Exemplo'
+  const app = '/Users/ana/Library/Application Support/horizonte/Exemplo.app'
   if (options.installed) {
     files.add(`${app}/Contents/Info.plist`)
     files.add(`${app}/Contents/MacOS/${executable}`)
   }
-  const deps: MacMoonlightDeps = {
+  const deps: MacAppDeps = {
     dir: '/Users/ana/Library/Application Support/horizonte',
     workDir: '/tmp',
     artifact: ARTIFACT,
+    appName: 'Exemplo.app',
     exists: async (path) => files.has(path),
     download: async (_artifact, dest, onProgress) => {
       downloads.push(dest)
@@ -49,22 +50,22 @@ function setup(
   return { deps, scripts, downloads, files }
 }
 
-describe('ensureMoonlightMac', () => {
+describe('ensureMacApp', () => {
   it('recupera instalação parcial com plist presente e binário ausente', async () => {
     const t = setup({ installed: true })
     const binary =
-      '/Users/ana/Library/Application Support/horizonte/Moonlight.app/Contents/MacOS/Moonlight'
+      '/Users/ana/Library/Application Support/horizonte/Exemplo.app/Contents/MacOS/Exemplo'
     t.files.delete(binary)
-    await expect(ensureMoonlightMac(t.deps)).resolves.toBe(binary)
+    await expect(ensureMacApp(t.deps)).resolves.toBe(binary)
     expect(t.files.has(binary)).toBe(true)
     expect(t.downloads).toHaveLength(1)
   })
 
   it('já instalado: devolve o executável sem baixar nada', async () => {
     const t = setup({ installed: true })
-    const exe = await ensureMoonlightMac(t.deps)
+    const exe = await ensureMacApp(t.deps)
     expect(exe).toBe(
-      '/Users/ana/Library/Application Support/horizonte/Moonlight.app/Contents/MacOS/Moonlight'
+      '/Users/ana/Library/Application Support/horizonte/Exemplo.app/Contents/MacOS/Exemplo'
     )
     expect(t.downloads).toEqual([])
     expect(t.scripts.every((s) => s.includes('plutil'))).toBe(true)
@@ -73,9 +74,9 @@ describe('ensureMoonlightMac', () => {
   it('primeira vez: baixa o disco fixado e instala sem pedir administrador', async () => {
     const t = setup()
     const progress: number[] = []
-    const exe = await ensureMoonlightMac(t.deps, (f) => progress.push(f))
-    expect(t.downloads).toEqual(['/tmp/Moonlight-6.1.0.dmg'])
-    expect(exe).toMatch(/Moonlight\.app\/Contents\/MacOS\/Moonlight$/)
+    const exe = await ensureMacApp(t.deps, (f) => progress.push(f))
+    expect(t.downloads).toEqual(['/tmp/Exemplo-6.1.0.dmg'])
+    expect(exe).toMatch(/Exemplo\.app\/Contents\/MacOS\/Exemplo$/)
     const install = t.scripts.find((s) => s.includes('hdiutil attach')) ?? ''
     expect(install).toContain('set -e')
     expect(install).toContain('-nobrowse -readonly')
@@ -88,27 +89,27 @@ describe('ensureMoonlightMac', () => {
 
   it('acha o .app dentro do disco em vez de assumir o nome', async () => {
     const t = setup()
-    await ensureMoonlightMac(t.deps)
+    await ensureMacApp(t.deps)
     const install = t.scripts.find((s) => s.includes('hdiutil attach')) ?? ''
     expect(install).toMatch(/find "\$mnt" -maxdepth 2 -name '\*\.app'/)
-    expect(install).not.toContain('"$mnt/Moonlight.app"')
+    expect(install).not.toContain('"$mnt/Exemplo.app"')
   })
 
-  it('o nome do executável vem do Info.plist, sem assumir "Moonlight"', async () => {
-    const t = setup({ executable: 'Moonlight Game Streaming' })
-    const exe = await ensureMoonlightMac(t.deps)
-    expect(exe.endsWith('/Contents/MacOS/Moonlight Game Streaming')).toBe(true)
+  it('o nome do executável vem do Info.plist, sem assumir "Exemplo"', async () => {
+    const t = setup({ executable: 'Exemplo Bin' })
+    const exe = await ensureMacApp(t.deps)
+    expect(exe.endsWith('/Contents/MacOS/Exemplo Bin')).toBe(true)
   })
 
   it('o disco instalado sem o executável avisa em português, em vez de falhar mais tarde', async () => {
     const t = setup({ withBinary: false })
-    await expect(ensureMoonlightMac(t.deps)).rejects.toThrow('veio sem o executável')
+    await expect(ensureMacApp(t.deps)).rejects.toThrow('veio sem o executável')
   })
 
   it('nome de executável com caminho ou caracteres estranhos é recusado', async () => {
     for (const bad of ['../../bin/sh', 'a/b', '', 'x;rm -rf']) {
       const t = setup({ installed: true, executable: bad })
-      await expect(ensureMoonlightMac(t.deps)).rejects.toThrow()
+      await expect(ensureMacApp(t.deps)).rejects.toThrow()
     }
   })
 
@@ -118,9 +119,9 @@ describe('ensureMoonlightMac', () => {
     t.deps.exists = async () => false
     t.deps.run = async (script) => {
       t.scripts.push(script)
-      return script.includes('plutil') ? 'Moonlight' : ''
+      return script.includes('plutil') ? 'Exemplo' : ''
     }
-    await ensureMoonlightMac(t.deps).catch(() => undefined)
+    await ensureMacApp(t.deps).catch(() => undefined)
     const install = t.scripts.find((s) => s.includes('hdiutil attach')) ?? ''
     expect(install).toContain(String.raw`'/Users/o'\''brien/Library/Application Support/horizonte'`)
   })
@@ -130,7 +131,7 @@ describe('ensureMoonlightMac', () => {
     t.deps.download = async () => {
       throw new Error('hash não confere')
     }
-    await expect(ensureMoonlightMac(t.deps)).rejects.toThrow('hash não confere')
+    await expect(ensureMacApp(t.deps)).rejects.toThrow('hash não confere')
     expect(t.scripts).toEqual([])
   })
 })

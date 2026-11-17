@@ -26,7 +26,7 @@ nsis:
   createDesktopShortcut: true
 mac:
   publish: null
-  # Um disco para Mac com chip Apple e outro para Mac Intel: o Sunshine e o Moonlight que o app baixa já servem aos dois.
+  # Um disco para Mac com chip Apple e outro para Mac Intel: o app não depende do chip.
   target:
     - target: dmg
       arch: [arm64, x64]

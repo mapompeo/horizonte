@@ -5,12 +5,7 @@ import { diagnosticErrorCode } from './diagnostic'
 
 describe('diagnóstico revisado', () => {
   it.each([
-    ['Não achei o monitor virtual no Sunshine.', 'MONITOR_VIRTUAL_NAO_ENCONTRADO'],
-    [
-      'O motor de transmissão não respondeu. Confira se ele está instalado e aberto.',
-      'SUNSHINE_INDISPONIVEL'
-    ],
-    ['O pareamento não foi concluído. Aprove o pedido no outro dispositivo.', 'MOONLIGHT_FALHOU'],
+    ['Não achei o monitor virtual no motor de transmissão.', 'MONITOR_VIRTUAL_NAO_ENCONTRADO'],
     ['O pacote do driver veio incompleto.', 'DRIVER_INSTALACAO_FALHOU']
   ])('classifica assinatura conhecida sem devolver texto livre: %s', (message, code) => {
     expect(diagnosticErrorCode(message)).toBe(code)
@@ -58,7 +53,7 @@ describe('diagnóstico revisado', () => {
           screen: 'error',
           mode: 'send',
           error: {
-            message: 'token secreto\nErro: MOONLIGHT_FALHOU MALICIOSO',
+            message: 'token secreto\nErro: DRIVER_INSTALACAO_FALHOU MALICIOSO',
             detail: 'cookies privados'
           }
         }
@@ -71,10 +66,10 @@ describe('diagnóstico revisado', () => {
   it('reportSummary só aceita linha inteira de código whitelist', () => {
     expect(
       reportSummary(
-        'Erro: MONITOR_VIRTUAL_NAO_ENCONTRADO\nErro: SUNSHINE_INDISPONIVEL\nErro: MOONLIGHT_FALHOU\nErro: DRIVER_INSTALACAO_FALHOU\nErro: ERRO_NAO_CLASSIFICADO\nErro: MOONLIGHT_FALHOU segredo\nErro: INVENTADO\nErro: token privado'
+        'Erro: MONITOR_VIRTUAL_NAO_ENCONTRADO\nErro: DRIVER_INSTALACAO_FALHOU\nErro: ERRO_NAO_CLASSIFICADO\nErro: DRIVER_INSTALACAO_FALHOU segredo\nErro: INVENTADO\nErro: token privado'
       )
     ).toBe(
-      'Erro: MONITOR_VIRTUAL_NAO_ENCONTRADO\nErro: SUNSHINE_INDISPONIVEL\nErro: MOONLIGHT_FALHOU\nErro: DRIVER_INSTALACAO_FALHOU\nErro: ERRO_NAO_CLASSIFICADO'
+      'Erro: MONITOR_VIRTUAL_NAO_ENCONTRADO\nErro: DRIVER_INSTALACAO_FALHOU\nErro: ERRO_NAO_CLASSIFICADO'
     )
   })
   it('limite considera a URL codificada inteira: 6000 abre preenchida, 6001 usa cópia', async () => {

@@ -20,32 +20,32 @@ describe('buildDiagnostic', () => {
   it.each([
     [
       'sh',
-      "sunshine --creds 'usuario privado' 'senha privada'",
+      "servidor --creds 'usuario privado' 'senha privada'",
       ['usuario privado', 'senha privada']
     ],
     [
       'sh com apóstrofo',
-      String.raw`sunshine --creds 'ana' 'segredo'\''com-aspas'`,
+      String.raw`servidor --creds 'ana' 'segredo'\''com-aspas'`,
       ['ana', 'segredo', 'com-aspas']
     ],
     [
       'PowerShell',
-      "& 'C:\\Program Files\\Sunshine\\sunshine.exe' --creds 'ana''silva' 'senha''privada'",
+      "& 'C:\\Program Files\\Servidor\\servidor.exe' --creds 'ana''silva' 'senha''privada'",
       ['ana', 'silva', 'senha', 'privada']
     ],
     [
       'Windows com aspas duplas',
-      String.raw`sunshine.exe --creds "usuario privado" "segredo\"com-aspas"`,
+      String.raw`servidor.exe --creds "usuario privado" "segredo\"com-aspas"`,
       ['usuario privado', 'segredo', 'com-aspas']
     ],
     [
       'sem aspas',
-      'sunshine --creds usuarioSecreto senhaSecreta',
+      'servidor --creds usuarioSecreto senhaSecreta',
       ['usuarioSecreto', 'senhaSecreta']
     ],
     [
       'sh com escape',
-      String.raw`sunshine --creds usuario\ privado senha\ privada`,
+      String.raw`servidor --creds usuario\ privado senha\ privada`,
       ['usuario', 'senha']
     ],
     [
@@ -75,7 +75,7 @@ describe('buildDiagnostic', () => {
 
   it('preserva texto comum, URLs sem credenciais e opções não sensíveis', () => {
     const detail =
-      'sunshine --config /tmp/sunshine.conf; https://localhost:47990/api/config; Authorization recusada: HTTP 401'
+      'servidor --config /tmp/servidor.conf; https://localhost:47990/api/config; Authorization recusada: HTTP 401'
     const text = buildDiagnostic(
       env,
       snapshot({

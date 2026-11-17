@@ -12,7 +12,7 @@ import type {
 export interface PairRequest {
   device: string
   pairingId: string
-  /** Só no motor antigo (Moonlight): o PIN que o outro aparelho mandou. */
+  /** O PIN que o outro aparelho mandou (o motor próprio não usa). */
   pin?: string
   address?: string
   /** Motor próprio: id e impressão digital do certificado do outro aparelho (é nela que vale a confiança). */
@@ -29,7 +29,7 @@ export interface ConnectedPeer {
 
 export interface ApproveRequest {
   pairingId: string
-  /** Só no motor antigo (Moonlight); o motor próprio não usa PIN. */
+  /** O motor próprio não usa PIN. */
   pin?: string
   name: string
 }
@@ -64,7 +64,7 @@ export interface MouseEngine {
   onEnded(callback: () => void): () => void
 }
 
-/** Papel de quem envia a tela (Sunshine). */
+/** Papel de quem envia a tela. */
 export interface ServerEngine {
   prepare(
     onStep: (step: PrepStep) => void,
@@ -92,7 +92,7 @@ export interface ServerEngine {
   onClientDisconnected(callback: (fingerprint?: string) => void): () => void
 }
 
-/** Papel de quem recebe a tela (Moonlight). */
+/** Papel de quem recebe a tela. */
 export interface ClientEngine {
   listHosts(): Promise<Host[]>
   connect(host: string, settings: Settings): Promise<void>

@@ -94,10 +94,6 @@ jobs:
         if: runner.os == 'macOS'
         run: npm run build:helper:mac
       - name: Testes reais do sistema (rede, instalação, hash)
-        if: runner.os != 'Linux'
-        run: npm run test:e2e
-      - name: Testes reais do sistema (Linux, instala o Sunshine de verdade)
-        if: runner.os == 'Linux'
         run: npm run test:e2e
       - name: App aberto de verdade (Linux)
         if: ${{ success() && runner.os == 'Linux' }}

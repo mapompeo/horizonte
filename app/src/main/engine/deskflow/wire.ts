@@ -31,7 +31,7 @@ import { linuxFirewall } from '../webrtc/wire'
 import { downloadVerified } from '../../platform/windows/download'
 import { ensureDeskflowLinux, FLATPAK_APP } from './linux-install'
 import { DESKFLOW_MAC, DESKFLOW_WINDOWS, deskflowLinuxFor } from './versions'
-import { ensureMoonlightMac } from '../../platform/macos/moonlight'
+import { ensureMacApp } from '../../platform/macos/mac-app'
 
 const SERVICE_TYPE = 'horizonte-mouse'
 /** Cabe um texto copiado inteiro (até MAX_TEXT_CHARS, em UTF-8 e com escapes do JSON). */
@@ -148,7 +148,7 @@ function deskflowCommand(deps: {
   return async () => {
     if (process.platform === 'darwin') {
       // Do disco do app só se usa o `deskflow-core`; fica na pasta do Horizonte, sem administrador.
-      const command = await ensureMoonlightMac({
+      const command = await ensureMacApp({
         dir: join(deps.dir, DESKFLOW_MAC.arm64.version),
         workDir: tmpdir(),
         artifact: process.arch === 'arm64' ? DESKFLOW_MAC.arm64 : DESKFLOW_MAC.x64,

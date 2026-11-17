@@ -32,7 +32,7 @@ No Mac, o primeiro "Abrir" pode ser recusado ("danificado" ou "desenvolvedor nã
 
 Tudo fica na sua rede local, sem conta e sem nuvem.
 
-No Linux, o Horizonte transmite sozinho: WebRTC entre os dois aparelhos, sem instalar nada além dele. No GNOME, a tela estendida é um monitor virtual de verdade, criado sem nenhum diálogo. Use a placa de vídeo nos dois lados; em Intel, instale o `intel-media-va-driver`.
+Nos três sistemas, o Horizonte transmite sozinho: WebRTC entre os dois aparelhos. No Linux, sem instalar nada além dele. No GNOME, a tela estendida é um monitor virtual de verdade, criado sem nenhum diálogo. Use a placa de vídeo nos dois lados; em Intel, instale o `intel-media-va-driver`.
 
 - **Várias telas ao mesmo tempo:** cada aparelho que conecta (notebook, tablet, celular) vira uma tela estendida só dele. Quem ainda não tem posição vai para um lado livre; arraste cada uma no mapa para onde ela fica na mesa.
 - **Tablet ou celular, sem instalar nada:** no computador que envia, toque em "Receber pelo navegador". No outro aparelho, abra o endereço que aparece (porta 47920, ou uma das seguintes se ela estiver ocupada) e digite o código de 6 dígitos (ou aponte a câmera para o QR code). O computador ainda pergunta se pode. No iPhone, para usar a tela inteira sem as barras do Safari: Compartilhar › Adicionar à Tela de Início.
@@ -40,7 +40,7 @@ No Linux, o Horizonte transmite sozinho: WebRTC entre os dois aparelhos, sem ins
 
 No modo Mouse, entre dois computadores com GNOME 46 ou mais novo, o mouse e o teclado passam direto, por um canal cifrado, sem instalar nada. Com Windows, Mac ou outros Linux, o Horizonte usa o [Deskflow](https://github.com/deskflow/deskflow).
 
-No Windows e no Mac, por enquanto, o Horizonte ainda instala e configura o [Sunshine](https://github.com/LizardByte/Sunshine), o [Moonlight](https://github.com/moonlight-stream/moonlight-qt) e o [Virtual Display Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver). O motor próprio chega a eles depois de testado nesses sistemas.
+No Windows, o Horizonte instala o [Virtual Display Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver) para criar a tela estendida.
 
 ## Desenvolver
 

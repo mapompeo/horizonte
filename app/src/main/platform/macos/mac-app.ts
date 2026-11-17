@@ -1,12 +1,14 @@
 import { posix } from 'node:path'
-import { shQuote } from '../linux/setup'
 import type { Artifact } from '../windows/download'
 import type { PinnedArtifact } from '../windows/versions'
 
 const join = posix.join
 
-export interface MacMoonlightDeps {
-  /** Pasta própria do Horizonte onde o Moonlight.app fica (sem administrador). */
+/** Literal de texto do shell: nada é interpretado dentro de aspas simples. */
+const shQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`
+
+export interface MacAppDeps {
+  /** Pasta própria do Horizonte onde o .app fica (sem administrador). */
   dir: string
   /** Onde o disco baixado fica enquanto é instalado. */
   workDir: string
@@ -19,8 +21,9 @@ export interface MacMoonlightDeps {
   ): Promise<void>
   /** Roda um roteiro no `sh`, como a própria pessoa, e devolve o que ele imprimiu. */
   run(script: string): Promise<string>
-  /** Outro app de disco .dmg (o Deskflow): o nome do .app e o executável dentro de Contents/MacOS. */
-  appName?: string
+  /** O nome do .app no disco .dmg. */
+  appName: string
+  /** Executável dentro de Contents/MacOS; sem ele, vem do Info.plist do app. */
   executable?: string
 }
 
@@ -28,14 +31,14 @@ export interface MacMoonlightDeps {
 const SIMPLE_NAME = /^[A-Za-z0-9._ -]+$/
 
 /**
- * Garante o Moonlight no Mac e devolve o caminho do executável. Monta o disco, acha o `.app` que estiver nele
+ * Garante um app de disco .dmg no Mac e devolve o caminho do executável. Monta o disco, acha o `.app` que estiver nele
  * (sem assumir o nome) e copia para a pasta do Horizonte. Só baixa se ainda não estiver lá.
  */
-export async function ensureMoonlightMac(
-  deps: MacMoonlightDeps,
+export async function ensureMacApp(
+  deps: MacAppDeps,
   onProgress?: (fraction: number) => void
 ): Promise<string> {
-  const app = join(deps.dir, deps.appName ?? 'Moonlight.app')
+  const app = join(deps.dir, deps.appName)
   const plist = join(app, 'Contents', 'Info.plist')
 
   const executable = async (): Promise<string> => {
@@ -44,7 +47,7 @@ export async function ensureMoonlightMac(
       await deps.run(`plutil -extract CFBundleExecutable raw -o - ${shQuote(plist)}`)
     ).trim()
     if (!SIMPLE_NAME.test(name) || name === '.' || name === '..') {
-      throw new Error('O Moonlight instalado tem um Info.plist que o Horizonte não entende.')
+      throw new Error('O app instalado tem um Info.plist que o Horizonte não entende.')
     }
     return join(app, 'Contents', 'MacOS', name)
   }
@@ -70,7 +73,7 @@ export async function ensureMoonlightMac(
   }
 
   const path = await executable()
-  if (!(await deps.exists(path))) throw new Error('O pacote do Moonlight veio sem o executável.')
+  if (!(await deps.exists(path))) throw new Error('O pacote do app veio sem o executável.')
   onProgress?.(1)
   return path
 }

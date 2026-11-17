@@ -7,7 +7,7 @@ const ISSUE_URL = `${REPO_URL}/issues/new?labels=diagnostico`
 // Orçamento local conservador, não uma garantia do limite de todos os navegadores/servidores.
 const MAX_URL = 6000
 const ERROR_LINE =
-  /^Erro: (?:MONITOR_VIRTUAL_NAO_ENCONTRADO|SUNSHINE_INDISPONIVEL|MOONLIGHT_FALHOU|DRIVER_INSTALACAO_FALHOU|ERRO_NAO_CLASSIFICADO)$/
+  /^Erro: (?:MONITOR_VIRTUAL_NAO_ENCONTRADO|DRIVER_INSTALACAO_FALHOU|ERRO_NAO_CLASSIFICADO)$/
 
 export function buildReportDiagnostic(env: DiagnosticEnv, snapshot: Snapshot): string {
   if (snapshot.state.screen !== 'error') return buildDiagnostic(env, snapshot)

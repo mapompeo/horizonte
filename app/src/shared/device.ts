@@ -18,7 +18,7 @@ export function kindFromChassis(code: number): DeviceKind | null {
 }
 
 /**
- * Palpite pelo nome, para quem não diz o próprio tipo (o app Moonlight do celular ou da TV, o navegador). Os
+ * Palpite pelo nome, para quem não diz o próprio tipo (o navegador do celular ou da TV). Os
  * aparelhos costumam se chamar pelo modelo: "iPhone de Ana", "Galaxy Tab S9", "SHIELD Android TV".
  */
 export function guessKind(name: string): DeviceKind {

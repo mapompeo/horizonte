@@ -2,12 +2,8 @@ import type { Snapshot } from '../../shared/types'
 
 /** Assinaturas conhecidas usadas apenas localmente; nunca devolve o texto da exceção. */
 export function diagnosticErrorCode(text: string): string {
-  if (/Não achei o monitor virtual no (?:motor de transmissão|Sunshine)\./i.test(text))
+  if (/Não achei o monitor virtual no motor de transmissão\./i.test(text))
     return 'MONITOR_VIRTUAL_NAO_ENCONTRADO'
-  if (/O motor de transmissão (?:não respondeu|não está pronto ainda)\./i.test(text))
-    return 'SUNSHINE_INDISPONIVEL'
-  if (/O pareamento não foi concluído\.|Moonlight (?:falhou|encerrou com código)/i.test(text))
-    return 'MOONLIGHT_FALHOU'
   if (
     /O pacote do driver veio incompleto\.|Sem a sua autorização para o certificado do monitor virtual, não consigo instalá-lo\./i.test(
       text
