@@ -69,7 +69,7 @@ var options: [String: String] = [:]
 var index = 0
 while index < args.count {
     let option = args[index]
-    guard ["--width", "--height", "--name"].contains(option) else {
+    guard ["--width", "--height", "--name", "--serial"].contains(option) else {
         fail("argumento desconhecido: \(option)", code: 64)
     }
     guard index + 1 < args.count, !args[index + 1].hasPrefix("--"), !args[index + 1].isEmpty else {
@@ -100,7 +100,8 @@ descriptor.maxPixelsHigh = UInt32(height)
 descriptor.sizeInMillimeters = CGSize(width: 527, height: 296)
 descriptor.vendorID = 0x4852
 descriptor.productID = 0x4821
-descriptor.serialNum = 0x0001
+// Uma tela por aparelho conectado: cada uma com o seu número de série (o macOS não aceita duas iguais).
+descriptor.serialNum = UInt32(options["--serial"] ?? "1") ?? 1
 descriptor.terminationHandler = { _, _ in
     fputs("o macOS encerrou o monitor virtual\n", stderr)
     exit(3)

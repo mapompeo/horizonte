@@ -9,6 +9,7 @@ import {
 } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { hostname } from 'node:os'
 import { join } from 'node:path'
 import { guessKind, type DeviceKind } from '../../../shared/device'
@@ -20,7 +21,7 @@ import {
 } from '../../../shared/motor'
 import { cleanName } from '../../../shared/names'
 import { createGnomeDisplay } from '../../platform/linux/gnome-display'
-import { startDisplayHelper } from '../../platform/macos/helper'
+import { startDisplayHelper, type RunningDisplay } from '../../platform/macos/helper'
 import type { VirtualScreen } from './display'
 import { PROTOCOL_VERSION, type Hello, type Want } from './protocol'
 import type { MediaSide } from './session'
@@ -244,6 +245,63 @@ export const gnomeFrames = (): boolean =>
   process.platform === 'linux' &&
   Boolean(process.env.WAYLAND_DISPLAY) &&
   /gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? '')
+
+/** O auxiliar de tela virtual do Mac, ou null quando ele não existe (código-fonte sem compilar). */
+export function macHelperPath(): string | null {
+  const path = app.isPackaged
+    ? join(process.resourcesPath, 'horizonte-display')
+    : join(app.getAppPath(), 'native', 'macos', 'build', 'horizonte-display')
+  return process.platform === 'darwin' && existsSync(path) ? path : null
+}
+
+/**
+ * Mac: a tela estendida é um monitor virtual do próprio macOS (CGVirtualDisplay), um auxiliar por aparelho. O id que
+ * ele devolve é o mesmo da lista do Electron. O tamanho fica dentro do que o auxiliar aceita.
+ */
+export function createMacVirtualScreen(helper: string, index: number): VirtualScreen {
+  let running: RunningDisplay | null = null
+  let size = ''
+  const seen = (id: number): number | null =>
+    screen.getAllDisplays().some((display) => display.id === id) ? id : null
+  return {
+    async ensure(request) {
+      const width = Math.max(640, Math.min(7680, request.width))
+      const height = Math.max(480, Math.min(4320, request.height))
+      const key = `${width}x${height}`
+      if (running && size === key) return seen(running.displayId)
+      running?.stop()
+      running = await startDisplayHelper(() => {
+        const child = spawn(helper, [
+          '--width',
+          String(width),
+          '--height',
+          String(height),
+          '--name',
+          index ? `Horizonte ${index + 1}` : 'Horizonte',
+          '--serial',
+          String(index + 1)
+        ])
+        return {
+          onStdout: (callback) => child.stdout.on('data', (chunk) => callback(String(chunk))),
+          onStderr: (callback) => child.stderr.on('data', (chunk) => callback(String(chunk))),
+          onExit: (callback) => child.on('exit', callback),
+          onError: (callback) => child.on('error', callback),
+          kill: () => child.kill('SIGTERM')
+        }
+      })
+      size = key
+      // O macOS leva um instante para pôr a tela nova na lista.
+      for (let tries = 0; tries < 20 && seen(running.displayId) === null; tries++)
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      return seen(running.displayId)
+    },
+    async release() {
+      running?.stop()
+      running = null
+      size = ''
+    }
+  }
+}
 
 /** Monitor virtual do GNOME pelo auxiliar; com `frames`, ele também manda as imagens por esse socket. */
 export function createLinuxVirtualScreen(frames: string | null): VirtualScreen {

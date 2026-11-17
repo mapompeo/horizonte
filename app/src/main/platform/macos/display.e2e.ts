@@ -98,4 +98,53 @@ describe.runIf(process.platform === 'darwin')('monitor virtual no Mac de verdade
     expect(result.stderr).toContain(message)
     expect(result.stdout).not.toContain('DISPLAY_ID')
   })
+
+  it('duas telas ao mesmo tempo, uma por aparelho, cada uma com o seu número de série', async () => {
+    const before = screens()
+    const start = (
+      serial: number,
+      width: number,
+      height: number
+    ): { out: () => string; kill(): void } => {
+      const child = spawn(
+        HELPER,
+        [
+          '--width',
+          String(width),
+          '--height',
+          String(height),
+          '--name',
+          `Horizonte ${serial}`,
+          '--serial',
+          String(serial)
+        ],
+        {
+          stdio: ['ignore', 'pipe', 'pipe']
+        }
+      )
+      let out = ''
+      child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()))
+      child.stderr.on('data', (chunk: Buffer) => console.log('auxiliar', serial, chunk.toString()))
+      return { out: () => out, kill: () => void child.kill('SIGTERM') }
+    }
+    const one = start(1, 1920, 1080)
+    const two = start(2, 780, 1560)
+    try {
+      expect(
+        await until(() => /DISPLAY_ID/.test(one.out()) && /DISPLAY_ID/.test(two.out()), 30_000)
+      ).toBe(true)
+      expect(await until(() => screens() >= before + 2, 30_000), 'o sistema enxerga as duas').toBe(
+        true
+      )
+      const portrait = layout().displays.find(
+        (display) => display.id === Number(/DISPLAY_ID (\d+)/.exec(two.out())?.[1])
+      )
+      expect(portrait?.width).toBe(780)
+      expect(portrait?.height).toBe(1560)
+    } finally {
+      one.kill()
+      two.kill()
+    }
+    expect(await until(() => screens() === before, 15_000), 'as duas somem').toBe(true)
+  })
 })

@@ -880,13 +880,14 @@ function restartWithoutPrivilegeLock(): boolean {
 }
 
 /**
- * Motor próprio (WebRTC): o padrão no Linux. No Windows e no Mac, só com HORIZONTE_ENGINE=webrtc até ser testado
- * nesses sistemas. HORIZONTE_ENGINE=sunshine volta ao motor antigo no Linux; =fake abre o motor de mentira do
- * desenvolvimento (o teste do app aberto usa o roteiro dele).
+ * Motor próprio (WebRTC): o padrão no Linux e no Mac (tela virtual do próprio macOS, sem programa extra). No Windows,
+ * só com HORIZONTE_ENGINE=webrtc: sem um driver de tela virtual, ele só espelha a tela, e o Sunshine estende.
+ * HORIZONTE_ENGINE=sunshine volta ao motor antigo; =fake abre o motor de mentira do desenvolvimento (o teste do app
+ * aberto usa o roteiro dele).
  */
 const USE_WEBRTC =
   process.env['HORIZONTE_ENGINE'] === 'webrtc' ||
-  (process.platform === 'linux' &&
+  (process.platform !== 'win32' &&
     process.env['HORIZONTE_ENGINE'] !== 'sunshine' &&
     process.env['HORIZONTE_ENGINE'] !== 'fake')
 

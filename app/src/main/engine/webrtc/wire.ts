@@ -9,6 +9,8 @@ import type { ScreenPlacement } from '../../../shared/types'
 import type { createPresence } from '../presence'
 import {
   createLinuxVirtualScreen,
+  createMacVirtualScreen,
+  macHelperPath,
   framesSocket,
   gnomeFrames,
   handleCaptureRequests,
@@ -139,8 +141,8 @@ function appWindows(): MotorWindows {
 }
 
 /**
- * O motor próprio montado para o app. A tela estendida usa o monitor virtual do GNOME quando houver (no Wayland, sem o
- * seletor de tela); sem ele, a tela principal é espelhada.
+ * O motor próprio montado para o app. A tela estendida usa o monitor virtual do GNOME (no Wayland, sem o seletor de
+ * tela) ou o do macOS; sem eles, a tela principal é espelhada.
  */
 export function createAppWebRtcEngine(deps: {
   presence: ReturnType<typeof createPresence>
@@ -151,12 +153,15 @@ export function createAppWebRtcEngine(deps: {
 }): WebRtcEngine {
   const gnome = process.platform === 'linux' && /gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? '')
   // Um monitor virtual (e um socket de imagens) por aparelho conectado ao mesmo tempo.
+  const macHelper = macHelperPath()
   const screens = gnome
     ? (index: number) => {
         const frames = gnomeFrames() ? framesSocket(index) : null
         return { screen: createLinuxVirtualScreen(frames), frames }
       }
-    : null
+    : macHelper
+      ? (index: number) => ({ screen: createMacVirtualScreen(macHelper, index), frames: null })
+      : null
   const engine = new WebRtcEngine({
     windows: appWindows(),
     presence: {
