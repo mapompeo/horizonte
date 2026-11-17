@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, tick } from 'svelte'
+  import { fly } from 'svelte/transition'
+  import { cubicOut } from 'svelte/easing'
   import type { AppState, Mode } from '../../shared/types'
   import { route, snapshot, startSync, syncError } from './lib/store'
+  import { ms } from './lib/motion'
   import TopBar from './components/TopBar.svelte'
-  import Install from './screens/Install.svelte'
-  import Choose from './screens/Choose.svelte'
   import SendHome from './screens/SendHome.svelte'
   import Approve from './screens/Approve.svelte'
   import Discover from './screens/Discover.svelte'
@@ -15,7 +16,7 @@
   import ErrorScreen from './screens/ErrorScreen.svelte'
   import SettingsPage from './screens/SettingsPage.svelte'
 
-  /** Em quais telas o seletor Enviar/Mostrar aparece (e qual lado está ativo). */
+  /** Em quais telas o seletor Enviar/Receber aparece (e qual lado está ativo). */
   function modeOf(state: AppState): Mode | null {
     switch (state.screen) {
       case 'preparing':
@@ -36,6 +37,22 @@
     }
   }
 
+  /** Preparando, pronto e conectado são a mesma tela (o QR fica no lugar): só o resto troca com animação. */
+  function viewKey(state: AppState): string {
+    return state.screen === 'preparing' || state.screen === 'ready' || state.screen === 'connected'
+      ? 'home'
+      : state.screen
+  }
+
+  /** A tela que sai fica por cima, sem empurrar a que entra. */
+  function leave(node: HTMLElement): { duration: number; css: (t: number) => string } {
+    node.style.position = 'absolute'
+    node.style.inset = '64px 24px 40px'
+    node.style.width = 'auto'
+    node.style.pointerEvents = 'none'
+    return { duration: ms(120), css: (t) => `opacity: ${t}` }
+  }
+
   let syncing = $state(false)
   let stop: (() => void) | undefined
   let disposed = false
@@ -54,6 +71,23 @@
     }
   }
 
+  /** Depois de trocar de tela, o foco vai para o título: leitor de tela anuncia onde a pessoa está. */
+  const view = $derived($snapshot ? viewKey($snapshot.state) : null)
+  $effect(() => {
+    void [view, $route]
+    void tick().then(() => {
+      const title = document.querySelector<HTMLElement>('main h1, .sheet-title')
+      if (!title) return
+      title.tabIndex = -1
+      title.focus({ preventScroll: true })
+    })
+  })
+
+  let scrolled = $state(false)
+  $effect(() => {
+    document.documentElement.toggleAttribute('data-scrolled', scrolled)
+  })
+
   onMount(() => {
     void initialize()
     return () => {
@@ -63,6 +97,7 @@
   })
 </script>
 
+<svelte:window onscroll={() => (scrolled = window.scrollY > 0)} />
 <div class="drag-strip" aria-hidden="true"></div>
 {#if $snapshot}
   {@const state = $snapshot.state}
@@ -73,19 +108,20 @@
     {@const mode = modeOf(state)}
     <div class="screen">
       {#if mode}<TopBar {mode} />{/if}
-      {#key state.screen}
-        <main class="center">
-          {#if state.screen === 'install'}
-            <Install />
-          {:else if state.screen === 'choose'}
-            <Choose />
-          {:else if state.screen === 'preparing' || state.screen === 'ready'}
+      {#key viewKey(state)}
+        <main
+          class="center"
+          in:fly={{ y: 12, duration: ms(340), delay: ms(60), easing: cubicOut }}
+          out:leave
+        >
+          {#if state.screen === 'preparing' || state.screen === 'ready'}
             <SendHome
               deviceName={settings.deviceName}
               devices={[]}
               placement={settings.screenPlacement}
               placements={settings.screenPlacements}
               preparing={state.screen === 'preparing'}
+              progress={state.screen === 'preparing' ? state.progress : undefined}
             />
           {:else if state.screen === 'approve'}
             <Approve
@@ -112,7 +148,7 @@
           {:else if state.screen === 'mouse-active'}
             <MouseActive device={state.device} role={state.role} />
           {:else if state.screen === 'error'}
-            <ErrorScreen error={state.error} />
+            <ErrorScreen error={state.error} mode={state.mode} />
           {/if}
         </main>
       {/key}
@@ -122,7 +158,7 @@
   <div class="screen">
     <main class="center">
       {#if $syncError}
-        <h1 class="title title-md" role="alert">{$syncError}</h1>
+        <h1 class="title" role="alert">{$syncError}</h1>
         <button class="btn btn-primary" onclick={initialize} disabled={syncing}>
           {syncing ? 'Carregando…' : 'Tentar de novo'}
         </button>

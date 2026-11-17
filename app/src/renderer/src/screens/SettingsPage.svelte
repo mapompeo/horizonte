@@ -24,6 +24,8 @@
   const UNKNOWN_SCREEN = { width: 1920, height: 1080 }
 </script>
 
+<svelte:window onkeydown={(event) => event.key === 'Escape' && closeSettings()} />
+
 <div class="sheet">
   <header class="sheet-head">
     <button class="back" onclick={closeSettings}>
@@ -33,7 +35,7 @@
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        stroke-width="2.2"
+        stroke-width="1.75"
         stroke-linecap="round"
         stroke-linejoin="round"
         aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg
@@ -47,39 +49,51 @@
   <div class="sheet-body">
     <section class="group" aria-labelledby="g-look">
       <h2 class="group-label" id="g-look">Aparência</h2>
-      <Segmented
-        label="Tema"
-        value={settings.theme}
-        options={[
-          { value: 'system', text: 'Sistema' },
-          { value: 'light', text: 'Claro' },
-          { value: 'dark', text: 'Escuro' }
-        ]}
-        onSelect={(value) => patchSettings({ theme: value as Theme })}
-      />
+      <div class="card card-pad">
+        <Segmented
+          label="Tema"
+          value={settings.theme}
+          options={[
+            { value: 'system', text: 'Sistema' },
+            { value: 'light', text: 'Claro' },
+            { value: 'dark', text: 'Escuro' }
+          ]}
+          onSelect={(value) => patchSettings({ theme: value as Theme })}
+        />
+      </div>
     </section>
 
     <section class="group" aria-labelledby="g-quality">
       <h2 class="group-label" id="g-quality">Imagem</h2>
-      <Segmented
-        label="Qualidade"
-        value={settings.profile}
-        options={tiles.map((tile) => ({ value: tile.id, text: tile.name }))}
-        onSelect={(id) => {
-          const tile = tiles.find((option) => option.id === id)
-          if (tile) void patchSettings({ bitrate: tile.mbps })
-        }}
-      />
-      <Segmented
-        label="Quadros por segundo"
-        value={settings.fps}
-        options={[
-          { value: 30, text: '30 qps' },
-          { value: 60, text: '60 qps' },
-          { value: 120, text: '120 qps' }
-        ]}
-        onSelect={(value) => patchSettings({ fps: value as Fps })}
-      />
+      <div class="card">
+        <div class="row">
+          <span>Qualidade</span>
+          <Segmented
+            compact
+            label="Qualidade"
+            value={settings.profile}
+            options={tiles.map((tile) => ({ value: tile.id, text: tile.name }))}
+            onSelect={(id) => {
+              const tile = tiles.find((option) => option.id === id)
+              if (tile) void patchSettings({ bitrate: tile.mbps })
+            }}
+          />
+        </div>
+        <div class="row">
+          <span>Fluidez</span>
+          <Segmented
+            compact
+            label="Fluidez"
+            value={settings.fps}
+            options={[
+              { value: 30, text: '30' },
+              { value: 60, text: '60' },
+              { value: 120, text: '120' }
+            ]}
+            onSelect={(value) => patchSettings({ fps: value as Fps })}
+          />
+        </div>
+      </div>
     </section>
 
     <section class="group" aria-labelledby="g-place">
@@ -121,33 +135,46 @@
           onclick={() => {
             closeSettings()
             chooseMode('mouse')
-          }}>Usar o mouse em outro computador</button
+          }}>Compartilhar o mouse</button
         >
-        {#each settings.trusted as device (device.name + device.address)}
-          <div class="row">
-            <span>{device.name}</span>
-            <button
-              class="row-action"
-              onclick={() =>
-                patchSettings({
-                  trusted: settings.trusted.filter(
-                    (known) => known.name !== device.name || known.address !== device.address
-                  )
-                })}>Esquecer</button
-            >
-          </div>
-        {/each}
       </div>
     </section>
 
-    <UpdateControls />
+    {#if settings.trusted.length > 0}
+      <section class="group" aria-labelledby="g-trusted">
+        <h2 class="group-label" id="g-trusted">Aparelhos permitidos</h2>
+        <div class="card">
+          {#each settings.trusted as device (device.name + device.address)}
+            <div class="row">
+              <span>{device.name}</span>
+              <button
+                class="row-action danger"
+                onclick={() =>
+                  patchSettings({
+                    trusted: settings.trusted.filter(
+                      (known) => known.name !== device.name || known.address !== device.address
+                    )
+                  })}>Esquecer</button
+              >
+            </div>
+          {/each}
+        </div>
+      </section>
+    {/if}
 
-    <section class="group" aria-label="Mais">
+    <section class="group" aria-labelledby="g-about">
+      <h2 class="group-label" id="g-about">Sobre</h2>
+      <UpdateControls />
       <div class="card">
         <ReportButton class="row row-button" />
         <button class="row row-button" onclick={() => window.horizonte.openRepo()}
-          >Código aberto no GitHub</button
+          >Código no GitHub</button
         >
+      </div>
+    </section>
+
+    <section class="group" aria-label="Desinstalar">
+      <div class="card">
         <UninstallControls />
       </div>
     </section>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { copyFor } from '../lib/copy'
+  import { copyFor, safeName } from '../lib/copy'
   import { send } from '../lib/actions'
   import Pill from '../components/Pill.svelte'
 
@@ -18,4 +18,8 @@
   <h1 class="title">{copy.title}</h1>
   {#if copy.subtitle}<p class="subtitle">{copy.subtitle}</p>{/if}
 </div>
-<button class="btn btn-outline" onclick={() => send({ type: 'STOP' })}>Parar</button>
+<button
+  class="btn btn-danger"
+  aria-label="Parar {safeName(device)}"
+  onclick={() => send({ type: 'STOP' })}>Parar</button
+>

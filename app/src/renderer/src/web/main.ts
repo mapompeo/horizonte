@@ -27,15 +27,15 @@ const input = $<HTMLInputElement>('codigo')
 const button = $<HTMLButtonElement>('entrar')
 
 const DENIED: Record<string, string> = {
-  user: 'O computador não permitiu a conexão.',
-  busy: 'O computador já está mostrando a tela em outro lugar.',
-  version:
-    'Esta página e o Horizonte do computador estão em versões diferentes. Recarregue a página.'
+  user: 'O computador não permitiu.',
+  busy: 'O computador está em uso. Tente depois.',
+  version: 'Versões diferentes. Atualize a página.'
 }
 
 function say(message: string, error = false): void {
   text.textContent = message
   text.classList.toggle('web-error', error)
+  text.setAttribute('role', error ? 'alert' : 'status')
 }
 
 function deviceOf(agent: string): { name: string; kind: DeviceKind } {
@@ -93,7 +93,7 @@ async function connect(code: string): Promise<void> {
   const reply = (await opened.json().catch(() => ({}))) as { sessao?: string; erro?: string }
   if (!opened.ok || !reply.sessao) {
     button.disabled = false
-    return say(reply.erro ?? 'Não consegui falar com o computador.', true)
+    return say(reply.erro ?? 'Sem resposta do computador. Tente de novo.', true)
   }
   const session = reply.sessao
   const send = (message: Message): void =>
@@ -147,6 +147,7 @@ async function connect(code: string): Promise<void> {
     start.hidden = false
     button.disabled = false
     say(message, error)
+    button.focus()
   }
 
   const api: MotorApi = {
@@ -180,9 +181,9 @@ async function connect(code: string): Promise<void> {
     switch (message.t) {
       case 'hello':
         peer = message
-        return say(`Pedindo para ver a tela de ${message.name}…`)
+        return say(`Aguardando ${message.name}…`)
       case 'pending':
-        return say(`No computador, toque em Permitir.`)
+        return say('Toque em Permitir no computador.')
       case 'accepted':
         say('Abrindo a tela…')
         send(want)
@@ -197,7 +198,7 @@ async function connect(code: string): Promise<void> {
         // A oferta precisa vir com o mesmo certificado que o computador anunciou no `hello`.
         if (!peer || sdpFingerprint(message.sdp) !== peer.fp) {
           send({ t: 'bye', reason: 'error' })
-          return finish('O certificado do computador não confere. Conexão encerrada.', true)
+          return finish('Não deu para confirmar o computador. Tente de novo.', true)
         }
         return void side.deliver(message)
       case 'ice':
@@ -218,7 +219,7 @@ window.addEventListener('resize', () => {
     const current = live
     if (!current || current.landscape === landscape()) return
     current.turn()
-    connect(current.code).catch(() => say('Não consegui falar com o computador.', true))
+    connect(current.code).catch(() => say('Sem resposta do computador. Tente de novo.', true))
   }, 700)
 })
 
@@ -230,7 +231,7 @@ form.addEventListener('submit', (event) => {
   void document.documentElement.requestFullscreen?.().catch(() => undefined)
   connect(code).catch(() => {
     button.disabled = false
-    say('Não consegui falar com o computador.', true)
+    say('Sem resposta do computador. Tente de novo.', true)
   })
 })
 
@@ -247,5 +248,4 @@ const fromLink = location.hash.replace(/\D/g, '')
 if (fromLink.length === 6) {
   input.value = fromLink
   say('Toque em Conectar.')
-}
-input.focus()
+} else input.focus()

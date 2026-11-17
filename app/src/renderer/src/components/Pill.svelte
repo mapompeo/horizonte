@@ -9,4 +9,6 @@
   let { tone, children }: Props = $props()
 </script>
 
-<span class="pill pill-{tone}"><span class="dot"></span>{@render children?.()}</span>
+<span class="pill pill-{tone}"
+  ><span class="dot" aria-hidden="true"></span>{@render children?.()}</span
+>

@@ -10,7 +10,6 @@ export function isUiEvent(value: unknown): value is AppEvent {
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as Record<string, unknown>
   switch (candidate.type) {
-    case 'INSTALL_DONE':
     case 'DENY':
     case 'STOP':
     case 'RETRY':

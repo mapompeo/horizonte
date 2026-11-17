@@ -4,7 +4,6 @@
   import { isValidPin } from '../../../shared/pin'
   import { copyFor } from '../lib/copy'
   import { send } from '../lib/actions'
-  import Toggle from '../components/Toggle.svelte'
 
   interface Props {
     device: string
@@ -27,29 +26,30 @@
   })
 
   let typed = $state('')
-  /** Marcado: da próxima vez este aparelho é aprovado sozinho. */
-  let trust = $state(true)
 
   const copy = $derived(copyFor({ screen: 'approve', mode: 'send', device, pairingId: '', pin }))
   const needsPin = $derived(pin === null && !fingerprint)
   const ready = $derived(!needsPin || isValidPin(typed))
 
+  /** Aprovar já confia no aparelho: os Ajustes têm o Esquecer. */
   function approve(): void {
     if (!ready) return
-    void send(needsPin ? { type: 'APPROVE', pin: typed, trust } : { type: 'APPROVE', trust })
+    void send(
+      needsPin ? { type: 'APPROVE', pin: typed, trust: true } : { type: 'APPROVE', trust: true }
+    )
   }
 </script>
 
 <div class="badge">
-  <DeviceIcon {kind} size={36} />
+  <DeviceIcon {kind} size={40} />
 </div>
 <div class="stack gap-sm">
-  <h1 class="title title-md">{copy.title}</h1>
+  <h1 class="title">{copy.title}</h1>
   <p class="subtitle">{copy.subtitle}</p>
 </div>
 {#if needsPin}
   <div class="stack gap-xs">
-    <label class="hint" for="pin">Digite o PIN que aparece no outro dispositivo</label>
+    <label class="hint" for="pin">Digite o PIN do outro aparelho</label>
     <input
       id="pin"
       class="pin-input"
@@ -62,16 +62,13 @@
         const clean = event.currentTarget.value.replace(/\D/g, '').slice(0, 4)
         event.currentTarget.value = clean
         typed = clean
+        if (isValidPin(clean)) approve()
       }}
       onkeydown={(event) => event.key === 'Enter' && approve()}
     />
   </div>
 {/if}
-<div class="trust-row">
-  <span>Sempre permitir</span>
-  <Toggle label="Sempre permitir" checked={trust} onChange={(checked) => (trust = checked)} />
-</div>
 <div class="stack gap-xs">
-  <button class="btn btn-primary" disabled={!ready} onclick={approve}>Permitir</button>
+  <button class="btn btn-primary btn-wide" disabled={!ready} onclick={approve}>Permitir</button>
   <button class="btn btn-ghost" onclick={() => send({ type: 'DENY' })}>Recusar</button>
 </div>

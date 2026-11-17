@@ -146,7 +146,7 @@ export function waitHello(link: Link, timeoutMs: number): Promise<Hello> {
       done()
       if (message.t === 'hello') return resolve(message)
       link.close('esperava hello')
-      reject(new Error('O outro aparelho não seguiu o protocolo do Horizonte.'))
+      reject(new Error('O outro aparelho não respondeu como esperado. Tente de novo.'))
     })
     const stopClose = link.onClose(() => {
       done()
@@ -244,7 +244,7 @@ export async function listen(options: ListenOptions): Promise<SignalingServer> {
   }
   if (port === null) {
     server.close()
-    throw new Error('Não consegui abrir a porta da conexão. Outro programa pode estar usando.', {
+    throw new Error('Não deu para abrir a conexão. Feche outros programas e tente de novo.', {
       cause: lastError
     })
   }

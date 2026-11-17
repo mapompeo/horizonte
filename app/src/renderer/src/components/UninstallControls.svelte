@@ -10,17 +10,16 @@
       message = {
         started: 'O desinstalador foi aberto.',
         cancelled: '',
-        busy: 'Encerre a conexão e aguarde a atualização antes de desinstalar.',
+        busy: 'Encerre a conexão antes.',
         manual:
           window.horizonte.platform === 'darwin'
-            ? 'Feche o Horizonte e mova-o de Aplicativos para a Lixeira.'
-            : 'Feche o Horizonte e remova-o pelo gerenciador de aplicativos. Para AppImage, exclua o arquivo baixado.',
-        unavailable:
-          'Use Aplicativos instalados nas configurações do sistema para remover o Horizonte.',
-        failed: 'Não consegui abrir o desinstalador. Tente pelas configurações do sistema.'
+            ? 'Mova o Horizonte para o Lixo.'
+            : 'Remova nos Ajustes do sistema.',
+        unavailable: 'Remova nos Ajustes do sistema.',
+        failed: 'Não deu para abrir. Tente de novo.'
       }[result]
     } catch {
-      message = 'Não consegui abrir o desinstalador. Tente de novo.'
+      message = 'Não deu para abrir. Tente de novo.'
     } finally {
       pending = false
     }

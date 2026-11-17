@@ -1,10 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import type { ConnectedDevice, ScreenPlacement, WebAccess } from '../../../shared/types'
+  import { flip } from 'svelte/animate'
+  import { fade, fly } from 'svelte/transition'
+  import type {
+    ConnectedDevice,
+    PrepProgress,
+    ScreenPlacement,
+    WebAccess
+  } from '../../../shared/types'
   import { placeAll } from '../../../shared/placement'
   import { safeName } from '../lib/copy'
   import { send } from '../lib/actions'
-  import { changeWebAccess } from '../lib/store'
+  import { ms } from '../lib/motion'
   import QrCode from '../components/QrCode.svelte'
   import VideoHint from '../components/VideoHint.svelte'
   import PlacementMap, { type MapScreen } from '../components/PlacementMap.svelte'
@@ -14,24 +21,25 @@
     devices: ConnectedDevice[]
     placement: ScreenPlacement
     placements: Record<string, ScreenPlacement>
-    /** Ainda preparando o motor: o QR aparece assim que der. */
+    /** Ainda preparando: no lugar do QR, o andamento. */
     preparing?: boolean
+    progress?: PrepProgress
   }
 
-  let { deviceName, devices, placement, placements, preparing = false }: Props = $props()
+  let { deviceName, devices, placement, placements, preparing = false, progress }: Props = $props()
 
   /** O QR fica sempre ligado: a página abre sozinha, sem botão. */
   let web = $state<WebAccess>({ on: false })
-  onMount(() => {
-    void (async () => {
-      try {
-        web = await window.horizonte.getWebAccess()
-        if (!web.on && !web.error) web = await changeWebAccess(web)
-      } catch {
-        // Sem a página do navegador, o resto continua funcionando.
-      }
-    })()
-  })
+
+  async function ensureWeb(): Promise<void> {
+    try {
+      web = await window.horizonte.getWebAccess()
+      if (!web.on) web = await window.horizonte.setWebAccess(true)
+    } catch {
+      web = { on: false, error: 'Não deu para abrir a página. Tente de novo.' }
+    }
+  }
+  onMount(() => void ensureWeb())
 
   const screens = $derived.by((): MapScreen[] => {
     const shown = devices.filter((d) => d.fingerprint && d.peerScreen)
@@ -49,39 +57,63 @@
   })
   const link = $derived(web.on && web.url ? `${web.url}/#${web.code}` : null)
   const code = $derived(web.code ? `${web.code.slice(0, 3)} ${web.code.slice(3)}` : '')
+  const connected = $derived(devices.length > 0)
+  const prepNote = $derived(
+    progress?.permission ? 'Confirme a permissão do sistema' : progress?.note || 'Preparando'
+  )
 </script>
 
 <div class="home">
-  <section class="hero">
-    <div class="qr-card" class:waiting={!link}>
+  <section class="hero card" class:compact={connected}>
+    <div class="qr-card" class:compact={connected}>
       {#if link}
-        <QrCode text={link} size={176} />
+        <QrCode text={link} size={connected ? 112 : 176} />
+      {:else if preparing}
+        <div class="qr-prep" class:compact={connected} role="status">
+          <div class="bar">
+            <div
+              class="bar-fill"
+              style="width: {Math.round((progress?.fraction ?? 0) * 100)}%"
+            ></div>
+          </div>
+          <span class="hint">{prepNote}</span>
+        </div>
       {:else}
-        <div class="qr-empty" aria-hidden="true"></div>
+        <div class="qr-empty" class:compact={connected} aria-hidden="true"></div>
       {/if}
     </div>
-    <div class="hero-text">
-      <h1>{devices.length ? 'Conectado' : 'Aponte a câmera'}</h1>
-      <p>Celular, tablet, notebook ou outra tela. Quantos quiser.</p>
+    <div class="hero-text" aria-live="polite">
+      <h1 class="title">
+        {connected ? 'Conectado' : preparing ? 'Preparando' : 'Aponte a câmera'}
+      </h1>
       {#if link && web.url}
-        <div class="code" aria-label="Código {web.code}">{code}</div>
-        <span class="url">{web.url.replace(/^https?:\/\//, '')}</span>
+        <span class="code" role="img" aria-label="Código {web.code?.split('').join(' ')}"
+          >{code}</span
+        >
+        {#if !connected}<span class="hint">{web.url.replace(/^https?:\/\//, '')}</span>{/if}
       {:else if web.error}
-        <span class="url">{web.error}</span>
-      {:else}
-        <span class="url">{preparing ? 'Preparando…' : 'Abrindo…'}</span>
+        <span class="hint danger-text">{web.error}</span>
+        <button class="link" onclick={ensureWeb}>Tentar de novo</button>
+      {:else if !preparing}
+        <span class="hint">Abrindo…</span>
       {/if}
     </div>
   </section>
 
-  {#if devices.length}
-    <ul class="list" aria-label="Aparelhos conectados">
+  {#if connected}
+    <ul class="card list" role="list" aria-live="polite" aria-label="Aparelhos conectados">
       {#each devices as d (d.fingerprint ?? d.device)}
-        <li>
-          <span class="dot" aria-hidden="true"></span>
-          <span class="name">{safeName(d.device)}</span>
+        <li
+          class="row"
+          animate:flip={{ duration: ms(240) }}
+          in:fly={{ y: 8, duration: ms(260) }}
+          out:fade={{ duration: ms(120) }}
+        >
+          <span class="peer-dot" aria-hidden="true"></span>
+          <span class="peer-name">{safeName(d.device)}</span>
           <button
-            class="stop"
+            class="row-action danger"
+            aria-label="Parar {safeName(d.device)}"
             onclick={() =>
               send({ type: 'STOP', ...(d.fingerprint ? { fingerprint: d.fingerprint } : {}) })}
             >Parar</button
@@ -90,127 +122,12 @@
       {/each}
     </ul>
     {#if screens.length}
-      <div class="map">
+      <div class="card card-pad">
         <PlacementMap {screens} {placements} height={180} />
       </div>
     {/if}
   {:else}
-    <p class="foot">No outro computador com o Horizonte, escolha {safeName(deviceName)}.</p>
+    <p class="hint">Ou escolha {safeName(deviceName)} no outro aparelho</p>
   {/if}
   <VideoHint />
 </div>
-
-<style>
-  .home {
-    width: 100%;
-    max-width: 560px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-  .hero {
-    display: flex;
-    align-items: center;
-    gap: 28px;
-    padding: 24px;
-    border-radius: 28px;
-    background: var(--card);
-    text-align: left;
-  }
-  .qr-card {
-    flex: none;
-    padding: 10px;
-    border-radius: 20px;
-    background: #ffffff;
-  }
-  .qr-empty {
-    width: 176px;
-    height: 176px;
-    border-radius: 12px;
-    background: rgba(0, 0, 0, 0.05);
-  }
-  .hero-text {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-  }
-  h1 {
-    margin: 0;
-    font-size: var(--t-title);
-    font-weight: 700;
-    letter-spacing: -0.4px;
-  }
-  p {
-    margin: 0;
-    color: var(--muted);
-    font-size: var(--t-body);
-    line-height: 20px;
-  }
-  .code {
-    margin-top: 10px;
-    font-size: 34px;
-    font-weight: 600;
-    letter-spacing: 2px;
-    font-variant-numeric: tabular-nums;
-  }
-  .url {
-    color: var(--muted);
-    font-size: var(--t-small);
-    overflow-wrap: anywhere;
-  }
-  .list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    border-radius: 18px;
-    background: var(--card);
-    overflow: hidden;
-  }
-  li {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 0 16px;
-    min-height: 48px;
-    text-align: left;
-  }
-  li + li {
-    border-top: 0.5px solid var(--line);
-  }
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--ok-dot);
-  }
-  .name {
-    flex: 1;
-    font-size: var(--t-body);
-  }
-  .stop {
-    border: 0;
-    background: none;
-    color: var(--danger-fg);
-    font-size: var(--t-body);
-    padding: 8px 0;
-  }
-  .map {
-    border-radius: 18px;
-    background: var(--card);
-    padding: 12px;
-  }
-  .foot {
-    text-align: center;
-    font-size: var(--t-small);
-  }
-  @media (max-width: 560px) {
-    .hero {
-      flex-direction: column;
-      text-align: center;
-    }
-    .hero-text {
-      align-items: center;
-    }
-  }
-</style>

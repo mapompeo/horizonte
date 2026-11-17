@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { copyFor } from '../lib/copy'
+  import { copyFor, safeName } from '../lib/copy'
   import { send } from '../lib/actions'
   import Pill from '../components/Pill.svelte'
 
@@ -17,4 +17,8 @@
   {#if copy.pill}<Pill tone={copy.pill.tone}>{copy.pill.text}</Pill>{/if}
   <h1 class="title">{copy.title}</h1>
 </div>
-<button class="btn btn-outline" onclick={() => send({ type: 'STOP' })}>Sair</button>
+<button
+  class="btn btn-danger"
+  aria-label="Parar {safeName(name)}"
+  onclick={() => send({ type: 'STOP' })}>Parar</button
+>

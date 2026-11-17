@@ -16,7 +16,7 @@
     <main class="web-start" id="inicio">
       <img class="web-logo" src="./src/assets/logo/horizonte-icone.svg" alt="" width="64" height="64" />
       <h1 class="web-title">Receber a tela</h1>
-      <p class="web-text" id="texto">Digite o código do computador.</p>
+      <p class="web-text" id="texto" role="status" aria-live="polite">Digite o código.</p>
       <form class="web-form" id="form">
         <input
           class="web-code"
@@ -31,7 +31,7 @@
         />
         <button class="web-button" id="entrar" type="submit">Conectar</button>
       </form>
-      <p class="web-tip" id="dica" hidden>Tela inteira: Compartilhar › Adicionar à Tela de Início.</p>
+      <p class="web-tip" id="dica" hidden>Para tela cheia, adicione à Tela de Início.</p>
     </main>
     <script type="module" src="./src/web/main.ts"></script>
   </body>

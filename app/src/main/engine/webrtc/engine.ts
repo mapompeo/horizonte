@@ -206,9 +206,9 @@ export class WebRtcEngine implements EnginePort {
     onProgress?: (progress: PrepProgress) => void
   ): Promise<void> {
     onStep('engine')
-    onProgress?.({ note: 'Abrindo o motor de transmissão', fraction: 0.2 })
+    onProgress?.({ note: 'Preparando', fraction: 0.2 })
     const identity = await this.ownIdentity()
-    onProgress?.({ note: 'Conferindo o firewall', fraction: 0.35 })
+    onProgress?.({ note: 'Verificando a rede', fraction: 0.35 })
     await this.deps.prepareSystem?.()
     onStep('display')
     onProgress?.({ note: 'Preparando a tela estendida', fraction: 0.5 })

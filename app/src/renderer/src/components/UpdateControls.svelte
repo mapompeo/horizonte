@@ -72,8 +72,11 @@
   <footer class="version-foot">
     {#if status && ['available', 'downloading', 'ready'].includes(status.phase)}
       {#if status.phase === 'available'}
-        <button class="foot-link" onclick={() => perform('download')}
-          >Atualizar para {pretty(status.version)}</button
+        <button
+          class="foot-link"
+          title="Atualizar para {pretty(status.version)}"
+          aria-label="Atualizar para {pretty(status.version)}"
+          onclick={() => perform('download')}>Atualizar</button
         >
       {:else if status.phase === 'downloading'}
         <span aria-live="polite">Baixando {percent}%</span>
@@ -120,17 +123,17 @@
       {/if}
       {#if status.message}<p class="about-line" role="status">{status.message}</p>{/if}
       {#if status.phase === 'available'}
-        <button class="about-pill" onclick={() => perform('download')}
+        <button class="btn btn-primary btn-sm" onclick={() => perform('download')}
           >Atualizar para {pretty(status.version)}</button
         >
       {:else if status.phase === 'ready'}
-        <button class="about-pill" onclick={() => perform('install')}>Reiniciar e atualizar</button>
-      {:else if status.phase === 'unavailable'}
-        <button class="about-link" onclick={() => window.horizonte.openRepo()}
-          >Ver atualizações no GitHub</button
+        <button class="btn btn-primary btn-sm" onclick={() => perform('install')}
+          >Reiniciar e atualizar</button
         >
-      {:else if status.phase !== 'checking' && status.phase !== 'downloading'}
-        <button class="about-link" onclick={() => perform('check')}>Verificar atualização</button>
+      {:else if status.phase !== 'unavailable' && status.phase !== 'checking' && status.phase !== 'downloading'}
+        <button class="link about-link" onclick={() => perform('check')}
+          >Verificar atualização</button
+        >
       {/if}
     {:else if initialError}
       <p class="about-line" role="alert">{initialError}</p>

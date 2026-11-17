@@ -116,11 +116,9 @@ describe('pedidos de pareamento em sequência', () => {
 })
 
 describe('fluxo de envio', () => {
-  it('instala, escolhe enviar, prepara, aprova e conecta', async () => {
-    const { controller, engine } = await setup({ screen: 'install' })
+  it('escolhe enviar, prepara, aprova e conecta', async () => {
+    const { controller, engine } = await setup({ screen: 'discover', mode: 'receive' })
 
-    controller.dispatch({ type: 'INSTALL_DONE' })
-    expect(screen(controller)).toBe('choose') // Começar não prepara nada: primeiro a pessoa escolhe
     controller.dispatch({ type: 'CHOOSE', mode: 'send' })
     expect(screen(controller)).toBe('preparing')
     await vi.waitFor(() => expect(screen(controller)).toBe('ready'))
@@ -173,10 +171,8 @@ describe('fluxo de envio', () => {
 })
 
 describe('fluxo de recebimento', () => {
-  it('escolhe mostrar, conecta e sai', async () => {
-    const { controller, engine } = await setup({ screen: 'choose' })
-    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
-    expect(screen(controller)).toBe('discover')
+  it('conecta e sai', async () => {
+    const { controller, engine } = await setup({ screen: 'discover', mode: 'receive' })
 
     controller.dispatch({ type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' })
     expect(controller.getSnapshot().state).toEqual({
@@ -212,7 +208,7 @@ describe('erros', () => {
   it('falha ao preparar mostra erro e tentar de novo funciona', async () => {
     const engine = new FakeEngine(0)
     engine.failPrepare = 'sem permissão'
-    const { controller } = await setup({ screen: 'choose' }, engine)
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' }, engine)
 
     controller.dispatch({ type: 'CHOOSE', mode: 'send' })
     await vi.waitFor(() => expect(screen(controller)).toBe('error'))
@@ -270,7 +266,7 @@ describe('troca de modo', () => {
   })
 
   it('enviar, mostrar, enviar termina pronto e sem erro', async () => {
-    const { controller, engine } = await setup({ screen: 'choose' })
+    const { controller, engine } = await setup({ screen: 'discover', mode: 'receive' })
     controller.dispatch({ type: 'CHOOSE', mode: 'send' })
     controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
     controller.dispatch({ type: 'CHOOSE', mode: 'send' })
@@ -283,7 +279,7 @@ describe('troca de modo', () => {
   it('a falha de uma preparação abandonada não mostra erro', async () => {
     const engine = new FakeEngine(0)
     engine.failPrepare = 'tarde demais'
-    const { controller } = await setup({ screen: 'choose' }, engine)
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' }, engine)
     controller.dispatch({ type: 'CHOOSE', mode: 'send' })
     controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
     await settle()
@@ -291,7 +287,7 @@ describe('troca de modo', () => {
   })
 
   it('o fim de uma preparação abandonada não tira o usuário da tela atual', async () => {
-    const { controller } = await setup({ screen: 'choose' })
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' })
     controller.dispatch({ type: 'CHOOSE', mode: 'send' })
     controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
     await settle()
@@ -355,9 +351,7 @@ describe('falhas tardias e de limpeza', () => {
     await vi.waitFor(() => expect(screen(controller)).toBe('error'))
     await settle()
     const state = controller.getSnapshot().state
-    expect(state.screen === 'error' && state.error.message).toBe(
-      'Não consegui conectar a esse computador.'
-    )
+    expect(state.screen === 'error' && state.error.message).toBe('Não deu para conectar')
     expect(state.screen === 'error' && state.error.detail).toBe('sem rede')
   })
 
@@ -546,6 +540,14 @@ describe('abrir o app depois de instalado', () => {
     await settle()
     expect(saved).toHaveLength(0)
   })
+
+  it('o modo Mouse nunca é tela inicial nem é lembrado', async () => {
+    const { controller, saved } = await startWith('mouse')
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'preparing', mode: 'send' })
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    await settle()
+    expect(saved).toHaveLength(0)
+  })
 })
 
 describe('persistencia concorrente de modo e ajustes', () => {
@@ -568,7 +570,7 @@ describe('persistencia concorrente de modo e ajustes', () => {
     const saves: Settings[] = []
     const controller = await createController({
       engine: new FakeEngine(0),
-      initial: { screen: 'choose' },
+      initial: { screen: 'ready', mode: 'send' },
       store: {
         load: async () => persisted,
         save: async (value) => {
@@ -620,7 +622,7 @@ describe('persistencia concorrente de modo e ajustes', () => {
       let saves = 0
       const controller = await createController({
         engine: new FakeEngine(0),
-        initial: { screen: 'choose' },
+        initial: { screen: 'ready', mode: 'send' },
         store: {
           load: async () => persisted,
           save: async (value) => {

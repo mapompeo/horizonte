@@ -31,7 +31,6 @@ import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
 import { createTrayFollower } from './core/tray'
 import { createUninstaller } from './core/uninstall'
-import { buildDiagnostic } from './core/diagnostic'
 import {
   buildReportDiagnostic,
   createDiagnosticReporter,
@@ -556,19 +555,6 @@ async function boot(): Promise<void> {
       )?.ok === true
   })
   ipcMain.handle(CHANNELS.reportDiagnostic, () => reports.send())
-  // A área de transferência do navegador falha em alguns sistemas (visto no macOS): a cópia é feita aqui.
-  ipcMain.handle(CHANNELS.copyDiagnostic, async () => {
-    try {
-      const recent = await history.text()
-      clipboard.writeText(
-        buildDiagnostic(diagnosticEnv, controller.getSnapshot()) +
-          (recent ? `\n\nErros recentes (histórico local):\n${recent}` : '')
-      )
-      return true
-    } catch {
-      return false
-    }
-  })
   // A página do receptor vem deste app (main/web/browser.ts).
   const webAccess = createBrowserAccess({
     pagesDir: join(__dirname, '../renderer'),

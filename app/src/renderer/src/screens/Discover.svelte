@@ -3,6 +3,9 @@
   import DeviceIcon from '../components/DeviceIcon.svelte'
   import { guessKind } from '../../../shared/device'
   import { onMount } from 'svelte'
+  import { flip } from 'svelte/animate'
+  import { fade, fly } from 'svelte/transition'
+  import { ms } from '../lib/motion'
   import type { Host } from '../../../shared/types'
   import { copyFor, safeName } from '../lib/copy'
   import { send } from '../lib/actions'
@@ -32,31 +35,36 @@
 </script>
 
 <div class="hosts">
-  <h1 class="title title-md">{copy.title}</h1>
-  {#each hosts as host (host.address)}
-    <div class="host">
-      <div class="host-icon">
-        <DeviceIcon kind={host.kind ?? guessKind(host.name)} />
-      </div>
-      <div class="host-body">
-        <span class="host-name">{safeName(host.name)}</span>
-        <span class="host-addr">{host.address} · pronto</span>
-      </div>
+  <h1 class="title">{copy.title}</h1>
+  <div class="hosts-list" aria-live="polite">
+    {#each hosts as host (host.address)}
       <button
-        class="btn btn-primary btn-sm"
+        class="host"
+        aria-label="Conectar a {safeName(host.name)} ({host.address})"
+        animate:flip={{ duration: ms(240) }}
+        in:fly={{ y: 8, duration: ms(260) }}
+        out:fade={{ duration: ms(120) }}
         onclick={() => send({ type: 'CONNECT', host: host.address, name: safeName(host.name) })}
-        >Estender</button
       >
-    </div>
-  {/each}
+        <span class="host-icon">
+          <DeviceIcon kind={host.kind ?? guessKind(host.name)} />
+        </span>
+        <span class="host-body">
+          <span class="host-name">{safeName(host.name)}</span>
+          <span class="host-addr">{host.address}</span>
+        </span>
+        <span class="chevron" aria-hidden="true"></span>
+      </button>
+    {/each}
+  </div>
   <div class="stack gap-xs">
-    {#if searching}
-      <span class="searching">Procurando outros dispositivos…</span>
-    {:else if hosts.length === 0}
-      <span class="searching"
-        >Nenhum dispositivo encontrado. Abra o Horizonte no outro e escolha Enviar.</span
-      >
-    {/if}
+    <div role="status">
+      {#if searching}
+        <span class="searching">Procurando…</span>
+      {:else if hosts.length === 0}
+        <span class="searching">Nada por aqui. Abra o Horizonte no outro aparelho.</span>
+      {/if}
+    </div>
     {#if manual}
       <form
         class="manual"
@@ -67,7 +75,7 @@
       >
         <input
           class="text-input manual-input"
-          aria-label="Endereço do outro dispositivo"
+          aria-label="Endereço do outro aparelho"
           placeholder="192.168.1.5"
           autocomplete="off"
           spellcheck="false"
@@ -76,7 +84,7 @@
         <button class="btn btn-primary btn-sm" type="submit" disabled={!valid}>Conectar</button>
       </form>
     {:else}
-      <button class="link" onclick={() => (manual = true)}>Não aparece? Adicionar pelo IP</button>
+      <button class="link" onclick={() => (manual = true)}>Adicionar pelo endereço</button>
     {/if}
   </div>
 </div>

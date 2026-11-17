@@ -21,15 +21,11 @@ test('Pronto dispara pedido e permitir conecta', async () => {
   await vi.advanceTimersByTimeAsync(1000)
   expect((await window.horizonte.getSnapshot()).state.screen).toBe('connected')
 })
-test('falha de clipboard nao afirma sucesso', async () => {
-  await installDemo({ auto: false })
-  expect(await window.horizonte.copyDiagnostic()).toBe(false)
-})
 test('a demo não envia diagnóstico de verdade', async () => {
   await installDemo({ auto: false })
   await expect(window.horizonte.reportDiagnostic()).rejects.toThrow('não envia')
 })
-test('trocar para Mostrar cancela pedido automatico', async () => {
+test('trocar para Receber cancela pedido automatico', async () => {
   await installDemo({ initial: { screen: 'ready', mode: 'send' }, auto: true })
   await window.horizonte.dispatch({ type: 'CHOOSE', mode: 'receive' })
   await vi.advanceTimersByTimeAsync(6000)
@@ -49,7 +45,7 @@ test('pedido manual permite conectar sem interromper a demo automaticamente', as
 test('recomecar nos ajustes retorna a tela inicial', async () => {
   await installDemo({ auto: false })
   route.set('settings')
-  await window.__demo?.reset({ screen: 'install' })
+  await window.__demo?.reset({ screen: 'discover', mode: 'receive' })
   expect(get(route)).toBe('main')
-  expect((await window.horizonte.getSnapshot()).state.screen).toBe('install')
+  expect((await window.horizonte.getSnapshot()).state.screen).toBe('discover')
 })

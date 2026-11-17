@@ -320,11 +320,11 @@ export function createWindowsScreen(): VirtualScreen {
     async installDriver() {
       const answer = await dialog.showMessageBox({
         type: 'warning',
-        title: 'Autorizar o monitor virtual',
-        message: 'Para estender a tela, o Windows precisa de um driver de monitor virtual.',
+        title: 'Instalar o driver de tela',
+        message: 'Instalar o driver de tela',
         detail:
-          'O driver é de código aberto (Virtual Display Driver) e tem certificado próprio, que o Windows só aceita se for confiado como autoridade raiz. O Horizonte confia nele apenas durante a instalação e o remove em seguida. Só continue se você confia nessa origem.',
-        buttons: ['Autorizar e instalar', 'Cancelar'],
+          'O Windows precisa dele para estender a tela. É de código aberto e tem certificado próprio, confiado só durante a instalação. Instale só se confiar.',
+        buttons: ['Instalar', 'Cancelar'],
         defaultId: 1,
         cancelId: 1,
         noLink: true

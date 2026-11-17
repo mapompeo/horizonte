@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  readySubtitle,
-  copyFor,
-  PREP_STEPS,
-  safeName,
-  patientNote,
-  stepEnd,
-  stepLabel,
-  stepStart
-} from './copy'
+import { copyFor, PREP_STEPS, safeName, patientNote, stepEnd, stepLabel, stepStart } from './copy'
 
 describe('safeName', () => {
   it('mantém nomes normais', () => {
@@ -37,16 +28,6 @@ describe('safeName', () => {
 })
 
 describe('copyFor', () => {
-  it('instalar', () => {
-    const copy = copyFor({ screen: 'install' })
-    expect(copy.title).toBe('Estenda sua tela,\nsem fio')
-    expect(copy.subtitle).toBeUndefined()
-  })
-
-  it('pronto manda selecionar o nome do próprio aparelho', () => {
-    expect(readySubtitle('Notebook')).toBe('No outro aparelho, escolha Notebook.')
-  })
-
   it('pronto: só o título, sem selo repetindo a mesma coisa', () => {
     const copy = copyFor({ screen: 'ready', mode: 'send' })
     expect(copy.title).toBe('Pronto')
@@ -62,7 +43,7 @@ describe('copyFor', () => {
       pin: null
     })
     expect(copy.title).toBe('Permitir o Notebook?')
-    expect(copy.subtitle).toBe('Quer usar esta tela como extensão.')
+    expect(copy.subtitle).toBe('Quer estender a tela.')
     const hostile = copyFor({
       screen: 'approve',
       mode: 'send',
@@ -114,7 +95,7 @@ describe('copyFor', () => {
   })
 
   it('demais telas', () => {
-    expect(copyFor({ screen: 'choose' }).title).toBe('Este dispositivo vai…')
+    expect(copyFor({ screen: 'mouse', mode: 'mouse' }).title).toBe('Compartilhar o mouse')
     expect(copyFor({ screen: 'preparing', mode: 'send', step: 'engine' }).title).toBe('Preparando')
     expect(copyFor({ screen: 'discover', mode: 'receive' }).title).toBe('Na sua rede')
   })
@@ -123,9 +104,9 @@ describe('copyFor', () => {
 describe('stepLabel e progress', () => {
   it('uma frase por etapa, na ordem do fluxo', () => {
     expect(PREP_STEPS.map(stepLabel)).toEqual([
-      'Preparando o motor',
-      'Procurando o monitor virtual',
-      'Testando a placa de vídeo'
+      'Preparando',
+      'Criando a tela',
+      'Verificando o vídeo'
     ])
   })
 
@@ -139,13 +120,13 @@ describe('stepLabel e progress', () => {
 
 describe('patientNote', () => {
   it('no começo mostra só a frase', () => {
-    expect(patientNote('Testando a placa de vídeo', 3)).toBe('Testando a placa de vídeo')
+    expect(patientNote('Verificando o vídeo', 3)).toBe('Verificando o vídeo')
   })
 
   it('depois de um tempo mostra só "Ainda trabalhando nisso", sem misturar com a frase', () => {
-    const text = patientNote('Testando a placa de vídeo', 9)
+    const text = patientNote('Verificando o vídeo', 9)
     expect(text).toMatch(/^Ainda trabalhando nisso\.{0,3}$/)
-    expect(text).not.toContain('placa')
+    expect(text).not.toContain('vídeo')
   })
 
   it('os pontinhos se movem em ciclo para mostrar que não travou', () => {

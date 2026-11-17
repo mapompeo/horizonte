@@ -37,16 +37,16 @@ try {
       throw new Error('rede')
     }
   })
-  const button = page.getByRole('button', { name: /diagnóstico|Tentar de novo/ })
+  const button = page.getByRole('button', { name: 'Enviar diagnóstico', exact: true })
   await button.click()
-  await page.getByText('Não deu para enviar. Tentar de novo').waitFor()
+  await page.getByText('Não enviou. Tentar de novo', { exact: true }).waitFor()
   await page.evaluate(() => {
     window.horizonte.reportDiagnostic = async () => {
       window.reportCalls++
     }
   })
-  await page.getByRole('button', { name: 'Não deu para enviar. Tentar de novo' }).click()
-  await page.getByText('Diagnóstico enviado. Obrigado').waitFor()
+  await page.getByRole('button', { name: 'Não enviou. Tentar de novo', exact: true }).click()
+  await page.getByText('Enviado', { exact: true }).waitFor()
   assert.equal(await page.evaluate(() => window.reportCalls), 2)
   console.log('Um clique: falha com tentar de novo e envio confirmado: OK')
 } finally {

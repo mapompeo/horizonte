@@ -62,7 +62,8 @@ function place(paths: string[], image: boolean): void {
 }
 
 describe.runIf(windows || mac)('copiar e colar arquivos e imagens (observador do sistema)', () => {
-  it('avisa arquivos copiados e salva a imagem copiada em .png', async () => {
+  // No Mac da CI o primeiro osascript às vezes demora a responder: até 2 tentativas a mais.
+  it('avisa arquivos copiados e salva a imagem copiada em .png', { retry: 2 }, async () => {
     // Caminho longo e real: no Mac /var é /private/var; no Windows, sem o nome curto RUNNER~1.
     const dir = realpathSync.native(mkdtempSync(join(tmpdir(), 'hz-clip-')))
     const file = join(dir, 'relatorio.txt')

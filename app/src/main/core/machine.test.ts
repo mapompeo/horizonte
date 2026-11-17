@@ -24,14 +24,8 @@ const failure = { message: 'Falhou', detail: 'detalhe' }
 
 describe('reduce: caminho feliz', () => {
   const cases: [string, AppState, AppEvent, AppState][] = [
-    [
-      'Começar leva à escolha do modo, sem instalar nada',
-      { screen: 'install' },
-      { type: 'INSTALL_DONE' },
-      { screen: 'choose' }
-    ],
-    ['escolher enviar', { screen: 'choose' }, { type: 'CHOOSE', mode: 'send' }, preparing],
-    ['escolher mostrar', { screen: 'choose' }, { type: 'CHOOSE', mode: 'receive' }, discover],
+    ['escolher enviar', discover, { type: 'CHOOSE', mode: 'send' }, preparing],
+    ['escolher receber', ready, { type: 'CHOOSE', mode: 'receive' }, discover],
     [
       'passo da preparação',
       preparing,
@@ -102,11 +96,6 @@ describe('reduce: troca de modo a um clique', () => {
     const error: AppState = { screen: 'error', mode: 'send', error: failure }
     expect(reduce(error, { type: 'CHOOSE', mode: 'receive' })).toEqual(discover)
   })
-
-  it('ignora a escolha de modo durante a instalação', () => {
-    const install: AppState = { screen: 'install' }
-    expect(reduce(install, { type: 'CHOOSE', mode: 'send' })).toBe(install)
-  })
 })
 
 describe('reduce: erros', () => {
@@ -119,14 +108,6 @@ describe('reduce: erros', () => {
     expect(reduce(receiving, { type: 'FAIL', error: failure })).toEqual({
       screen: 'error',
       mode: 'receive',
-      error: failure
-    })
-  })
-
-  it('erro antes de escolher o modo assume enviar', () => {
-    expect(reduce({ screen: 'install' }, { type: 'FAIL', error: failure })).toEqual({
-      screen: 'error',
-      mode: 'send',
       error: failure
     })
   })
@@ -164,8 +145,6 @@ describe('reduce: eventos no estado errado são ignorados', () => {
     ['fim da preparação já pronto', ready, { type: 'PREP_DONE' }],
     ['fim da preparação no modo mostrar', discover, { type: 'PREP_DONE' }],
     ['passo da preparação já pronto', ready, { type: 'PREP_STEP', step: 'display' }],
-    ['aprovar durante a instalação', { screen: 'install' }, { type: 'APPROVE' }],
-    ['passo antes de escolher', { screen: 'choose' }, { type: 'PREP_STEP', step: 'engine' }],
     ['conectar já recebendo', receiving, { type: 'CONNECT', host: '10.0.0.9', name: 'Outro' }],
     ['conectar no modo enviar', ready, { type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' }],
     [
@@ -225,26 +204,6 @@ describe('reduce: progresso da preparação', () => {
     expect(reduce(ready, { type: 'PREP_PROGRESS', progress: { note: 'x', fraction: 1 } })).toBe(
       ready
     )
-  })
-})
-
-describe('primeira vez: nada é preparado antes de escolher o modo', () => {
-  it('quem escolhe Mostrar nunca passa pela preparação do envio', () => {
-    const afterStart = reduce({ screen: 'install' }, { type: 'INSTALL_DONE' })
-    expect(afterStart).toEqual({ screen: 'choose' })
-    expect(reduce(afterStart, { type: 'CHOOSE', mode: 'receive' })).toEqual(discover)
-  })
-
-  it('quem escolhe Enviar prepara e termina na espera, como em qualquer outra vez', () => {
-    const afterChoose = reduce({ screen: 'choose' }, { type: 'CHOOSE', mode: 'send' })
-    expect(afterChoose).toEqual(preparing)
-    expect(reduce(afterChoose, { type: 'PREP_DONE' })).toEqual(ready)
-  })
-
-  it('a tela de começar ignora eventos de preparação e de escolha que chegarem cedo', () => {
-    const install: AppState = { screen: 'install' }
-    expect(reduce(install, { type: 'PREP_DONE' })).toBe(install)
-    expect(reduce(install, { type: 'CHOOSE', mode: 'send' })).toBe(install)
   })
 })
 

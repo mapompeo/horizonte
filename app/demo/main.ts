@@ -5,10 +5,8 @@ import Preview from './Preview.svelte'
 import type { AppState } from '../src/shared/types'
 import { installDemo } from './shim'
 
-/** A tela de partida vem do endereço (#ready, #install...); sem nada, o app abre como abriria para quem já usa. */
+/** A tela de partida vem do endereço (#ready, #discover...); sem nada, o app abre como abriria para quem já usa. */
 const START: Record<string, AppState> = {
-  install: { screen: 'install' },
-  choose: { screen: 'choose' },
   ready: { screen: 'ready', mode: 'send' },
   discover: { screen: 'discover', mode: 'receive' },
   connected: { screen: 'connected', mode: 'send', devices: [{ device: 'Notebook' }] },

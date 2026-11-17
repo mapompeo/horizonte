@@ -36,11 +36,11 @@ const isSendIdle = (state: AppState): boolean =>
 
 const isSendLive = (state: AppState): boolean => isSendIdle(state) || state.screen === 'connected'
 
-/** Sem modo escolhido ainda (primeira vez), abre direto em Enviar: nada de tela de boas-vindas nem de escolha. */
+/** Abre sempre pronto para enviar; só Receber é lembrado (o modo Mouse nunca é tela inicial). */
 function startFor(mode: Settings['mode']): AppState {
-  if (mode === 'receive') return { screen: 'discover', mode: 'receive' }
-  if (mode === 'mouse') return { screen: 'mouse', mode: 'mouse' }
-  return { screen: 'preparing', mode: 'send', step: 'engine' }
+  return mode === 'receive'
+    ? { screen: 'discover', mode: 'receive' }
+    : { screen: 'preparing', mode: 'send', step: 'engine' }
 }
 
 function describeError(cause: unknown): string {
@@ -98,25 +98,24 @@ export async function createController({
     const wasMouse = 'mode' in prev && prev.mode === 'mouse'
     const isMouse = 'mode' in next && next.mode === 'mouse'
     if (!mouse) {
-      if (isMouse && !wasMouse)
-        fail('O compartilhamento de mouse ainda não está disponível neste sistema.', '')
+      if (isMouse && !wasMouse) fail('Mouse indisponível neste sistema', '')
       return
     }
     if (isMouse && !wasMouse) {
-      mouse.start(settings.deviceName).catch(failIfStill(next, 'Não consegui ligar o modo Mouse.'))
+      mouse.start(settings.deviceName).catch(failIfStill(next, 'Não deu para ligar o mouse'))
     }
     if (wasMouse && !isMouse) mouse.stop().catch(() => undefined)
     if (next.screen === 'mouse-active' && prev.screen === 'mouse' && event.type === 'MOUSE_SHARE') {
       sharingWith = event.peers
       mouse
         .share(placementsFor(event.peers), settings.deviceName)
-        .catch(failIfStill(next, 'Não consegui compartilhar o mouse.'))
+        .catch(failIfStill(next, 'Não deu para compartilhar o mouse'))
     }
     if (prev.screen === 'mouse-request') {
       if (event.type === 'MOUSE_ACCEPT') {
         mouse
           .accept(settings.deviceName)
-          .catch(failIfStill(next, 'Não consegui me conectar ao mouse do outro computador.'))
+          .catch(failIfStill(next, 'Não deu para conectar ao outro aparelho'))
       } else if (event.type === 'MOUSE_DENY') mouse.deny().catch(() => undefined)
     }
     if (
@@ -150,7 +149,7 @@ export async function createController({
           if (live()) dispatch({ type: 'PREP_DONE' })
         })
         .catch((cause: unknown) => {
-          if (live()) fail('Não consegui preparar este dispositivo.', cause)
+          if (live()) fail('Não deu para preparar', cause)
         })
     }
 
@@ -169,7 +168,7 @@ export async function createController({
               ...(pin !== null ? { pin } : {}),
               name: prev.device
             })
-            .catch(failIfStill(next, 'Não consegui responder ao pedido.'))
+            .catch(failIfStill(next, 'Não deu para responder ao pedido'))
         }
         if (event.trust && prev.address)
           trust({
@@ -180,27 +179,25 @@ export async function createController({
             ...(prev.peerScreen ? { screen: prev.peerScreen } : {})
           })
       } else if (event.type === 'DENY') {
-        engine.deny(prev.pairingId).catch(failIfStill(next, 'Não consegui responder ao pedido.'))
+        engine.deny(prev.pairingId).catch(failIfStill(next, 'Não deu para responder ao pedido'))
       }
     }
 
     // Parar um aparelho só (o resto segue) ou sair de vez da tela de conectado. Um pedido novo (o "Permitir") não
     // derruba quem já estava vendo.
     if (prev.screen === 'connected' && event.type === 'STOP' && event.fingerprint) {
-      engine.stopSending(event.fingerprint).catch(failIfStill(next, 'Não consegui parar o envio.'))
+      engine.stopSending(event.fingerprint).catch(failIfStill(next, 'Não deu para parar'))
     } else if (
       prev.screen === 'connected' &&
       next.screen !== 'connected' &&
       next.screen !== 'approve' &&
       event.type !== 'CLIENT_DISCONNECTED'
     ) {
-      engine.stopSending().catch(failIfStill(next, 'Não consegui parar o envio.'))
+      engine.stopSending().catch(failIfStill(next, 'Não deu para parar'))
     }
 
     if (next.screen === 'receiving' && prev.screen !== 'receiving') {
-      engine
-        .connect(next.host, settings)
-        .catch(failIfStill(next, 'Não consegui conectar a esse computador.'))
+      engine.connect(next.host, settings).catch(failIfStill(next, 'Não deu para conectar'))
     }
 
     if (
@@ -208,7 +205,7 @@ export async function createController({
       next.screen !== 'receiving' &&
       event.type !== 'STREAM_ENDED'
     ) {
-      engine.disconnect().catch(failIfStill(next, 'Não consegui encerrar a conexão.'))
+      engine.disconnect().catch(failIfStill(next, 'Não deu para encerrar'))
     }
   }
 
@@ -217,7 +214,7 @@ export async function createController({
     const next = reduce(prev, event)
     if (next === prev) return
     state = next
-    if (event.type === 'CHOOSE') {
+    if (event.type === 'CHOOSE' && event.mode !== 'mouse') {
       settings = { ...settings, mode: event.mode }
       settingsQueue = settingsQueue.then(() => store.save(settings)).catch(() => undefined) // lembrar o modo é só conveniência
     }
@@ -322,10 +319,10 @@ export async function createController({
 
   // Abrindo direto em enviar não há transição para disparar a preparação: começa aqui.
   if (state.screen === 'preparing')
-    runEffects({ screen: 'choose' }, state, { type: 'CHOOSE', mode: 'send' })
+    runEffects({ screen: 'discover', mode: 'receive' }, state, { type: 'CHOOSE', mode: 'send' })
   // Abrindo direto no modo Mouse, o mesmo: anuncia este PC e escuta pedidos.
   if (state.screen === 'mouse')
-    runEffects({ screen: 'choose' }, state, { type: 'CHOOSE', mode: 'mouse' })
+    runEffects({ screen: 'discover', mode: 'receive' }, state, { type: 'CHOOSE', mode: 'mouse' })
 
   return {
     getSnapshot: snapshot,

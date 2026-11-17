@@ -74,7 +74,7 @@
 </script>
 
 <div class="hosts hosts-wide">
-  <h1 class="title title-md">{copy.title}</h1>
+  <h1 class="title">{copy.title}</h1>
   {#if ownScreen}
     <ScreenMap own={ownScreen} {ownKind} {hosts} {sides} {offsets} onPlace={place} height={260} />
   {/if}
@@ -89,17 +89,17 @@
             peers: placed.map((host) => ({ name: safeName(host.name), address: host.address }))
           })}>Usar meu mouse</button
       >
-      <span class="searching">
+      <span class="searching" aria-live="polite">
         {placed.length === 0
-          ? 'Arraste um computador até a borda deste.'
+          ? 'Arraste um aparelho até a borda deste.'
           : `Vai usar o mouse em ${placed.map((host) => safeName(host.name)).join(' e ')}.`}
       </span>
     {:else if searching}
-      <span class="searching">Procurando outros computadores com o Horizonte no modo Mouse…</span>
+      <div role="status"><span class="searching">Procurando…</span></div>
     {:else}
-      <span class="searching"
-        >Nenhum computador encontrado. Abra o Horizonte no outro e escolha Mouse.</span
-      >
+      <div role="status">
+        <span class="searching">Nada por aqui. No outro aparelho, abra Compartilhar o mouse.</span>
+      </div>
     {/if}
     {#if manual}
       <form
@@ -111,7 +111,7 @@
       >
         <input
           class="text-input manual-input"
-          aria-label="Endereço do outro computador"
+          aria-label="Endereço do outro aparelho"
           placeholder="192.168.1.5"
           autocomplete="off"
           spellcheck="false"
@@ -120,7 +120,7 @@
         <button class="btn btn-primary btn-sm" type="submit" disabled={!valid}>Adicionar</button>
       </form>
     {:else}
-      <button class="link" onclick={() => (manual = true)}>Não aparece? Adicionar pelo IP</button>
+      <button class="link" onclick={() => (manual = true)}>Adicionar pelo endereço</button>
     {/if}
   </div>
 </div>

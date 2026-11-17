@@ -26,8 +26,6 @@ export interface ConnectedDevice {
 }
 
 export type AppState =
-  | { screen: 'install' }
-  | { screen: 'choose' }
   | {
       screen: 'preparing'
       mode: 'send'
@@ -69,7 +67,6 @@ export type AppState =
   | { screen: 'error'; mode: Mode; error: AppError }
 
 export type AppEvent =
-  | { type: 'INSTALL_DONE' }
   | { type: 'CHOOSE'; mode: Mode }
   | { type: 'PREP_STEP'; step: PrepStep }
   | { type: 'PREP_PROGRESS'; progress: PrepProgress }

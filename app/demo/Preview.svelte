@@ -28,7 +28,7 @@
         label="Modo"
         options={[
           { value: 'send', text: 'Enviar' },
-          { value: 'receive', text: 'Mostrar' }
+          { value: 'receive', text: 'Receber' }
         ]}
         value={snapshot.settings.mode ?? 'send'}
         onSelect={(mode) =>

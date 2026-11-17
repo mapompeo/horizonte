@@ -14,10 +14,6 @@ export function safeName(raw: string): string {
 
 export function copyFor(state: AppState): ScreenCopy {
   switch (state.screen) {
-    case 'install':
-      return { title: 'Estenda sua tela,\nsem fio' }
-    case 'choose':
-      return { title: 'Este dispositivo vai…' }
     case 'preparing':
       return { title: 'Preparando' }
     case 'ready':
@@ -25,7 +21,7 @@ export function copyFor(state: AppState): ScreenCopy {
     case 'approve':
       return {
         title: `Permitir o ${safeName(state.device)}?`,
-        subtitle: 'Quer usar esta tela como extensão.'
+        subtitle: 'Quer estender a tela.'
       }
     case 'connected': {
       const names = state.devices.map((d) => safeName(d.device))
@@ -41,13 +37,11 @@ export function copyFor(state: AppState): ScreenCopy {
     case 'receiving':
       return { title: 'Recebendo a tela', pill: { tone: 'ok', text: safeName(state.name) } }
     case 'mouse':
-      return {
-        title: 'Um mouse, vários computadores'
-      }
+      return { title: 'Compartilhar o mouse' }
     case 'mouse-request':
       return {
         title: `Usar o mouse do ${safeName(state.device)}?`,
-        subtitle: 'Ele vai controlar este computador.'
+        subtitle: 'Ele vai controlar este aparelho.'
       }
     case 'mouse-active':
       return state.role === 'share'
@@ -65,16 +59,12 @@ export function copyFor(state: AppState): ScreenCopy {
   }
 }
 
-/** Diz ao outro aparelho qual nome procurar na lista. */
-export const readySubtitle = (deviceName: string): string =>
-  `No outro aparelho, escolha ${safeName(deviceName)}.`
-
 export const PREP_STEPS: readonly PrepStep[] = ['engine', 'display', 'encoder']
 
 const STEP_LABELS: Record<PrepStep, string> = {
-  engine: 'Preparando o motor',
-  display: 'Procurando o monitor virtual',
-  encoder: 'Testando a placa de vídeo'
+  engine: 'Preparando',
+  display: 'Criando a tela',
+  encoder: 'Verificando o vídeo'
 }
 
 export const stepLabel = (step: PrepStep): string => STEP_LABELS[step]

@@ -67,18 +67,10 @@ export function reduce(state: AppState, event: AppEvent): AppState {
   }
 
   if (event.type === 'CHOOSE') {
-    if (state.screen === 'install') return state
-    if (state.screen === 'choose') return startFor(event.mode)
     return modeOf(state) === event.mode ? state : startFor(event.mode)
   }
 
   switch (state.screen) {
-    case 'install':
-      // Começar só leva à escolha: o motor de envio é preparado se (e quando) a pessoa escolher Enviar.
-      // Quem só vai receber a tela não instala nada nem vê pedido de administrador.
-      return event.type === 'INSTALL_DONE' ? { screen: 'choose' } : state
-    case 'choose':
-      return state
     case 'preparing':
       if (event.type === 'PREP_STEP') {
         // O texto da etapa anterior sai, mas a barra não volta.

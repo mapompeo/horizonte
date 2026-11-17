@@ -1,24 +1,24 @@
 <script lang="ts">
-  import type { AppError } from '../../../shared/types'
-  import { send } from '../lib/actions'
-  import CopyButton from '../components/CopyButton.svelte'
+  import type { AppError, Mode } from '../../../shared/types'
+  import { chooseMode, send } from '../lib/actions'
   import ReportButton from '../components/ReportButton.svelte'
 
   interface Props {
     error: AppError
+    mode: Mode
   }
 
-  let { error }: Props = $props()
+  let { error, mode }: Props = $props()
 </script>
 
 <div class="badge badge-danger" aria-hidden="true">
   <svg
-    width="30"
-    height="30"
+    width="34"
+    height="34"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    stroke-width="2.2"
+    stroke-width="1.75"
     stroke-linecap="round"
     stroke-linejoin="round"
   >
@@ -28,11 +28,13 @@
   </svg>
 </div>
 <div class="stack gap-sm">
-  <h1 class="title title-md">{error.message}</h1>
-  {#if error.detail}<p class="subtitle">{error.detail}</p>{/if}
+  <h1 class="title">{error.message}</h1>
+  <p class="subtitle">Tente de novo.</p>
 </div>
 <div class="stack gap-xs">
   <button class="btn btn-primary" onclick={() => send({ type: 'RETRY' })}>Tentar de novo</button>
-  <CopyButton class="btn btn-ghost" />
-  <ReportButton />
+  <ReportButton class="link" />
+  {#if mode !== 'send'}
+    <button class="link" onclick={() => chooseMode('send')}>Voltar para Enviar</button>
+  {/if}
 </div>

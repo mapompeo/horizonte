@@ -3,12 +3,12 @@
     class?: string
   }
 
-  let { class: className = 'btn btn-ghost' }: Props = $props()
+  let { class: className = 'link' }: Props = $props()
   let state = $state<'idle' | 'sending' | 'sent' | 'failed'>('idle')
 
   /** Um clique: vai só versão, sistema e códigos de erro (nada de nomes, arquivos ou mensagens). */
   async function send(): Promise<void> {
-    if (state === 'sending') return
+    if (state === 'sending' || state === 'sent') return
     state = 'sending'
     try {
       await window.horizonte.reportDiagnostic()
@@ -17,19 +17,25 @@
       state = 'failed'
     }
   }
+
+  const spoken = $derived(
+    state === 'sending'
+      ? 'Enviando diagnóstico'
+      : state === 'sent'
+        ? 'Diagnóstico enviado'
+        : state === 'failed'
+          ? 'Não foi possível enviar o diagnóstico'
+          : ''
+  )
 </script>
 
-<button
-  class={className}
-  onclick={send}
-  disabled={state === 'sending' || state === 'sent'}
-  aria-live="polite"
->
+<button class={className} onclick={send} aria-disabled={state === 'sending' || state === 'sent'}>
   {state === 'sending'
     ? 'Enviando…'
     : state === 'sent'
-      ? 'Diagnóstico enviado. Obrigado'
+      ? 'Enviado'
       : state === 'failed'
-        ? 'Não deu para enviar. Tentar de novo'
+        ? 'Não enviou. Tentar de novo'
         : 'Enviar diagnóstico'}
 </button>
+<span class="sr-only" role="status">{spoken}</span>

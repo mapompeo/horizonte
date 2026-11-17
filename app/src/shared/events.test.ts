@@ -3,7 +3,6 @@ import { isUiEvent } from './events'
 
 describe('isUiEvent', () => {
   it.each([
-    { type: 'INSTALL_DONE' },
     { type: 'CHOOSE', mode: 'send' },
     { type: 'CHOOSE', mode: 'receive' },
     { type: 'APPROVE' },

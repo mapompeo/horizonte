@@ -147,14 +147,6 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     reportDiagnostic: async () => {
       throw new Error('A demonstração não envia diagnósticos.')
     },
-    copyDiagnostic: async () => {
-      try {
-        await navigator.clipboard.writeText('Horizonte (demonstração): este texto é só um exemplo.')
-      } catch {
-        return false
-      }
-      return true
-    },
     onSnapshot: (callback) => {
       listeners.add(callback)
       return () => {
