@@ -1,31 +1,36 @@
-import { win32 } from 'node:path'
 import type { UninstallResult } from '../../shared/uninstall'
 
+/** Como remover o Horizonte neste computador: o que a confirmação explica e o que faz. */
+export interface UninstallPlan {
+  detail: string
+  run(): Promise<void>
+}
+
+/** Quem pede senha ao sistema (pkexec) e a pessoa fecha a janela: não é falha, é desistência. */
+export class UninstallCancelled extends Error {}
+
 export function createUninstaller(deps: {
-  platform: string
   packaged: boolean
-  executable: string
-  exists(path: string): boolean
+  plan(): UninstallPlan | null
   busy(): boolean
-  confirm(): Promise<boolean>
-  launch(path: string): Promise<void>
+  /** Encerra a conexão em andamento: desinstalar faz isso sozinho, sem pedir. */
+  stop(): void
+  confirm(detail: string): Promise<boolean>
   quit(): void
 }): () => Promise<UninstallResult> {
   let pending: Promise<UninstallResult> | undefined
   async function run(): Promise<UninstallResult> {
     if (!deps.packaged) return 'unavailable'
-    if (deps.busy()) return 'busy'
-    if (deps.platform !== 'win32') return 'manual'
-    const executable = win32.join(win32.dirname(deps.executable), 'Uninstall Horizonte.exe')
-    if (!deps.exists(executable)) return 'unavailable'
+    const plan = deps.plan()
+    if (!plan) return 'unavailable'
     try {
-      if (!(await deps.confirm())) return 'cancelled'
-      if (deps.busy()) return 'busy'
-      await deps.launch(executable)
+      if (!(await deps.confirm(plan.detail))) return 'cancelled'
+      if (deps.busy()) deps.stop()
+      await plan.run()
       deps.quit()
       return 'started'
-    } catch {
-      return 'failed'
+    } catch (error) {
+      return error instanceof UninstallCancelled ? 'cancelled' : 'failed'
     }
   }
   return () => {

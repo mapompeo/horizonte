@@ -30,7 +30,8 @@ import type { MouseSide, ScreenSize, Settings, SettingsPatch } from '../shared/t
 import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
 import { createTrayFollower } from './core/tray'
-import { createUninstaller } from './core/uninstall'
+import { createUninstaller, UninstallCancelled } from './core/uninstall'
+import { choosePlan } from './platform/uninstall-plans'
 import {
   buildReportDiagnostic,
   createDiagnosticReporter,
@@ -461,36 +462,63 @@ async function boot(): Promise<void> {
   ).unref()
   ipcMain.handle(CHANNELS.updateStatus, () => updates.status())
   const uninstall = createUninstaller({
-    platform: process.platform,
     packaged: app.isPackaged,
-    executable: process.execPath,
-    exists: existsSync,
+    plan: () =>
+      choosePlan(
+        {
+          platform: process.platform,
+          executable: process.execPath,
+          appImage: process.env.APPIMAGE,
+          dataDir: app.getPath('userData'),
+          configDir: app.getPath('appData'),
+          exists: existsSync
+        },
+        {
+          launch: (path) =>
+            new Promise<void>((resolve, reject) => {
+              const child = spawn(path, [], { detached: true, stdio: 'ignore' })
+              child.once('error', reject)
+              child.once('spawn', () => {
+                child.unref()
+                resolve()
+              })
+            }),
+          elevate: (command, args) =>
+            new Promise<void>((resolve, reject) =>
+              execFile(command, args, (error) => {
+                // 126/127: a pessoa fechou a janela de senha do sistema.
+                const code = (error as { code?: unknown } | null)?.code
+                if (!error) resolve()
+                else reject(code === 126 || code === 127 ? new UninstallCancelled() : error)
+              })
+            ),
+          trash: (path) => shell.trashItem(path),
+          removeAfterQuit: (paths) => {
+            const child = spawn('sh', ['-c', 'sleep 2; rm -rf -- "$@"', 'sh', ...paths], {
+              detached: true,
+              stdio: 'ignore'
+            })
+            child.unref()
+          }
+        }
+      ),
     busy: () =>
       ['connected', 'receiving', 'preparing', 'approve'].includes(
         controller.getSnapshot().state.screen
-      ) || ['checking', 'downloading'].includes(updates.status().phase),
-    confirm: async () =>
+      ),
+    stop: () => controller.dispatch({ type: 'STOP' }),
+    confirm: async (detail) =>
       (
         await dialog.showMessageBox({
           type: 'question',
           title: 'Desinstalar Horizonte',
-          message: 'Desinstalar o Horizonte deste dispositivo?',
-          detail:
-            'O desinstalador do Windows será aberto. O driver virtual é um componente separado e permanecerá instalado.',
+          message: 'Desinstalar o Horizonte?',
+          detail,
           buttons: ['Cancelar', 'Desinstalar'],
           defaultId: 0,
           cancelId: 0
         })
       ).response === 1,
-    launch: (path) =>
-      new Promise<void>((resolve, reject) => {
-        const child = spawn(path, [], { detached: true, stdio: 'ignore' })
-        child.once('error', reject)
-        child.once('spawn', () => {
-          child.unref()
-          resolve()
-        })
-      }),
     quit: () => app.quit()
   })
   ipcMain.handle(CHANNELS.uninstall, () => uninstall())

@@ -1,87 +1,68 @@
 import { expect, test, vi } from 'vitest'
-import { createUninstaller } from './uninstall'
+import { createUninstaller, UninstallCancelled, type UninstallPlan } from './uninstall'
 
 function setup(): {
-  deps: {
-    platform: string
-    packaged: boolean
-    executable: string
-    exists: ReturnType<typeof vi.fn<() => boolean>>
+  plan: UninstallPlan & { run: ReturnType<typeof vi.fn<() => Promise<void>>> }
+  deps: Parameters<typeof createUninstaller>[0] & {
     busy: ReturnType<typeof vi.fn<() => boolean>>
-    confirm: ReturnType<typeof vi.fn<() => Promise<boolean>>>
-    launch: ReturnType<typeof vi.fn<() => Promise<void>>>
+    stop: ReturnType<typeof vi.fn<() => void>>
+    confirm: ReturnType<typeof vi.fn<(detail: string) => Promise<boolean>>>
     quit: ReturnType<typeof vi.fn<() => void>>
   }
-  uninstall: ReturnType<typeof createUninstaller>
 } {
+  const plan = { detail: 'O app sai.', run: vi.fn(async () => {}) }
   const deps = {
-    platform: 'win32',
     packaged: true,
-    executable: 'C:\\Apps\\Horizonte\\Horizonte.exe',
-    exists: vi.fn(() => true),
+    plan: () => plan as UninstallPlan | null,
     busy: vi.fn(() => false),
+    stop: vi.fn(),
     confirm: vi.fn(async () => true),
-    launch: vi.fn(async () => {}),
     quit: vi.fn()
   }
-  return { deps, uninstall: createUninstaller(deps) }
+  return { plan, deps }
 }
-test('usa somente o desinstalador ao lado do executável e encerra após iniciar', async () => {
-  const { deps, uninstall } = setup()
-  expect(await uninstall()).toBe('started')
-  expect(deps.launch).toHaveBeenCalledWith('C:\\Apps\\Horizonte\\Uninstall Horizonte.exe')
+
+test('confirma com o texto do sistema, remove e fecha o app', async () => {
+  const { plan, deps } = setup()
+  expect(await createUninstaller(deps)()).toBe('started')
+  expect(deps.confirm).toHaveBeenCalledWith('O app sai.')
+  expect(plan.run).toHaveBeenCalledOnce()
   expect(deps.quit).toHaveBeenCalledOnce()
 })
-test('cancelamento não abre nem encerra o aplicativo', async () => {
-  const { deps, uninstall } = setup()
-  deps.confirm.mockResolvedValue(false)
-  expect(await uninstall()).toBe('cancelled')
-  expect(deps.launch).not.toHaveBeenCalled()
+test('cancelar na confirmação ou na senha do sistema não remove nem fecha', async () => {
+  const { plan, deps } = setup()
+  deps.confirm.mockResolvedValueOnce(false)
+  expect(await createUninstaller(deps)()).toBe('cancelled')
+  expect(plan.run).not.toHaveBeenCalled()
+  plan.run.mockRejectedValueOnce(new UninstallCancelled())
+  expect(await createUninstaller(deps)()).toBe('cancelled')
   expect(deps.quit).not.toHaveBeenCalled()
 })
-test('conexão ou atualização ativa bloqueia a remoção antes da confirmação', async () => {
-  const { deps, uninstall } = setup()
+test('com uma conexão aberta, encerra ela sozinho antes de remover', async () => {
+  const { plan, deps } = setup()
   deps.busy.mockReturnValue(true)
-  expect(await uninstall()).toBe('busy')
+  expect(await createUninstaller(deps)()).toBe('started')
+  expect(deps.stop).toHaveBeenCalledOnce()
+  expect(deps.stop.mock.invocationCallOrder[0]).toBeLessThan(plan.run.mock.invocationCallOrder[0])
+})
+test('sem jeito de remover (ou em desenvolvimento) não faz nada', async () => {
+  const { deps } = setup()
+  expect(await createUninstaller({ ...deps, packaged: false })()).toBe('unavailable')
+  expect(await createUninstaller({ ...deps, plan: () => null })()).toBe('unavailable')
   expect(deps.confirm).not.toHaveBeenCalled()
 })
-test.each(['darwin', 'linux'])('informa remoção pelo sistema em %s', async (platform) => {
-  const { deps } = setup()
-  deps.platform = platform
-  expect(await createUninstaller(deps)()).toBe('manual')
-  expect(deps.launch).not.toHaveBeenCalled()
-})
-test('não tenta remover desenvolvimento ou instalação sem desinstalador', async () => {
-  const { deps } = setup()
-  deps.packaged = false
-  expect(await createUninstaller(deps)()).toBe('unavailable')
-  deps.packaged = true
-  deps.exists.mockReturnValue(false)
-  expect(await createUninstaller(deps)()).toBe('unavailable')
-})
-test('falha ao iniciar preserva o app aberto', async () => {
-  const { deps, uninstall } = setup()
-  deps.launch.mockRejectedValue(new Error('access denied'))
+test('falha ao remover deixa o app aberto e dá para tentar de novo', async () => {
+  const { plan, deps } = setup()
+  const uninstall = createUninstaller(deps)
+  plan.run.mockRejectedValueOnce(new Error('sem permissão'))
   expect(await uninstall()).toBe('failed')
   expect(deps.quit).not.toHaveBeenCalled()
+  expect(await uninstall()).toBe('started')
 })
 test('dois cliques compartilham a mesma confirmação', async () => {
-  const { deps, uninstall } = setup()
+  const { plan, deps } = setup()
+  const uninstall = createUninstaller(deps)
   await Promise.all([uninstall(), uninstall()])
   expect(deps.confirm).toHaveBeenCalledOnce()
-  expect(deps.launch).toHaveBeenCalledOnce()
-})
-test('reavalia a conexão após a confirmação e permite tentar de novo após falhar', async () => {
-  const { deps, uninstall } = setup()
-  deps.confirm.mockImplementation(async () => {
-    deps.busy.mockReturnValue(true)
-    return true
-  })
-  expect(await uninstall()).toBe('busy')
-  expect(deps.launch).not.toHaveBeenCalled()
-  deps.busy.mockReturnValue(false)
-  deps.confirm.mockResolvedValue(true)
-  deps.launch.mockRejectedValueOnce(new Error('falha transitória'))
-  expect(await uninstall()).toBe('failed')
-  expect(await uninstall()).toBe('started')
+  expect(plan.run).toHaveBeenCalledOnce()
 })

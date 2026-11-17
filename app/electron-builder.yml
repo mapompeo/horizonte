@@ -28,6 +28,8 @@ nsis:
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: true
+  # Desinstalar leva junto os ajustes: não sobra nada do Horizonte no computador.
+  deleteAppDataOnUninstall: true
 mac:
   publish: null
   # Um disco para Mac com chip Apple e outro para Mac Intel: o app não depende do chip.
