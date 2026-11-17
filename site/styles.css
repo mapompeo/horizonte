@@ -30,6 +30,15 @@
   --win: #ffffff;
   --win-fg: #1d1d1f;
   --win-line: #e5e5ea;
+  --wall-sea-a: #3a86e8;
+  --wall-sea-b: #0a2f7a;
+  --alu-hi: #f5f5f7;
+  --alu-mid: #c7c8cd;
+  --alu-lo: #8d8f96;
+  --tl-r: #ff5f57;
+  --tl-y: #febc2e;
+  --tl-g: #28c840;
+  --heart: #ff375f;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 30px rgba(0, 0, 0, 0.06);
   --shadow-app: 0 2px 6px rgba(0, 0, 0, 0.05), 0 50px 100px -40px rgba(0, 0, 0, 0.35);
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display',
@@ -444,155 +453,10 @@ summary:focus-visible {
 
 
 
-/* Duas telas para o capítulo da janela atravessando */
-.devices {
-  display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  align-items: end;
-  gap: 6%;
-  padding-bottom: 12%;
-}
-.devices .line {
-  position: absolute;
-  left: -8%;
-  right: -8%;
-  bottom: 12%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--line) 18%, var(--line) 82%, transparent);
-}
-.dev {
-  position: relative;
-  z-index: 1;
-}
-.screen {
-  position: relative;
-  overflow: hidden;
-  aspect-ratio: 16 / 10;
-  border-radius: 10px;
-  border: 8px solid var(--device);
-  outline: 1px solid var(--device-edge);
-  background: linear-gradient(135deg, var(--wall-a), var(--wall-b) 55%, var(--wall-c));
-  box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.45);
-}
-.monitor .neck {
-  width: 18%;
-  height: 22px;
-  margin: 0 auto;
-  background: linear-gradient(var(--device), var(--device-edge));
-}
-.monitor .foot {
-  width: 34%;
-  height: 6px;
-  margin: 0 auto;
-  border-radius: 6px 6px 2px 2px;
-  background: var(--device);
-}
-.laptop .screen {
-  border-radius: 10px 10px 0 0;
-  border-bottom-width: 10px;
-}
-.laptop .base {
-  position: relative;
-  width: 116%;
-  left: -8%;
-  height: 10px;
-  border-radius: 0 0 12px 12px;
-  background: linear-gradient(var(--device-edge), var(--device));
-}
-.dev-label {
-  position: absolute;
-  left: 50%;
-  bottom: -24px;
-  transform: translateX(-50%);
-  font-size: 12px;
-  color: var(--faint);
-  white-space: nowrap;
-}
-.win {
-  position: absolute;
-  top: 16%;
-  width: 46%;
-  border-radius: 6px;
-  background: var(--win);
-  color: var(--win-fg);
-  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-}
-.monitor .win {
-  left: 50%;
-}
-.laptop .win {
-  left: 0;
-  width: 62%;
-  top: 12%;
-}
-.win-bar {
-  display: flex;
-  justify-content: space-between;
-  padding: 5% 6%;
-  border-bottom: 1px solid var(--win-line);
-  font-size: clamp(7px, 0.9vw, 11px);
-  font-weight: 600;
-}
-.win-bar span:last-child {
-  letter-spacing: 0.25em;
-  opacity: 0.5;
-}
-.win-body {
-  display: grid;
-  gap: 7%;
-  padding: 7% 6% 9%;
-}
-.win-body b {
-  display: block;
-  height: clamp(3px, 0.45vw, 6px);
-  border-radius: 3px;
-  background: var(--win-line);
-}
-.win-body b:nth-child(1) {
-  width: 70%;
-  background: color-mix(in srgb, var(--accent) 45%, var(--win-line));
-}
-.win-body b:nth-child(3) {
-  width: 85%;
-}
-.win-body b:nth-child(4) {
-  width: 55%;
-}
-.dcur {
-  position: absolute;
-  z-index: 3;
-  width: clamp(9px, 1.3vw, 15px);
-  top: 20%;
-  left: 64%;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
-}
-.laptop .dcur {
-  left: 4%;
-}
-.taskbar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 9%;
-  background: color-mix(in srgb, var(--win) 70%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4%;
-}
-.taskbar i {
-  width: 3.2%;
-  aspect-ratio: 1;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--win-fg) 30%, transparent);
-}
-
-
-
 /* ---------- Topo ---------- */
 .hero {
+  position: relative;
+  isolation: isolate;
   padding-block: 84px 0;
   text-align: center;
 }
@@ -710,7 +574,7 @@ h2 .l2 {
   position: relative;
 }
 .motion .story {
-  height: 620vh;
+  height: 440vh;
 }
 .sticky {
   display: grid;
@@ -729,7 +593,7 @@ h2 .l2 {
 .stage {
   isolation: isolate;
   position: relative;
-  width: min(100%, 760px, calc((100vh - 290px) * 760 / 580));
+  width: min(100%, 760px, calc((100vh - 350px) * 760 / 580));
   aspect-ratio: 760 / 580;
   perspective: 1600px;
 }
@@ -772,52 +636,178 @@ h2 .l2 {
   margin: 0;
   opacity: 0;
 }
-.dots {
+/* Pontos, lista de passos, barra de progresso e dica: mostram que a rolagem avança a história. */
+.dots,
+.steps,
+.sbar,
+.hint {
   display: none;
-  justify-content: center;
-  gap: 8px;
 }
 .motion .dots {
   display: flex;
+  justify-content: center;
+  gap: 10px;
 }
-.dots i.on {
-  background: var(--fg);
-}
-.dots i {
-  transition: background 0.3s var(--ease);
+.dots button {
+  position: relative;
   display: block;
   width: 8px;
   height: 8px;
+  padding: 0;
+  border: 0;
   border-radius: 99px;
   background: var(--dim);
+  cursor: pointer;
+  transition: background 0.3s var(--ease);
 }
-
-/* ---------- Números ---------- */
-.numbers {
-  padding-block: 140px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 40px;
-  text-align: center;
+.dots button::after {
+  content: '';
+  position: absolute;
+  inset: -12px -5px;
 }
-.num b {
+.dots button.on {
+  background: var(--fg);
+}
+.motion .sbar {
   display: block;
-  font-size: var(--step-4);
-  font-weight: 700;
-  letter-spacing: -0.06em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
+  width: min(100%, 560px);
+  height: 4px;
+  border-radius: 99px;
+  background: var(--seg);
+  overflow: hidden;
 }
-.num b small {
-  font-size: 0.32em;
-  letter-spacing: -0.02em;
-  margin-left: 0.08em;
-}
-.num > span {
+.sbar i {
   display: block;
-  margin-top: 12px;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  transform: scaleX(var(--p, 0));
+}
+.motion .hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   color: var(--muted);
-  font-size: var(--step-0);
+  font-size: 14px;
+  font-weight: 500;
+}
+.hint svg {
+  width: 22px;
+  height: 22px;
+  animation: nudge 1.6s var(--ease) infinite;
+}
+@keyframes nudge {
+  0%,
+  100% {
+    transform: translateY(-3px);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
+}
+.steps {
+  --p: 0;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.steps::before,
+.steps::after {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.steps::after {
+  background: var(--accent);
+  transform-origin: 50% 0;
+  transform: scaleY(var(--p));
+}
+.steps li + li {
+  margin-top: 22px;
+}
+.steps button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: 500 15px/1.3 var(--font);
+  letter-spacing: -0.01em;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.3s var(--ease);
+}
+.steps button b {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 13px;
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease), color 0.3s var(--ease);
+}
+.steps button.done b {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.steps button.on {
+  color: var(--fg);
+  font-weight: 600;
+}
+.steps button.on b {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.steps button:hover {
+  color: var(--fg);
+}
+@media (min-width: 1000px) {
+  /* Desktop: a lista fica ao lado e a barra do celular sai. */
+  .motion .sticky {
+    grid-template-columns: minmax(0, 1fr) 250px;
+    column-gap: 40px;
+  }
+  .motion .sticky > .stage,
+  .motion .sticky > .captions,
+  .motion .sticky > .dots,
+  .motion .sticky > .hint {
+    grid-column: 1;
+  }
+  .motion .sticky > .steps {
+    display: block;
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    align-self: center;
+    justify-self: stretch;
+  }
+  .motion .sbar {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .motion .sticky {
+    gap: 18px;
+  }
 }
 
 /* ---------- Sem conta, sem nuvem, sem configurar ---------- */
@@ -851,6 +841,9 @@ h2 .l2 {
 .download {
   padding-block: 120px;
   text-align: center;
+}
+.download h2 {
+  font-size: var(--step-2);
 }
 .download .lede {
   margin-top: 16px;
@@ -906,8 +899,13 @@ h2 .l2 {
   margin: 36px auto 0;
   max-width: 720px;
 }
+/* Cada pergunta é um cartão da mesma família dos bento. */
 details {
-  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 12px;
+  padding: 0 24px;
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
 }
 summary {
   list-style: none;
@@ -915,7 +913,7 @@ summary {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 22px 2px;
+  padding: 20px 0;
   font-weight: 600;
   font-size: var(--step-1);
   letter-spacing: -0.02em;
@@ -936,7 +934,7 @@ details[open] summary::after {
 }
 .answer {
   margin: 0;
-  padding: 0 2px 24px;
+  padding: 0 0 22px;
   color: var(--muted);
   max-width: 60ch;
 }
@@ -962,22 +960,14 @@ footer a {
 }
 
 @media (max-width: 760px) {
-  .numbers,
   .oses {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .numbers {
-    gap: 64px;
-    padding-block: 100px;
   }
   .statement {
     padding-block: 110px 80px;
   }
   .nav .hide-sm {
     display: none;
-  }
-  .screen {
-    border-width: 5px;
   }
 }
 
@@ -1346,7 +1336,7 @@ main {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
-.tile {
+.bt {
   position: relative;
   overflow: hidden;
   grid-column: span 1;
@@ -1360,10 +1350,10 @@ main {
   justify-content: flex-end;
   will-change: transform;
 }
-.tile.wide {
+.bt.wide {
   grid-column: span 2;
 }
-.tile::before {
+.bt::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -1372,17 +1362,19 @@ main {
   transition: opacity 0.35s var(--ease);
   pointer-events: none;
 }
-.tile:hover::before {
+.bt:hover::before {
   opacity: 1;
 }
-.tile h3 {
+.bt h3 {
   margin: 0;
   font-size: 1.25rem;
   letter-spacing: -0.02em;
 }
-.tile p {
+.bt p {
   margin: 4px 0 0;
   color: var(--muted);
+  font-size: 15px;
+  line-height: 1.4;
 }
 .glyph {
   position: absolute;
@@ -1400,40 +1392,65 @@ main {
   align-items: center;
 }
 .g-monitor i {
+  position: relative;
   display: block;
   width: 96px;
   height: 64px;
   border-radius: 8px;
   border: 3px solid var(--fg);
 }
+.g-monitor i::before {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 22%;
+  height: 34%;
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+.g-monitor i::after {
+  content: '';
+  position: absolute;
+  left: 12%;
+  width: 46%;
+  bottom: 14%;
+  height: 7%;
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
 .g-monitor .m2 {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 3px dashed var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   animation: second 5s var(--ease) infinite;
 }
 @keyframes second {
   0%,
   12% {
-    transform: translateX(-60px) scale(0.6);
-    opacity: 0;
+    transform: translateX(-60px) scale(0.7);
+    opacity: 0.3;
+    border-style: dashed;
   }
   35%,
   80% {
     transform: none;
     opacity: 1;
+    border-style: solid;
   }
   100% {
-    transform: translateX(-60px) scale(0.6);
-    opacity: 0;
+    transform: translateX(-60px) scale(0.7);
+    opacity: 0.3;
+    border-style: dashed;
   }
 }
-/* pareamento: o escudo desenha o visto */
+/* copiar e colar: a seta sai de uma folha para a outra */
 .g-check svg {
   width: 84px;
   height: 84px;
 }
-.g-check .tick {
-  stroke: var(--ok-dot);
+.g-check .arrow {
+  stroke: var(--accent);
   stroke-dasharray: 40;
   stroke-dashoffset: 40;
   animation: draw 3.4s var(--ease) infinite;
@@ -1481,48 +1498,37 @@ main {
     transform: translateX(0);
   }
 }
-/* qualidade: barras de equalizador */
-.g-bars {
-  display: flex;
-  gap: 7px;
-  align-items: flex-end;
-  justify-content: center;
+/* várias telas: três telas de tamanhos diferentes, acendendo uma de cada vez */
+.g-screens svg {
+  width: 132px;
+  height: 80px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
 }
-.g-bars i {
-  display: block;
-  width: 12px;
-  height: 100%;
-  border-radius: 6px;
-  background: linear-gradient(#5ac8fa, var(--accent));
-  transform-origin: 50% 100%;
-  animation: eq 1.8s ease-in-out infinite;
+.g-screens rect {
+  animation: screenlit 3.6s ease-in-out infinite;
 }
-.g-bars i:nth-child(2n) {
-  animation-duration: 2.3s;
+.g-screens .s2 {
+  animation-delay: 1.2s;
 }
-.g-bars i:nth-child(3n) {
-  animation-duration: 1.4s;
-  animation-delay: -0.4s;
+.g-screens .s3 {
+  animation-delay: 2.4s;
 }
-.g-bars i:nth-child(1) {
-  animation-delay: -0.2s;
-}
-.g-bars i:nth-child(4) {
-  animation-delay: -0.9s;
-}
-.g-bars i:nth-child(5) {
-  animation-delay: -1.3s;
-}
-.g-bars i:nth-child(7) {
-  animation-delay: -0.6s;
-}
-@keyframes eq {
+@keyframes screenlit {
   0%,
+  35%,
   100% {
-    transform: scaleY(0.25);
+    fill: transparent;
+    stroke: currentColor;
   }
-  50% {
-    transform: scaleY(1);
+  12%,
+  24% {
+    fill: color-mix(in srgb, var(--accent) 22%, transparent);
+    stroke: var(--accent);
   }
 }
 /* rede local: ondas saindo do ponto */
@@ -1631,12 +1637,6 @@ footer .gh .ico {
     grid-template-columns: minmax(0, 1fr);
     padding-block: 80px;
   }
-  .bento {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .tile.wide {
-    grid-column: span 1;
-  }
   .nav .gh span {
     display: none;
   }
@@ -1703,28 +1703,6 @@ body {
   line-height: 1.12;
 }
 
-/* As duas telas lado a lado, na mesma altura e no mesmo topo, como um desktop estendido de verdade */
-.devices {
-  grid-template-columns: 1fr 1fr;
-  align-items: start;
-  align-content: center;
-  gap: 4%;
-  padding-bottom: 8%;
-}
-.devices .line {
-  display: none;
-}
-.laptop .base {
-  width: 112%;
-  left: -6%;
-}
-.laptop .dev-label {
-  bottom: -42px;
-}
-.monitor .neck {
-  width: 14%;
-}
-
 /* A cena toda flutua de leve e o brilho de trás muda a cada capítulo */
 .motion .stage > .appwin,
 .motion .stage > .devices {
@@ -1756,32 +1734,6 @@ body {
 .appwin .abtn {
   position: relative;
 }
-.win,
-.dcur {
-  will-change: transform;
-}
-.screen::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.18) 50%, transparent 65%);
-  transform: translateX(-120%);
-  animation: sheen 6s ease-in-out infinite;
-  pointer-events: none;
-}
-.laptop .screen::after {
-  animation-delay: 0.4s;
-}
-@keyframes sheen {
-  0%,
-  55% {
-    transform: translateX(-120%);
-  }
-  100% {
-    transform: translateX(120%);
-  }
-}
-
 /* Radar de verdade: o aparelho só acende quando a varredura passa por ele e depois some aos poucos */
 .radar .sweep {
   background: conic-gradient(from 0deg, transparent 0 70%, color-mix(in srgb, var(--accent) 10%, transparent) 90%, color-mix(in srgb, var(--accent) 48%, transparent) 100%);
@@ -1954,28 +1906,13 @@ body {
   align-items: baseline;
 }
 .fps b {
-  font-size: 28px;
+  font-size: 22px;
   letter-spacing: -0.03em;
   color: var(--faint);
-  animation: fpslit 3.6s ease-in-out infinite;
 }
 .fps b:nth-child(2) {
-  animation-delay: 1.2s;
-}
-.fps b:nth-child(3) {
-  animation-delay: 2.4s;
-}
-@keyframes fpslit {
-  0%,
-  30%,
-  100% {
-    color: var(--faint);
-    transform: none;
-  }
-  12% {
-    color: var(--fg);
-    transform: scale(1.25);
-  }
+  font-size: 52px;
+  color: var(--fg);
 }
 .mini-radar {
   position: relative;
@@ -2109,26 +2046,6 @@ body {
     min-height: 200px;
   }
 }
-.devices {
-  gap: 8%;
-}
-.laptop .base {
-  width: 108%;
-  left: -4%;
-}
-
-/* Centros alinhados: a janela cruza aparelhos com tamanhos físicos diferentes. */
-.devices { grid-template-columns: 1.4fr 1fr .65fr; gap: 5%; align-items: start; padding-bottom: 8%; }
-.devices .dev { height: 260px; display: flex; flex-direction: column; justify-content: center; }
-.devices .screen { flex-shrink: 0; }
-.devices .monitor .screen { translate: 0 14px; }
-.devices .monitor .neck, .devices .monitor .foot { position: relative; top: 14px; }
-.devices .laptop .screen { translate: 0 5px; }
-.devices .laptop .base { top: 5px; }
-.devices .tablet .screen { aspect-ratio: 3 / 4; border-radius: 16px; border-width: 6px; }
-.devices .dev-label { bottom: -8px; font-size: clamp(8px, 1.5vw, 12px); }
-@media (max-width: 600px) { .devices .dev { height: 180px; } .screen { border-width: 4px; } }
-
 .recap { perspective: 1200px; }
 .rt::after { content: ''; pointer-events: none; position: absolute; inset: 0; opacity: 0; transition: opacity .3s; background: radial-gradient(240px circle at var(--light-x,50%) var(--light-y,50%), rgba(10,132,255,.16), transparent 75%); }
 @media (hover: hover) and (pointer: fine) { .rt:hover::after { opacity: 1; } }
@@ -2201,13 +2118,6 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-.nov-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-  margin: 48px 0 28px;
-  text-align: left;
-}
 .glass {
   padding: 24px;
   border-radius: 24px;
@@ -2216,25 +2126,6 @@ body {
   backdrop-filter: blur(24px) saturate(1.5);
   -webkit-backdrop-filter: blur(24px) saturate(1.5);
   box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
-}
-.glass .stat {
-  display: inline-block;
-  margin-bottom: 14px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--seg);
-  font: 600 13px/1.2 var(--mono);
-}
-.glass h3 {
-  margin: 0 0 6px;
-  font-size: 19px;
-  letter-spacing: -0.01em;
-}
-.glass p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1.45;
 }
 
 .works {
@@ -2300,6 +2191,7 @@ body {
   padding: 0 20px;
   color: var(--muted);
   font-size: 14px;
+  line-height: 1.45;
 }
 .term-copy {
   position: absolute;
@@ -2326,18 +2218,15 @@ body {
   .radar .blip::after,
   .radar .sweep,
   .g-monitor .m2,
-  .g-check .tick,
+  .g-check .arrow,
   .g-toggle .rail b,
-  .g-bars i,
+  .g-screens rect,
   .g-wifi i,
   .g-open .ico {
     animation: none;
   }
-  .g-check .tick {
+  .g-check .arrow {
     stroke-dashoffset: 0;
-  }
-  .g-bars i {
-    transform: scaleY(0.7);
   }
   .mx-lines .packets {
     display: none;
@@ -2351,11 +2240,9 @@ body {
   .motion .stage > .appwin,
   .motion .stage > .devices,
   .stage::before,
-  .screen::after,
   .rt-hero img,
   .rt .slash,
   .clip .tick,
-  .fps b,
   .mini-radar i.sw,
   .mini-seg i,
   .mini-sliders b {
@@ -2369,17 +2256,6 @@ body {
 }
 
 .noscript-shot { display: block; width: 100%; height: auto; margin: 24px 0 0; border-radius: 20px; }
-.usos { padding-block: 100px 40px; text-align: center; }
-.usos h2 { margin: 0 auto 40px; max-width: 18ch; font-size: clamp(32px, 5.5vw, 56px); letter-spacing: -0.03em; line-height: 1.05; }
-.usos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; text-align: left; }
-.cmp-wrap { margin-top: 32px; overflow-x: auto; text-align: left; max-width: 100%; min-width: 0; }
-.cmp { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 15px; }
-.cmp caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.cmp th, .cmp td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
-.cmp thead th { font-weight: 600; }
-.cmp tbody th { font-weight: 500; color: var(--muted); }
-.cmp td:nth-child(2), .cmp thead th:nth-child(2) { color: var(--fg); font-weight: 600; }
-.cmp-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
 
 /* ============ Barra do topo em notch ============
    Um recorte que nasce da borda de cima (cantos curvos para fora, como a ilha do iPhone). No topo da página ele fica
@@ -2413,7 +2289,7 @@ body {
 .top .wrap {
   position: relative;
   pointer-events: auto;
-  width: min(760px, calc(100% - 32px));
+  width: min(760px, calc(100% - 72px));
   max-width: none;
   height: 48px;
   margin: 0;
@@ -2472,7 +2348,7 @@ body {
 }
 /* Encolhido: só a marca e o Baixar. */
 .top.compact .wrap {
-  width: min(300px, calc(100% - 32px));
+  width: min(350px, calc(100% - 72px));
   height: 44px;
 }
 .top.compact .nav .hide-sm,
@@ -2481,7 +2357,7 @@ body {
 }
 @media (hover: hover) {
   .top.compact .wrap:hover {
-    width: min(760px, calc(100% - 32px));
+    width: min(760px, calc(100% - 72px));
     height: 48px;
   }
   .top.compact .wrap:hover .nav .hide-sm,
@@ -2492,7 +2368,7 @@ body {
 @media (max-width: 760px) {
   .top .wrap,
   .top.compact .wrap {
-    width: min(320px, calc(100% - 32px));
+    width: min(350px, calc(100% - 24px));
   }
   .top.compact .wrap:hover .nav .hide-sm {
     display: none;
@@ -2561,4 +2437,506 @@ html {
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* ============ Padrão bento: a família de cartões do site inteiro ============
+   Fundo --card, raio grande, ilustração pequena em cima, título e uma linha curta. Os cartões entram em sequência
+   quando a grade aparece (js/scenes.js, [data-bento]). */
+.bt-big {
+  display: inline-block;
+  align-self: flex-start;
+  margin-bottom: auto;
+  padding-bottom: 0.14em;
+  font: 700 2.4rem/1.1 var(--font);
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+  background: linear-gradient(90deg, #0040dd, #0a84ff 55%, #5ac8fa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.bt.wide .bt-big {
+  font-size: clamp(3rem, 2rem + 3.4vw, 4.6rem);
+}
+.bt-art {
+  display: grid;
+  place-items: center;
+  height: 110px;
+  margin-bottom: auto;
+  color: var(--fg);
+}
+.bt-art svg {
+  width: 96px;
+  height: 72px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bt-art .scr-fill {
+  fill: color-mix(in srgb, var(--accent) 16%, transparent);
+  stroke: var(--accent);
+}
+.nov-grid,
+.usos-grid,
+.numbers {
+  display: grid;
+  gap: 16px;
+}
+.nov-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 48px 0 28px;
+  text-align: left;
+}
+.nov-grid .bt {
+  min-height: 230px;
+}
+.usos {
+  padding-block: 100px 40px;
+  text-align: center;
+}
+.usos h2 {
+  margin: 0 auto 40px;
+  max-width: 18ch;
+  font-size: clamp(32px, 5.5vw, 56px);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+.usos-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  text-align: left;
+}
+.usos-grid .bt {
+  min-height: 270px;
+}
+.numbers {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-block: 40px 120px;
+}
+.num {
+  min-height: 220px;
+}
+.num b {
+  display: block;
+  margin-bottom: auto;
+  font-size: clamp(4rem, 3rem + 3vw, 5.6rem);
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.num b small {
+  font-size: 0.28em;
+  letter-spacing: -0.02em;
+  margin-left: 0.12em;
+  color: var(--muted);
+}
+.num > span {
+  display: block;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.4;
+}
+@media (max-width: 900px) {
+  .bento,
+  .nov-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .usos-grid,
+  .numbers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .bento,
+  .nov-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bt.wide {
+    grid-column: span 1;
+  }
+  .numbers {
+    padding-block: 20px 80px;
+  }
+}
+
+/* ============ Baixar: o sistema de quem visita fica no meio, em destaque ============ */
+.oses {
+  align-items: center;
+}
+.os.mine {
+  padding-block: 52px 46px;
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-card), 0 20px 60px -24px var(--sun-soft);
+}
+.os.mine .os-ico {
+  width: 68px;
+  height: 68px;
+}
+.os.mine h3 {
+  font-size: 30px;
+}
+.os.mine .linkbtn {
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: 999px;
+  background: var(--btn-bg);
+  color: #fff;
+}
+.os.mine .linkbtn::after {
+  content: none;
+}
+.os.mine .linkbtn + .linkbtn {
+  background: var(--seg);
+  color: var(--fg);
+}
+@media (max-width: 760px) {
+  .os.mine {
+    order: -1;
+  }
+}
+
+/* ============ Apoiar ============ */
+.support .heart {
+  color: var(--heart);
+}
+.top .nav .support {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.top .nav .support:hover {
+  border-color: var(--notch-fg);
+}
+footer .support {
+  white-space: nowrap;
+}
+/* Encolhido ou no celular: só o coração (o texto continua para leitor de tela). */
+.top.compact .nav .support {
+  padding: 0 9px;
+}
+.top.compact .nav .support-t {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (max-width: 760px) {
+  .top .nav .support {
+    padding: 0 9px;
+  }
+  .top .nav .support-t {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .top .nav {
+    gap: 8px;
+  }
+}
+
+
+/* ============ Aparelhos da cena 4 ============
+   Medidas em cqw da própria cena (760 px = 100cqw): tudo escala junto e a janela, que passa de uma tela para outra,
+   tem o mesmo tamanho em todas. Cada aparelho é uma grade de 3 linhas (1fr, tela, 1fr): a tela fica sempre no meio
+   da altura, então os centros ficam alinhados e a janela cruza em linha reta. */
+.devices {
+  container-type: inline-size;
+  grid-template-columns: 1.4fr 1fr 0.65fr;
+  column-gap: 5%;
+  align-items: start;
+  align-content: center;
+}
+.dev {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr);
+  height: 48cqw;
+}
+.dev > * {
+  grid-column: 1;
+}
+.screen {
+  grid-row: 2;
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border: 0.7cqw solid var(--device);
+  border-radius: 1.3cqw;
+  outline: 1px solid var(--device-edge);
+  /* Papel de parede: céu em degradê, linha do horizonte com brilho e mar embaixo. */
+  background:
+    radial-gradient(60% 16% at 50% 63.5%, rgba(255, 255, 255, 0.75), transparent 72%),
+    linear-gradient(180deg, transparent 63.2%, rgba(255, 255, 255, 0.8) 63.4%, var(--wall-sea-a) 64.4%, var(--wall-sea-b) 100%),
+    linear-gradient(180deg, var(--wall-a) 0%, var(--wall-b) 38%, var(--wall-c) 63.4%);
+  box-shadow: 0 3cqw 5cqw -2.4cqw rgba(0, 0, 0, 0.5);
+}
+/* Vidro: reflexo fixo de canto e um brilho que passa de vez em quando. */
+.screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: linear-gradient(122deg, rgba(255, 255, 255, 0.16) 0, rgba(255, 255, 255, 0.04) 32%, transparent 33%);
+  pointer-events: none;
+}
+.screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.14) 50%, transparent 62%);
+  transform: translateX(-120%);
+  animation: sheen 7s ease-in-out infinite;
+  pointer-events: none;
+}
+.laptop .screen::after {
+  animation-delay: 0.6s;
+}
+@keyframes sheen {
+  0%,
+  60% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+.tablet .screen {
+  aspect-ratio: 3 / 4;
+  border-width: 0.8cqw;
+  border-radius: 2.6cqw;
+}
+
+/* Monitor: borda fina, haste e base de alumínio. */
+.monitor .screen {
+  border-radius: 1cqw;
+  border-width: 0.5cqw;
+}
+.neck,
+.foot,
+.base {
+  background: linear-gradient(90deg, var(--alu-lo), var(--alu-hi) 42%, var(--alu-mid) 58%, var(--alu-lo));
+}
+.neck {
+  grid-row: 3;
+  justify-self: center;
+  width: 6.4cqw;
+  height: 4.4cqw;
+  box-shadow: inset 0 1.4cqw 1.2cqw -1cqw rgba(0, 0, 0, 0.55);
+}
+.foot {
+  position: relative;
+  grid-row: 3;
+  justify-self: center;
+  width: 15cqw;
+  height: 1cqw;
+  margin-top: 4.2cqw;
+  border-radius: 50% 50% 0.6cqw 0.6cqw / 100% 100% 0.6cqw 0.6cqw;
+  box-shadow: inset 0 0.15cqw 0 rgba(255, 255, 255, 0.7);
+}
+/* Sombra e reflexo no chão, sob a base. */
+.foot::after {
+  content: '';
+  position: absolute;
+  left: -30%;
+  right: -30%;
+  top: 90%;
+  height: 2.2cqw;
+  background: radial-gradient(ellipse at 50% 0, rgba(0, 0, 0, 0.32), transparent 70%);
+  pointer-events: none;
+}
+
+/* Notebook: a tela e a base do teclado vista de cima, em perspectiva leve (mais estreita no fundo). */
+.laptop .screen {
+  border-radius: 1.3cqw 1.3cqw 0.3cqw 0.3cqw;
+  border-width: 0.5cqw 0.5cqw 0.8cqw;
+}
+.base {
+  position: relative;
+  grid-row: 3;
+  align-self: start;
+  justify-self: center;
+  width: 114%;
+  height: 2.2cqw;
+  border-radius: 0 0 1.2cqw 1.2cqw;
+  clip-path: polygon(4% 0, 96% 0, 100% 100%, 0 100%);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.16) 0, transparent 18%, transparent 52%, rgba(0, 0, 0, 0.12) 54%, rgba(0, 0, 0, 0.2) 100%),
+    linear-gradient(90deg, var(--alu-lo), var(--alu-hi) 30%, var(--alu-hi) 70%, var(--alu-lo));
+}
+/* Reentrância para abrir a tampa. */
+.base::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 14%;
+  height: 0.7cqw;
+  translate: -50% 0;
+  border-radius: 0 0 0.7cqw 0.7cqw;
+  background: var(--alu-lo);
+}
+.base::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 100%;
+  height: 1.6cqw;
+  background: radial-gradient(ellipse at 50% 0, rgba(0, 0, 0, 0.3), transparent 70%);
+}
+
+.dev-label {
+  grid-row: 3;
+  align-self: end;
+  justify-self: center;
+  font-size: clamp(9px, 1.5cqw, 12px);
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* Janela com barra de título e texto: a mesma em todas as telas (o scenes.js posiciona e dimensiona). */
+.win {
+  position: absolute;
+  top: 16%;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: 3 / 2;
+  width: 46%;
+  border-radius: 1cqw;
+  background: var(--win);
+  color: var(--win-fg);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--win-fg) 12%, transparent), 0 2.4cqw 3.6cqw -1.2cqw rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  will-change: transform;
+}
+.win-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5cqw;
+  padding: 0.9cqw 1.1cqw;
+  border-bottom: 1px solid var(--win-line);
+  font-size: 1.05cqw;
+  font-weight: 600;
+  line-height: 1;
+}
+.win-bar i {
+  flex: none;
+  width: 0.8cqw;
+  height: 0.8cqw;
+  border-radius: 50%;
+  background: var(--tl-r);
+}
+.win-bar i:nth-child(2) {
+  background: var(--tl-y);
+}
+.win-bar i:nth-child(3) {
+  background: var(--tl-g);
+}
+.win-bar span {
+  flex: 1;
+  min-width: 0;
+  padding-right: 3cqw;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.win-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1cqw;
+  padding: 1.1cqw 1.3cqw;
+}
+.win-body b {
+  display: block;
+  height: 0.55cqw;
+  border-radius: 0.3cqw;
+  background: var(--win-line);
+}
+.win-body b:nth-child(1) {
+  width: 62%;
+  height: 0.9cqw;
+  background: color-mix(in srgb, var(--accent) 55%, var(--win-line));
+}
+.win-body b:nth-child(3) {
+  width: 88%;
+}
+.win-body b:nth-child(4) {
+  width: 74%;
+}
+.win-body b:nth-child(5) {
+  width: 46%;
+}
+.dcur {
+  position: absolute;
+  z-index: 3;
+  width: 1.7cqw;
+  top: 20%;
+  left: 64%;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+  will-change: transform;
+}
+.laptop .dcur {
+  left: 4%;
+}
+.taskbar {
+  position: absolute;
+  left: 50%;
+  bottom: 0.9cqw;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.7cqw;
+  padding: 0.5cqw 1cqw;
+  translate: -50% 0;
+  border-radius: 1.2cqw;
+  background: color-mix(in srgb, var(--win) 55%, transparent);
+  backdrop-filter: blur(6px);
+}
+.taskbar i {
+  width: 1.8cqw;
+  height: 1.8cqw;
+  border-radius: 0.45cqw;
+  background: color-mix(in srgb, var(--win-fg) 32%, transparent);
+}
+.taskbar i:nth-child(1) {
+  background: var(--accent);
+}
+
+/* Fundo ASCII do hero: cobre a primeira tela, fica atrás do texto e não recebe clique. */
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Com o Apoiar o notch aberto fica cheio: aperta os espaços em telas médias. */
+@media (max-width: 900px) {
+  .top .nav {
+    gap: 14px;
+  }
 }

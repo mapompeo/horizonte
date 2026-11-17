@@ -98,7 +98,7 @@ export function startScenes(M) {
     );
   });
   document
-    .querySelectorAll("[data-rise], .num")
+    .querySelectorAll("[data-rise]")
     .forEach((el) => (el.style.opacity = "0"));
   M.inView(
     "[data-rise]",
@@ -108,11 +108,30 @@ export function startScenes(M) {
     { amount: 0.3 },
   );
 
+  /* Grades bento: os cartões de cada grade aparecem em sequência conforme a rolagem. */
+  document.querySelectorAll("[data-bento]").forEach((grid) => {
+    const cards = [...grid.children];
+    cards.forEach((c) => (c.style.opacity = "0"));
+    M.inView(
+      grid,
+      () => {
+        M.animate(
+          cards,
+          { opacity: [0, 1], y: [40, 0], scale: [0.96, 1] },
+          { ...soft, delay: M.stagger(0.08) },
+        );
+      },
+      { amount: 0.2 },
+    );
+  });
+
   /* ============ 5. A história presa na tela ============ */
   const app = $("app");
   const devices = $("devices");
   const caps = [...document.querySelectorAll(".cap")];
-  const dots = [...document.querySelectorAll("#dots i")];
+  const dots = [...document.querySelectorAll("#dots button")];
+  const steps = [...document.querySelectorAll("#steps button")];
+  const story = $("story");
   const live = mountLive(app, { auto: false });
   let current = -1;
   let frameReady = false;
@@ -143,6 +162,14 @@ export function startScenes(M) {
       dot.classList.toggle("on", k === i);
       M.animate(dot, { width: k === i ? "28px" : "8px" }, spring);
     });
+    steps.forEach((step, k) => {
+      step.classList.toggle("on", k === i);
+      step.classList.toggle("done", k < i);
+      if (k === i) step.setAttribute("aria-current", "step");
+      else step.removeAttribute("aria-current");
+    });
+    // A dica de rolagem só aparece na primeira cena.
+    M.animate($("hint"), { opacity: i === 0 ? 1 : 0, y: i === 0 ? 0 : 10 }, soft);
     const isDevices = i === 3;
     $("stage").style.setProperty("--glow", "rgba(10,132,255,.24)");
     M.animate(
@@ -206,10 +233,25 @@ export function startScenes(M) {
         current = i;
         enter(i, prev);
       }
+      // A linha da lista chega ao marcador de cada passo quando a cena dele começa.
+      $("steps").style.setProperty("--p", (i >= 4 ? 1 : (i + local) / 4).toFixed(3));
+      $("sbar").style.setProperty("--p", progress.toFixed(3));
       if (i === 3) scrubWindow(local);
       if (i === 4) scrubQuality(local);
     },
     { target: $("story"), offset: ["start start", "end end"] },
+  );
+
+  // Pontos e lista rolam até o começo da cena escolhida.
+  document.querySelectorAll("[data-go]").forEach((button) =>
+    button.addEventListener("click", () => {
+      const range = story.offsetHeight - innerHeight;
+      const top = story.getBoundingClientRect().top + scrollY;
+      scrollTo({
+        top: top + (range * (Number(button.dataset.go) + 0.08)) / 5,
+        behavior: "smooth",
+      });
+    }),
   );
 
   /* ============ 6. Números que contam ============ */
@@ -223,11 +265,6 @@ export function startScenes(M) {
           ease: [0.16, 1, 0.3, 1],
           onUpdate: (v) => (el.textContent = String(Math.round(v))),
         });
-        M.animate(
-          el.closest(".num"),
-          { opacity: [0, 1], y: [40, 0], scale: [0.94, 1] },
-          soft,
-        );
       },
       { amount: 0.6 },
     );
@@ -309,20 +346,8 @@ export function startScenes(M) {
     { amount: 0.5 },
   );
 
-  // Recursos: cartões sobem em cascata e a luz segue o mouse
-  const tiles = [...document.querySelectorAll("[data-tile]")];
-  tiles.forEach((t) => (t.style.opacity = "0"));
-  M.inView(
-    $("bento"),
-    () => {
-      M.animate(
-        tiles,
-        { opacity: [0, 1], y: [50, 0], scale: [0.94, 1] },
-        { ...soft, delay: M.stagger(0.09) },
-      );
-    },
-    { amount: 0.2 },
-  );
+  // Cartões bento: a luz segue o mouse e eles levantam ao passar por cima
+  const tiles = [...document.querySelectorAll(".bt")];
   tiles.forEach((t) => {
     t.addEventListener("pointermove", (e) => {
       const r = t.getBoundingClientRect();
@@ -330,7 +355,7 @@ export function startScenes(M) {
       t.style.setProperty("--my", e.clientY - r.top + "px");
     });
   });
-  M.hover("[data-tile]", (el) => {
+  M.hover(".bt", (el) => {
     M.animate(el, { y: -6, scale: 1.015 }, spring);
     return () => M.animate(el, { y: 0, scale: 1 }, spring);
   });

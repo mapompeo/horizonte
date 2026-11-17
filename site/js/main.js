@@ -20,12 +20,19 @@ const fileText = (name) => {
 };
 
 const os = detectOs(navigator.userAgent, navigator.maxTouchPoints);
-const mine = document.querySelector(`.os[data-os="${os}"] h3`);
+const mineCard = document.querySelector(`.os[data-os="${os}"]`);
+const mine = mineCard?.querySelector("h3");
 if (mine)
   mine.insertAdjacentHTML(
     "afterend",
     `<span class="you" data-i18n="dl.you">${t("dl.you", "Seu sistema")}</span>`,
   );
+// O cartão do sistema de quem visita vai para o meio e ganha destaque; os outros dois ficam nos lados.
+if (mineCard) {
+  const sides = [...document.querySelectorAll(".os")].filter((c) => c !== mineCard);
+  mineCard.classList.add("mine");
+  document.getElementById("oses").append(sides[0], mineCard, sides[1]);
+}
 if (['ios', 'android', 'chromeos'].includes(os)) {
   const guidance = document.createElement('p');
   guidance.id = 'browser-guidance';
@@ -80,6 +87,13 @@ function paintDownloads() {
 
 fillDownloads();
 document.addEventListener("hz:lang", paintDownloads);
+
+// Fundo ASCII da primeira tela (com ou sem Motion).
+import("./hero-bg.js")
+  .then(({ mountHeroBackground }) =>
+    mountHeroBackground(document.querySelector(".hero-bg")),
+  )
+  .catch(() => undefined);
 
 // O app do topo é o app de verdade (compilado do código do projeto), rodando com um motor de mentira.
 import("./live.js")

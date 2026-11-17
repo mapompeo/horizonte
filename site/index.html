@@ -50,6 +50,7 @@
       <a class="hide-sm" href="#como-funciona" data-i18n="nav.how">Como funciona</a>
       <a class="hide-sm" href="#recursos" data-i18n="nav.features">Recursos</a>
       <button class="lang-btn" id="lang-cycle" type="button" aria-label="Mudar idioma" title="Mudar idioma" data-i18n-attr="aria-label:lang.cycle;title:lang.cycle">PT</button>
+      <a class="support" href="https://github.com/sponsors/mapompeo" target="_blank" rel="noopener"><span class="support-t" data-i18n="support">Apoiar</span> <span class="heart" aria-hidden="true">♥</span></a>
       <a href="#baixar" data-i18n="download">Baixar</a>
       <a class="gh" href="https://github.com/mapompeo/horizonte" aria-label="GitHub"><svg class="ico" aria-hidden="true"><use href="#i-github"/></svg><span>GitHub</span></a>
     </nav>
@@ -59,6 +60,7 @@
 <main id="topo">
   <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="hero wrap">
+    <canvas class="hero-bg" aria-hidden="true"></canvas>
     <a class="newpill" href="#novidades" data-hero><b data-i18n="pill.new">Novo</b><span class="np-t" data-i18n="pill.text">Várias telas ao mesmo tempo</span><span aria-hidden="true">›</span></a>
     <h1 id="hero-title"><span class="l1" data-i18n="hero.l1">Sua segunda tela.</span><span class="l2" data-i18n="hero.l2">Sem fio.</span></h1>
     <p class="lede" data-hero data-i18n="hero.lede">Use o notebook, o tablet ou o celular como monitor do seu PC. Gratuito e de código aberto.</p>
@@ -100,7 +102,7 @@
 
   <div id="como-funciona">
     <div class="wrap story-head">
-      <h2 data-mask><span class="mask"><span data-i18n="story.h1">Um QR code.</span></span><span class="mask l2"><span data-i18n="story.h2">Nenhuma configuração.</span></span></h2>
+      <h2 id="story-t" data-mask><span class="mask"><span data-i18n="story.h1">Um QR code.</span></span><span class="mask l2"><span data-i18n="story.h2">Nenhuma configuração.</span></span></h2>
     </div>
     <div class="story" id="story">
       <div class="wrap sticky">
@@ -146,10 +148,9 @@
 
 
 <div class="devices" id="devices" aria-hidden="true">
-            <div class="line"></div>
             <div class="dev monitor">
               <div class="screen" id="screen-a">
-                <div class="win" id="win-a"><div class="win-bar"><span data-i18n="win.title">Notas da reunião</span><span>_ ▢ ✕</span></div><div class="win-body"><b></b><b></b><b></b><b></b></div></div>
+                <div class="win" id="win-a"><div class="win-bar"><i></i><i></i><i></i><span data-i18n="win.title">Notas da reunião</span></div><div class="win-body"><b></b><b></b><b></b><b></b><b></b></div></div>
                 <svg class="dcur" id="cur-a" viewBox="0 0 16 22" aria-hidden="true"><path d="M1 1l13 12.5-6 .6 3.6 7.1-2.6 1.3-3.6-7.2L1 19.6z" fill="#fff" stroke="#000" stroke-width="1.1" /></svg>
                 <div class="taskbar"><i></i><i></i><i></i><i></i><i></i></div>
               </div>
@@ -159,19 +160,20 @@
             </div>
             <div class="dev laptop">
               <div class="screen" id="screen-b">
-                <div class="win" id="win-b"><div class="win-bar"><span data-i18n="win.title">Notas da reunião</span><span>_ ▢ ✕</span></div><div class="win-body"><b></b><b></b><b></b><b></b></div></div>
+                <div class="win" id="win-b"><div class="win-bar"><i></i><i></i><i></i><span data-i18n="win.title">Notas da reunião</span></div><div class="win-body"><b></b><b></b><b></b><b></b><b></b></div></div>
                 <svg class="dcur" id="cur-b" viewBox="0 0 16 22" aria-hidden="true"><path d="M1 1l13 12.5-6 .6 3.6 7.1-2.6 1.3-3.6-7.2L1 19.6z" fill="#fff" stroke="#000" stroke-width="1.1" /></svg>
               </div>
               <div class="base"></div>
               <span class="dev-label" data-i18n="dev.laptop">Notebook · recebe</span>
             </div>
             <div class="dev tablet">
-              <div class="screen"><div class="win"><div class="win-bar"><span data-i18n="win.title">Notas da reunião</span></div><div class="win-body"><b></b><b></b><b></b><b></b></div></div></div>
+              <div class="screen"><div class="win"><div class="win-bar"><i></i><i></i><i></i><span data-i18n="win.title">Notas da reunião</span></div><div class="win-body"><b></b><b></b><b></b><b></b><b></b></div></div></div>
               <span class="dev-label" data-i18n="dev.tablet">Tablet · navegador</span>
             </div>
           </div>
 
         </div>
+        <div class="sbar" id="sbar" aria-hidden="true"><i></i></div>
         <div class="captions" id="captions">
           <div class="cap"><h3 data-i18n="cap.1.h">Abra o Horizonte.</h3><p data-i18n="cap.1.p">O QR code já está lá. Nada para escolher, nada para configurar.</p></div>
           <div class="cap"><h3 data-i18n="cap.2.h">Aponte a câmera.</h3><p data-i18n="cap.2.p">No celular ou no tablet, a tela abre no navegador. Você permite uma vez e pronto.</p></div>
@@ -179,7 +181,15 @@
           <div class="cap"><h3 data-i18n="cap.4.h">Arraste a janela para o lado.</h3><p data-i18n="cap.4.p">O outro dispositivo vira uma extensão da sua tela. É só levar a janela até a borda.</p></div>
           <div class="cap"><h3 data-i18n="cap.5.h">Quantos aparelhos quiser.</h3><p data-i18n="cap.5.p">Cada um com a sua tela. A lista mostra quem está conectado, e o QR continua ali para o próximo.</p></div>
         </div>
-        <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="dots" id="dots"><button type="button" data-go="0" aria-labelledby="st-1"></button><button type="button" data-go="1" aria-labelledby="st-2"></button><button type="button" data-go="2" aria-labelledby="st-3"></button><button type="button" data-go="3" aria-labelledby="st-4"></button><button type="button" data-go="4" aria-labelledby="st-5"></button></div>
+        <div class="hint" id="hint"><span data-i18n="hint.scroll">Role para continuar</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
+        <ol class="steps" id="steps" aria-labelledby="story-t">
+          <li><button type="button" data-go="0"><b>1</b><span id="st-1" data-i18n="cap.1.h">Abra o Horizonte.</span></button></li>
+          <li><button type="button" data-go="1"><b>2</b><span id="st-2" data-i18n="cap.2.h">Aponte a câmera.</span></button></li>
+          <li><button type="button" data-go="2"><b>3</b><span id="st-3" data-i18n="cap.3.h">Outro computador? Receber.</span></button></li>
+          <li><button type="button" data-go="3"><b>4</b><span id="st-4" data-i18n="cap.4.h">Arraste a janela para o lado.</span></button></li>
+          <li><button type="button" data-go="4"><b>5</b><span id="st-5" data-i18n="cap.5.h">Quantos aparelhos quiser.</span></button></li>
+        </ol>
       </div>
     </div>
   </div>
@@ -189,13 +199,13 @@
   <p class="nov-tag" data-rise><span data-i18n="nov.tag">Novo na</span> <span data-version>beta</span></p>
   <h2 id="nov-t" data-rise data-i18n="nov.title">Várias telas.<br />Ao mesmo tempo.</h2>
   <p class="lede" data-rise data-i18n="nov.lede">Notebook, tablet e celular juntos, cada um com a sua tela estendida. Arraste cada uma para onde ela fica na mesa.</p>
-  <div class="nov-grid">
-    <article class="glass" data-rise><span class="stat" data-i18n="stat.many">várias</span><h3 data-i18n="nov.1.h">Telas sem fio</h3><p data-i18n="nov.1.p">Cada aparelho ganha um monitor só dele. Quem entra depois não derruba ninguém.</p></article>
-    <article class="glass" data-rise><span class="stat">20 ms</span><h3 data-i18n="nov.2.h">Cursor sem atraso</h3><p data-i18n="nov.2.p">A seta é desenhada direto no outro aparelho, sem esperar o vídeo.</p></article>
-    <article class="glass" data-rise><span class="stat">1–3 ms</span><h3 data-i18n="nov.3.h">Vídeo na hora</h3><p data-i18n="nov.3.p">Cada quadro aparece assim que chega, sem fila de espera.</p></article>
-    <article class="glass" data-rise><span class="stat" data-i18n="stat.enc">cifrado</span><h3 data-i18n="nov.4.h">Mouse sem programa extra</h3><p data-i18n="nov.4.p">Mouse e teclado passam de um computador para o outro pela borda da tela. Direto pela rede local, criptografado.</p></article>
-    <article class="glass" data-rise><span class="stat">QR</span><h3 data-i18n="nov.5.h">Celular em um toque</h3><p data-i18n="nov.5.p">Aponte a câmera para o código na tela e a página já abre conectando.</p></article>
-    <article class="glass" data-rise><span class="stat">auto</span><h3 data-i18n="nov.6.h">Sempre atualizado</h3><p data-i18n="nov.6.p">A versão nova chega sozinha. Um clique e o app reinicia atualizado.</p></article>
+  <div class="nov-grid" data-bento>
+    <article class="bt wide"><span class="bt-big" data-i18n="stat.many">várias</span><h3 data-i18n="nov.1.h">Telas sem fio</h3><p data-i18n="nov.1.p">Cada aparelho ganha um monitor só dele. Quem entra depois não derruba ninguém.</p></article>
+    <article class="bt"><span class="bt-big">20 ms</span><h3 data-i18n="nov.2.h">Cursor sem atraso</h3><p data-i18n="nov.2.p">A seta é desenhada direto no outro aparelho, sem esperar o vídeo.</p></article>
+    <article class="bt"><span class="bt-big">1–3 ms</span><h3 data-i18n="nov.3.h">Vídeo na hora</h3><p data-i18n="nov.3.p">Cada quadro aparece assim que chega, sem fila de espera.</p></article>
+    <article class="bt wide"><span class="bt-big" data-i18n="stat.enc">cifrado</span><h3 data-i18n="nov.4.h">Mouse sem programa extra</h3><p data-i18n="nov.4.p">Mouse e teclado passam de um computador para o outro pela borda da tela. Direto pela rede local, criptografado.</p></article>
+    <article class="bt"><span class="bt-big">QR</span><h3 data-i18n="nov.5.h">Celular em um toque</h3><p data-i18n="nov.5.p">Aponte a câmera para o código na tela e a página já abre conectando.</p></article>
+    <article class="bt"><span class="bt-big">auto</span><h3 data-i18n="nov.6.h">Sempre atualizado</h3><p data-i18n="nov.6.p">A versão nova chega sozinha. Um clique e o app reinicia atualizado.</p></article>
   </div>
   <a class="linkbtn" href="https://github.com/mapompeo/horizonte/releases" data-rise data-i18n="nov.all">Todas as versões ›</a>
 </section>
@@ -228,38 +238,38 @@
 
   <section class="wrap bento-sec" id="recursos">
     <h2 data-mask><span class="mask"><span data-i18n="bento.h">Tudo no lugar.</span></span></h2>
-    <div class="bento" id="bento">
-      <article class="tile wide" data-tile>
+    <div class="bento" id="bento" data-bento>
+      <article class="bt wide">
         <div class="glyph g-monitor" aria-hidden="true"><i class="m1"></i><i class="m2"></i></div>
         <h3 data-i18n="f.monitor">Monitor virtual</h3><p data-i18n="f.monitor.p">Criado sozinho.</p>
       </article>
-      <article class="tile" data-tile>
-        <div class="glyph g-check" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M24 5l16 6v11c0 10-7 17-16 21C15 39 8 32 8 22V11z" /><path class="tick" d="M16 24l6 6 11-12" /></svg></div>
+      <article class="bt">
+        <div class="glyph g-check" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="19" height="25" rx="4" /><rect x="25" y="18" width="19" height="25" rx="4" /><path class="arrow" d="M23 12h12v6M32 15l3 3 3-3" /></svg></div>
         <h3 data-i18n="f.copy">Copiar e colar</h3><p data-i18n="f.copy.p">Texto, imagens e arquivos.</p>
       </article>
-      <article class="tile" data-tile>
+      <article class="bt">
         <div class="glyph g-toggle" aria-hidden="true"><span class="rail"><b></b></span></div>
         <h3 data-i18n="f.theme">Tema claro e escuro</h3><p data-i18n="f.theme.p">Segue o sistema, ou escolha nos Ajustes.</p>
       </article>
-      <article class="tile wide" data-tile>
-        <div class="glyph g-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <article class="bt wide">
+        <div class="glyph g-screens" aria-hidden="true"><svg viewBox="0 0 120 72" aria-hidden="true"><rect class="s1" x="3" y="6" width="58" height="38" rx="5" /><path d="M22 54h20M32 44v10" /><rect class="s2" x="68" y="14" width="28" height="38" rx="5" /><rect class="s3" x="102" y="24" width="15" height="28" rx="4" /></svg></div>
         <h3 data-i18n="f.screens">Várias telas</h3><p data-i18n="f.screens.p">Cada aparelho na sua posição.</p>
       </article>
-      <article class="tile" data-tile>
+      <article class="bt">
         <div class="glyph g-wifi" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
         <h3 data-i18n="f.local">Só rede local</h3><p data-i18n="f.local.p">Nada sai de casa.</p>
       </article>
-      <article class="tile" data-tile>
+      <article class="bt">
         <div class="glyph g-open" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-github"/></svg></div>
         <h3 data-i18n="open">Código aberto</h3><p data-i18n="f.open.p">GPL-3.0, de graça.</p>
       </article>
     </div>
   </section>
 
-  <div class="wrap numbers" id="numbers">
-    <div class="num"><b><span data-i18n="num.upto">até</span> <span data-count="60">60</span><small>fps</small></b><span data-i18n="num.1">até 60 quadros por segundo na tela estendida</span></div>
-    <div class="num"><b><span data-count="0">0</span><small data-i18n="num.accounts">contas</small></b><span data-i18n="num.2">para criar: sem nuvem e sem cadastro no caminho</span></div>
-    <div class="num"><b><span data-count="1">1</span><small data-i18n="num.qr">QR code</small></b><span data-i18n="num.3">do app aberto até a segunda tela</span></div>
+  <div class="wrap numbers" id="numbers" data-bento>
+    <div class="num bt"><b><span data-count="60">60</span><small>fps</small></b><span data-i18n="num.1">até 60 quadros por segundo na tela estendida</span></div>
+    <div class="num bt"><b><span data-count="0">0</span><small data-i18n="num.accounts">contas</small></b><span data-i18n="num.2">para criar: sem nuvem e sem cadastro no caminho</span></div>
+    <div class="num bt"><b><span data-count="1">1</span><small data-i18n="num.qr">QR code</small></b><span data-i18n="num.3">do app aberto até a segunda tela</span></div>
   </div>
 
   <div class="wrap values">
@@ -278,8 +288,8 @@
   <section class="wrap recap-sec" id="resumo" aria-label="Resumo do Horizonte" data-i18n-attr="aria-label:recap.aria">
     <div class="recap" id="recap">
       <div class="rt " style="grid-area:a" data-rt><div class="rg"><span class="os3"><svg class="ico" aria-hidden="true"><use href="#i-windows"/></svg><svg class="ico" aria-hidden="true"><use href="#i-linux"/></svg><svg class="ico" aria-hidden="true"><use href="#i-apple"/></svg></span></div><span class="lab" data-i18n="rc.any">Qualquer sistema</span></div>
-      <div class="rt " style="grid-area:b" data-rt><div class="rg"><div class="glyph g-check"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M24 5l16 6v11c0 10-7 17-16 21C15 39 8 32 8 22V11z" /><path class="tick" d="M16 24l6 6 11-12" /></svg></div></div><span class="lab" data-i18n="f.copy">Copiar e colar</span></div>
-      <div class="rt " style="grid-area:d" data-rt><div class="rg"><div class="glyph g-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><span class="lab" data-i18n="f.screens">Várias telas</span></div>
+      <div class="rt " style="grid-area:b" data-rt><div class="rg"><div class="glyph g-check"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="19" height="25" rx="4" /><rect x="25" y="18" width="19" height="25" rx="4" /><path class="arrow" d="M23 12h12v6M32 15l3 3 3-3" /></svg></div></div><span class="lab" data-i18n="f.copy">Copiar e colar</span></div>
+      <div class="rt " style="grid-area:d" data-rt><div class="rg"><div class="glyph g-screens"><svg viewBox="0 0 120 72" aria-hidden="true"><rect class="s1" x="3" y="6" width="58" height="38" rx="5" /><path d="M22 54h20M32 44v10" /><rect class="s2" x="68" y="14" width="28" height="38" rx="5" /><rect class="s3" x="102" y="24" width="15" height="28" rx="4" /></svg></div></div><span class="lab" data-i18n="f.screens">Várias telas</span></div>
       <div class="rt " style="grid-area:e" data-rt><div class="rg"><div class="glyph g-monitor"><i class="m1"></i><i class="m2"></i></div></div><span class="lab" data-i18n="f.monitor">Monitor virtual</span></div>
       <div class="rt " style="grid-area:f" data-rt><div class="rg"><div class="glyph g-wifi"><i></i><i></i><i></i><b></b></div></div><span class="lab" data-i18n="f.local">Só rede local</span></div>
       <div class="rt rt-hero" style="grid-area:H" data-rt><img src="./icon.png" alt="" /><b>Horizonte</b></div>
@@ -296,29 +306,17 @@
 
   <section class="wrap usos" id="usos" aria-labelledby="usos-t">
     <h2 id="usos-t" data-rise data-i18n="usos.h">Use o tablet, o celular ou o notebook como monitor</h2>
-    <div class="usos-grid">
-      <article class="glass" data-rise><h3 data-i18n="usos.1.h">Tablet e iPad</h3><p data-i18n="usos.1.p">Abra o Horizonte no PC e aponte a câmera do tablet para o QR code. A segunda tela abre no navegador, sem instalar nada. Serve para iPad e para tablets Android.</p></article>
-      <article class="glass" data-rise><h3 data-i18n="usos.2.h">Celular Android e iPhone</h3><p data-i18n="usos.2.p">O caminho é o mesmo: câmera no QR code e a tela estendida abre no navegador. Deitado ou em pé, é só girar. No iPhone, adicione a página à Tela de Início para usar a tela inteira.</p></article>
-      <article class="glass" data-rise><h3 data-i18n="usos.3.h">Outro notebook ou PC</h3><p data-i18n="usos.3.p">Instale o Horizonte nos dois computadores. No que vai receber, toque em Receber: ele acha o outro pela rede local, sem conta. Funciona entre Windows, Linux e macOS.</p></article>
-    </div>
-    <div class="cmp-wrap" data-rise>
-      <table class="cmp">
-        <caption data-i18n="cmp.cap">Horizonte e outros programas de segunda tela</caption>
-        <thead><tr><th scope="col"></th><th scope="col">Horizonte</th><th scope="col">Spacedesk</th><th scope="col">Duet Display</th><th scope="col">Sidecar</th></tr></thead>
-        <tbody>
-          <tr><th scope="row" data-i18n="cmp.price">Preço</th><td data-i18n="cmp.free">Grátis</td><td data-i18n="cmp.site">Veja o site oficial</td><td data-i18n="cmp.site">Veja o site oficial</td><td data-i18n="cmp.incl">Incluído no macOS</td></tr>
-          <tr><th scope="row" data-i18n="open">Código aberto</th><td data-i18n="cmp.yes">Sim, GPL-3.0</td><td data-i18n="cmp.no">Não</td><td data-i18n="cmp.no">Não</td><td data-i18n="cmp.no">Não</td></tr>
-          <tr><th scope="row" data-i18n="cmp.sys">Sistemas</th><td data-i18n="cmp.h">Windows, Linux e macOS; celular e tablet pelo navegador</td><td data-i18n="cmp.s">Windows como computador principal</td><td data-i18n="cmp.d">Mac e Windows</td><td data-i18n="cmp.c">Mac e iPad</td></tr>
-        </tbody>
-      </table>
-      <p class="cmp-note" data-i18n="cmp.note">Dados dos outros programas conforme os sites oficiais. Confira antes de decidir.</p>
+    <div class="usos-grid" data-bento>
+      <article class="bt"><div class="bt-art"><svg viewBox="0 0 96 72" aria-hidden="true"><rect x="20" y="6" width="56" height="60" rx="8" /><rect class="scr-fill" x="27" y="13" width="42" height="40" rx="3" /><path d="M42 60h12" /></svg></div><h3 data-i18n="usos.1.h">Tablet e iPad</h3><p data-i18n="usos.1.p">Aponte a câmera para o QR code. Sem instalar nada.</p></article>
+      <article class="bt"><div class="bt-art"><svg viewBox="0 0 96 72" aria-hidden="true"><rect x="32" y="3" width="32" height="66" rx="8" /><rect class="scr-fill" x="38" y="12" width="20" height="44" rx="2" /><path d="M42 62h12" /></svg></div><h3 data-i18n="usos.2.h">Celular Android e iPhone</h3><p data-i18n="usos.2.p">Deitado ou em pé, é só girar. Funciona no Android e no iPhone.</p></article>
+      <article class="bt"><div class="bt-art"><svg viewBox="0 0 96 72" aria-hidden="true"><rect x="16" y="10" width="64" height="42" rx="5" /><rect class="scr-fill" x="22" y="16" width="52" height="30" rx="2" /><path d="M6 60h84" /></svg></div><h3 data-i18n="usos.3.h">Outro notebook ou PC</h3><p data-i18n="usos.3.p">Instale nos dois e toque em Receber. Sem conta.</p></article>
     </div>
   </section>
 
   <section class="download wrap" id="baixar">
-    <h2 data-mask><span class="mask"><span data-i18n="dl.h">Baixe grátis o Horizonte.</span></span></h2>
+    <h2 data-mask><span class="mask"><span data-i18n="dl.h">Baixe o Horizonte.</span></span></h2>
     <p class="lede" data-rise data-i18n="dl.lede">Instale nos dois computadores. A versão mais recente fica sempre no GitHub.</p>
-    <div class="oses">
+    <div class="oses" id="oses">
       <div class="os" data-os="windows" data-rise>
         <svg class="ico os-ico" aria-hidden="true"><use href="#i-windows"/></svg><span class="state ok" data-i18n="dl.ok">Disponível</span>
         <h3>Windows</h3>
@@ -341,7 +339,7 @@
     </div>
     <div class="term glass" data-rise>
       <div class="term-bar"><i></i><i></i><i></i><span>Linux (Ubuntu, Debian)</span></div>
-      <code id="term-cmd">sudo apt install ./Horizonte-*.deb</code>
+      <code id="term-cmd">sudo apt install ./horizonte_*.deb</code>
       <button class="term-copy" type="button" data-copy="term-cmd" data-i18n="copy.label">Copiar</button>
       <p data-i18n="dl.term">Na pasta onde o arquivo foi baixado. Depois disso, ele se atualiza sozinho.</p>
     </div>
@@ -349,7 +347,7 @@
 
   <section class="faq-wrap wrap" id="perguntas">
     <h2 data-mask><span class="mask"><span data-i18n="faq.h">Perguntas frequentes.</span></span></h2>
-    <div class="faq">
+    <div class="faq" data-bento>
       <details>
         <summary data-i18n="faq.1.q">Como usar o notebook, tablet ou celular como monitor sem fio?</summary>
         <p class="answer" data-i18n="faq.1.a">Instale o Horizonte no computador e abra. No celular ou tablet, aponte a câmera para o QR code: a tela estendida abre no navegador, sem instalar nada. Em outro computador, abra o Horizonte e escolha Receber.</p>
@@ -408,6 +406,7 @@
     <span class="foot-os" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-windows"/></svg><svg class="ico" aria-hidden="true"><use href="#i-linux"/></svg><svg class="ico" aria-hidden="true"><use href="#i-apple"/></svg></span>
     <span class="foot-credit" data-i18n="foot.credit">GPL-3.0 · motor próprio com WebRTC</span>
     <a class="gh" href="https://github.com/mapompeo/horizonte"><svg class="ico" aria-hidden="true"><use href="#i-github"/></svg><span>github.com/mapompeo/horizonte</span></a>
+    <a class="support" href="https://github.com/sponsors/mapompeo" target="_blank" rel="noopener"><span class="support-t" data-i18n="support">Apoiar</span> <span class="heart" aria-hidden="true">♥</span></a>
     <div class="lang" role="group" aria-label="Idioma" data-i18n-attr="aria-label:lang.group"><button type="button" data-lang="pt" lang="pt">Português</button><span aria-hidden="true">·</span><button type="button" data-lang="en" lang="en">English</button><span aria-hidden="true">·</span><button type="button" data-lang="es" lang="es">Español</button></div>
   </div>
 </footer>

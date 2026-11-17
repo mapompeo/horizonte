@@ -123,3 +123,34 @@ for (const [lang, title, htmlLang] of [
     expect(page.url()).toContain("lang=pt");
   });
 }
+
+test("sem rolagem lateral e sem tabela de comparação", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForTimeout(800);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(page.locator(".cmp")).toHaveCount(0);
+});
+
+test("história: ponto clicável leva à cena, lista e dica acompanham", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForFunction(() => document.documentElement.classList.contains("motion"));
+  await expect(page.locator("#hint")).toHaveCSS("opacity", "1");
+  await page.locator("#dots button").nth(2).click();
+  await expect(page.locator("#captions .cap").nth(2)).toHaveCSS("opacity", "1", { timeout: 8000 });
+  await expect(page.locator("#hint")).toHaveCSS("opacity", "0");
+  expect(await page.locator("#sbar").evaluate((e) => getComputedStyle(e).getPropertyValue("--p"))).not.toBe("");
+});
+
+test("download: o sistema de quem visita fica no meio, em destaque", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#oses .os")).toHaveCount(3);
+  await expect(page.locator("#oses .os").nth(1)).toHaveClass(/mine/);
+  await expect(page.locator("#oses .os.mine .you")).toHaveCount(1);
+});
+
+test("apoiar abre o GitHub Sponsors", async ({ page }) => {
+  await page.goto("/");
+  const links = page.locator('a.support[href="https://github.com/sponsors/mapompeo"]');
+  await expect(links).toHaveCount(2);
+  await expect(links.first()).toHaveAttribute("rel", "noopener");
+});

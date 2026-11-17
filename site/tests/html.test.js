@@ -23,7 +23,7 @@ test('sem JavaScript: links de download funcionam e nada nasce escondido', () =>
 
 test('só carrega coisas do próprio site', () => {
   const sources = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1])
-  const external = sources.filter((s) => /^https?:/.test(s) && !s.startsWith('https://github.com/mapompeo/horizonte') && !s.startsWith('https://horizonte-monitor.vercel.app/'))
+  const external = sources.filter((s) => /^https?:/.test(s) && !s.startsWith('https://github.com/mapompeo/horizonte') && s !== 'https://github.com/sponsors/mapompeo' && !s.startsWith('https://horizonte-monitor.vercel.app/'))
   assert.deepEqual(external, [])
   assert.match(html, /<script src="\.\/vendor\/motion\.min\.js"><\/script>/)
   assert.match(html, /<script type="module" src="\.\/js\/main\.js"><\/script>/)
@@ -79,4 +79,24 @@ test('a história interativa é acessível e os desenhos de dispositivos são de
 test('a área de download não traz o aviso de instalador sem assinatura (só a pergunta rápida explica)', () => {
   assert.doesNotMatch(html, /class="note"/)
   assert.match(html, /Por que o Windows e o macOS avisam na instalação\?/)
+})
+
+test('Apoiar: botão no notch e no rodapé, abrindo o GitHub Sponsors em outra aba', () => {
+  const links = html.match(/<a class="support" href="https:\/\/github\.com\/sponsors\/mapompeo" target="_blank" rel="noopener">/g) || []
+  assert.equal(links.length, 2)
+})
+
+test('comando do terminal usa o pacote em minúsculas e a tabela de comparação saiu', () => {
+  assert.match(html, /sudo apt install \.\/horizonte_\*\.deb/)
+  assert.doesNotMatch(html, /Horizonte-\*\.deb/)
+  assert.doesNotMatch(html, /cmp-wrap|class="cmp"/)
+  assert.doesNotMatch(css, /\.cmp/)
+})
+
+test('grades bento e a história com lista, pontos clicáveis e dica de rolagem', () => {
+  assert.equal((html.match(/data-bento/g) || []).length, 5)
+  assert.equal((html.match(/data-go="/g) || []).length, 10)
+  assert.match(html, /id="hint"/)
+  assert.match(html, /id="sbar"/)
+  assert.match(html, /<ol class="steps" id="steps"/)
 })
