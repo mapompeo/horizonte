@@ -60,6 +60,14 @@ describe.runIf(process.platform === 'win32')('monitor virtual do Windows de verd
             'Get-CimInstance Win32_VideoController | Format-List Name,Status,PNPDeviceID | Out-String -Width 300',
             "Get-ChildItem 'C:\\VirtualDisplayDriver' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName",
             'pnputil.exe /enum-drivers | Select-String -Context 0,6 MttVDD | Out-String -Width 300',
+            // Repete a entrada do pacote com a saída à mostra, para ver a recusa do Windows.
+            `$d = Join-Path $env:TEMP 'hz-vdd-diag'; Expand-Archive -LiteralPath '${zip}' -DestinationPath $d -Force`,
+            "$inf = Get-ChildItem $d -Recurse -Filter MttVDD.inf | Select-Object -First 1; $cer = Get-ChildItem $d -Recurse -Filter *.cer | Select-Object -First 1",
+            "Import-Certificate -FilePath $cer.FullName -CertStoreLocation 'Cert:\\LocalMachine\\Root' | Out-Null; Import-Certificate -FilePath $cer.FullName -CertStoreLocation 'Cert:\\LocalMachine\\TrustedPublisher' | Out-Null",
+            'pnputil.exe /add-driver $inf.FullName /install | Out-String -Width 300',
+            '"pnputil saiu com $LASTEXITCODE"',
+            'Get-WinEvent -LogName Microsoft-Windows-Kernel-PnP/Configuration -MaxEvents 8 -ErrorAction SilentlyContinue | Format-List TimeCreated,Id,Message | Out-String -Width 300',
+            '(Get-CimInstance Win32_OperatingSystem).Caption',
             'exit 0'
           ].join('\n'),
           60_000
