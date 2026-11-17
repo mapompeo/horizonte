@@ -171,7 +171,6 @@
       <div class="card card-pad">
         <PlacementMap {screens} {placements} height={adding ? 220 : 320} onStop={stop} />
       </div>
-      <p class="hint center">Arraste cada tela para onde ela fica na mesa</p>
     {/if}
     {#if unmapped.length}
       <ul class="card list" role="list" aria-live="polite" aria-label="Aparelhos conectados">
@@ -238,9 +237,6 @@
   }
   .add:hover {
     background: color-mix(in srgb, var(--accent) 20%, transparent);
-  }
-  .center {
-    text-align: center;
   }
   /* Sem ninguém conectado: tudo em coluna, centralizado (QR, pedido, endereço e código). */
   :global(.hero.vertical) {
