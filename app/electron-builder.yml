@@ -73,7 +73,8 @@ linux:
 appImage:
   artifactName: Horizonte-${version}.${ext}
 deb:
-  artifactName: Horizonte-${version}.${ext}
+  # Nome no padrão do Debian (minúsculo): o comando de instalar fica "sudo apt install ./horizonte_*.deb".
+  artifactName: horizonte_${version}_amd64.${ext}
   # As do electron-builder mais o som e o gráfico (libasound, libgbm), que faltam em Ubuntu mínimo; os nomes com t64
   # são do Ubuntu 24.04+ e Debian 13.
   depends:

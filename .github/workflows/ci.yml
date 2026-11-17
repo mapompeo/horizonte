@@ -114,7 +114,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           shopt -s nullglob
-          files=(dist/Horizonte-*-setup.exe dist/Horizonte-*.AppImage dist/Horizonte-*.deb dist/Horizonte-*.dmg \
+          files=(dist/Horizonte-*-setup.exe dist/Horizonte-*.AppImage dist/horizonte_*.deb dist/Horizonte-*.dmg \
             dist/latest*.yml dist/beta*.yml dist/*.blockmap)
           ls -la "${files[@]}"
           gh release upload "v${{ needs.version.outputs.version }}" "${files[@]}" --clobber
