@@ -29,7 +29,8 @@ function watcher(dir: string): { next(): Promise<string>; stop(): void } {
   child.stderr.on('data', (chunk: Buffer) => (errors += chunk.toString()))
   child.on('exit', (code) => (errors += ` (saiu: ${code})`))
   createInterface({ input: child.stdout }).on('line', (line) => {
-    if (line.trim()) waiting.shift()?.(line)
+    if (line.startsWith('E')) errors += ` ${line}`
+    else if (line.trim()) waiting.shift()?.(line)
   })
   return {
     next: () =>

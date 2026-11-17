@@ -51,7 +51,9 @@ while (true) {
           if (png.writeToFileAtomically(path, true)) line = 'I' + path
         }
       }
-    } catch (error) {}
+    } catch (error) {
+      line = 'E' + error
+    }
     out.writeData($(line + '\\n').dataUsingEncoding($.NSUTF8StringEncoding))
   }
   delay(0.5)

@@ -131,9 +131,11 @@ describe.runIf(process.platform === 'darwin')('monitor virtual no Mac de verdade
     const one = start(1, 1920, 1080)
     const two = start(2, 780, 1560)
     try {
-      expect(
-        await until(() => /DISPLAY_ID/.test(one.out()) && /DISPLAY_ID/.test(two.out()), 30_000)
-      ).toBe(true)
+      const ready = await until(
+        () => /DISPLAY_ID/.test(one.out()) && /DISPLAY_ID/.test(two.out()),
+        30_000
+      )
+      expect(ready, `primeira: ${one.out()} | segunda: ${two.out()}`).toBe(true)
       expect(await until(() => screens() >= before + 2, 30_000), 'o sistema enxerga as duas').toBe(
         true
       )
