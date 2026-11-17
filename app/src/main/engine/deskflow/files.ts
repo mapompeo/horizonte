@@ -29,7 +29,15 @@ export interface FileClipboardDeps {
   download(from: string, file: OfferedFile, dest: string): Promise<void>
   /** Manda a oferta ao outro PC. */
   offer(to: string, files: OfferedFile[]): Promise<void>
+  /** Relógio (para os testes). */
+  now?: () => number
 }
+
+/**
+ * No Windows e no Mac, a imagem que este lado põe para colar volta do observador como cópia nova (ela não é igual ao
+ * arquivo: o sistema codifica de novo). Por isso, logo depois de pôr uma, a próxima imagem não vira oferta.
+ */
+const IMAGE_ECHO_MS = 2500
 
 /**
  * Copiar num PC e colar no outro. Ao copiar arquivos aqui, oferece ao outro PC; ao receber uma oferta, baixa e
@@ -48,10 +56,13 @@ export function createFileClipboard(deps: FileClipboardDeps): {
   let unwatch: (() => void) | null = null
   let offered = new Map<string, string>()
   let placedByUs = ''
+  let placedImageAt = -Infinity
+  const now = deps.now ?? Date.now
 
   async function onCopied(paths: string[], image = false): Promise<void> {
     const key = paths.join('\n')
     if (peers.length === 0 || paths.length === 0 || key === placedByUs) return
+    if (image && now() - placedImageAt < IMAGE_ECHO_MS) return
     const files: OfferedFile[] = []
     const next = new Map<string, string>()
     let total = 0
@@ -104,7 +115,9 @@ export function createFileClipboard(deps: FileClipboardDeps): {
         paths.push(dest)
       }
       placedByUs = paths.join('\n')
-      await deps.setClipboard(paths, files.length === 1 && files[0].image === true)
+      const image = files.length === 1 && files[0].image === true
+      if (image) placedImageAt = now()
+      await deps.setClipboard(paths, image)
     }
   }
 }

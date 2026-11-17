@@ -17,6 +17,7 @@ import type { Host, ScreenSize } from '../../../shared/types'
 import type { MouseEngine } from '../port'
 import { createFileClipboard, type FileClipboardDeps } from './files'
 import { LINUX_CLIPBOARD_SCRIPT } from './linux-clipboard'
+import { parseWatchLine, PLACE_MAC, WATCH_MAC, WATCH_WINDOWS } from './clipboard-watch'
 import {
   createMouseEngine,
   MAX_TEXT_CHARS,
@@ -29,7 +30,8 @@ import { createNativeMouseShare, NATIVE_MOUSE_PORT } from '../native-mouse/nativ
 import { linuxFirewall } from '../webrtc/wire'
 import { downloadVerified } from '../../platform/windows/download'
 import { ensureDeskflowLinux, FLATPAK_APP } from './linux-install'
-import { DESKFLOW_WINDOWS, deskflowLinuxFor } from './versions'
+import { DESKFLOW_MAC, DESKFLOW_WINDOWS, deskflowLinuxFor } from './versions'
+import { ensureMoonlightMac } from '../../platform/macos/moonlight'
 
 const SERVICE_TYPE = 'horizonte-mouse'
 /** Cabe um texto copiado inteiro (até MAX_TEXT_CHARS, em UTF-8 e com escapes do JSON). */
@@ -135,7 +137,7 @@ const succeeds = (command: string, args: string[]): Promise<boolean> =>
   new Promise((resolve) => execFile(command, args, { timeout: 15_000 }, (error) => resolve(!error)))
 
 /**
- * Como chamar o `deskflow-core`. Windows: zip portátil baixado e conferido, numa pasta por versão. Linux: o
+ * Como chamar o `deskflow-core`. Mac: tirado do disco do app, conferido. Windows: zip portátil baixado e conferido, numa pasta por versão. Linux: o
  * Deskflow instalado, ou instalado agora (pacote nativo, ou o Flatpak onde não há pacote).
  */
 function deskflowCommand(deps: {
@@ -144,6 +146,20 @@ function deskflowCommand(deps: {
   extract(zip: string, into: string): Promise<void>
 }): () => Promise<DeskflowCommand> {
   return async () => {
+    if (process.platform === 'darwin') {
+      // Do disco do app só se usa o `deskflow-core`; fica na pasta do Horizonte, sem administrador.
+      const command = await ensureMoonlightMac({
+        dir: join(deps.dir, DESKFLOW_MAC.arm64.version),
+        workDir: tmpdir(),
+        artifact: process.arch === 'arm64' ? DESKFLOW_MAC.arm64 : DESKFLOW_MAC.x64,
+        appName: 'Deskflow.app',
+        executable: 'deskflow-core',
+        exists: (path) => Promise.resolve(existsSync(path)),
+        download: (artifact, dest) => downloadVerified(artifact, dest),
+        run: (script) => run('sh', ['-c', script], 600_000).then(() => '')
+      })
+      return { command, prefix: [] }
+    }
     if (process.platform === 'win32') {
       const into = join(deps.dir, DESKFLOW_WINDOWS.version)
       const find = (): string | null => {
@@ -180,46 +196,48 @@ function deskflowCommand(deps: {
   }
 }
 
-/**
- * Windows: um PowerShell leve avisa quando a lista de arquivos copiados muda (só enquanto o mouse está
- * compartilhado) e o Set-Clipboard -Path deixa os arquivos recebidos prontos para colar no Explorer.
- */
-const WATCH_SCRIPT = [
-  "$last = ''",
-  'while ($true) {',
-  "  $files = ''",
-  "  try { $files = @((Get-Clipboard -Format FileDropList -ErrorAction SilentlyContinue).FullName) -join '|' } catch { }",
-  '  if ($files -ne $last) { [Console]::Out.WriteLine($files); [Console]::Out.Flush(); $last = $files }',
-  '  Start-Sleep -Milliseconds 800',
-  '}'
-].join('\n')
-
-function windowsClipboard(
+function systemClipboard(
+  inbox: string,
   runPowerShell: (script: string) => Promise<unknown>
 ): Pick<FileClipboardDeps, 'watch' | 'setClipboard'> {
+  const windows = process.platform === 'win32'
   return {
     watch(onChange) {
-      const child = spawn(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-STA', '-Command', WATCH_SCRIPT],
-        {
-          stdio: ['ignore', 'pipe', 'ignore'],
-          windowsHide: true
-        }
-      )
-      let buffer = ''
-      child.stdout.on('data', (chunk: Buffer) => {
-        buffer += chunk.toString('utf8')
-        let line: number
-        while ((line = buffer.indexOf('\n')) >= 0) {
-          const text = buffer.slice(0, line).trim()
-          buffer = buffer.slice(line + 1)
-          onChange(text ? text.split('|') : [])
-        }
+      void mkdir(inbox, { recursive: true }).catch(() => undefined)
+      const env = { ...process.env, HZ_CLIP_DIR: inbox }
+      const child = windows
+        ? spawn(
+            'powershell.exe',
+            ['-NoProfile', '-NonInteractive', '-STA', '-Command', WATCH_WINDOWS],
+            {
+              stdio: ['ignore', 'pipe', 'ignore'],
+              windowsHide: true,
+              env
+            }
+          )
+        : spawn('osascript', ['-l', 'JavaScript', '-e', WATCH_MAC], {
+            stdio: ['ignore', 'pipe', 'ignore'],
+            env
+          })
+      child.on('error', () => undefined)
+      createInterface({ input: child.stdout }).on('line', (raw) => {
+        const { paths, image } = parseWatchLine(raw)
+        onChange(paths, image)
       })
       return () => void child.kill()
     },
     async setClipboard(paths, image) {
+      if (!windows) {
+        await new Promise<void>((resolve, reject) =>
+          execFile(
+            'osascript',
+            ['-l', 'JavaScript', '-e', PLACE_MAC, image ? 'image' : 'files', ...paths],
+            { timeout: 10_000 },
+            (error) => (error ? reject(error) : resolve())
+          )
+        )
+        return
+      }
       if (image) {
         const png = new Blob([await readFile(paths[0])], { type: 'image/png' })
         return clipboard.write([new ClipboardItem({ 'image/png': png })])
@@ -436,10 +454,11 @@ export function createRealMouseEngine(deps: {
     }
   })
   const channel = createChannel()
-  // Imagens copiadas no Linux ficam aqui até o outro PC baixar (só esta pessoa lê a pasta).
-  const linux = linuxClipboard(join(dir, 'copiadas'))
+  // Imagens copiadas aqui ficam nesta pasta até o outro PC baixar (só esta pessoa lê a pasta).
+  const copied = join(dir, 'copiadas')
+  const linux = linuxClipboard(copied)
   const files = createFileClipboard({
-    ...(process.platform === 'win32' ? windowsClipboard(deps.runPowerShell) : linux.files),
+    ...(process.platform === 'linux' ? linux.files : systemClipboard(copied, deps.runPowerShell)),
     sizeOf: async (path) => {
       const info = await stat(path).catch(() => null)
       return info?.isFile() ? info.size : null

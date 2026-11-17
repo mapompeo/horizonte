@@ -19,6 +19,9 @@ export interface MacMoonlightDeps {
   ): Promise<void>
   /** Roda um roteiro no `sh`, como a própria pessoa, e devolve o que ele imprimiu. */
   run(script: string): Promise<string>
+  /** Outro app de disco .dmg (o Deskflow): o nome do .app e o executável dentro de Contents/MacOS. */
+  appName?: string
+  executable?: string
 }
 
 /** O executável vem do Info.plist do próprio app; só nome simples, nunca um caminho. */
@@ -32,10 +35,11 @@ export async function ensureMoonlightMac(
   deps: MacMoonlightDeps,
   onProgress?: (fraction: number) => void
 ): Promise<string> {
-  const app = join(deps.dir, 'Moonlight.app')
+  const app = join(deps.dir, deps.appName ?? 'Moonlight.app')
   const plist = join(app, 'Contents', 'Info.plist')
 
   const executable = async (): Promise<string> => {
+    if (deps.executable) return join(app, 'Contents', 'MacOS', deps.executable)
     const name = (
       await deps.run(`plutil -extract CFBundleExecutable raw -o - ${shQuote(plist)}`)
     ).trim()

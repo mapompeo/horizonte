@@ -180,14 +180,16 @@ export function windowMedia(
       const mine = ++run
       signalTargets.set(id, send)
       if (hooks.onInput) inputTargets.set(id, hooks.onInput)
-      void Promise.all([hooks.beforeStart?.(want), ready]).then(([extra]) => extra).then(
-        (extra) => mine === run && push({ t: 'start', want, ...(extra ?? {}) }),
-        (error: unknown) => {
-          const failure = error instanceof Error ? error : new Error(String(error))
-          log('não consegui preparar a tela:', failure.message)
-          hooks.onError?.(failure)
-        }
-      )
+      void Promise.all([hooks.beforeStart?.(want), ready])
+        .then(([extra]) => extra)
+        .then(
+          (extra) => mine === run && push({ t: 'start', want, ...(extra ?? {}) }),
+          (error: unknown) => {
+            const failure = error instanceof Error ? error : new Error(String(error))
+            log('não consegui preparar a tela:', failure.message)
+            hooks.onError?.(failure)
+          }
+        )
     },
     deliver: (message) => push(message),
     stop() {

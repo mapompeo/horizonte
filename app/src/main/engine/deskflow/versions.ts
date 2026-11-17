@@ -19,6 +19,18 @@ export const DESKFLOW_WINDOWS = pin(
   '8d19004cc3625623489d96580c1b58fd13ee78185689907fd4478595f93fab9a'
 )
 
+/** Mac: o disco do app (Apple Silicon ou Intel); dele só se usa o `deskflow-core`. */
+export const DESKFLOW_MAC = {
+  arm64: pin(
+    `deskflow-${VERSION}-macos-arm64.dmg`,
+    'dd21e79e566314394214906d3338c505d337af536fc580c022ee3fadffad0c97'
+  ),
+  x64: pin(
+    `deskflow-${VERSION}-macos-x86_64.dmg`,
+    '8aca3c77a1b16b9a3d6b8a380e5e38a0e6abf6d241bb32dcf3cf8b67abbff5d8'
+  )
+}
+
 export type DeskflowLinuxKind = 'deb' | 'rpm-dnf' | 'rpm-zypper' | 'pacman' | 'flatpak'
 export type DeskflowLinuxPackage = PinnedArtifact & { kind: DeskflowLinuxKind }
 

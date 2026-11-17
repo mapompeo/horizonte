@@ -59,6 +59,20 @@ describe('copiar e colar arquivos entre os PCs', () => {
     expect(h.images).toEqual([true, false])
   })
 
+  it('a imagem que acabou de chegar não volta como oferta; uma copiada depois, sim', async () => {
+    let clock = 0
+    const h = harness()
+    const files = createFileClipboard({ ...h.deps, now: () => clock })
+    files.start(['192.168.1.6'])
+    await files.receive([{ id: 'a', name: 'imagem-1.png', size: 3, image: true }], '192.168.1.6')
+    clock = 1000
+    await h.copy(['C:/copiadas/imagem-7.png'], true)
+    expect(h.offers).toHaveLength(0)
+    clock = 4000
+    await h.copy(['C:/copiadas/imagem-8.png'], true)
+    expect(h.offers).toHaveLength(1)
+  })
+
   it('copiar arquivos aqui oferece ao outro PC, que pode baixar cada um pelo id', async () => {
     const h = harness()
     const files = createFileClipboard(h.deps)
@@ -123,5 +137,21 @@ describe('copiar e colar arquivos entre os PCs', () => {
     files.stop()
     await h.copy(['C:\\docs\\relatorio.pdf'])
     expect(h.offers).toEqual([])
+  })
+})
+
+describe('linha do observador do Windows e do Mac', () => {
+  it('separa arquivos, imagem e cópia de outra coisa', async () => {
+    const { parseWatchLine } = await import('./clipboard-watch')
+    expect(parseWatchLine('FC:\\a.txt|C:\\b.pdf\r')).toEqual({
+      paths: ['C:\\a.txt', 'C:\\b.pdf'],
+      image: false
+    })
+    expect(parseWatchLine('I/Users/x/copiadas/imagem-1.png')).toEqual({
+      paths: ['/Users/x/copiadas/imagem-1.png'],
+      image: true
+    })
+    expect(parseWatchLine('')).toEqual({ paths: [], image: false })
+    expect(parseWatchLine('I')).toEqual({ paths: [], image: false })
   })
 })

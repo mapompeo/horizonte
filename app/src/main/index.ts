@@ -589,26 +589,24 @@ async function boot(): Promise<void> {
   }).then((kind) => (ownKind = kind))
   app.on('before-quit', () => presence.stop())
 
-  // Mouse e teclado compartilhados (Deskflow): Windows e Linux; no Mac ainda não.
-  const mouse =
-    process.platform === 'darwin'
-      ? undefined
-      : createRealMouseEngine({
-          userData: app.getPath('userData'),
-          download: (zip) => downloadVerified(DESKFLOW_WINDOWS, zip),
-          extract: async (zip, into) => {
-            await runPowerShell(
-              `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(into)} -Force`,
-              120_000
-            )
-          },
-          runPowerShell: (script) => runPowerShell(script, 30_000),
-          ownScreen: desktopSize,
-          ownKind: () => ownKind,
-          writeText: (text) => clipboard.writeText(text),
-          readText: () => clipboard.readText()
-        })
-  if (mouse) app.on('before-quit', () => void mouse.stop().catch(() => undefined))
+  // Mouse e teclado compartilhados: Deskflow nos três sistemas, e o caminho próprio entre dois GNOME.
+  // No Mac, o próprio sistema pede uma vez a permissão de Acessibilidade para o mouse.
+  const mouse = createRealMouseEngine({
+    userData: app.getPath('userData'),
+    download: (zip) => downloadVerified(DESKFLOW_WINDOWS, zip),
+    extract: async (zip, into) => {
+      await runPowerShell(
+        `Expand-Archive -LiteralPath ${psQuote(zip)} -DestinationPath ${psQuote(into)} -Force`,
+        120_000
+      )
+    },
+    runPowerShell: (script) => runPowerShell(script, 30_000),
+    ownScreen: desktopSize,
+    ownKind: () => ownKind,
+    writeText: (text) => clipboard.writeText(text),
+    readText: () => clipboard.readText()
+  })
+  app.on('before-quit', () => void mouse.stop().catch(() => undefined))
   const controller = await createController({ engine, mouse, store })
   ownName = () => controller.getSnapshot().settings.deviceName
   ownSettings = () => controller.getSnapshot().settings
