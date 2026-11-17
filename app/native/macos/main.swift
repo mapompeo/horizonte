@@ -120,9 +120,16 @@ guard display.apply(settings) else {
     exit(2)
 }
 
-// Coloca o monitor novo à direita do principal, como uma segunda tela de verdade.
+// Coloca o monitor novo à direita das telas que já existem (com outra tela virtual ligada, depois dela), alinhado
+// em cima com a principal. O motor reposiciona depois, conforme o mapa dos Ajustes.
 let mainBounds = CGDisplayBounds(CGMainDisplayID())
-guard let x = Int32(exactly: mainBounds.maxX), let y = Int32(exactly: mainBounds.minY) else {
+var activeCount: UInt32 = 0
+CGGetActiveDisplayList(0, nil, &activeCount)
+var activeIds = [CGDirectDisplayID](repeating: 0, count: Int(activeCount))
+CGGetActiveDisplayList(activeCount, &activeIds, &activeCount)
+let rightEdge = activeIds.prefix(Int(activeCount)).filter { $0 != display.displayID }
+    .map { CGDisplayBounds($0).maxX }.max() ?? mainBounds.maxX
+guard let x = Int32(exactly: rightEdge), let y = Int32(exactly: mainBounds.minY) else {
     fail("coordenadas do monitor principal fora do intervalo do Quartz")
 }
 var configuration: CGDisplayConfigRef?
@@ -144,8 +151,8 @@ guard completeError == .success else {
     fail("nao consegui aplicar o posicionamento do monitor virtual: Quartz \(completeError.rawValue)")
 }
 let positioned = CGDisplayBounds(display.displayID)
-guard positioned.minX == mainBounds.maxX, positioned.minY == mainBounds.minY else {
-    fail("o macOS nao posicionou o monitor virtual a direita do principal")
+guard positioned.minX == rightEdge, positioned.minY == mainBounds.minY else {
+    fail("o macOS nao posicionou o monitor virtual a direita das outras telas")
 }
 
 print("DISPLAY_ID \(display.displayID)")

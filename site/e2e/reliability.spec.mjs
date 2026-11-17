@@ -87,7 +87,7 @@ test('arquivo Intel ausente leva à release sem substituir por ARM64', async ({ 
 
 test('app real confirma montagem antes de substituir fallback', async ({ page }) => {
   await page.goto('/');
-  await expect(page.frameLocator('#hero-app iframe').getByRole('heading', { name: 'Pronto.' })).toBeVisible();
+  await expect(page.frameLocator('#hero-app iframe').getByRole('heading', { name: 'Aponte a câmera' })).toBeVisible();
   await expect(page.locator('#hero-app iframe')).toHaveClass(/on/);
   await expect(page.locator('#hero-app > .scr')).toHaveCount(0);
 });

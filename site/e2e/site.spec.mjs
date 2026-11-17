@@ -2,24 +2,23 @@ import { test, expect } from "@playwright/test";
 test("fluxo real de modos, aprovacao e parada", async ({ page }) => {
   await page.goto("/");
   const app = page.frameLocator("#hero-app iframe");
-  await expect(app.getByRole("heading", { name: "Pronto." })).toBeVisible();
-  await app.getByRole("button", { name: "Mostrar", exact: true }).click();
+  await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
+  await app.getByRole("button", { name: "Receber", exact: true }).click();
   await app.getByRole("button", { name: "Estender", exact: true }).click();
   await expect(
     app.getByRole("heading", { name: "Recebendo a tela." }),
   ).toBeVisible();
   await app.getByRole("button", { name: "Sair", exact: true }).click();
   await app.getByRole("button", { name: "Enviar", exact: true }).click();
-  await expect(app.getByRole("heading", { name: "Pronto." })).toBeVisible();
+  await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
   await page
     .getByRole("button", { name: "Pedir conexão", exact: true })
     .click();
   await app.getByRole("button", { name: "Permitir", exact: true }).click();
-  await expect(
-    app.getByText("Notebook conectado", { exact: true }),
-  ).toBeVisible();
+  await expect(app.getByRole("heading", { name: "Conectado" })).toBeVisible();
+  await expect(app.getByText("Notebook", { exact: true })).toBeVisible();
   await app.getByRole("button", { name: "Parar", exact: true }).click();
-  await expect(app.getByRole("heading", { name: "Pronto." })).toBeVisible();
+  await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
 });
 test("resumo interativo sem recortes nem erros", async ({ page }) => {
   const errors = [];

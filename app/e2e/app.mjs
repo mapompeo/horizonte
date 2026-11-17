@@ -149,30 +149,6 @@ async function launch(label) {
   return page
 }
 
-function readClipboardOnce() {
-  if (process.platform === 'win32') {
-    return execFileSync('powershell', ['-NoProfile', '-Sta', '-Command', 'Get-Clipboard -Raw'], {
-      stdio: ['ignore', 'pipe', 'pipe']
-    }).toString()
-  }
-  if (process.platform === 'darwin') return execFileSync('pbpaste').toString()
-  return execFileSync('xclip', ['-selection', 'clipboard', '-o']).toString()
-}
-
-/** A área de transferência pode estar ocupada por outro programa naquele instante: tenta de novo. */
-async function readClipboard() {
-  let last
-  for (let attempt = 0; attempt < 8; attempt++) {
-    try {
-      return readClipboardOnce()
-    } catch (error) {
-      last = error
-      await wait(700)
-    }
-  }
-  throw last
-}
-
 async function step(name, fn) {
   try {
     const detail = await fn()
@@ -187,9 +163,10 @@ let app = null
 try {
   // ---------- 1ª abertura: pessoa nova ----------
   app = await launch('1-primeira-vez')
-  await step('abre direto na tela de começar', async () => {
-    await app.waitText(/Começar/)
-    await app.shot('01-comecar')
+  await step('abre direto enviando, sem boas-vindas nem escolha de modo', async () => {
+    const text = await app.waitText(/Aponte a câmera|Permitir o Notebook/, 30_000)
+    if (/Começar|Este dispositivo vai/.test(text)) throw new Error('mostrou a tela antiga')
+    await app.shot('01-enviar')
   })
   await step('o CSS sabe em que sistema roda (data-platform)', async () => {
     const platform = await app.ev('document.documentElement.dataset.platform')
@@ -197,22 +174,28 @@ try {
       throw new Error(`esperava ${process.platform}, veio ${platform}`)
     return platform
   })
-  await step('Começar leva à escolha do modo sem preparar nada', async () => {
-    await app.click(/Começar/)
-    const text = await app.waitText(/Este dispositivo vai/)
-    if (/Preparando/.test(text)) throw new Error('começou a preparar antes de escolher')
-    await app.shot('02-escolha')
-  })
   if (packaged) {
     await app.close()
     app = null
   }
   if (!packaged) {
-    await step('escolher Mostrar vai direto para a lista, sem instalar nada', async () => {
-      await app.click(/Mostrar a tela/)
-      const text = await app.waitText(/Na sua rede/)
-      if (/Preparando|permissão/.test(text))
-        throw new Error('mostrou preparação/permissão no receptor')
+    await step('envio completo: pedido, aprovar e o aparelho na lista de conectados', async () => {
+      await app.waitText(/Permitir o Notebook/, 30_000)
+      await app.click(/^Permitir$/)
+      const text = await app.waitText(/Conectado/, 30_000)
+      if (!/Notebook/.test(text)) throw new Error('o aparelho não aparece na lista')
+      if (!/\d{3} \d{3}/.test(text)) throw new Error('o código do QR sumiu ao conectar')
+      // Conectado, o Horizonte sai da frente e fica nos ícones ocultos. No Linux ele só minimiza (sem extensão não há
+      // bandeja), e a CI não tem gerenciador de janelas para minimizar.
+      if (process.platform !== 'linux') {
+        const hidden = await app.ev('document.visibilityState')
+        if (hidden !== 'hidden') throw new Error(`a janela continuou na frente (${hidden})`)
+      }
+    })
+    await step('trocar para Receber vai direto para a lista', async () => {
+      await app.click(/^Receber$/)
+      const text = await app.waitText(/Na sua rede/, 30_000)
+      if (/Preparando|permissão/.test(text)) throw new Error('mostrou preparação no receptor')
       await app.shot('03-lista')
     })
     await step('a engrenagem não fica sob os botões da janela do macOS', async () => {
@@ -223,71 +206,27 @@ try {
         throw new Error(`engrenagem em ${left}px, cobre os botões`)
       return `engrenagem a ${left}px da borda`
     })
-    await step(
-      'ajustes: nome só para ver, botão do GitHub e diagnóstico copiado de verdade',
-      async () => {
-        await app.click(/Ajustes/)
-        const text = await app.waitText(/Nome deste dispositivo/)
-        if (!/GitHub/.test(text)) throw new Error('sem o botão do GitHub')
-        await app.click(/Desinstalar Horizonte/)
-        await app.waitText(/Use Aplicativos instalados/)
-        await app.shot('04-ajustes')
-        await app.click(/Copiar diagnóstico/)
-        await app.waitText(/Copiado/, 8_000)
-        let clipboard
-        try {
-          clipboard = await readClipboard()
-        } catch (error) {
-          // Sessões sem acesso à área de transferência (visto numa sessão local do Windows): só a CI é obrigada a ler.
-          if (process.env.CI === 'true') throw error
-          return 'PULADO: esta sessão não consegue ler a área de transferência (o app mostrou "Copiado")'
-        }
-        for (const part of ['Horizonte ', `Sistema: ${process.platform}`, 'Tela:', 'Qualidade:']) {
-          if (!clipboard.includes(part))
-            throw new Error(`o diagnóstico copiado não tem "${part}": ${clipboard.slice(0, 200)}`)
-        }
-        if (/4821|pair-/.test(clipboard)) throw new Error('o diagnóstico vazou PIN ou pedido')
-        writeFileSync(join(OUT, 'diagnostico-copiado.txt'), clipboard)
-        return clipboard.split('\n')[0]
-      }
-    )
+    await step('ajustes: tema, nome, diagnóstico e GitHub', async () => {
+      await app.click(/Ajustes/)
+      const text = await app.waitText(/Aparência/)
+      for (const part of ['Escuro', 'Nome', 'Enviar diagnóstico', 'GitHub'])
+        if (!text.includes(part)) throw new Error(`os Ajustes não têm "${part}"`)
+      await app.click(/Desinstalar Horizonte/)
+      await app.waitText(/Use Aplicativos instalados/)
+      await app.shot('04-ajustes')
+    })
     await app.close()
 
     // ---------- 2ª abertura: lembra o modo ----------
-    app = await launch('2-lembra-mostrar')
-    await step('reabrir: vai direto para Mostrar, sem a tela de começar', async () => {
-      const text = await app.waitText(/Na sua rede/, 30_000)
-      if (/Começar/.test(text)) throw new Error('mostrou a tela de começar de novo')
-      await app.shot('05-reabriu-mostrar')
+    app = await launch('2-lembra-receber')
+    await step('reabrir: vai direto para Receber', async () => {
+      await app.waitText(/Na sua rede/, 30_000)
+      await app.shot('05-reabriu-receber')
     })
-    await step('trocar para Enviar pela pílula: prepara e chega em pronto', async () => {
+    await step('trocar para Enviar: o QR aparece', async () => {
       await app.click(/^Enviar$/)
-      await app.waitText(/Pronto\./, 30_000)
-      await app.shot('06-pronto')
-    })
-    await step(
-      'envio completo: pedido de pareamento, aprovar e conectado com o nome do aparelho',
-      async () => {
-        await app.waitText(/Permitir o Notebook/, 30_000)
-        await app.click(/^Permitir$/)
-        const text = await app.waitText(/Notebook conectado/, 30_000)
-        if (!/Tela estendida/.test(text)) throw new Error('sem "Tela estendida"')
-        // Conectado, o Horizonte sai da frente e fica nos ícones ocultos: sem janela, não há o que fotografar. No Linux
-        // ele só minimiza (sem extensão não há bandeja), e a CI não tem gerenciador de janelas para minimizar.
-        if (process.platform !== 'linux') {
-          const hidden = await app.ev('document.visibilityState')
-          if (hidden !== 'hidden') throw new Error(`a janela continuou na frente (${hidden})`)
-        }
-      }
-    )
-    await app.close()
-
-    // ---------- 3ª abertura: lembra Enviar ----------
-    app = await launch('3-lembra-enviar')
-    await step('reabrir: vai direto para Enviar e fica pronto', async () => {
-      const text = await app.waitText(/Pronto\./, 30_000)
-      if (/Começar|Na sua rede/.test(text)) throw new Error('abriu na tela errada')
-      await app.shot('08-reabriu-enviar')
+      await app.waitText(/Aponte a câmera|Permitir o Notebook/, 30_000)
+      await app.shot('06-enviar')
     })
   }
 } catch (error) {
