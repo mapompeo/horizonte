@@ -129,6 +129,17 @@ jobs:
       run:
         working-directory: .
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - name: Notas com "Qual baixar?" no topo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.version.outputs.version }}
+        run: |
+          news=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body)
+          bash .github/scripts/release-notes.sh "$TAG" "$GITHUB_REPOSITORY" "$news" > notes.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
       - name: Publicar a versão
         env:
           GH_TOKEN: ${{ github.token }}
