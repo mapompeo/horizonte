@@ -652,8 +652,7 @@ h1 .l2 {
   transform-style: preserve-3d;
 }
 .showcase .appwin {
-  transform-origin: 50% 0%;
-  transform: rotateX(20deg) scale(0.9);
+  transform: none;
 }
 .spec-line {
   margin: 26px 0 0;

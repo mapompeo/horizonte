@@ -24,7 +24,7 @@ export function startScenes(M) {
   const l2 = splitWords(document.querySelector("#hero-title .l2"), "word");
   M.animate(
     [...l1, ...l2],
-    { opacity: [0, 1], y: [40, 0], filter: ["blur(14px)", "blur(0px)"] },
+    { opacity: [0, 1], y: [40, 0] },
     { ...soft, delay: M.stagger(0.08) },
   );
   M.animate(
@@ -43,29 +43,6 @@ export function startScenes(M) {
     { duration: 2, delay: 0.8, ease: [0.32, 0.72, 0, 1] },
   );
 
-  // O app do topo: endireita ao rolar e inclina seguindo o mouse.
-  M.scroll(
-    M.animate(
-      "#hero-app",
-      { rotateX: [20, 0], scale: [0.9, 1] },
-      { ease: "linear" },
-    ),
-    {
-      target: $("showcase"),
-      offset: ["start end", "center center"],
-    },
-  );
-  M.scroll(
-    M.animate(
-      "#hero-app",
-      { y: [0, -60], opacity: [1, 0.35] },
-      { ease: "linear" },
-    ),
-    {
-      target: $("showcase"),
-      offset: ["center center", "end start"],
-    },
-  );
   M.scroll(
     M.animate(
       "#glow",
@@ -76,16 +53,6 @@ export function startScenes(M) {
       target: $("showcase"),
       offset: ["start end", "end start"],
     },
-  );
-  const tilt = $("tilt");
-  $("showcase").addEventListener("pointermove", (e) => {
-    const r = tilt.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width - 0.5;
-    const py = (e.clientY - r.top) / r.height - 0.5;
-    M.animate(tilt, { rotateY: px * 8, rotateX: -py * 6 }, soft);
-  });
-  $("showcase").addEventListener("pointerleave", () =>
-    M.animate(tilt, { rotateY: 0, rotateX: 0 }, soft),
   );
 
   /* ============ 2. Barra do topo: o notch encolhe ao descer e abre ao subir ============ */
@@ -183,7 +150,6 @@ export function startScenes(M) {
       {
         opacity: isDevices ? 0 : 1,
         scale: isDevices ? 0.85 : 1,
-        rotateY: i === 0 ? -6 : 0,
       },
       soft,
     );
@@ -403,18 +369,7 @@ export function startScenes(M) {
         const y = event.clientY - rect.top;
         tile.style.setProperty("--light-x", x + "px");
         tile.style.setProperty("--light-y", y + "px");
-        M.animate(
-          tile,
-          {
-            rotateY: (x / rect.width - 0.5) * 8,
-            rotateX: (0.5 - y / rect.height) * 8,
-          },
-          snappy,
-        );
       });
-      tile.addEventListener("pointerleave", () =>
-        M.animate(tile, { rotateX: 0, rotateY: 0 }, soft),
-      );
     });
   M.scroll(
     M.animate(
