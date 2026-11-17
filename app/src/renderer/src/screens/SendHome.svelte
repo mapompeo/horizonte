@@ -104,21 +104,15 @@
     </div>
     <div class="hero-text" aria-live="polite">
       {#if !compact}
-        <h1 class="title">{preparing ? 'Preparando' : 'Aponte a câmera do celular'}</h1>
+        <h1 class="title">{preparing ? 'Preparando' : 'Aponte a câmera'}</h1>
       {/if}
       {#if link && web.url && !compact}
-        <!-- Sem câmera (outro PC, tablet): o endereço para digitar no navegador, e o código que a página pede. -->
-        <div class="browse">
-          <span class="hint">Ou digite no navegador de outro aparelho</span>
-          <span class="address">
-            <span class="address-text">{web.url.replace(/^https?:\/\//, '')}</span>
-            <button class="link link-sm" onclick={copyLink}>{copied ? 'Copiado' : 'Copiar'}</button>
-          </span>
-          <span class="hint">e o código</span>
-          <span class="code" role="img" aria-label="Código {web.code?.split('').join(' ')}"
-            >{code}</span
-          >
-        </div>
+        <!-- Sem câmera (outro PC, tablet): o endereço e o código numa linha só; Copiar leva os dois juntos. -->
+        <span class="address" title="Abra no navegador de outro aparelho">
+          <span class="address-text">{web.url.replace(/^https?:\/\//, '')}</span>
+          <span class="address-code" aria-label="Código {web.code?.split('').join(' ')}">{code}</span>
+          <button class="copy" onclick={copyLink}>{copied ? 'Copiado' : 'Copiar link'}</button>
+        </span>
       {:else if link && web.url}
         <span class="code" role="img" aria-label="Código {web.code?.split('').join(' ')}"
           >{code}</span
@@ -181,7 +175,7 @@
   {:else}
     {@render hero(false)}
     <p class="hint center">
-      Outro computador com o Horizonte: toque em Receber e escolha {safeName(deviceName)}
+      No outro computador: Receber › {safeName(deviceName)}
     </p>
   {/if}
   <VideoHint />
@@ -230,19 +224,35 @@
   :global(.hero.vertical .title) {
     text-align: center;
   }
-  .browse {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
   .address {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 6px 8px 6px 14px;
-    border-radius: 12px;
+    gap: 12px;
+    padding: 6px 6px 6px 16px;
+    border-radius: 999px;
     background: var(--seg);
+    max-width: 100%;
+  }
+  .address-code {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .copy {
+    min-height: 32px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: var(--t-small);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .copy:active {
+    transform: scale(0.96);
   }
   .address-text {
     font-size: 17px;

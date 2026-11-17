@@ -100,7 +100,7 @@ h1[tabindex='-1']:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 24px 40px;
+  padding: 0 24px 64px;
   text-align: center;
 }
 
@@ -655,13 +655,13 @@ h1[tabindex='-1']:focus {
   font-size: var(--t-body);
   text-align: left;
 }
-/* Divisória de 0,5 px com o mesmo recuo dos dois lados (o do texto da linha). */
+/* Divisória de 0,5 px de ponta a ponta do cartão. */
 .row ~ .row::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 16px;
-  right: 16px;
+  left: 0;
+  right: 0;
   height: 0.5px;
   background: var(--line);
 }
@@ -1070,6 +1070,13 @@ h1[tabindex='-1']:focus {
 
 /* Rodapé do topo: a atualização, só quando há o que fazer. O botão é branco nos dois temas (pedido do dono). */
 .version-foot {
+  /* Fixo no rodapé da janela: aparece mesmo com o mapa grande ocupando a tela. */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  z-index: 3;
+  pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1080,6 +1087,7 @@ h1[tabindex='-1']:focus {
   font-variant-numeric: tabular-nums;
 }
 .foot-link {
+  pointer-events: auto;
   height: 32px;
   white-space: nowrap;
   border: 0.5px solid rgba(0, 0, 0, 0.12);
