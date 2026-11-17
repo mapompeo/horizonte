@@ -17,7 +17,8 @@ const acts = (): Parameters<typeof choosePlan>[1] & Record<string, ReturnType<ty
   trash: vi.fn(async () => {}),
   removeAfterQuit: vi.fn()
 })
-const AUTOSTART = '/home/a/.config/autostart/com.horizonte.app.desktop'
+const AUTOSTART = '/home/a/.config/autostart/horizonte.desktop'
+const LEGACY = '/home/a/.config/autostart/com.horizonte.app.desktop'
 
 test('Windows: abre o desinstalador ao lado do executável', async () => {
   const act = acts()
@@ -38,7 +39,7 @@ test('Linux .deb: pede a senha ao sistema e remove o pacote, os ajustes e o iní
   const plan = choosePlan(env({ exists: (p) => p === '/var/lib/dpkg/info/horizonte.list' }), act)
   await plan?.run()
   expect(act.elevate).toHaveBeenCalledWith('pkexec', ['apt-get', 'remove', '-y', 'horizonte'])
-  expect(act.removeAfterQuit).toHaveBeenCalledWith(['/home/a/.config/Horizonte', AUTOSTART])
+  expect(act.removeAfterQuit).toHaveBeenCalledWith(['/home/a/.config/Horizonte', AUTOSTART, LEGACY])
 })
 test('Linux AppImage: apaga o próprio arquivo, os ajustes e o início automático', async () => {
   const act = acts()
@@ -48,7 +49,8 @@ test('Linux AppImage: apaga o próprio arquivo, os ajustes e o início automáti
   expect(act.removeAfterQuit).toHaveBeenCalledWith([
     '/home/a/Apps/Horizonte.AppImage',
     '/home/a/.config/Horizonte',
-    AUTOSTART
+    AUTOSTART,
+    LEGACY
   ])
 })
 test('Mac: manda o Horizonte.app para o Lixo e apaga os ajustes', async () => {

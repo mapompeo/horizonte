@@ -8,8 +8,12 @@ export function desktopEntry(executable: string): string {
     .replace(/%/g, '%%')
     .replace(/[\\"`$]/g, '\\$&')
     .replace(/\\/g, '\\\\')
-  return `[Desktop Entry]\nType=Application\nName=Horizonte\nExec="${quoted}"\nTerminal=false\n`
+  // Mesmo nome de arquivo e ícone do atalho instalado: o sistema não lista um segundo "Horizonte".
+  return `[Desktop Entry]\nType=Application\nName=Horizonte\nExec="${quoted}"\nIcon=horizonte\nTerminal=false\n`
 }
+
+/** Igual ao `horizonte.desktop` do pacote, para o sistema tratar os dois como o mesmo app. */
+export const AUTOSTART_FILE = 'horizonte.desktop'
 
 export function createAutostart(deps: {
   platform: string
@@ -21,7 +25,9 @@ export function createAutostart(deps: {
     async set(on) {
       if (deps.platform === 'linux') {
         const dir = join(deps.configDir, 'autostart')
-        const file = join(dir, 'com.horizonte.app.desktop')
+        const file = join(dir, AUTOSTART_FILE)
+        // O nome antigo aparecia como outro app (sem ícone) nos Ajustes do sistema.
+        await rm(join(dir, 'com.horizonte.app.desktop'), { force: true })
         if (on) {
           await mkdir(dir, { recursive: true })
           await writeFile(file, desktopEntry(deps.executable), { encoding: 'utf8', mode: 0o600 })

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createAutostart, desktopEntry } from './autostart'
@@ -16,9 +16,15 @@ describe('autostart', () => {
           throw new Error('API nativa não existe no Linux')
         }
       })
-      const file = join(dir, 'autostart', 'com.horizonte.app.desktop')
+      const file = join(dir, 'autostart', 'horizonte.desktop')
+      const legacy = join(dir, 'autostart', 'com.horizonte.app.desktop')
+      await mkdir(join(dir, 'autostart'), { recursive: true })
+      await writeFile(legacy, '[Desktop Entry]\n')
       await start.set(true)
+      // Mesmo nome e ícone do atalho instalado, e o arquivo antigo (que virava um segundo app) some.
       expect(await readFile(file, 'utf8')).toContain('Exec="/app/Horizonte"')
+      expect(await readFile(file, 'utf8')).toContain('Icon=horizonte')
+      await expect(readFile(legacy)).rejects.toMatchObject({ code: 'ENOENT' })
       await start.set(false)
       await expect(readFile(file)).rejects.toMatchObject({ code: 'ENOENT' })
     } finally {

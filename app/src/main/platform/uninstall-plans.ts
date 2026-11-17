@@ -1,5 +1,6 @@
 import { posix, win32 } from 'node:path'
 import type { UninstallPlan } from '../core/uninstall'
+import { AUTOSTART_FILE } from './autostart'
 
 /**
  * Como cada sistema remove o Horizonte, sempre levando junto os ajustes e o início automático:
@@ -26,7 +27,8 @@ export function choosePlan(
     removeAfterQuit(paths: string[]): void
   }
 ): UninstallPlan | null {
-  const autostart = posix.join(env.configDir, 'autostart', 'com.horizonte.app.desktop')
+  const autostart = posix.join(env.configDir, 'autostart', AUTOSTART_FILE)
+  const legacyAutostart = posix.join(env.configDir, 'autostart', 'com.horizonte.app.desktop')
   if (env.platform === 'win32') {
     const uninstaller = win32.join(win32.dirname(env.executable), 'Uninstall Horizonte.exe')
     if (!env.exists(uninstaller)) return null
@@ -40,7 +42,7 @@ export function choosePlan(
     const file = env.appImage
     return {
       detail: 'O app, os ajustes e o início automático saem deste computador.',
-      run: async () => act.removeAfterQuit([file, env.dataDir, autostart])
+      run: async () => act.removeAfterQuit([file, env.dataDir, autostart, legacyAutostart])
     }
   }
   if (env.platform === 'linux' && env.exists('/var/lib/dpkg/info/horizonte.list')) {
@@ -49,7 +51,7 @@ export function choosePlan(
         'O sistema pede a sua senha uma vez. O app, os ajustes e o início automático saem deste computador.',
       run: async () => {
         await act.elevate('pkexec', ['apt-get', 'remove', '-y', 'horizonte'])
-        act.removeAfterQuit([env.dataDir, autostart])
+        act.removeAfterQuit([env.dataDir, autostart, legacyAutostart])
       }
     }
   }
