@@ -1,6 +1,6 @@
-// Fundo da primeira tela: um campo de caracteres que respira em ondas lentas (mais forte embaixo), uma garoa rara de
-// dígitos descendo e um brilho que acompanha o mouse. Some no meio, atrás do título. Pausa fora da tela; com menos
-// movimento pedido, desenha um quadro parado.
+// Fundo da primeira tela: um campo de caracteres parado (mais forte embaixo) e uma garoa rara de dígitos descendo.
+// Some no meio, atrás do título. O campo é desenhado uma vez só; a cada quadro só a garoa se mexe, então é leve.
+// Pausa fora da tela; com menos movimento pedido, fica só o campo parado.
 
 const CHARS = ' .·:-=+*'
 
@@ -8,7 +8,8 @@ export function mountHeroBackground(canvas) {
   if (!canvas) return
   const ctx = canvas.getContext('2d')
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
-  const s = { w: 0, h: 0, cell: 12, cols: 0, rows: 0, drops: [], mx: -1e4, my: -1e4, color: '10,132,255' }
+  const field = document.createElement('canvas')
+  const s = { w: 0, h: 0, cell: 12, cols: 0, rows: 0, dpr: 1, drops: [], color: '10,132,255' }
 
   const readColor = () => {
     // A cor de destaque do tema (--accent), em r,g,b.
@@ -20,12 +21,43 @@ export function mountHeroBackground(canvas) {
     }
   }
 
+  // Quanto o caractere aparece: quase nada atrás do título, cheio nas bordas.
+  const veil = (x, y) => {
+    const dx = (x - s.w / 2) / (Math.min(s.w, 1100) * 0.34)
+    const dy = (y - s.h * 0.42) / (s.h * 0.26)
+    return Math.min(1, Math.hypot(dx, dy) * 0.85)
+  }
+
+  const font = () => `${s.cell - 1}px ui-monospace, "SF Mono", Menlo, monospace`
+
+  /** O campo parado, desenhado uma vez numa tela fora da página. */
+  function paintField() {
+    field.width = canvas.width
+    field.height = canvas.height
+    const f = field.getContext('2d')
+    f.setTransform(s.dpr, 0, 0, s.dpr, 0, 0)
+    f.font = font()
+    f.textAlign = 'center'
+    f.textBaseline = 'middle'
+    for (let r = 0; r < s.rows; r++) {
+      for (let c = 0; c < s.cols; c++) {
+        const x = c * s.cell + s.cell / 2
+        const y = r * s.cell + s.cell / 2
+        const n = Math.sin(c * 0.16 + 2) + Math.sin(r * 0.25 - 1.4 + c * 0.05) + Math.sin((c + r) * 0.08 + 1)
+        const v = ((n + 3) / 6) * (0.25 + 0.75 * (r / s.rows)) * 0.8 * veil(x, y)
+        if (v < 0.07) continue
+        f.fillStyle = `rgba(${s.color},${(0.12 + v * 0.7).toFixed(3)})`
+        f.fillText(CHARS[Math.min(CHARS.length - 1, Math.floor(v * CHARS.length))], x, y)
+      }
+    }
+  }
+
   const fit = () => {
     const r = canvas.getBoundingClientRect()
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    canvas.width = Math.max(1, r.width * dpr)
-    canvas.height = Math.max(1, r.height * dpr)
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    s.dpr = Math.min(window.devicePixelRatio || 1, 2)
+    canvas.width = Math.max(1, r.width * s.dpr)
+    canvas.height = Math.max(1, r.height * s.dpr)
+    ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0)
     s.w = r.width
     s.h = r.height
     s.cell = r.width < 600 ? 10 : 12
@@ -37,54 +69,33 @@ export function mountHeroBackground(canvas) {
       on: Math.random() < 0.14
     }))
     readColor()
-  }
-
-  // Quanto o caractere aparece: quase nada atrás do título, cheio nas bordas.
-  const veil = (x, y) => {
-    const dx = (x - s.w / 2) / (Math.min(s.w, 1100) * 0.34)
-    const dy = (y - s.h * 0.42) / (s.h * 0.26)
-    return Math.min(1, Math.hypot(dx, dy) * 0.85)
+    paintField()
+    frame(0)
   }
 
   function frame(t) {
-    const { cell } = s
-    ctx.clearRect(0, 0, s.w, s.h)
-    ctx.font = `${cell - 1}px ui-monospace, "SF Mono", Menlo, monospace`
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(field, 0, 0)
+    ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0)
+    if (reduce) return
+    // Garoa de sinal: só as colunas ligadas, poucas letras por quadro.
+    ctx.font = font()
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    for (let r = 0; r < s.rows; r++) {
-      for (let c = 0; c < s.cols; c++) {
-        const x = c * cell + cell / 2
-        const y = r * cell + cell / 2
-        // Campo que respira.
-        const n =
-          Math.sin(c * 0.16 + t * 0.0005) +
-          Math.sin(r * 0.25 - t * 0.00035 + c * 0.05) +
-          Math.sin((c + r) * 0.08 + t * 0.00025)
-        let v = ((n + 3) / 6) * (0.25 + 0.75 * (r / s.rows)) * 0.8
-        let ch = null
-        // Garoa de sinal.
-        const d = s.drops[c]
-        if (d?.on) {
-          const tail = d.y - r
-          if (tail >= 0 && tail <= 6) {
-            const rain = 1 - tail / 6
-            if (rain > v) {
-              v = rain
-              ch = String.fromCharCode(48 + ((c * 7 + r * 3 + Math.floor(t / 150)) % 10))
-            }
-          }
-        }
-        // Brilho em volta do mouse.
-        const near = Math.hypot(x - s.mx, y - s.my)
-        if (near < 140) v = Math.max(v, (1 - near / 140) * 0.95)
-        v *= veil(x, y)
+    for (let c = 0; c < s.cols; c++) {
+      const d = s.drops[c]
+      if (!d.on) continue
+      const x = c * s.cell + s.cell / 2
+      for (let tail = 0; tail <= 6; tail++) {
+        const r = Math.floor(d.y) - tail
+        if (r < 0 || r >= s.rows) continue
+        const y = r * s.cell + s.cell / 2
+        const v = (1 - tail / 6) * veil(x, y)
         if (v < 0.07) continue
         ctx.fillStyle = `rgba(${s.color},${(0.12 + v * 0.7).toFixed(3)})`
-        ctx.fillText(ch ?? CHARS[Math.min(CHARS.length - 1, Math.floor(v * CHARS.length))], x, y)
+        ctx.fillText(String.fromCharCode(48 + ((c * 7 + r * 3 + Math.floor(t / 150)) % 10)), x, y)
       }
-    }
-    for (const d of s.drops) {
       d.y += d.v * 2.4
       if (d.y > s.rows + 8) {
         d.y = -Math.random() * 12
@@ -95,26 +106,14 @@ export function mountHeroBackground(canvas) {
 
   new ResizeObserver(fit).observe(canvas)
   fit()
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', readColor)
-  new MutationObserver(readColor).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-  // O mouse em qualquer lugar da janela, não só sobre o texto do topo.
-  addEventListener(
-    'pointermove',
-    (e) => {
-      const r = canvas.getBoundingClientRect()
-      s.mx = e.clientX - r.left
-      s.my = e.clientY - r.top
-    },
-    { passive: true }
-  )
-  document.documentElement.addEventListener('pointerleave', () => {
-    s.mx = s.my = -1e4
-  })
-
-  if (reduce) {
-    frame(4000)
-    return
+  const recolor = () => {
+    readColor()
+    paintField()
   }
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', recolor)
+  new MutationObserver(recolor).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+
+  if (reduce) return
   let visible = true
   new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting

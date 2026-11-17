@@ -139,7 +139,8 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     deviceKind: async (_address, name) => (name ? guessKind(name) : 'desktop'),
     getWebAccess: async () => web,
     setWebAccess: async (on) => {
-      web = on ? { on: true, url: 'http://192.168.1.5:47920', code: '4821' } : { on: false }
+      // Na demonstração do site, o QR leva para o próprio site (a câmera de quem visita abre a página).
+      web = on ? { on: true, url: 'https://horizonte-monitor.vercel.app', code: '4821' } : { on: false }
       return web
     },
     openRepo: async () => void window.open(REPO_URL, '_blank', 'noopener'),
