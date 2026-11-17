@@ -345,13 +345,15 @@ function linuxClipboard(inbox: string): {
   }
 }
 
-/** O auxiliar `horizonte-mouse`, se existe aqui e este GNOME captura o mouse; senão, null (fica o Deskflow). */
+/** O auxiliar `horizonte-mouse` deste sistema (no Linux, só no GNOME que captura o mouse); senão, null (fica o Deskflow). */
 function nativeMouseHelper(): string | null {
-  if (process.platform !== 'linux' || !/gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? ''))
-    return null
+  const linux = process.platform === 'linux'
+  if (linux && !/gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? '')) return null
+  const file = process.platform === 'win32' ? 'horizonte-mouse.exe' : 'horizonte-mouse'
+  const folder = linux ? 'linux' : process.platform === 'win32' ? 'windows' : 'macos'
   const path = app.isPackaged
-    ? join(process.resourcesPath, 'horizonte-mouse')
-    : join(app.getAppPath(), 'native', 'linux', 'build', 'horizonte-mouse')
+    ? join(process.resourcesPath, file)
+    : join(app.getAppPath(), 'native', folder, 'build', file)
   if (!existsSync(path)) return null
   return spawnSync(path, ['--check'], { timeout: 3000 }).status === 0 ? path : null
 }
@@ -497,7 +499,7 @@ export function createRealMouseEngine(deps: {
     text,
     ownScreen: deps.ownScreen
   })
-  if (!native) return engine
+  if (!native || process.platform !== 'linux') return engine
   return {
     ...engine,
     // O modo Mouse pode ser usado sem nunca passar por Enviar: as portas dele também precisam estar liberadas aqui.

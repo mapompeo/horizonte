@@ -16,6 +16,10 @@ win:
   executableName: Horizonte
   target:
     - nsis
+  # O auxiliar do modo Mouse (compilado por npm run build:helper:win) vai junto do app.
+  extraResources:
+    - from: native/windows/build/horizonte-mouse.exe
+      to: horizonte-mouse.exe
 nsis:
   # Instala só para a pessoa, sem pedir administrador: o aviso do Windows aparece uma vez, no primeiro uso.
   oneClick: true
@@ -42,6 +46,8 @@ mac:
   extraResources:
     - from: native/macos/build/horizonte-display
       to: horizonte-display
+    - from: native/macos/build/horizonte-mouse
+      to: horizonte-mouse
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.

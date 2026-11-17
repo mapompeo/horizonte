@@ -93,6 +93,10 @@ jobs:
       - name: Compilar o auxiliar do monitor virtual (macOS)
         if: runner.os == 'macOS'
         run: npm run build:helper:mac
+      - name: Compilar o auxiliar do modo Mouse (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: npm run build:helper:win
       - name: Testes reais do sistema (rede, instalação, hash)
         run: npm run test:e2e
       - name: App aberto de verdade (Linux)
