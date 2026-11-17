@@ -1185,3 +1185,84 @@ input,
   font-size: var(--t-body);
   line-height: 1;
 }
+
+/* ---------- Movimento ----------
+   Curvas do iOS: entrada com desaceleração longa e, para objetos que "chegam", um leve passar do ponto. O bloco de
+   movimento reduzido acima desliga tudo isto. */
+:root {
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes push-in {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+@keyframes back-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+}
+/* Ajustes entram como uma tela empurrada; ao voltar, a principal volta do lado oposto. */
+.sheet {
+  animation: push-in 0.38s var(--ease-out) both;
+}
+.screen {
+  animation: back-in 0.32s var(--ease-out) both;
+}
+/* Os grupos dos Ajustes chegam em sequência. */
+.sheet-body > * {
+  animation: rise-in 0.42s var(--ease-out) both;
+}
+.sheet-body > :nth-child(2) {
+  animation-delay: 40ms;
+}
+.sheet-body > :nth-child(3) {
+  animation-delay: 80ms;
+}
+.sheet-body > :nth-child(4) {
+  animation-delay: 120ms;
+}
+.sheet-body > :nth-child(5) {
+  animation-delay: 160ms;
+}
+.sheet-body > :nth-child(n + 6) {
+  animation-delay: 200ms;
+}
+/* O QR surge com um leve passar do ponto, como um objeto que chega. */
+.qr-card {
+  animation: pop-in 0.5s var(--ease-spring) both;
+}
+/* Pedido de conexão: o selo dá um pequeno salto. */
+.badge {
+  animation: pop-in 0.55s var(--ease-spring) both;
+}
+/* Atualização: o botão sobe do rodapé. */
+.foot-link {
+  animation: rise-in 0.45s var(--ease-spring) both;
+}
+/* Cartões e linhas tocáveis respondem ao toque. */
+.row-button,
+.host {
+  transition:
+    background-color 0.2s var(--ease-out),
+    transform 0.2s var(--ease-out);
+}
+.row-button:active,
+.host:active {
+  transform: scale(0.985);
+}

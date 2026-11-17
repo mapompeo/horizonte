@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { fade, fly } from 'svelte/transition'
+  import { fly, slide } from 'svelte/transition'
   import type {
     ConnectedDevice,
     PrepProgress,
@@ -110,8 +110,12 @@
         <!-- Sem câmera (outro PC, tablet): o endereço e o código numa linha só; Copiar leva os dois juntos. -->
         <span class="address" title="Abra no navegador de outro aparelho">
           <span class="address-text">{web.url.replace(/^https?:\/\//, '')}</span>
-          <span class="address-code" aria-label="Código {web.code?.split('').join(' ')}">{code}</span>
-          <button class="copy" onclick={copyLink}>{copied ? 'Copiado' : 'Copiar link'}</button>
+          <span class="address-code" aria-label="Código {web.code?.split('').join(' ')}"
+            >{code}</span
+          >
+          <button class="copy" class:done={copied} onclick={copyLink}
+            >{copied ? 'Copiado' : 'Copiar link'}</button
+          >
         </span>
       {:else if link && web.url}
         <span class="code" role="img" aria-label="Código {web.code?.split('').join(' ')}"
@@ -139,7 +143,9 @@
     <!-- Conectado: a mesa é a tela. O QR só aparece para adicionar mais um. -->
     <div class="status">
       <h1 class="title">
-        {devices.length}
+        {#key devices.length}<span class="count" in:fly={{ y: -10, duration: ms(320) }}
+            >{devices.length}</span
+          >{/key}
         {devices.length === 1 ? 'tela conectada' : 'telas conectadas'}
       </h1>
       <button class="add" aria-expanded={adding} onclick={() => (adding = !adding)}
@@ -147,7 +153,7 @@
       >
     </div>
     {#if adding}
-      <div in:fly={{ y: -6, duration: ms(220) }} out:fade={{ duration: ms(120) }}>
+      <div transition:slide={{ duration: ms(300) }}>
         {@render hero(true)}
       </div>
     {/if}
@@ -251,8 +257,19 @@
     font-weight: 600;
     white-space: nowrap;
   }
+  .copy {
+    transition:
+      background-color 0.25s ease,
+      transform 0.15s ease;
+  }
   .copy:active {
     transform: scale(0.96);
+  }
+  .copy.done {
+    background: var(--ok-dot);
+  }
+  .count {
+    display: inline-block;
   }
   .address-text {
     font-size: 17px;

@@ -246,10 +246,26 @@
       left 0.25s cubic-bezier(0.32, 0.72, 0, 1),
       top 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   }
+  /* Tela nova estala no lugar; ao passar o mouse, levanta um pouco (dá para pegar). */
+  .peer {
+    animation: tile-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .peer:hover:not(.dragging) {
+    box-shadow:
+      inset 0 0 0 1.5px var(--accent),
+      0 6px 18px rgba(0, 0, 0, 0.18);
+  }
+  @keyframes tile-in {
+    from {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+  }
   .peer.dragging {
     cursor: grabbing;
     transition: none;
     z-index: 2;
+    transform: scale(1.04);
     box-shadow:
       inset 0 0 0 1.5px var(--accent),
       0 8px 24px rgba(0, 0, 0, 0.3);
@@ -261,6 +277,7 @@
   @media (prefers-reduced-motion: reduce) {
     .peer {
       transition: none;
+      animation: none;
     }
   }
 </style>
