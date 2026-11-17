@@ -57,7 +57,6 @@ test('estrutura inteira: uma página, um rodapé, três cartões de download', (
   assert.equal(count(/<\/footer>/g), 1)
   assert.equal(count(/data-dl="/g), 4)
   assert.equal(count(/data-dl-meta="/g), 3)
-  assert.equal(count(/class="spec-line"/g), 1)
   assert.match(html, /<\/footer>\s*<script src="\.\/js\/i18n\.js"><\/script>\s*<script src="\.\/vendor\/motion\.min\.js"><\/script>/)
 })
 

@@ -273,24 +273,6 @@ export function startScenes(M) {
   /* ============ 6b. Barra de progresso, sistemas, radar e recursos ============ */
   M.scroll(M.animate("#progress", { scaleX: [0, 1] }, { ease: "linear" }));
 
-  // Faixa de sistemas: acelera e inclina de leve conforme a rolagem
-  const track = $("track");
-  let skewTarget = 0;
-  let lastScroll = scrollY;
-  addEventListener(
-    "scroll",
-    () => {
-      skewTarget = Math.max(-6, Math.min(6, (scrollY - lastScroll) * 0.25));
-      lastScroll = scrollY;
-    },
-    { passive: true },
-  );
-  (function settle() {
-    skewTarget *= 0.9;
-    track.style.setProperty("--skew", (-skewTarget).toFixed(2) + "deg");
-    requestAnimationFrame(settle);
-  })();
-
   // Matriz: os seis sistemas entram em mola e os pacotes passam a correr
   const chips = [...document.querySelectorAll(".chip")];
   chips.forEach((c) => (c.style.opacity = "0"));

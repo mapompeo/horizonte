@@ -2450,10 +2450,7 @@ html {
   font: 700 2.4rem/1.1 var(--font);
   letter-spacing: -0.04em;
   overflow-wrap: anywhere;
-  background: linear-gradient(90deg, #0040dd, #0a84ff 55%, #5ac8fa);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--accent);
 }
 .bt.wide .bt-big {
   font-size: clamp(3rem, 2rem + 3.4vw, 4.6rem);
@@ -3070,4 +3067,25 @@ main .lede,
 .rt.rt-hero {
   background: linear-gradient(135deg, #1a8cff, #0a52e0 60%, #0a2a8a);
   border-color: transparent;
+}
+
+/* Sem degradê em texto: o destaque é o azul do tema, sólido. */
+.zero,
+.bt-big {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: var(--accent);
+}
+/* O fundo de caracteres fica atrás do título e some antes da demonstração. */
+.hero-bg {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 38%, transparent 62%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 38%, transparent 62%);
+}
+.demo-tools {
+  justify-content: center;
+}
+.statement,
+.statement .scrub {
+  text-align: center;
 }
