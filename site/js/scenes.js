@@ -57,11 +57,15 @@ export function startScenes(M) {
 
   /* ============ 2. Barra do topo: o notch encolhe ao descer e abre ao subir ============ */
   const topbar = document.getElementById("topbar");
+  let lastY = scrollY;
   addEventListener(
     "scroll",
     () => {
-      // Encolhe ao sair do topo e fica assim: nada muda de lugar enquanto a pessoa mira um botão.
-      topbar.classList.toggle("compact", scrollY > 120);
+      // Descendo, encolhe; subindo, abre. O mouse não muda nada, então nenhum botão foge do clique.
+      const y = scrollY;
+      if (Math.abs(y - lastY) < 6) return;
+      topbar.classList.toggle("compact", y > lastY && y > 120);
+      lastY = y;
     },
     { passive: true },
   );
