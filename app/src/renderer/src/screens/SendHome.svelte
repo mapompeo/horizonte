@@ -58,6 +58,19 @@
   const link = $derived(web.on && web.url ? `${web.url}/#${web.code}` : null)
   const code = $derived(web.code ? `${web.code.slice(0, 3)} ${web.code.slice(3)}` : '')
   const connected = $derived(devices.length > 0)
+
+  /** Copia o link da página (com o código): para colar no navegador de outro PC. */
+  let copied = $state(false)
+  async function copyLink(): Promise<void> {
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(link)
+      copied = true
+      setTimeout(() => (copied = false), 2000)
+    } catch {
+      // Sem área de transferência: o endereço continua à vista para digitar.
+    }
+  }
   const prepNote = $derived(
     progress?.permission ? 'Confirme a permissão do sistema' : progress?.note || 'Preparando'
   )
@@ -90,7 +103,11 @@
         <span class="code" role="img" aria-label="Código {web.code?.split('').join(' ')}"
           >{code}</span
         >
-        {#if !connected}<span class="hint">{web.url.replace(/^https?:\/\//, '')}</span>{/if}
+        <!-- Outro PC ou aparelho sem câmera: o mesmo link, para abrir no navegador (o código já vai junto). -->
+        <span class="web-link">
+          <span class="hint">{web.url.replace(/^https?:\/\//, '')}</span>
+          <button class="link link-sm" onclick={copyLink}>{copied ? 'Copiado' : 'Copiar link'}</button>
+        </span>
       {:else if web.error}
         <span class="hint danger-text">{web.error}</span>
         <button class="link" onclick={ensureWeb}>Tentar de novo</button>
