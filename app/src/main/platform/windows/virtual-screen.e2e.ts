@@ -37,10 +37,10 @@ describe.runIf(process.platform === 'win32')('monitor virtual do Windows de verd
     const dir = mkdtempSync(join(tmpdir(), 'hz-vdd-'))
     const zip = join(dir, VIRTUAL_DISPLAY_DRIVER.fileName)
     await downloadVerified(VIRTUAL_DISPLAY_DRIVER, zip)
-    console.log(await powershell(driverInstallScript(VIRTUAL_DISPLAY_DRIVER, zip), 300_000))
-
+    // As telas de verdade, contadas antes do driver: ao instalar, ele já liga um monitor sozinho.
     const before = await activeScreens()
     console.log('telas antes:', before)
+    console.log(await powershell(driverInstallScript(VIRTUAL_DISPLAY_DRIVER, zip), 300_000))
 
     // O driver leva um instante para aparecer depois de instalado: algumas tentativas.
     let attached: ReturnType<typeof parseAttached> = null
