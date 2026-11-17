@@ -53,6 +53,14 @@
     return { duration: ms(120), css: (t) => `opacity: ${t}` }
   }
 
+  /** A tela que começou a sair e voltou (a saída foi revertida): de novo no lugar e clicável. */
+  function back(node: HTMLElement): void {
+    node.style.removeProperty('position')
+    node.style.removeProperty('inset')
+    node.style.removeProperty('width')
+    node.style.removeProperty('pointer-events')
+  }
+
   let syncing = $state(false)
   let stop: (() => void) | undefined
   let disposed = false
@@ -113,6 +121,7 @@
           class="center"
           in:fly={{ y: 12, duration: ms(340), delay: ms(60), easing: cubicOut }}
           out:leave
+          onintrostart={(event) => back(event.currentTarget)}
         >
           {#if state.screen === 'preparing' || state.screen === 'ready'}
             <SendHome

@@ -4,11 +4,11 @@ test("fluxo real de modos, aprovacao e parada", async ({ page }) => {
   const app = page.frameLocator("#hero-app iframe");
   await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
   await app.getByRole("button", { name: "Receber", exact: true }).click();
-  await app.getByRole("button", { name: "Estender", exact: true }).click();
+  await app.getByRole("button", { name: /^Conectar a Desktop/ }).click();
   await expect(
     app.getByRole("heading", { name: "Recebendo a tela" }),
   ).toBeVisible();
-  await app.getByRole("button", { name: "Sair", exact: true }).click();
+  await app.getByRole("button", { name: "Parar Desktop", exact: true }).click();
   await app.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
   await page
@@ -17,7 +17,9 @@ test("fluxo real de modos, aprovacao e parada", async ({ page }) => {
   await app.getByRole("button", { name: "Permitir", exact: true }).click();
   await expect(app.getByRole("heading", { name: "Conectado" })).toBeVisible();
   await expect(app.getByText("Notebook", { exact: true })).toBeVisible();
-  await app.getByRole("button", { name: "Parar", exact: true }).click();
+  // O cartão do QR encolhe ao conectar e a lista sobe: espera a animação assentar antes de clicar.
+  await page.waitForTimeout(600);
+  await app.getByRole("button", { name: "Parar Notebook", exact: true }).click();
   await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
 });
 test("resumo interativo sem recortes nem erros", async ({ page }) => {
@@ -26,10 +28,12 @@ test("resumo interativo sem recortes nem erros", async ({ page }) => {
   await page.goto("/#resumo");
   await page.locator('[data-preview="host"]').scrollIntoViewIfNeeded();
   const host = page.frameLocator('[data-preview="host"] iframe');
-  await host.getByRole("button", { name: "Estender", exact: true }).click();
+  await host.getByRole("button", { name: /^Conectar a Desktop/ }).click();
   await expect(
     host.getByText("Desktop conectado", { exact: true }),
   ).toBeVisible();
+  // As animações de entrada das seções passam alguns pixels da borda por um instante: mede depois delas.
+  await page.waitForTimeout(1000);
   const overflow = await page.evaluate(() => ({
     width: innerWidth,
     scroll: document.documentElement.scrollWidth,
@@ -61,7 +65,7 @@ test("menos movimento mantem interface real", async ({ page }) => {
   await expect(
     page
       .frameLocator("#app iframe")
-      .getByRole("heading", { name: "Tela estendida" }),
+      .getByRole("heading", { name: "Conectado" }),
   ).toBeVisible();
   expect(
     await page.evaluate(() =>

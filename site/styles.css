@@ -2371,7 +2371,7 @@ body {
 .usos { padding-block: 100px 40px; text-align: center; }
 .usos h2 { margin: 0 auto 40px; max-width: 18ch; font-size: clamp(32px, 5.5vw, 56px); letter-spacing: -0.03em; line-height: 1.05; }
 .usos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; text-align: left; }
-.cmp-wrap { margin-top: 32px; overflow-x: auto; text-align: left; }
+.cmp-wrap { margin-top: 32px; overflow-x: auto; text-align: left; max-width: 100%; min-width: 0; }
 .cmp { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 15px; }
 .cmp caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .cmp th, .cmp td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
