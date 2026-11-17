@@ -51,6 +51,19 @@ describe.runIf(process.platform === 'win32')('monitor virtual do Windows de verd
       if (!attached) await new Promise((resolve) => setTimeout(resolve, 3000))
     }
     console.log('ligar:', last.trim())
+    if (!attached) {
+      // Por que não ligou: o estado do dispositivo do driver e os adaptadores de vídeo que o Windows vê.
+      console.log(
+        await powershell(
+          [
+            "Get-PnpDevice -ErrorAction SilentlyContinue | Where-Object { $_.HardwareID -contains 'Root\\MttVDD' -or $_.Class -eq 'Display' } | Format-List FriendlyName,Status,Problem,InstanceId,HardwareID | Out-String -Width 300",
+            'Get-CimInstance Win32_VideoController | Format-List Name,Status,PNPDeviceID | Out-String -Width 300',
+            "Get-ChildItem 'C:\\VirtualDisplayDriver' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName"
+          ].join('\n'),
+          60_000
+        )
+      )
+    }
     expect(attached, `o monitor virtual não ligou: ${last}`).not.toBeNull()
     expect(attached!.width).toBeGreaterThan(0)
     expect(attached!.x, 'encostado à direita das telas de verdade').toBeGreaterThan(0)
