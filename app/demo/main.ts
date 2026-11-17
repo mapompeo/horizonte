@@ -10,6 +10,11 @@ const START: Record<string, AppState> = {
   ready: { screen: 'ready', mode: 'send' },
   discover: { screen: 'discover', mode: 'receive' },
   connected: { screen: 'connected', mode: 'send', devices: [{ device: 'Notebook' }] },
+  mapa: {
+    screen: 'connected',
+    mode: 'send',
+    devices: [{ device: 'Navegador', fingerprint: 'demo', peerScreen: { width: 1920, height: 1080 } }]
+  },
   receiving: { screen: 'receiving', mode: 'receive', host: '192.168.1.5', name: 'Desktop' }
 }
 

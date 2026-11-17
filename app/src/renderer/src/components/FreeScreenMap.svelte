@@ -74,7 +74,7 @@
     const rr = Math.max(...all.map((r) => r.x + r.w))
     const b = Math.max(...all.map((r) => r.y + r.h))
     // Folga em volta para arrastar para qualquer lado, proporcional ao conjunto.
-    const pad = Math.max(rr - l, b - t) * 0.18
+    const pad = Math.max(rr - l, b - t) * 0.1
     const left = l - pad
     const top = t - pad
     const right = rr + pad

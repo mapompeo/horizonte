@@ -109,11 +109,11 @@
       {/if}
     </div>
     <div class="hero-text" aria-live="polite">
-      {#if !compact}
-        <h1 class="title">{preparing ? 'Preparando' : 'Aponte a câmera'}</h1>
-      {/if}
-      {#if link && web.url && !compact}
-        <!-- Sem câmera (outro PC, tablet): o endereço e o código numa linha só; Copiar leva os dois juntos. -->
+      <h1 class="title" class:title-sm={compact}>
+        {preparing ? 'Preparando' : compact ? 'Mais um aparelho' : 'Aponte a câmera'}
+      </h1>
+      {#if link && web.url}
+        <!-- Sem câmera (outro PC, tablet): o endereço já com o código; Copiar leva os dois juntos. -->
         <span class="address" title="Abra no navegador de outro aparelho">
           <span class="address-text">{web.url.replace(/^https?:\/\//, '')}/</span>
           <span class="address-code" aria-label="Código {web.code?.split('').join(' ')}"
@@ -125,17 +125,6 @@
                 in:scale={{ start: 0.7, duration: ms(260), easing: backOut }}
                 >{copied ? 'Copiado' : 'Copiar link'}</span
               >{/key}</button
-          >
-        </span>
-      {:else if link && web.url}
-        <span class="code" role="img" aria-label="Código {web.code?.split('').join(' ')}"
-          >{code}</span
-        >
-        <!-- Outro PC ou aparelho sem câmera: o mesmo link, para abrir no navegador (o código já vai junto). -->
-        <span class="web-link">
-          <span class="hint">{web.url.replace(/^https?:\/\//, '')}</span>
-          <button class="link link-sm" onclick={copyLink}
-            >{copied ? 'Copiado' : 'Copiar link'}</button
           >
         </span>
       {:else if web.error}
@@ -306,16 +295,9 @@
     font-variant-numeric: tabular-nums;
     user-select: all;
   }
-  .web-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .link-sm {
-    min-height: 32px;
-    padding: 0 4px;
-    font-size: var(--t-small);
+  .title-sm {
+    font-size: var(--t-title, 20px);
+    text-align: left;
   }
   .copy-label {
     display: inline-block;
