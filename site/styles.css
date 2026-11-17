@@ -3089,3 +3089,47 @@ main .lede,
 .statement .scrub {
   text-align: center;
 }
+
+/* ============ Paleta única (a mesma do app) ============
+   Três superfícies e um azul: fundo, cartão e cinza de controle. O notch, a janela do app, as pílulas e os chips
+   saem todos daqui; nada de vidro, degradê ou mancha de cor. */
+:root {
+  --accent: #0062cc;
+  --btn-bg: #0062cc;
+  --app-bg: var(--bg);
+  --app-card: var(--card);
+  --win: var(--card);
+  --notch: var(--card);
+  --notch-ring: var(--line);
+  --notch-fg: var(--fg);
+  --notch-muted: var(--muted);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --accent: #0a84ff;
+    --btn-bg: #0062cc;
+    --notch: var(--card);
+    --notch-ring: var(--line);
+  }
+}
+:root[data-theme='dark'] {
+  --accent: #0a84ff;
+  --btn-bg: #0062cc;
+  --notch: var(--card);
+  --notch-ring: var(--line);
+}
+.aurora { display: none; }
+.top .wrap { box-shadow: 0 0 0 1px var(--notch-ring); }
+.top .nav a[href="#baixar"],
+.top .nav a[href="#baixar"]:hover { color: #fff; background: var(--btn-bg); box-shadow: none; }
+.newpill { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.works span { border: 0; background: var(--seg); color: var(--fg); }
+.works .works-l { background: none; color: var(--muted); }
+.facts, .works .works-l, .nov-tag { font-family: var(--font); }
+.rt.rt-hero { background: var(--btn-bg); }
+.taskbar { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--seg); }
+.glass, .bt, .os, .rt, .faq details, .usos-grid > * { box-shadow: none; }
+.top .nav .lang-btn,
+.top .nav .support { border: 0; background: var(--seg); color: var(--notch-fg); }
+.top .nav .lang-btn:hover,
+.top .nav .support:hover { background: var(--seg); color: var(--notch-fg); box-shadow: 0 0 0 1px var(--line); }
