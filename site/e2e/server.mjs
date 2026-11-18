@@ -5,6 +5,7 @@ const root = resolve(".");
 const types = {
   ".html": "text/html",
   ".js": "text/javascript",
+  ".mjs": "text/javascript",
   ".css": "text/css",
   ".png": "image/png",
   ".svg": "image/svg+xml",

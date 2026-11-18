@@ -10,7 +10,9 @@ Lista para ir fazendo aos poucos. Marque `[x]` quando estiver na main e provado.
 - [ ] Assinar os instaladores: Windows com assinatura gratuita para código aberto (SignPath); Mac com notarização (conta de desenvolvedor da Apple, US$ 99/ano). Tira o SmartScreen e o `xattr`.
 - [ ] Ligar o botão Sponsor do repositório (Settings › General › Sponsorships).
 - [ ] Seção de apoiadores no README para o nível de $25 do Sponsors (pode ser automática com uma GitHub Action).
-- [ ] Rodar o Playwright do site de novo (o último foi antes da galeria, do Apoiar e do rodapé em notch).
+- [x] Playwright do site de novo: 84 testes verdes, com o Apoiar (Pix) e a barra do topo; o servidor de teste não servia `.mjs`.
+- [x] App aberto de verdade na CI clica no Adicionar, no Copiar link (lendo a área de transferência do sistema), no QR ampliado e nos Ajustes (fps e tema guardados ao reabrir).
+- [ ] Testes do que só roda no Electron (fios do motor, `sender`/`receiver`, `native-share`): hoje só os testes de ponta a ponta passam por eles. Cobertura de unidade em 62% das linhas (`npm run test:coverage`).
 - [x] Endereço no modo compacto (Adicionar) com o "/código", igual à tela principal.
 
 ## Features

@@ -154,3 +154,34 @@ test("apoiar abre o GitHub Sponsors", async ({ page }) => {
   await expect(links).toHaveCount(2);
   await expect(links.first()).toHaveAttribute("rel", "noopener");
 });
+
+test("apoiar abre o Pix: QR, copiar o código do Pix e fechar", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  const dialog = page.locator("#apoio");
+  await page.locator("a.support").first().click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("#apoio-qr svg")).toBeVisible();
+  await dialog.locator("#apoio-copy").click();
+  await expect(dialog.locator("#apoio-copy")).toHaveText("Copiado");
+  // BR Code do Pix: começa no cabeçalho EMV e termina no CRC de 4 dígitos.
+  const pix = await page.evaluate(() => navigator.clipboard.readText());
+  expect(pix).toMatch(/^000201.*br\.gov\.bcb\.pix.*6304[0-9A-F]{4}$/);
+  await dialog.getByRole("button", { name: "Fechar" }).click();
+  await expect(dialog).toBeHidden();
+  // Tocar fora do cartão também fecha.
+  await page.locator("a.support").first().click();
+  await expect(dialog).toBeVisible();
+  await page.mouse.click(5, 5);
+  await expect(dialog).toBeHidden();
+});
+
+test("barra do topo encolhe ao descer e abre ao subir", async ({ page }) => {
+  await page.goto("/");
+  const bar = page.locator("#topbar");
+  await expect(bar).not.toHaveClass(/compact/);
+  await page.mouse.wheel(0, 1500);
+  await expect(bar).toHaveClass(/compact/);
+  await page.mouse.wheel(0, -400);
+  await expect(bar).not.toHaveClass(/compact/);
+});
