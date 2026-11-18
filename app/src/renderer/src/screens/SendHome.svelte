@@ -54,8 +54,8 @@
       placement: at[i]
     }))
   })
-  const link = $derived(web.on && web.url ? `${web.url}/${web.code}` : null)
-  const code = $derived(web.code ?? '')
+  const link = $derived(web.on && web.url ? web.url : null)
+  const mac = window.horizonte.platform === 'darwin'
   const connected = $derived(devices.length > 0)
 
   /** Copia o link da página (com o código): para colar no navegador de outro PC. */
@@ -113,12 +113,9 @@
         {preparing ? 'Preparando' : compact ? 'Mais um aparelho' : 'Aponte a câmera'}
       </h1>
       {#if link && web.url}
-        <!-- Sem câmera (outro PC, tablet): o endereço já com o código; Copiar leva os dois juntos. -->
+        <!-- Sem câmera (outro PC, tablet): o endereço para digitar ou copiar. -->
         <span class="address" title="Abra no navegador de outro aparelho">
-          <span class="address-text">{web.url.replace(/^https?:\/\//, '')}/</span>
-          <span class="address-code" aria-label="Código {web.code?.split('').join(' ')}"
-            >{code}</span
-          >
+          <span class="address-text">{web.url.replace(/^https?:\/\//, '')}</span>
           <button class="copy" class:done={copied} onclick={copyLink}
             ><!-- O texto mais longo, invisível, segura a largura: trocar para "Copiado" não encolhe a barra. -->
             <span class="copy-size" aria-hidden="true">Copiar link</span>{#key copied}<span
@@ -127,6 +124,25 @@
                 >{copied ? 'Copiado' : 'Copiar link'}</span
               >{/key}</button
           >
+          {#if mac}
+            <!-- AirDrop e o resto do menu Compartilhar do macOS, com o link pronto. -->
+            <button
+              class="share"
+              aria-label="Compartilhar o link"
+              title="Compartilhar (AirDrop)"
+              onclick={() => link && window.horizonte.shareLink(link)}
+              ><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"
+                ><path
+                  d="M12 3v12M7.5 7.5 12 3l4.5 4.5M8 11H6.5A1.5 1.5 0 0 0 5 12.5v7A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg
+              ></button
+            >
+          {/if}
         </span>
       {:else if web.error}
         <span class="hint danger-text">{web.error}</span>
@@ -256,15 +272,6 @@
     background: var(--seg);
     max-width: 100%;
   }
-  .address-code {
-    /* Colado na barra: "192.168.1.7:7777/8775" se lê como um endereço só. */
-    margin-left: -11px;
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-  }
   .copy {
     min-height: 32px;
     padding: 0 14px;
@@ -303,6 +310,21 @@
   .copy {
     display: inline-grid;
     place-items: center;
+  }
+  .share {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin-left: -6px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--accent);
+    transition: background-color 0.2s ease;
+  }
+  .share:hover {
+    background: var(--seg);
   }
   .copy-size,
   .copy-label {

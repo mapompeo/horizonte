@@ -23,7 +23,6 @@ const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) 
 const start = $<HTMLElement>('inicio')
 const text = $<HTMLParagraphElement>('texto')
 const form = $<HTMLFormElement>('form')
-const input = $<HTMLInputElement>('codigo')
 const button = $<HTMLButtonElement>('entrar')
 
 const DENIED: Record<string, string> = {
@@ -83,13 +82,13 @@ async function post(path: string, body: unknown): Promise<Response> {
   return fetch(path, { method: 'POST', body: JSON.stringify(body) })
 }
 
-async function connect(code: string): Promise<void> {
+async function connect(): Promise<void> {
   // De uma conexão anterior (ao girar o aparelho, por exemplo), o vídeo e o cursor velhos ficariam por cima do novo.
   for (const old of document.querySelectorAll('.motor-video, .motor-cursor, .motor-panel'))
     old.remove()
   button.disabled = true
   say('Conectando…')
-  const opened = await post('/api/abrir', { codigo: code })
+  const opened = await post('/api/abrir', {})
   const reply = (await opened.json().catch(() => ({}))) as { sessao?: string; erro?: string }
   if (!opened.ok || !reply.sessao) {
     button.disabled = false
@@ -125,7 +124,6 @@ async function connect(code: string): Promise<void> {
   let ended = false
   live = {
     session,
-    code,
     landscape: landscape(),
     // Girou o aparelho: sai sem derrubar a tela cheia e entra de novo, com a tela estendida do jeito novo.
     turn: () => {
@@ -159,7 +157,7 @@ async function connect(code: string): Promise<void> {
         document.body.classList.add('web-live')
       } else if (report.type === 'quit') {
         send({ t: 'bye', reason: 'user' })
-        finish('Você saiu. Digite o código para voltar.')
+        finish('Você saiu. Toque em Conectar para voltar.')
       } else if (report.type === 'error') finish(report.message, true)
     },
     input: () => undefined,
@@ -211,7 +209,7 @@ async function connect(code: string): Promise<void> {
 }
 
 /** A sessão em andamento, para reconectar quando o aparelho gira. */
-let live: { session: string; code: string; landscape: boolean; turn(): void } | null = null
+let live: { session: string; landscape: boolean; turn(): void } | null = null
 let turning: ReturnType<typeof setTimeout> | null = null
 window.addEventListener('resize', () => {
   if (turning) clearTimeout(turning)
@@ -219,23 +217,21 @@ window.addEventListener('resize', () => {
     const current = live
     if (!current || current.landscape === landscape()) return
     current.turn()
-    connect(current.code).catch(() => say('Sem resposta do computador. Tente de novo.', true))
+    connect().catch(() => say('Sem resposta do computador. Tente de novo.', true))
   }, 700)
 })
 
 form.addEventListener('submit', (event) => {
   event.preventDefault()
-  const code = input.value.replace(/\D/g, '')
-  if (code.length !== 4) return say('O código tem 4 números.', true)
   // Tela cheia precisa do toque da pessoa: pede agora, e a tela entra assim que o vídeo chega.
   void document.documentElement.requestFullscreen?.().catch(() => undefined)
-  connect(code).catch(() => {
+  connect().catch(() => {
     button.disabled = false
     say('Sem resposta do computador. Tente de novo.', true)
   })
 })
 
-// Pelo QR code o código já vem no link: falta só o toque (a tela cheia precisa dele).
+// Falta só o toque: a tela cheia precisa dele.
 // iPhone no Safari: as barras dele não saem (o Safari não deixa a página ficar em tela cheia). Aberto pela Tela de
 // Início, ele abre como app, sem barras.
 const standalone =
@@ -243,9 +239,4 @@ const standalone =
   window.matchMedia('(display-mode: standalone)').matches
 if (/iPhone|iPod/.test(navigator.userAgent) && !standalone)
   $<HTMLParagraphElement>('dica').hidden = false
-
-const fromLink = (/^\/(\d{4})$/.exec(location.pathname)?.[1] ?? location.hash).replace(/\D/g, '')
-if (fromLink.length === 4) {
-  input.value = fromLink
-  say('Toque em Conectar.')
-} else input.focus()
+button.focus()

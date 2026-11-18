@@ -67,21 +67,6 @@ body {
   margin-top: 8px;
 }
 
-.web-code {
-  width: 220px;
-  height: 56px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(118, 118, 128, 0.24);
-  color: #fff;
-  font-family: inherit;
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: 0.3em;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-.web-code:focus-visible,
 .web-button:focus-visible {
   outline: 3px solid #0a84ff;
   outline-offset: 2px;
@@ -93,8 +78,8 @@ body {
   padding: 0 24px;
   border: 0;
   border-radius: 999px;
-  background: #0a6fe0;
-  color: #fff;
+  background: #fff;
+  color: #000;
   font-family: inherit;
   font-size: 17px;
   line-height: 22px;

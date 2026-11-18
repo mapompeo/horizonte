@@ -11,6 +11,7 @@ import {
   screen,
   session,
   shell,
+  ShareMenu,
   Tray
 } from 'electron'
 import { execFile, spawn, spawnSync } from 'node:child_process'
@@ -64,7 +65,7 @@ import { FakeEngine } from './engine/fake'
 import type { EnginePort } from './engine/port'
 import { runPowerShell } from './platform/windows/probes'
 import { lanAddress } from './web/wire'
-import { createBrowserAccess } from './web/browser'
+import { createBrowserAccess, isLocalPageUrl } from './web/browser'
 
 // O AppImage não tem o chrome-sandbox com permissão especial, e o Ubuntu 24.04+ (AppArmor) bloqueia o sandbox por
 // namespace de usuário: sem isto o app fecha ao abrir. O .deb instala o chrome-sandbox e não precisa disso.
@@ -588,6 +589,12 @@ async function boot(): Promise<void> {
   // Só texto curto (o link da página): nada de conteúdo grande vindo da janela.
   ipcMain.handle(CHANNELS.copyText, (_event, text: unknown) => {
     if (typeof text === 'string' && text.length <= 2000) clipboard.writeText(text)
+  })
+  // Menu Compartilhar do macOS (AirDrop, Mensagens...): só o endereço da página, http na rede local.
+  ipcMain.handle(CHANNELS.shareLink, (event, url: unknown) => {
+    if (process.platform !== 'darwin' || !isLocalPageUrl(url)) return
+    const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    new ShareMenu({ urls: [url] }).popup({ window })
   })
   // A página do receptor vem deste app (main/web/browser.ts).
   const webAccess = createBrowserAccess({

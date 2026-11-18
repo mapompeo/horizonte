@@ -30,7 +30,7 @@ Sem cabo, sem conta e sem configurar nada.
 
 <table>
   <tr>
-    <td width="50%"><img src=".github/screenshots/enviar-claro.png" alt="Tela Enviar com o QR code, o endereço e o código"></td>
+    <td width="50%"><img src=".github/screenshots/enviar-claro.png" alt="Tela Enviar com o QR code e o endereço"></td>
     <td width="50%"><img src=".github/screenshots/mesa-escuro.png" alt="Duas telas conectadas no mapa da mesa, no tema escuro"></td>
   </tr>
   <tr>

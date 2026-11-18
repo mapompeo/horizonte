@@ -174,7 +174,7 @@ async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void
       signalingPort: () => sender.port
     })
     app.once('before-quit', () => void page.stop())
-    log(`no navegador: http://${lanAddresses()[0] ?? '127.0.0.1'}:${page.port} código ${page.code}`)
+    log(`no navegador: http://${lanAddresses()[0] ?? '127.0.0.1'}:${page.port}`)
   }
 
   const addresses = lanAddresses()

@@ -9,7 +9,7 @@ export type MotorArgs =
       clock: boolean
       /** Cria um monitor virtual e envia só ele (tela estendida), em vez da tela principal. */
       extend: boolean
-      /** Abre também a página de receber pelo navegador, com o código no terminal. */
+      /** Abre também a página de receber pelo navegador, com o endereço no terminal. */
       browser: boolean
     }
   | {

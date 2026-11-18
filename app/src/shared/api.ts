@@ -26,6 +26,7 @@ export const CHANNELS = {
   uninstall: 'horizonte:uninstall',
   reportDiagnostic: 'horizonte:report-diagnostic',
   copyText: 'horizonte:copy-text',
+  shareLink: 'horizonte:share-link',
   push: 'horizonte:push',
   update: 'horizonte:update',
   updateStatus: 'horizonte:update-status',
@@ -62,6 +63,8 @@ export interface HorizonteApi {
   reportDiagnostic(): Promise<void>
   /** Copia um texto pela área de transferência do sistema (a da página não funciona em todo sistema). */
   copyText(text: string): Promise<void>
+  /** No Mac, abre o menu Compartilhar do sistema (AirDrop) com o link da página. Nos outros, não faz nada. */
+  shareLink(url: string): Promise<void>
   getUpdateStatus(): Promise<UpdateStatus>
   update(action: UpdateAction): Promise<UpdateStatus>
   onUpdate(callback: (status: UpdateStatus) => void): () => void

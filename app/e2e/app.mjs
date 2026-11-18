@@ -307,10 +307,11 @@ try {
       await app.click(/Voltar/)
       await app.waitText(/Aponte a câmera|Permitir o Notebook|tela conectada/, 15_000)
     })
-    await step('endereço com /código e Copiar link leva o código junto', async () => {
+    await step('endereço na tela, sem código, e Copiar link leva ele', async () => {
       const text = await app.waitText(/Copiar link/, 30_000)
-      const address = /(\d+\.\d+\.\d+\.\d+:\d+)\/ ?(\d{4})/.exec(text)
-      if (!address) throw new Error(`sem endereço/código na tela: ${text.slice(0, 200)}`)
+      const address = /(\d+\.\d+\.\d+\.\d+:\d+)(\/\d)?/.exec(text)
+      if (!address) throw new Error(`sem endereço na tela: ${text.slice(0, 200)}`)
+      if (address[2]) throw new Error(`o endereço ainda tem código: ${address[0]}`)
       const width = `Math.round(document.querySelector('.address').getBoundingClientRect().width)`
       const before = await app.ev(width)
       await app.click(/^Copiar link$/)
@@ -319,8 +320,7 @@ try {
       if (after !== before)
         throw new Error(`a barra mudou de largura ao copiar (${before} → ${after})`)
       const copied = systemClipboard()
-      if (copied !== null && !copied.endsWith(`${address[1]}/${address[2]}`))
-        throw new Error(`copiou "${copied}"`)
+      if (copied !== null && !copied.endsWith(address[1])) throw new Error(`copiou "${copied}"`)
       return copied ?? 'sem comando para ler a área de transferência'
     })
     await step('QR amplia ao clicar e volta no Esc e no toque', async () => {

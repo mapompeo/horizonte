@@ -1,5 +1,5 @@
 // Teste de ponta a ponta do receber pelo navegador: quem envia abre a página (porta 7777 ou a próxima livre) e o
-// Chrome da máquina, escondido e dirigido pelo Playwright, faz o papel do celular: abre o link com o código (o mesmo
+// Chrome da máquina, escondido e dirigido pelo Playwright, faz o papel do celular: abre o link (o mesmo
 // do QR e do Copiar link), toca em Conectar e confere que o vídeo anda. Precisa do `npm run build`.
 import { spawn } from 'node:child_process'
 import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
@@ -7,7 +7,6 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { chromium, devices, webkit } from 'playwright-core'
-
 
 const require = createRequire(import.meta.url)
 const electronPath = require('electron')
@@ -23,9 +22,17 @@ if (!MODE_ARGS) throw new Error(`HZ_WEB_MODE desconhecido: ${MODE}`)
 // iPhone) ou android (Chrome com tela e toque de celular Android). É o aparelho que de fato abre o QR.
 const PHONE = process.env.HZ_WEB_PHONE ?? 'chrome'
 const PHONES = {
-  chrome: { engine: chromium, channels: ['chrome', 'msedge'], context: { viewport: { width: 1024, height: 640 } } },
+  chrome: {
+    engine: chromium,
+    channels: ['chrome', 'msedge'],
+    context: { viewport: { width: 1024, height: 640 } }
+  },
   iphone: { engine: webkit, channels: [undefined], context: devices['iPhone 15'] },
-  android: { engine: chromium, channels: ['chrome', 'msedge', undefined], context: devices['Pixel 7'] }
+  android: {
+    engine: chromium,
+    channels: ['chrome', 'msedge', undefined],
+    context: devices['Pixel 7']
+  }
 }
 if (!PHONES[PHONE]) throw new Error(`HZ_WEB_PHONE desconhecido: ${PHONE}`)
 const TIMEOUT_MS = 90_000
@@ -50,8 +57,8 @@ function launch(label, args, onLine = () => undefined) {
   return child
 }
 
-/** O celular: abre endereço/código, confere o código já preenchido, conecta e espera o vídeo andar. */
-async function phone(url, code) {
+/** O celular: abre o endereço, toca em Conectar e espera o vídeo andar. */
+async function phone(url) {
   const phone = PHONES[PHONE]
   let browser = null
   for (const channel of phone.channels) {
@@ -59,7 +66,9 @@ async function phone(url, code) {
       browser = await phone.engine.launch({ channel, headless: true })
       break
     } catch (error) {
-      console.log(`navegador: sem ${channel ?? phone.engine.name()} (${String(error).split('\n')[0]})`)
+      console.log(
+        `navegador: sem ${channel ?? phone.engine.name()} (${String(error).split('\n')[0]})`
+      )
     }
   }
   if (!browser) return 1
@@ -84,20 +93,19 @@ async function phone(url, code) {
       window.RTCPeerConnection.prototype = Original.prototype
       Object.assign(window.RTCPeerConnection, Original)
       window.RTCPeerConnection.generateCertificate = Original.generateCertificate.bind(Original)
-      addEventListener('unhandledrejection', (event) => console.error(`promessa recusada: ${event.reason}`))
+      addEventListener('unhandledrejection', (event) =>
+        console.error(`promessa recusada: ${event.reason}`)
+      )
     })
-    await page.goto(`${url}/${code}`)
-    const filled = await page.inputValue('#codigo')
-    if (filled !== code) {
-      console.log(`navegador: o link não preencheu o código (veio "${filled}")`)
-      return 1
-    }
+    await page.goto(url)
     await page.click('#form button[type=submit], #form button')
     const size = await page
       .waitForFunction(
         () => {
           const v = document.querySelector('video')
-          return v && v.videoWidth > 0 && v.currentTime > 0.5 ? `${v.videoWidth}x${v.videoHeight}` : null
+          return v && v.videoWidth > 0 && v.currentTime > 0.5
+            ? `${v.videoWidth}x${v.videoHeight}`
+            : null
         },
         null,
         { timeout: 45_000 }
@@ -115,18 +123,24 @@ async function phone(url, code) {
               ice: pc.iceConnectionState,
               gathering: pc.iceGatheringState,
               connection: pc.connectionState,
-              remote: (pc.remoteDescription?.sdp ?? '').split('\r\n').filter((l) => /^a=candidate|^m=/.test(l)),
-              local: (pc.localDescription?.sdp ?? '').split('\r\n').filter((l) => /^a=candidate|^m=/.test(l)),
+              remote: (pc.remoteDescription?.sdp ?? '')
+                .split('\r\n')
+                .filter((l) => /^a=candidate|^m=/.test(l)),
+              local: (pc.localDescription?.sdp ?? '')
+                .split('\r\n')
+                .filter((l) => /^a=candidate|^m=/.test(l)),
               stats: [...(await pc.getStats()).values()]
                 .filter((e) => /candidate|transport/.test(e.type))
-                .map((e) => `${e.type} ${e.state ?? ''} ${e.address ?? e.ip ?? ''}:${e.port ?? ''} ${e.candidateType ?? ''}`)
+                .map(
+                  (e) =>
+                    `${e.type} ${e.state ?? ''} ${e.address ?? e.ip ?? ''}:${e.port ?? ''} ${e.candidateType ?? ''}`
+                )
             }))
           )
         )
         .catch((error) => `sem acesso: ${error}`)
       console.log(`--- conexões da página\n${JSON.stringify(inside, null, 1)}`)
-    }
-    else console.log(`navegador: vídeo ${size}`)
+    } else console.log(`navegador: vídeo ${size}`)
     await page.screenshot({ path: join(OUT, `web-${MODE}-${PHONE}.png`) }).catch(() => undefined)
     return size ? 0 : 1
   } finally {
@@ -142,10 +156,10 @@ const sender = launch(
   ['.', '--motor-send', ...MODE_ARGS, '--motor-browser', `--motor-port=${PORT}`],
   (line) => {
     // O endereço de rede que o QR leva, como um celular de verdade abriria (não o 127.0.0.1).
-    const match = /no navegador: (http:\/\/\S+:\d+) código (\d{4})/.exec(line)
+    const match = /no navegador: (http:\/\/\S+:\d+)/.exec(line)
     if (match && !started) {
       started = true
-      phone(match[1], match[2]).then(finish, (error) => {
+      phone(match[1]).then(finish, (error) => {
         console.log(`navegador: erro ${error}`)
         finish(1)
       })

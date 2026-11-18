@@ -196,6 +196,5 @@ export interface WebAccess {
   on: boolean
   url?: string
   user?: string
-  code?: string
   error?: string
 }

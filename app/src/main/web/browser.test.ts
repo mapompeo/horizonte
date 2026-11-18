@@ -3,7 +3,7 @@ import { createServer, type Server, type Socket } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import { startBrowserBridge, type BrowserBridge } from './browser'
+import { isLocalPageUrl, startBrowserBridge, type BrowserBridge } from './browser'
 
 let signaling: Server
 let signalingPort: number | null
@@ -35,8 +35,7 @@ beforeEach(async () => {
     pagesDir: pages,
     signalingPort: () => signalingPort,
     port: 0,
-    host: '127.0.0.1',
-    generateCode: () => '1234'
+    host: '127.0.0.1'
   })
   base = `http://127.0.0.1:${bridge.port}`
 })
@@ -47,8 +46,7 @@ afterEach(async () => {
   await new Promise<void>((resolve) => signaling.close(() => resolve()))
 })
 
-const open = (codigo: string): Promise<Response> =>
-  fetch(`${base}/api/abrir`, { method: 'POST', body: JSON.stringify({ codigo }) })
+const open = (): Promise<Response> => fetch(`${base}/api/abrir`, { method: 'POST', body: '{}' })
 
 /** Lê eventos do SSE até achar `count` mensagens. */
 async function readEvents(id: string, count: number): Promise<string[]> {
@@ -77,7 +75,7 @@ test('serve a página e os arquivos dela, e mais nada da pasta', async () => {
   expect((await fetch(`${base}/`)).status).toBe(200)
   expect(await (await fetch(`${base}/assets/web.js`)).text()).toBe('console.log(1)')
   expect((await fetch(`${base}/segredo.txt`)).status).toBe(404)
-  // O link com o código ("/1234") abre a mesma página; outros caminhos continuam fechados.
+  // Links de versões antigas, com o código ("/1234"), abrem a mesma página; outros caminhos continuam fechados.
   expect(await (await fetch(`${base}/1234`)).text()).toContain('<title>Horizonte</title>')
   expect((await fetch(`${base}/12345`)).status).toBe(404)
   expect((await fetch(`${base}/assets/../segredo.txt`)).status).toBe(404)
@@ -90,14 +88,13 @@ test('manifesto: adicionada à tela de início, a página abre como app em tela 
   expect(await res.json()).toMatchObject({ display: 'fullscreen', start_url: '/' })
 })
 
-test('código errado não abre; cinco erros travam até o código certo', async () => {
-  expect((await open('0000')).status).toBe(403)
-  for (let i = 0; i < 4; i++) await open('0000')
-  expect((await open('1234')).status).toBe(429)
+test('sem código: abre direto, e no máximo 8 sessões ao mesmo tempo', async () => {
+  for (let i = 0; i < 8; i++) expect((await open()).status).toBe(200)
+  expect((await open()).status).toBe(429)
 })
 
-test('com o código, liga o navegador à sinalização nos dois sentidos', async () => {
-  const res = await open('1234')
+test('liga o navegador à sinalização nos dois sentidos', async () => {
+  const res = await open()
   expect(res.status).toBe(200)
   const { sessao } = (await res.json()) as { sessao: string }
   expect(await readEvents(sessao, 1)).toEqual(['{"t":"pending"}'])
@@ -111,7 +108,7 @@ test('com o código, liga o navegador à sinalização nos dois sentidos', async
 })
 
 test('mensagem fora do formato da sinalização não passa', async () => {
-  const { sessao } = (await (await open('1234')).json()) as { sessao: string }
+  const { sessao } = (await (await open()).json()) as { sessao: string }
   const sent = await fetch(`${base}/api/enviar?sessao=${sessao}`, {
     method: 'POST',
     body: JSON.stringify({ t: 'qualquer', x: 1 })
@@ -122,7 +119,7 @@ test('mensagem fora do formato da sinalização não passa', async () => {
 
 test('sem o computador esperando conexão, avisa', async () => {
   signalingPort = null
-  expect((await open('1234')).status).toBe(409)
+  expect((await open()).status).toBe(409)
 })
 
 test('sessão que não existe não recebe nem manda', async () => {
@@ -154,4 +151,17 @@ test('com a primeira porta ocupada por outro programa, pega a próxima da faixa'
     await second.stop()
     if (taken) await new Promise<void>((resolve) => squatter.close(() => resolve()))
   }
+})
+
+test('compartilhar só aceita o endereço da página na rede local', () => {
+  expect(isLocalPageUrl('http://192.168.1.6:7777')).toBe(true)
+  for (const bad of [
+    'http://192.168.1.6:7777/1234',
+    'https://192.168.1.6:7777',
+    'http://exemplo.com:7777',
+    'file:///etc/passwd',
+    'http://192.168.1.6:7777\njavascript:1',
+    42
+  ])
+    expect(isLocalPageUrl(bad)).toBe(false)
 })

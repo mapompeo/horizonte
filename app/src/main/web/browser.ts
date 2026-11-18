@@ -1,4 +1,4 @@
-import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { connect, type Socket } from 'node:net'
@@ -34,9 +34,12 @@ const MANIFEST = {
   theme_color: '#000000'
 }
 
-/** Tentativas erradas do código antes de travar por um minuto. */
-const MAX_WRONG = 5
-const LOCK_MS = 60_000
+/** O link da página que a janela pode mandar compartilhar: http, IPv4 da rede e uma porta, nada mais. */
+export const isLocalPageUrl = (url: unknown): url is string =>
+  typeof url === 'string' && /^http:\/\/\d{1,3}(\.\d{1,3}){3}:\d{1,5}$/.test(url)
+
+/** Sessões abertas ao mesmo tempo: cada uma prende uma conexão com a sinalização. */
+const MAX_TUNNELS = 8
 /** Sessões abertas e ainda sem eventos somem depois disto. */
 const IDLE_MS = 30_000
 const KEEPALIVE_MS = 15_000
@@ -57,14 +60,10 @@ export interface BrowserBridgeOptions {
   signalingPort(): number | null
   port?: number
   host?: string
-  /** Gera o código; nos testes, fixo. */
-  generateCode?(): string
-  now?(): number
 }
 
 export interface BrowserBridge {
   readonly port: number
-  readonly code: string
   stop(): Promise<void>
 }
 
@@ -74,14 +73,6 @@ interface Tunnel {
   /** Mensagens que chegaram antes de o navegador abrir os eventos. */
   backlog: string[]
   idle: ReturnType<typeof setTimeout>
-}
-
-/** Quatro dígitos bastam: 5 erros travam por um minuto, e o computador ainda precisa permitir. */
-const fourDigits = (): string => String(randomInt(0, 10_000)).padStart(4, '0')
-
-function sameCode(given: unknown, code: string): boolean {
-  if (typeof given !== 'string' || !/^\d{4}$/.test(given)) return false
-  return timingSafeEqual(Buffer.from(given), Buffer.from(code))
 }
 
 async function readBody(req: IncomingMessage, limit: number): Promise<string | null> {
@@ -104,11 +95,7 @@ function reply(res: ServerResponse, status: number, body?: unknown): void {
 }
 
 export async function startBrowserBridge(options: BrowserBridgeOptions): Promise<BrowserBridge> {
-  const code = (options.generateCode ?? fourDigits)()
-  const now = options.now ?? Date.now
   const tunnels = new Map<string, Tunnel>()
-  let wrong = 0
-  let lockedUntil = 0
 
   const close = (id: string): void => {
     const tunnel = tunnels.get(id)
@@ -124,25 +111,10 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
     else tunnel.backlog.push(line)
   }
 
-  async function open(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    if (now() < lockedUntil)
-      return reply(res, 429, { erro: 'Muitas tentativas. Espere um minuto.' })
-    const body = await readBody(req, 256)
-    let given: unknown
-    try {
-      given = body ? (JSON.parse(body) as { codigo?: unknown }).codigo : undefined
-    } catch {
-      given = undefined
-    }
-    if (!sameCode(given, code)) {
-      wrong++
-      if (wrong >= MAX_WRONG) {
-        wrong = 0
-        lockedUntil = now() + LOCK_MS
-      }
-      return reply(res, 403, { erro: 'Código errado.' })
-    }
-    wrong = 0
+  // Sem código: quem decide é o Permitir no computador, que aparece a cada pedido.
+  async function open(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (tunnels.size >= MAX_TUNNELS)
+      return reply(res, 429, { erro: 'O computador está ocupado. Tente daqui a pouco.' })
     const port = options.signalingPort()
     if (port === null)
       return reply(res, 409, {
@@ -208,7 +180,7 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
   }
 
   async function page(path: string, res: ServerResponse): Promise<void> {
-    // "/8775": o link já com o código abre a mesma página, que lê o código do endereço.
+    // "/8775": links de versões antigas (com o código no fim) ainda abrem a página.
     const relative = path === '/' || /^\/\d{4}$/.test(path) ? 'web.html' : normalize(path.slice(1))
     const allowed =
       relative === 'web.html' ||
@@ -287,7 +259,6 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
 
   return {
     port,
-    code,
     async stop() {
       for (const id of [...tunnels.keys()]) close(id)
       await new Promise<void>((resolve) => server.close(() => resolve()))
@@ -308,7 +279,6 @@ export function createBrowserAccess(options: {
     const address = options.lanAddress()
     return {
       on: true,
-      code: bridge.code,
       ...(address ? { url: `http://${address}:${bridge.port}` } : {})
     }
   }
