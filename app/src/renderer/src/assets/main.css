@@ -655,19 +655,15 @@ h1[tabindex='-1']:focus {
   font-size: var(--t-body);
   text-align: left;
 }
-/* Divisória como nos Ajustes do macOS: o mesmo espaço nas duas bordas do cartão, alinhada ao texto. */
+/* Divisória de ponta a ponta do cartão. */
 .row ~ .row::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 16px;
-  right: 16px;
+  left: 0;
+  right: 0;
   height: 0.5px;
   background: var(--line);
-}
-/* Com um ponto na frente, a linha começa depois dele, alinhada ao nome. */
-.row:has(> .peer-dot) ~ .row:has(> .peer-dot)::before {
-  left: 40px;
 }
 .row-value {
   max-width: 60%;
@@ -761,6 +757,16 @@ h1[tabindex='-1']:focus {
 }
 .row-action.danger {
   color: var(--danger-fg);
+}
+/* Só o botão é clicável (a linha não faz nada), então só ele acende ao passar o mouse. */
+.row-action {
+  border-radius: 999px;
+}
+.row-action:hover {
+  background-color: var(--seg);
+}
+.row-action.danger:hover {
+  background-color: color-mix(in srgb, var(--danger-fg) 14%, transparent);
 }
 
 .text-input {
