@@ -57,8 +57,12 @@ export function prepareMotorSwitches(): void {
   )
   // Codificação pela placa de vídeo no Linux (VA-API): sem estas, o Chromium codifica por software. A decodificação
   // pela placa já vem ligada; forçar a dela (`VaapiVideoDecodeLinuxGL`) fazia o primeiro quadro levar ~25 s.
+  // GlobalShortcutsPortal: no Wayland, o atalho que traz a janela passa pelo sistema (o GNOME pede para liberar uma vez).
   if (process.platform === 'linux')
-    app.commandLine.appendSwitch('enable-features', 'AcceleratedVideoEncoder,VaapiVideoEncoder')
+    app.commandLine.appendSwitch(
+      'enable-features',
+      'AcceleratedVideoEncoder,VaapiVideoEncoder,GlobalShortcutsPortal'
+    )
 }
 
 /** Tamanho da tela principal em pixels de verdade. */

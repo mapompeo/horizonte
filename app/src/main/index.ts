@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  globalShortcut,
   clipboard,
   dialog,
   ipcMain,
@@ -66,6 +67,7 @@ import type { EnginePort } from './engine/port'
 import { runPowerShell } from './platform/windows/probes'
 import { lanAddress } from './web/wire'
 import { createBrowserAccess, isLocalPageUrl } from './web/browser'
+import { showShortcut } from '../shared/shortcut'
 
 // O AppImage não tem o chrome-sandbox com permissão especial, e o Ubuntu 24.04+ (AppArmor) bloqueia o sandbox por
 // namespace de usuário: sem isto o app fecha ao abrir. O .deb instala o chrome-sandbox e não precisa disso.
@@ -310,6 +312,9 @@ async function boot(): Promise<void> {
     callback(false)
   )
   app.on('browser-window-created', (_event, window) => optimizer.watchWindowShortcuts(window))
+  // De qualquer lugar, traz a janela (ocupado por outro programa, o registro só falha e o resto segue).
+  globalShortcut.register(showShortcut(process.platform).accelerator, () => raiseWindow(mainWindow))
+  app.on('will-quit', () => globalShortcut.unregisterAll())
 
   const persisted = createSettingsStore(
     join(app.getPath('userData'), 'settings.json'),

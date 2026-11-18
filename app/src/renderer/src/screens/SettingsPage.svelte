@@ -1,6 +1,7 @@
 <script lang="ts">
   import { PROFILES } from '../../../shared/quality'
   import type { Fps, Settings, Theme } from '../../../shared/types'
+  import { showShortcut } from '../../../shared/shortcut'
   import { chooseMode, closeSettings, patchSettings } from '../lib/actions'
   import PlacementMap from '../components/PlacementMap.svelte'
   import ReportButton from '../components/ReportButton.svelte'
@@ -129,6 +130,10 @@
             checked={settings.autostart}
             onChange={(checked) => patchSettings({ autostart: checked })}
           />
+        </div>
+        <div class="row">
+          <span>Trazer esta janela de qualquer lugar</span>
+          <kbd class="row-value">{showShortcut(window.horizonte.platform).label}</kbd>
         </div>
         <button
           class="row row-button"
