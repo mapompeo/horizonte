@@ -2,6 +2,7 @@ import type {
   AppEvent,
   AppState,
   Host,
+  LinkQuality,
   Settings,
   SettingsPatch,
   Snapshot,
@@ -63,7 +64,9 @@ export async function createController({
   const listeners = new Set<(snapshot: Snapshot) => void>()
   let settingsQueue: Promise<unknown> = Promise.resolve()
 
-  const snapshot = (): Snapshot => ({ state, settings })
+  /** A conexão de cada aparelho conectado: medida uma vez por segundo, e a tela só é avisada quando o nível muda. */
+  let links: Record<string, LinkQuality> = {}
+  const snapshot = (): Snapshot => ({ state, settings, links })
 
   function notify(): void {
     const current = snapshot()
@@ -315,9 +318,17 @@ export async function createController({
     )
       trust({ ...known, screen: size })
   })
-  engine.onClientDisconnected((fingerprint) =>
+  engine.onClientDisconnected((fingerprint) => {
+    if (fingerprint) delete links[fingerprint]
+    else links = {}
     dispatch({ type: 'CLIENT_DISCONNECTED', ...(fingerprint ? { fingerprint } : {}) })
-  )
+  })
+  engine.onLink?.((fingerprint, link) => {
+    const before = links[fingerprint]
+    if (link) links = { ...links, [fingerprint]: link }
+    else delete links[fingerprint]
+    if (before !== link) notify()
+  })
   engine.onStreamEnded(() => dispatch({ type: 'STREAM_ENDED' }))
   mouse?.onRequest((request) => dispatch({ type: 'MOUSE_REQUEST', ...request }))
   mouse?.onEnded(() => dispatch({ type: 'MOUSE_ENDED' }))

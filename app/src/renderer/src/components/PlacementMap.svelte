@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import type { ScreenPlacement, ScreenSize } from '../../../shared/types'
+  import type { LinkQuality, ScreenPlacement, ScreenSize } from '../../../shared/types'
   import { patchSettings } from '../lib/actions'
   import FreeScreenMap from './FreeScreenMap.svelte'
 
@@ -10,6 +10,7 @@
     name: string
     screen: ScreenSize
     placement: ScreenPlacement
+    quality?: LinkQuality
   }
 
   interface Props {
@@ -55,7 +56,8 @@
       name: s.name,
       size: points(s.screen),
       placement: s.placement,
-      detail: resolution(s.screen)
+      detail: resolution(s.screen),
+      quality: s.quality
     }))
   )
 

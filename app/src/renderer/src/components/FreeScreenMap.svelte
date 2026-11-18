@@ -1,7 +1,13 @@
 <script lang="ts">
   import { overlap, snapRect, sideOf, type Rect } from '../../../shared/placement'
-  import type { ScreenPlacement, ScreenSize } from '../../../shared/types'
+  import type { LinkQuality, ScreenPlacement, ScreenSize } from '../../../shared/types'
   import { safeName } from '../lib/copy'
+
+  const LINK_LABEL: Record<LinkQuality, string> = {
+    good: 'Conexão boa',
+    fair: 'Conexão regular',
+    poor: 'Conexão fraca: aproxime do roteador'
+  }
 
   /** Uma tela estendida no mapa: tamanho em unidades da área de trabalho deste computador. */
   export interface FreeScreen {
@@ -11,6 +17,8 @@
     placement: ScreenPlacement
     /** Uma linha pequena embaixo do nome (a resolução, por exemplo). */
     detail?: string
+    /** A conexão com ele: a bolinha fica verde, amarela ou vermelha. */
+    quality?: LinkQuality
   }
 
   interface Props {
@@ -158,7 +166,14 @@
           onclick={() => onStop(s.key)}>✕</button
         >
       {/if}
-      <span class="name"><span class="dot" aria-hidden="true"></span>{safeName(s.name)}</span>
+      <span class="name"
+        >{#if s.quality}<span
+            class="dot {s.quality}"
+            role="img"
+            aria-label={LINK_LABEL[s.quality]}
+            title={LINK_LABEL[s.quality]}
+          ></span>{:else}<span class="dot" aria-hidden="true"></span>{/if}{safeName(s.name)}</span
+      >
       {#if s.detail}<span class="detail">{s.detail}</span>{/if}
     </div>
   {/each}
@@ -197,6 +212,12 @@
     font-weight: 400;
     color: var(--muted);
     font-variant-numeric: tabular-nums;
+  }
+  .dot.fair {
+    background: #ffcc00;
+  }
+  .dot.poor {
+    background: var(--danger-fg);
   }
   .dot {
     display: inline-block;

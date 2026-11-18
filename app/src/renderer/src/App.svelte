@@ -144,6 +144,7 @@
               devices={state.devices}
               placement={settings.screenPlacement}
               placements={settings.screenPlacements}
+              links={$snapshot.links}
             />
           {:else if state.screen === 'discover'}
             <Discover lastHost={settings.lastHost} />

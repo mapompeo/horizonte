@@ -1,4 +1,4 @@
-import type { Host, PrepStep, ExtendSide, ScreenPlacement } from '../../shared/types'
+import type { Host, LinkQuality, PrepStep, ExtendSide, ScreenPlacement } from '../../shared/types'
 import type { ApproveRequest, ConnectedPeer, EnginePort, PairRequest } from './port'
 
 type Callback<A extends unknown[]> = (...args: A) => void
@@ -37,6 +37,7 @@ export class FakeEngine implements EnginePort {
   private pairCancelled = emitter<[string]>()
   private connected = emitter<[string, ConnectedPeer?]>()
   private disconnected = emitter<[]>()
+  private link = emitter<[string, LinkQuality | null]>()
   private ended = emitter<[]>()
 
   constructor(private readonly delayMs = 0) {}
@@ -138,6 +139,14 @@ export class FakeEngine implements EnginePort {
 
   onStreamEnded(callback: () => void): () => void {
     return this.ended.on(callback)
+  }
+
+  onLink(callback: (fingerprint: string, quality: LinkQuality | null) => void): () => void {
+    return this.link.on(callback)
+  }
+
+  simulateLink(fingerprint: string, quality: LinkQuality | null): void {
+    this.link.emit(fingerprint, quality)
   }
 
   simulatePairRequest(device: string, pairingId = 'p1', pin?: string, address?: string): void {

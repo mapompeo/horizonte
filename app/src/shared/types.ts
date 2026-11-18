@@ -188,9 +188,14 @@ export interface Host {
   nativeMouse?: boolean
 }
 
+/** Como está a conexão com um aparelho: pelo tempo de ida e volta e por falta de banda. */
+export type LinkQuality = 'good' | 'fair' | 'poor'
+
 export interface Snapshot {
   state: AppState
   settings: Settings
+  /** A conexão de cada aparelho conectado, pela impressão digital (só o motor próprio informa). */
+  links?: Record<string, LinkQuality>
 }
 
 /** Receber pelo navegador: onde abrir e com qual acesso. */

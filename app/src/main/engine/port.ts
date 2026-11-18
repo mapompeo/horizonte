@@ -1,4 +1,5 @@
 import type {
+  LinkQuality,
   ExtendSide,
   ScreenPlacement,
   ScreenSize,
@@ -90,6 +91,8 @@ export interface ServerEngine {
   onClientConnected(callback: (device: string, peer?: ConnectedPeer) => void): () => void
   /** Um aparelho saiu (motor próprio: com a impressão digital dele; sem ela, a conexão toda acabou). */
   onClientDisconnected(callback: (fingerprint?: string) => void): () => void
+  /** Motor próprio: como está a conexão de cada aparelho conectado. */
+  onLink?(callback: (fingerprint: string, link: LinkQuality | null) => void): () => void
 }
 
 /** Papel de quem recebe a tela. */

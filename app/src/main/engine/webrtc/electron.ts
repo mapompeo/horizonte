@@ -27,7 +27,8 @@ import {
   MOTOR_CHANNELS,
   type MediaMessage,
   type MotorConfig,
-  type MotorReport
+  type MotorReport,
+  type MotorStats
 } from '../../../shared/motor'
 import { cleanName } from '../../../shared/names'
 import { createGnomeDisplay } from '../../platform/linux/gnome-display'
@@ -73,6 +74,8 @@ const configs = new Map<number, MotorConfig>()
 const signalTargets = new Map<number, (message: MediaMessage) => void>()
 const reportListeners = new Map<number, (report: MotorReport) => void>()
 const inputTargets = new Map<number, (raw: string) => void>()
+/** As medidas de cada janela que envia, para quem pediu (a sessão do aparelho). */
+const statsTargets = new Map<number, (stats: MotorStats) => void>()
 let ipcWired = false
 
 /** Liga o IPC das janelas do motor (uma vez por processo). */
@@ -145,6 +148,7 @@ export function listenReports(
     if (report.type === 'identity') identity = { id: report.id, fp: report.fp }
     else if (report.type === 'ready') codecs = report.codecs
     else if (report.type === 'error') log('erro na janela:', report.message)
+    else if (report.type === 'stats') statsTargets.get(contents.id)?.(report.stats)
     onReport(report)
     for (const wake of waiters.splice(0)) wake()
   })
@@ -170,6 +174,8 @@ export interface WindowMediaHooks {
   onError?(error: Error): void
   /** Entrada que chegou de quem mostra durante a sessão (sem conferir). */
   onInput?(raw: string): void
+  /** As medidas da conexão, uma vez por segundo. */
+  onStats?(stats: MotorStats): void
 }
 
 /**
@@ -191,6 +197,7 @@ export function windowMedia(
       const mine = ++run
       signalTargets.set(id, send)
       if (hooks.onInput) inputTargets.set(id, hooks.onInput)
+      if (hooks.onStats) statsTargets.set(id, hooks.onStats)
       void Promise.all([hooks.beforeStart?.(want), ready])
         .then(([extra]) => extra)
         .then(
@@ -207,6 +214,7 @@ export function windowMedia(
       run += 1
       signalTargets.delete(id)
       inputTargets.delete(id)
+      statsTargets.delete(id)
       push({ t: 'stop' })
       hooks.afterStop?.()
     }

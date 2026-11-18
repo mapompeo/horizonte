@@ -4,6 +4,7 @@
   import { backOut } from 'svelte/easing'
   import type {
     ConnectedDevice,
+    LinkQuality,
     PrepProgress,
     ScreenPlacement,
     WebAccess
@@ -23,9 +24,11 @@
     /** Ainda preparando: no lugar do QR, o andamento. */
     preparing?: boolean
     progress?: PrepProgress
+    /** A conexão de cada aparelho, pela impressão digital: pinta a bolinha dele no mapa. */
+    links?: Record<string, LinkQuality>
   }
 
-  let { devices, placement, placements, preparing = false, progress }: Props = $props()
+  let { devices, placement, placements, preparing = false, progress, links = {} }: Props = $props()
 
   /** O QR fica sempre ligado: a página abre sozinha, sem botão. */
   let web = $state<WebAccess>({ on: false })
@@ -51,7 +54,8 @@
       key: d.fingerprint as string,
       name: d.device,
       screen: d.peerScreen as NonNullable<ConnectedDevice['peerScreen']>,
-      placement: at[i]
+      placement: at[i],
+      quality: links[d.fingerprint as string]
     }))
   })
   const link = $derived(web.on && web.url ? web.url : null)

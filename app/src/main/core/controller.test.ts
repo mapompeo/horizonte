@@ -241,6 +241,24 @@ describe('eventos no estado errado', () => {
   })
 })
 
+describe('conexão de cada aparelho', () => {
+  it('a tela só é avisada quando o nível muda, e o aparelho que sai some da lista', async () => {
+    const { controller, engine } = await setup({
+      screen: 'connected',
+      mode: 'send',
+      devices: [{ device: 'iPhone', fingerprint: 'fp1' }]
+    })
+    const seen: unknown[] = []
+    controller.subscribe((snapshot) => seen.push(snapshot.links))
+    engine.simulateLink('fp1', 'good')
+    engine.simulateLink('fp1', 'good')
+    engine.simulateLink('fp1', 'poor')
+    expect(seen).toEqual([{ fp1: 'good' }, { fp1: 'poor' }])
+    engine.simulateClientDisconnected()
+    expect(controller.getSnapshot().links).toEqual({})
+  })
+})
+
 describe('lembrar o computador', () => {
   it('conectar guarda o nome dele, para conectar sozinho na próxima vez', async () => {
     const { controller, saved } = await setup({ screen: 'discover', mode: 'receive' })

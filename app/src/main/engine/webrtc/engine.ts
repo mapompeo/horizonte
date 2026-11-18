@@ -1,6 +1,8 @@
 import type { DeviceKind } from '../../../shared/device'
 import { helperCommand, parseInput } from '../../../shared/input'
+import type { MotorStats } from '../../../shared/motor'
 import type {
+  LinkQuality,
   Host,
   MouseSide,
   PrepProgress,
@@ -12,6 +14,7 @@ import type {
 import type { ApproveRequest, ConnectedPeer, EnginePort, PairRequest } from '../port'
 import { freePlacement } from '../../../shared/placement'
 import type { VirtualScreen } from './display'
+import { linkOf } from './quality'
 import { PROTOCOL_VERSION, SIGNALING_PORT, type Hello, type Want } from './protocol'
 import {
   connect,
@@ -40,6 +43,7 @@ export interface MediaHooks {
   afterStop?(): void
   onError?(error: Error): void
   onInput?(raw: string): void
+  onStats?(stats: MotorStats): void
 }
 
 /** A janela de exibição de uma sessão de quem mostra. */
@@ -148,6 +152,7 @@ export class WebRtcEngine implements EnginePort {
   private readonly pairCancelled = listeners<[string]>()
   private readonly clientConnected = listeners<[string, ConnectedPeer]>()
   private readonly clientDisconnected = listeners<[string | undefined]>()
+  private readonly linkChanged = listeners<[string, LinkQuality | null]>()
   private readonly streamEnded = listeners<[]>()
 
   constructor(private readonly deps: WebRtcEngineDeps) {}
@@ -310,7 +315,11 @@ export class WebRtcEngine implements EnginePort {
         this.log('tela estendida:', error.message)
         viewer.session?.end('error')
       },
-      onInput: (raw) => this.input(peer.fp, raw)
+      onInput: (raw) => this.input(peer.fp, raw),
+      onStats: (stats) => {
+        const link = linkOf(stats)
+        if (link) this.linkChanged.emit(peer.fp, link)
+      }
     })
   }
 
@@ -494,6 +503,9 @@ export class WebRtcEngine implements EnginePort {
   }
   onClientDisconnected(callback: (fingerprint?: string) => void): () => void {
     return this.clientDisconnected.on(callback)
+  }
+  onLink(callback: (fingerprint: string, link: LinkQuality | null) => void): () => void {
+    return this.linkChanged.on(callback)
   }
   onStreamEnded(callback: () => void): () => void {
     return this.streamEnded.on(callback)
