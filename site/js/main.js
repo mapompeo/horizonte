@@ -52,6 +52,26 @@ if (term) {
     term.querySelector("#term-cmd").textContent = shown.cmd;
   }
 }
+// Logo depois do clique em Baixar, o aviso que o sistema vai mostrar e como passar por ele: é ali que a pessoa trava.
+const dlNote = document.createElement("p");
+dlNote.id = "dl-note";
+dlNote.className = "lede dl-note";
+dlNote.setAttribute("role", "status");
+dlNote.hidden = true;
+document.querySelector("#baixar .term")?.before(dlNote);
+const DL_NOTE = {
+  windows: () => ["dl.noteWin", t("dl.noteWin", "Se o Windows avisar que protegeu o computador, toque em Mais informações › Executar assim mesmo. Depois, quando ele perguntar sobre a rede, marque Redes privadas.")],
+  mac: () => ["dl.noteMac", t("dl.noteMac", "Arraste o Horizonte para Aplicativos. Se o macOS não deixar abrir, vá em Ajustes do Sistema › Privacidade e Segurança e toque em Abrir Mesmo Assim.")],
+  linux: () => ["dl.noteLinux", t("dl.noteLinux", "No Ubuntu e no Debian, instale o .deb com o comando abaixo, na pasta onde ele foi baixado.")],
+};
+document.querySelectorAll("[data-dl]").forEach((link) =>
+  link.addEventListener("click", () => {
+    const note = DL_NOTE[link.dataset.dl]?.();
+    if (!note) return;
+    [dlNote.dataset.i18n, dlNote.textContent] = note;
+    dlNote.hidden = false;
+  }),
+);
 if (['ios', 'android', 'chromeos'].includes(os)) {
   const guidance = document.createElement('p');
   guidance.id = 'browser-guidance';

@@ -35,6 +35,19 @@ test("comando do terminal é o do sistema de quem visita, e no Windows não apar
     await context.close();
   }
 });
+test("depois do clique em Baixar, o aviso do sistema e como passar por ele", async ({ page }) => {
+  // 204: o navegador fica na página (o download de verdade iria para o GitHub).
+  await page.route("https://github.com/**", (route) => route.fulfill({ status: 204 }));
+  await page.goto("/#baixar");
+  const note = page.locator("#dl-note");
+  await expect(note).toBeHidden();
+  // O botão foge um pouco do cursor (efeito ímã): o clique vai direto no link.
+  await page.locator('[data-dl="windows"]').dispatchEvent("click");
+  await expect(note).toBeVisible();
+  await expect(note).toContainText("Executar assim mesmo");
+  await page.locator('[data-dl="mac"]').first().dispatchEvent("click");
+  await expect(note).toContainText("Abrir Mesmo Assim");
+});
 test("demo: endereço de sempre na tela, e o QR leva para o site", async ({
   page,
 }) => {

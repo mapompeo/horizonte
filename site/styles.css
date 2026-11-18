@@ -844,6 +844,10 @@ h2 .l2 {
 .download .lede {
   margin-top: 16px;
 }
+.dl-note {
+  max-width: 560px;
+  margin-inline: auto;
+}
 .oses {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
