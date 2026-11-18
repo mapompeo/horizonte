@@ -65,9 +65,13 @@ async function phone(url, code) {
   if (!browser) return 1
   try {
     const page = await browser.newPage(phone.context)
+    // Tudo que a página disse, para mostrar se falhar (erro de script, estado da conexão).
+    const said = []
     page.on('console', (message) => {
+      said.push(`${message.type()}: ${message.text()}`)
       if (message.text().includes('[motor]')) console.log(`navegador: ${message.text()}`)
     })
+    page.on('pageerror', (error) => said.push(`erro: ${error.message}`))
     await page.goto(`${url}/${code}`)
     const filled = await page.inputValue('#codigo')
     if (filled !== code) {
@@ -86,8 +90,10 @@ async function phone(url, code) {
       )
       .then((handle) => handle.jsonValue())
       .catch(() => null)
-    if (!size)
+    if (!size) {
       console.log(`navegador: sem vídeo (${await page.textContent('#texto').catch(() => '?')})`)
+      console.log(`--- o que a página disse\n${said.slice(-60).join('\n') || '(nada)'}`)
+    }
     else console.log(`navegador: vídeo ${size}`)
     await page.screenshot({ path: join(OUT, `web-${MODE}-${PHONE}.png`) }).catch(() => undefined)
     return size ? 0 : 1
@@ -103,10 +109,11 @@ const sender = launch(
   'envia',
   ['.', '--motor-send', ...MODE_ARGS, '--motor-browser', `--motor-port=${PORT}`],
   (line) => {
-    const match = /no navegador: http:\/\/\S+:(\d+) código (\d{4})/.exec(line)
+    // O endereço de rede que o QR leva, como um celular de verdade abriria (não o 127.0.0.1).
+    const match = /no navegador: (http:\/\/\S+:\d+) código (\d{4})/.exec(line)
     if (match && !started) {
       started = true
-      phone(`http://127.0.0.1:${match[1]}`, match[2]).then(finish, (error) => {
+      phone(match[1], match[2]).then(finish, (error) => {
         console.log(`navegador: erro ${error}`)
         finish(1)
       })
