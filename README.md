@@ -84,6 +84,8 @@ No Ubuntu e no Debian, prefira o `.deb`: o `.AppImage` precisa do FUSE 2, que n�
 
 ## Algo deu errado?
 
+**O celular não abre a página do QR:** ele precisa estar no mesmo Wi-Fi do computador (não nos dados móveis) e fora de rede de visitantes, que isola um aparelho do outro. No Windows, a rede precisa estar como privada: o app mostra o botão para isso.
+
 Em **Ajustes › Enviar diagnóstico**. Um clique, sem conta: vão só a versão, o sistema e os códigos de erro.
 
 ## Apoie o projeto
