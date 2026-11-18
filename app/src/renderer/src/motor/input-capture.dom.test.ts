@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi, type Mock } from 'vitest'
 import type { InputEvent } from '../../../shared/input'
 import { attachInputCapture, HOLD_ESC_MS } from './input-capture'
 
@@ -9,7 +9,7 @@ import { attachInputCapture, HOLD_ESC_MS } from './input-capture'
 let sent: InputEvent[]
 let frames: FrameRequestCallback[]
 let video: HTMLVideoElement
-let quit: ReturnType<typeof vi.fn>
+let quit: Mock<() => void>
 let detach: () => void
 
 function pointer(type: string, init: Record<string, unknown>): void {
@@ -39,7 +39,7 @@ beforeEach(() => {
   video.getBoundingClientRect = () =>
     ({ left: 0, top: 0, width: 200, height: 100, x: 0, y: 0, right: 200, bottom: 100 }) as DOMRect
   document.body.append(video)
-  quit = vi.fn()
+  quit = vi.fn<() => void>()
   detach = attachInputCapture({
     video,
     send: (event) => sent.push(event),
