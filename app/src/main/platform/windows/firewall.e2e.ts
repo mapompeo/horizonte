@@ -15,12 +15,15 @@ const powershell = (script: string): Promise<string> =>
   )
 
 describe.runIf(process.platform === 'win32')('firewall do Windows de verdade', () => {
-  it('um programa bloqueado (o Cancelar) passa a liberado em rede privada', async () => {
+  it('bloqueado (o Cancelar) ou em rede Pública: Liberar deixa liberado e a rede privada', async () => {
     const exe = 'C:\\Horizonte-teste\\Horizonte.exe'
     const block = `New-NetFirewallRule -DisplayName 'Horizonte teste' -Direction Inbound -Action Block -Program '${exe}' | Out-Null`
     try {
       await powershell('Set-NetFirewallProfile -Name Private -Enabled True')
-      expect(parseFirewallState(await powershell(firewallStateScript(exe)))).toBe('unknown')
+      // A máquina da CI pode começar com a rede Pública: os dois valem antes de qualquer regra.
+      const first = parseFirewallState(await powershell(firewallStateScript(exe)))
+      console.log('firewall antes:', first)
+      expect(['unknown', 'public']).toContain(first)
       await powershell(block)
       expect(parseFirewallState(await powershell(firewallStateScript(exe)))).toBe('blocked')
       await powershell(firewallAllowScript(exe))

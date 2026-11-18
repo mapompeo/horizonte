@@ -89,7 +89,8 @@ declare global {
   }
 }
 
-export type FirewallState = 'allowed' | 'blocked' | 'unknown'
+/** 'public': o Windows marcou a rede como Pública, e aí a liberação (só para redes privadas) não vale. */
+export type FirewallState = 'allowed' | 'blocked' | 'unknown' | 'public'
 export interface MacAccess {
   /** O que o macOS diz da Gravação de Tela: 'not-determined' até ele perguntar. */
   screen: 'not-determined' | 'granted' | 'denied' | 'restricted' | 'unknown'

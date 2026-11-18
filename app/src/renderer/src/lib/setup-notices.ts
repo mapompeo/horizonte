@@ -53,6 +53,12 @@ export function setupNotices(
         text: 'O firewall do Windows está bloqueando o Horizonte, e os aparelhos não conseguem conectar.',
         action: { kind: 'allow-firewall', label: 'Liberar no firewall' }
       })
+    if (firewall === 'public')
+      notices.push({
+        id: 'win-public-network',
+        text: 'O Windows marcou esta rede como **Pública** e bloqueia os aparelhos da casa. Se esta é a rede da sua casa, marque como privada.',
+        action: { kind: 'allow-firewall', label: 'Marcar como rede privada' }
+      })
     if (firewall === 'unknown')
       notices.push({
         id: 'win-firewall-ask',

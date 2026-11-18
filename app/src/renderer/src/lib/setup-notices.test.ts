@@ -8,6 +8,11 @@ it('Windows: bloqueado vem com o botão de liberar; antes de perguntar, o aviso 
   expect(setupNotices('win32', 'blocked', null)[0].action?.kind).toBe('allow-firewall')
   expect(ids('win32', 'unknown', null)).toEqual(['win-firewall-ask'])
   expect(ids('win32', 'allowed', null)).toEqual([])
+  // Rede Pública: a liberação não vale lá; o botão marca a rede de casa como privada.
+  expect(setupNotices('win32', 'public', null)[0]).toMatchObject({
+    id: 'win-public-network',
+    action: { kind: 'allow-firewall', label: 'Marcar como rede privada' }
+  })
 })
 
 it('Mac: o que impede de funcionar vem antes do que só avisa', () => {

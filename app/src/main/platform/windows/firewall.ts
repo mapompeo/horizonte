@@ -9,7 +9,10 @@ import { psQuote } from './elevation'
 import type { FirewallState } from '../../../shared/api'
 export type { FirewallState }
 
-/** Lê as regras de entrada deste programa, sem administrador. Imprime "bloqueado", "liberado" ou "nada". */
+/**
+ * Lê as regras de entrada deste programa e a categoria da rede, sem administrador. Imprime "bloqueado", "publica"
+ * (rede marcada como Pública: a liberação só vale em rede privada), "liberado" ou "nada".
+ */
 export function firewallStateScript(executable: string): string {
   return [
     `$rules = @(Get-NetFirewallApplicationFilter -Program ${psQuote(executable)} -ErrorAction SilentlyContinue |`,
@@ -18,6 +21,7 @@ export function firewallStateScript(executable: string): string {
     // Firewall desligado na rede de casa: não há o que perguntar.
     "if ((Get-NetFirewallProfile -Name Private -ErrorAction SilentlyContinue).Enabled -eq 'False') { 'liberado' }",
     "elseif ($rules | Where-Object { $_.Action -eq 'Block' }) { 'bloqueado' }",
+    "elseif (@(Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { $_.NetworkCategory -eq 'Public' }).Count) { 'publica' }",
     "elseif ($rules | Where-Object { $_.Action -eq 'Allow' }) { 'liberado' }",
     "else { 'nada' }"
   ].join('\n')
@@ -26,19 +30,21 @@ export function firewallStateScript(executable: string): string {
 /** Um bloqueio vale mais que uma liberação: é o que o Windows faz quando há os dois. */
 export function parseFirewallState(out: string): FirewallState {
   if (out.includes('bloqueado')) return 'blocked'
+  if (out.includes('publica')) return 'public'
   if (out.includes('liberado')) return 'allowed'
   return 'unknown'
 }
 
 /**
- * Com administrador: tira as regras deste programa (o bloqueio do Cancelar) e libera a entrada só em redes privadas,
- * a de casa. Em Wi-Fi público continua fechado.
+ * Com administrador: tira as regras deste programa (o bloqueio do Cancelar), libera a entrada só em redes privadas e
+ * marca como privada a rede que o Windows deixou como Pública (o aviso diz isso antes: é a rede de casa).
  */
 export function firewallAllowScript(executable: string): string {
   const program = psQuote(executable)
   return [
     `Get-NetFirewallApplicationFilter -Program ${program} -ErrorAction SilentlyContinue | Get-NetFirewallRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule`,
     `New-NetFirewallRule -DisplayName 'Horizonte' -Direction Inbound -Action Allow -Program ${program} -Protocol TCP -Profile Private | Out-Null`,
-    `New-NetFirewallRule -DisplayName 'Horizonte' -Direction Inbound -Action Allow -Program ${program} -Protocol UDP -Profile Private | Out-Null`
+    `New-NetFirewallRule -DisplayName 'Horizonte' -Direction Inbound -Action Allow -Program ${program} -Protocol UDP -Profile Private | Out-Null`,
+    "Get-NetConnectionProfile | Where-Object { $_.NetworkCategory -eq 'Public' } | Set-NetConnectionProfile -NetworkCategory Private"
   ].join('\n')
 }
