@@ -125,6 +125,7 @@ async function connect(): Promise<void> {
 
   let peer: Hello | null = null
   let ended = false
+  let slow: ReturnType<typeof setTimeout> | undefined
   live = {
     session,
     landscape: landscape(),
@@ -138,6 +139,7 @@ async function connect(): Promise<void> {
   const finish = (message: string, error = false, keepScreen = false): void => {
     if (ended) return
     ended = true
+    clearTimeout(slow)
     if (live?.session === session) live = null
     events.close()
     side.stop()
@@ -165,6 +167,7 @@ async function connect(): Promise<void> {
     signal: (message: MediaMessage) => send(message),
     report: (report) => {
       if (report.type === 'first-frame') {
+        clearTimeout(slow)
         retries = 0
         start.hidden = true
         document.body.classList.add('web-live')
@@ -198,6 +201,11 @@ async function connect(): Promise<void> {
         return say('Toque em Permitir no computador.')
       case 'accepted':
         say('Abrindo a tela…')
+        // Na primeira vez, o computador instala o monitor virtual e pede uma permissão: daqui não dá para ver isso.
+        slow = setTimeout(
+          () => say('Abrindo a tela… Se o computador pedir uma permissão, confirme lá.'),
+          SLOW_START_MS
+        )
         send(want)
         return void side.start(want)
       case 'denied':
@@ -221,6 +229,9 @@ async function connect(): Promise<void> {
   })
   send(hello)
 }
+
+/** Sem imagem depois disto, o aviso de olhar o computador (lá pode haver um pedido de permissão). */
+const SLOW_START_MS = 5000
 
 /** Esperas entre as tentativas de reconectar; acabou a lista, mostra o erro e volta o botão. */
 const RETRY_MS = [1000, 2000, 4000, 8000, 8000]
