@@ -177,7 +177,7 @@ document.querySelectorAll("[data-preview]").forEach((root) => {
   const frame = document.createElement("iframe");
   frame.dataset.i18nAttr = "title:iframe.host";
   frame.title = t("iframe.host", "Conectar ao Desktop");
-  frame.src = "./app/?auto=0&preview=host";
+  frame.src = `./app/?auto=0&preview=host&lang=${document.documentElement.lang.split("-")[0] || "pt"}`;
   frame.loading = "lazy";
   frame.width = 400;
   frame.height = 160;
@@ -204,3 +204,10 @@ for (const button of document.querySelectorAll("[data-copy]")) {
 }
 
 mountSupport();
+
+// Trocou o idioma da página: os apps da demonstração recarregam no idioma novo.
+document.addEventListener("hz:lang", (event) => {
+  document.querySelectorAll('iframe[src*="./app/"]').forEach((frame) => {
+    frame.src = frame.getAttribute("src").replace(/lang=[a-z]+/, `lang=${event.detail}`);
+  });
+});

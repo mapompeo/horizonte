@@ -48,6 +48,12 @@ test("depois do clique em Baixar, o aviso do sistema e como passar por ele", asy
   await page.locator('[data-dl="mac"]').first().dispatchEvent("click");
   await expect(note).toContainText("Abrir Mesmo Assim");
 });
+test("a demonstração fala o idioma da página", async ({ page }) => {
+  await page.goto("/?lang=en");
+  const app = page.frameLocator("#hero-app iframe");
+  await expect(app.getByRole("heading", { name: "Point the camera" })).toBeVisible();
+  await expect(app.getByRole("button", { name: "Copy link" })).toBeVisible();
+});
 test("demo: endereço de sempre na tela, e o QR leva para o site", async ({
   page,
 }) => {

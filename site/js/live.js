@@ -23,7 +23,9 @@ export function mountLive(root, { hash = "", auto = true } = {}) {
   frame.setAttribute("allow", "clipboard-write");
   frame.inert = true;
   frame.tabIndex = -1;
-  frame.src = `./app/?auto=${auto ? 1 : 0}${hash ? "#" + hash : ""}`;
+  // O app da demonstração fala o idioma da página (pt, en ou es).
+  const lang = document.documentElement.lang.split("-")[0] || "pt";
+  frame.src = `./app/?auto=${auto ? 1 : 0}&lang=${lang}${hash ? "#" + hash : ""}`;
 
   const fit = () => {
     frame.style.transform = `scale(${scaleFor(root.clientWidth)})`;
