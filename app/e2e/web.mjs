@@ -93,6 +93,16 @@ async function phone(url) {
       window.RTCPeerConnection.prototype = Original.prototype
       Object.assign(window.RTCPeerConnection, Original)
       window.RTCPeerConnection.generateCertificate = Original.generateCertificate.bind(Original)
+      // Wake Lock de mentira (a de verdade só existe em https): conta quantas vezes a página pediu a tela acesa.
+      window.__awake = 0
+      Object.defineProperty(navigator, 'wakeLock', {
+        value: {
+          request: async () => {
+            window.__awake++
+            return { release: async () => undefined }
+          }
+        }
+      })
       addEventListener('unhandledrejection', (event) =>
         console.error(`promessa recusada: ${event.reason}`)
       )
@@ -141,8 +151,35 @@ async function phone(url) {
         .catch((error) => `sem acesso: ${error}`)
       console.log(`--- conexões da página\n${JSON.stringify(inside, null, 1)}`)
     } else console.log(`navegador: vídeo ${size}`)
+    if (size && !(await page.evaluate(() => window.__awake))) {
+      console.log('navegador: não pediu para manter a tela acesa')
+      return 1
+    }
+    // O Wi-Fi caiu de vez: a página tem que reconectar sozinha e voltar com vídeo novo, sem tocar em nada.
+    const back =
+      size &&
+      (await page
+        .evaluate(() => {
+          document.querySelector('video').dataset.velho = '1'
+          const pc = window.__pcs.at(-1)
+          Object.defineProperty(pc, 'connectionState', { get: () => 'failed' })
+          pc.dispatchEvent(new Event('connectionstatechange'))
+        })
+        .then(() =>
+          page.waitForFunction(
+            () => {
+              const v = document.querySelector('video:not([data-velho])')
+              return v && v.videoWidth > 0 && v.currentTime > 0.5
+            },
+            null,
+            { timeout: 45_000 }
+          )
+        )
+        .then(() => true)
+        .catch(() => false))
+    if (size) console.log(back ? 'navegador: reconectou sozinho' : 'navegador: não reconectou')
     await page.screenshot({ path: join(OUT, `web-${MODE}-${PHONE}.png`) }).catch(() => undefined)
-    return size ? 0 : 1
+    return size && back ? 0 : 1
   } finally {
     await browser.close()
   }

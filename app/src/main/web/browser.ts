@@ -11,8 +11,8 @@ import { MAX_LINE_BYTES, parseMessage } from '../engine/webrtc/protocol'
  * deste próprio aparelho, como se fosse mais um aparelho da rede. O resto não muda: o pedido "Permitir?", a
  * confiança pela impressão digital e o WebRTC são os mesmos dos aparelhos com o app.
  *
- * O navegador não abre TCP, então a sinalização vai por HTTP: `POST /api/abrir` com o código de 4 dígitos mostrado
- * no app devolve uma sessão; `GET /api/eventos` (Server-Sent Events) traz as mensagens; `POST /api/enviar` leva as
+ * O navegador não abre TCP, então a sinalização vai por HTTP: `POST /api/abrir` devolve uma sessão (quem decide é o
+ * Permitir no computador); `GET /api/eventos` (Server-Sent Events) traz as mensagens; `POST /api/enviar` leva as
  * mensagens, uma por pedido, conferidas pelo mesmo `parseMessage` da sinalização.
  */
 

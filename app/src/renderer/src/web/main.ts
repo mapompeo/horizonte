@@ -52,8 +52,10 @@ function deviceOf(agent: string): { name: string; kind: DeviceKind } {
  * Tamanho da tela estendida em pixels de verdade, par e dentro do que o protocolo aceita: a área visível da página (no
  * Safari do iPhone, sem as barras dele), deitada ou em pé, do jeito que o aparelho está. A imagem preenche tudo.
  */
+/** Até 3x: o iPhone e boa parte dos Android têm 3 pixels por ponto, e com 2x a imagem chegava borrada. */
+const MAX_RATIO = 3
 function screenWant(): { width: number; height: number } {
-  const ratio = Math.min(window.devicePixelRatio || 1, 2)
+  const ratio = Math.min(window.devicePixelRatio || 1, MAX_RATIO)
   const even = (value: number): number =>
     Math.max(160, Math.min(3840, Math.round((value * ratio) / 2) * 2))
   const view = window.visualViewport
@@ -72,7 +74,7 @@ const landscape = (): boolean => window.innerWidth >= window.innerHeight
  */
 const MIN_POINTS = 720
 function screenScale(size: { width: number; height: number }): number | null {
-  const ratio = Math.min(window.devicePixelRatio || 1, 2)
+  const ratio = Math.min(window.devicePixelRatio || 1, MAX_RATIO)
   // O lado menor: deitado é a altura, em pé é a largura.
   const scale = Math.max(1, Math.min(ratio, Math.min(size.width, size.height) / MIN_POINTS))
   return scale > 1 ? Math.round(scale * 100) / 100 : null
@@ -91,6 +93,7 @@ async function connect(): Promise<void> {
   const opened = await post('/api/abrir', {})
   const reply = (await opened.json().catch(() => ({}))) as { sessao?: string; erro?: string }
   if (!opened.ok || !reply.sessao) {
+    if (retries) throw new Error(reply.erro)
     button.disabled = false
     return say(reply.erro ?? 'Sem resposta do computador. Tente de novo.', true)
   }
@@ -140,6 +143,8 @@ async function connect(): Promise<void> {
     side.stop()
     void post(`/api/fechar?sessao=${session}`, {}).catch(() => undefined)
     document.body.classList.remove('web-live')
+    void awake?.release().catch(() => undefined)
+    awake = null
     if (document.fullscreenElement && !keepScreen)
       void document.exitFullscreen().catch(() => undefined)
     start.hidden = false
@@ -148,17 +153,26 @@ async function connect(): Promise<void> {
     button.focus()
   }
 
+  /** Caiu sem ninguém pedir (Wi-Fi, computador dormiu): fica na tela cheia e tenta de novo sozinho. */
+  const lost = (message: string): void => {
+    if (ended) return
+    finish('Reconectando…', false, true)
+    reconnect(message)
+  }
+
   const api: MotorApi = {
     config: async () => ({ role: 'receive', synthetic: false, testFrames: null, showStats: false }),
     signal: (message: MediaMessage) => send(message),
     report: (report) => {
       if (report.type === 'first-frame') {
+        retries = 0
         start.hidden = true
         document.body.classList.add('web-live')
+        void stayAwake()
       } else if (report.type === 'quit') {
         send({ t: 'bye', reason: 'user' })
         finish('Você saiu. Toque em Conectar para voltar.')
-      } else if (report.type === 'error') finish(report.message, true)
+      } else if (report.type === 'error') lost(report.message)
     },
     input: () => undefined,
     onMessage: () => () => undefined
@@ -167,7 +181,7 @@ async function connect(): Promise<void> {
 
   events.addEventListener('fim', () => finish('O computador encerrou a conexão.'))
   events.addEventListener('error', () => {
-    if (events.readyState === EventSource.CLOSED) finish('A conexão caiu.', true)
+    if (events.readyState === EventSource.CLOSED) lost('A conexão caiu.')
   })
   events.addEventListener('message', ({ data }) => {
     let message: Message
@@ -208,6 +222,34 @@ async function connect(): Promise<void> {
   send(hello)
 }
 
+/** Esperas entre as tentativas de reconectar; acabou a lista, mostra o erro e volta o botão. */
+const RETRY_MS = [1000, 2000, 4000, 8000, 8000]
+let retries = 0
+function reconnect(message: string): void {
+  const delay = RETRY_MS[retries++]
+  if (delay === undefined) {
+    retries = 0
+    button.disabled = false
+    return say(message, true)
+  }
+  button.disabled = true
+  say('Reconectando…')
+  setTimeout(() => void connect().catch(() => reconnect(message)), delay)
+}
+
+/**
+ * Tela acesa enquanto a imagem chega. A Wake Lock só existe em endereço seguro (https), e a página é http na rede de
+ * casa: lá quem segura a tela é o próprio vídeo tocando. Volta a pedir quando a página volta a aparecer.
+ */
+let awake: WakeLockSentinel | null = null
+async function stayAwake(): Promise<void> {
+  awake = (await navigator.wakeLock?.request('screen').catch(() => null)) ?? null
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && document.body.classList.contains('web-live'))
+    void stayAwake()
+})
+
 /** A sessão em andamento, para reconectar quando o aparelho gira. */
 let live: { session: string; landscape: boolean; turn(): void } | null = null
 let turning: ReturnType<typeof setTimeout> | null = null
@@ -223,6 +265,7 @@ window.addEventListener('resize', () => {
 
 form.addEventListener('submit', (event) => {
   event.preventDefault()
+  retries = 0
   // Tela cheia precisa do toque da pessoa: pede agora, e a tela entra assim que o vídeo chega.
   void document.documentElement.requestFullscreen?.().catch(() => undefined)
   connect().catch(() => {

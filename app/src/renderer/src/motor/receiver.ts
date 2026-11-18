@@ -126,9 +126,12 @@ export function createReceiver(
     pc = createPeer(identity.certificate)
     ice = iceQueue(pc)
     forwardIce(pc, send)
-    pc.addEventListener('connectionstatechange', () =>
+    pc.addEventListener('connectionstatechange', () => {
       console.log('[motor] conexão:', pc?.connectionState)
-    )
+      // Wi-Fi caiu de vez: avisa, para a página do navegador reconectar em vez de deixar a imagem congelada.
+      if (pc?.connectionState === 'failed')
+        api.report({ type: 'error', message: 'A conexão caiu.' })
+    })
     pc.addEventListener('datachannel', ({ channel }) => {
       if (channel.label === INPUT || channel.label === INPUT_MOVES)
         channels.set(channel.label, channel)
