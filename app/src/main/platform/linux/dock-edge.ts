@@ -1,5 +1,6 @@
 import type { MouseSide } from '../../../shared/types'
 import type { VideoHint } from './video-driver'
+import { L } from '../../../shared/lang'
 
 /**
  * O Ubuntu Dock, oculto e com "exigir pressão para mostrar", põe uma barreira na borda da tela: o cursor só passa
@@ -28,8 +29,11 @@ export function dockEdgeHint(facts: DockFacts, sides: MouseSide[]): VideoHint | 
   const edge = SIDES[facts.position.replace(/'/g, '').trim()]
   if (!edge || !sides.includes(edge)) return null
   return {
-    message:
-      'O dock segura o mouse nessa borda. Arraste a tela para outro lado ou desligue a pressão do dock:',
+    message: L({
+      pt: 'O dock segura o mouse nessa borda. Arraste a tela para outro lado ou desligue a pressão do dock:',
+      en: 'The dock holds the mouse on that edge. Drag the screen to another side or turn off the dock pressure:',
+      es: 'El dock retiene el mouse en ese borde. Arrastra la pantalla a otro lado o desactiva la presión del dock:'
+    }),
     command: DOCK_PRESSURE_COMMAND
   }
 }

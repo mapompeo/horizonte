@@ -1,4 +1,5 @@
 import type { VideoHint } from './video-driver'
+import { L } from '../../../shared/lang'
 
 /**
  * Economia de energia do Wi-Fi ligada: a placa cochila entre os pacotes e perde ou atrasa os que chegam em rajada,
@@ -17,8 +18,11 @@ export const WIFI_POWER_COMMAND =
 export function wifiPowerHint(facts: WifiFacts): VideoHint | null {
   if (!facts.interfaces.some((i) => i.powerSave === true)) return null
   return {
-    message:
-      'A economia de energia do Wi-Fi está ligada neste computador e atrasa a imagem em até meio segundo. Desligue com o comando abaixo (a rede cai por um instante).',
+    message: L({
+      pt: 'A economia de energia do Wi-Fi está ligada neste computador e atrasa a imagem em até meio segundo. Desligue com o comando abaixo (a rede cai por um instante).',
+      en: 'Wi-Fi power saving is on in this computer and delays the picture by up to half a second. Turn it off with the command below (the network drops for a moment).',
+      es: 'El ahorro de energía del Wi-Fi está activo en esta computadora y retrasa la imagen hasta medio segundo. Apágalo con el comando de abajo (la red se cae un instante).'
+    }),
     command: WIFI_POWER_COMMAND
   }
 }

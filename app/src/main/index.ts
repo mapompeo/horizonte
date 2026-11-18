@@ -77,6 +77,7 @@ import { appBundle, parseMacFirewall, SOCKETFILTERFW } from './platform/macos/fi
 import { lanAddress } from './web/wire'
 import { createBrowserAccess, isLocalPageUrl } from './web/browser'
 import { showShortcut } from '../shared/shortcut'
+import { L } from '../shared/lang'
 
 // O AppImage não tem o chrome-sandbox com permissão especial, e o Ubuntu 24.04+ (AppArmor) bloqueia o sandbox por
 // namespace de usuário: sem isto o app fecha ao abrir. O .deb instala o chrome-sandbox e não precisa disso.
@@ -277,8 +278,11 @@ async function readVideoHint(sides: MouseSide[]): Promise<VideoHint | null> {
     videoDriverHint({ vendors: vendors.filter(Boolean), drivers, os }) ??
     (firewallWasRefused()
       ? {
-          message:
-            'O firewall (ufw) está bloqueando os aparelhos. Toque em Liberar: o sistema pede a sua senha.',
+          message: L({
+            pt: 'O firewall (ufw) está bloqueando os aparelhos. Toque em Liberar: o sistema pede a sua senha.',
+            en: 'The firewall (ufw) is blocking the devices. Click Allow: the system asks for your password.',
+            es: 'El firewall (ufw) está bloqueando los dispositivos. Toca Permitir: el sistema pide tu contraseña.'
+          }),
           command: null,
           action: 'allow-firewall' as const
         }
@@ -496,8 +500,8 @@ async function boot(): Promise<void> {
       return
     announced = status.version ?? ''
     const note = new Notification({
-      title: 'Atualização pronta',
-      body: `Clique para reiniciar o Horizonte na versão ${(status.version ?? '').replace(/-beta\./, ' beta ')}.`
+      title: L({ pt: 'Atualização pronta', en: 'Update ready', es: 'Actualización lista' }),
+      body: `${L({ pt: 'Clique para reiniciar o Horizonte na versão', en: 'Click to restart Horizonte on version', es: 'Haz clic para reiniciar Horizonte en la versión' })} ${(status.version ?? '').replace(/-beta\./, ' beta ')}.`
     })
     note.on('click', () => void updates.perform('install'))
     note.show()
@@ -561,10 +565,21 @@ async function boot(): Promise<void> {
       (
         await dialog.showMessageBox({
           type: 'question',
-          title: 'Desinstalar Horizonte',
-          message: 'Desinstalar o Horizonte?',
+          title: L({
+            pt: 'Desinstalar Horizonte',
+            en: 'Uninstall Horizonte',
+            es: 'Desinstalar Horizonte'
+          }),
+          message: L({
+            pt: 'Desinstalar o Horizonte?',
+            en: 'Uninstall Horizonte?',
+            es: '¿Desinstalar Horizonte?'
+          }),
           detail,
-          buttons: ['Cancelar', 'Desinstalar'],
+          buttons: [
+            L({ pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' }),
+            L({ pt: 'Desinstalar', en: 'Uninstall', es: 'Desinstalar' })
+          ],
           defaultId: 0,
           cancelId: 0
         })
@@ -792,7 +807,11 @@ else if (!app.isPackaged || app.requestSingleInstanceLock()) {
     console.error(error)
     try {
       dialog.showErrorBox(
-        'Não consegui iniciar o Horizonte',
+        L({
+          pt: 'Não consegui iniciar o Horizonte',
+          en: 'I could not start Horizonte',
+          es: 'No pude iniciar Horizonte'
+        }),
         `${error.message}\n\nDetalhe: ${error.cause instanceof Error ? error.cause.message : String(error.cause)}`
       )
     } finally {

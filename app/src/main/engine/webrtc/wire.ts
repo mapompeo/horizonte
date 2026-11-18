@@ -22,6 +22,7 @@ import {
   type WindowReports
 } from './electron'
 import { WebRtcEngine, type MotorWindows, type ReceiverWindow } from './engine'
+import { L } from '../../../shared/lang'
 
 const log = (...parts: unknown[]): void => console.log('[motor]', ...parts)
 
@@ -47,11 +48,21 @@ export async function linuxFirewall(options: { asked?: boolean } = {}): Promise<
         ? { response: 0 }
         : await dialog.showMessageBox({
             type: 'question',
-            title: 'Firewall do Linux',
-            message: 'Liberar o Horizonte no firewall?',
-            detail:
-              'O firewall (ufw) está ligado. Para os aparelhos da sua casa conectarem, o Horizonte libera só as portas dele e só para a rede local. Em seguida, o sistema pede a sua senha.',
-            buttons: ['Liberar', 'Agora não'],
+            title: L({ pt: 'Firewall do Linux', en: 'Linux firewall', es: 'Firewall de Linux' }),
+            message: L({
+              pt: 'Liberar o Horizonte no firewall?',
+              en: 'Allow Horizonte through the firewall?',
+              es: '¿Permitir Horizonte en el firewall?'
+            }),
+            detail: L({
+              pt: 'O firewall (ufw) está ligado. Para os aparelhos da sua casa conectarem, o Horizonte libera só as portas dele e só para a rede local. Em seguida, o sistema pede a sua senha.',
+              en: 'The firewall (ufw) is on. For the devices in your home to connect, Horizonte opens only its own ports and only to the local network. Next, the system asks for your password.',
+              es: 'El firewall (ufw) está activo. Para que los dispositivos de tu casa se conecten, Horizonte abre solo sus puertos y solo para la red local. Después, el sistema pide tu contraseña.'
+            }),
+            buttons: [
+              L({ pt: 'Liberar', en: 'Allow', es: 'Permitir' }),
+              L({ pt: 'Agora não', en: 'Not now', es: 'Ahora no' })
+            ],
             defaultId: 0,
             cancelId: 1,
             noLink: true

@@ -1,3 +1,4 @@
+import { L } from '../../../shared/lang'
 /** Aviso de que falta o driver de vídeo da placa: sem ele, o vídeo é feito pelo processador e atrasa. */
 export interface VideoHint {
   message: string
@@ -74,8 +75,18 @@ export function videoDriverHint(facts: VideoDriverFacts): VideoHint | null {
   const name = brand === 'intel' ? 'Intel' : 'AMD'
   return {
     message:
-      `Falta o driver de vídeo da placa ${name}. Sem ele, a imagem pode atrasar mais de 1 segundo.` +
-      (pkg ? ` Instale o pacote ${pkg} e abra o Horizonte de novo.` : ''),
+      L({
+        pt: `Falta o driver de vídeo da placa ${name}. Sem ele, a imagem pode atrasar mais de 1 segundo.`,
+        en: `The ${name} graphics driver is missing. Without it, the picture can lag more than 1 second.`,
+        es: `Falta el controlador de video de la placa ${name}. Sin él, la imagen puede retrasarse más de 1 segundo.`
+      }) +
+      (pkg
+        ? L({
+            pt: ` Instale o pacote ${pkg} e abra o Horizonte de novo.`,
+            en: ` Install the ${pkg} package and open Horizonte again.`,
+            es: ` Instala el paquete ${pkg} y abre Horizonte de nuevo.`
+          })
+        : ''),
     command: fam && pkg ? INSTALL[fam](pkg) : null
   }
 }

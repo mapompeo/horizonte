@@ -36,6 +36,7 @@ import { startDisplayHelper, type RunningDisplay } from '../../platform/macos/he
 import type { VirtualScreen } from './display'
 import { PROTOCOL_VERSION, type Hello, type Want } from './protocol'
 import type { MediaSide } from './session'
+import { L } from '../../../shared/lang'
 
 /** Peças do motor que dependem do Electron: janelas, captura e o monitor virtual do GNOME. */
 
@@ -331,11 +332,25 @@ export function createWindowsScreen(): VirtualScreen {
       // para ninguém se assustar; o driver é o Virtual Display Driver, de código aberto, conferido pelo hash.
       const answer = await dialog.showMessageBox({
         type: 'question',
-        title: 'Tela a mais no Windows',
-        message: 'Instalar o monitor virtual?',
-        detail:
-          'Para o aparelho virar uma tela a mais, o Windows precisa de um monitor virtual (Virtual Display Driver, de código aberto). É uma vez só: em seguida, o Windows pede permissão de administrador.',
-        buttons: ['Instalar', 'Agora não'],
+        title: L({
+          pt: 'Tela a mais no Windows',
+          en: 'One more screen on Windows',
+          es: 'Una pantalla más en Windows'
+        }),
+        message: L({
+          pt: 'Instalar o monitor virtual?',
+          en: 'Install the virtual monitor?',
+          es: '¿Instalar el monitor virtual?'
+        }),
+        detail: L({
+          pt: 'Para o aparelho virar uma tela a mais, o Windows precisa de um monitor virtual (Virtual Display Driver, de código aberto). É uma vez só: em seguida, o Windows pede permissão de administrador.',
+          en: 'For the device to become one more screen, Windows needs a virtual monitor (Virtual Display Driver, open source). It is only once: next, Windows asks for administrator permission.',
+          es: 'Para que el dispositivo sea una pantalla más, Windows necesita un monitor virtual (Virtual Display Driver, de código abierto). Es una sola vez: después, Windows pide permiso de administrador.'
+        }),
+        buttons: [
+          L({ pt: 'Instalar', en: 'Install', es: 'Instalar' }),
+          L({ pt: 'Agora não', en: 'Not now', es: 'Ahora no' })
+        ],
         defaultId: 0,
         cancelId: 1,
         noLink: true
