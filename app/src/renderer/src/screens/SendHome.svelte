@@ -120,7 +120,8 @@
             >{code}</span
           >
           <button class="copy" class:done={copied} onclick={copyLink}
-            >{#key copied}<span
+            ><!-- O texto mais longo, invisível, segura a largura: trocar para "Copiado" não encolhe a barra. -->
+            <span class="copy-size" aria-hidden="true">Copiar link</span>{#key copied}<span
                 class="copy-label"
                 in:scale={{ start: 0.7, duration: ms(260), easing: backOut }}
                 >{copied ? 'Copiado' : 'Copiar link'}</span
@@ -298,6 +299,17 @@
   .title-sm {
     font-size: var(--t-title, 20px);
     text-align: left;
+  }
+  .copy {
+    display: inline-grid;
+    place-items: center;
+  }
+  .copy-size,
+  .copy-label {
+    grid-area: 1 / 1;
+  }
+  .copy-size {
+    visibility: hidden;
   }
   .copy-label {
     display: inline-block;

@@ -416,7 +416,8 @@ async function boot(): Promise<void> {
   autoUpdater.allowDowngrade = false
   const updates = createUpdater({
     supported: app.isPackaged && updatesSupported(),
-    autoDownload: true,
+    // Procurar só procura: a versão nova aparece com o botão Atualizar, e baixar é escolha da pessoa.
+    autoDownload: false,
     currentVersion: app.getVersion(),
     check: () => autoUpdater.checkForUpdates(),
     download: () => autoUpdater.downloadUpdate(),

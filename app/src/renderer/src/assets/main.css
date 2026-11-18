@@ -335,9 +335,9 @@ h1[tabindex='-1']:focus {
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: var(--on-accent);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 28%, transparent);
+  /* Como o Baixar da barra do site: branco no escuro, preto no claro, sem brilho. */
+  background: var(--fg);
+  color: var(--bg);
 }
 .btn-wide {
   width: 280px;

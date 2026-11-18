@@ -311,8 +311,12 @@ try {
       const text = await app.waitText(/Copiar link/, 30_000)
       const address = /(\d+\.\d+\.\d+\.\d+:\d+)\/ ?(\d{4})/.exec(text)
       if (!address) throw new Error(`sem endereço/código na tela: ${text.slice(0, 200)}`)
+      const width = `Math.round(document.querySelector('.address').getBoundingClientRect().width)`
+      const before = await app.ev(width)
       await app.click(/^Copiar link$/)
       await app.waitText(/Copiado/, 5000)
+      const after = await app.ev(width)
+      if (after !== before) throw new Error(`a barra mudou de largura ao copiar (${before} → ${after})`)
       const copied = systemClipboard()
       if (copied !== null && !copied.endsWith(`${address[1]}/${address[2]}`))
         throw new Error(`copiou "${copied}"`)
