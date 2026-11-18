@@ -15,10 +15,18 @@ export interface SetupNotice {
 export function setupNotices(
   platform: string,
   firewall: FirewallState | null,
-  mac: MacAccess | null
+  mac: MacAccess | null,
+  /** Quem recebe não grava a tela nem é controlado: no Mac, só o firewall conta. */
+  role: 'send' | 'receive' = 'send'
 ): SetupNotice[] {
   const notices: SetupNotice[] = []
-  if (platform === 'darwin') {
+  if (platform === 'darwin' && role === 'receive') {
+    if (firewall === 'blocked')
+      notices.push({
+        id: 'mac-firewall-blocked',
+        text: 'O firewall do macOS está bloqueando o Horizonte. Libere em **Ajustes do Sistema** › **Rede** › **Firewall** › **Opções**.'
+      })
+  } else if (platform === 'darwin') {
     if (mac && (mac.screen === 'denied' || mac.screen === 'restricted'))
       notices.push({
         id: 'mac-screen-denied',

@@ -10,13 +10,12 @@
     WebAccess
   } from '../../../shared/types'
   import { placeAll } from '../../../shared/placement'
-  import type { FirewallState, MacAccess } from '../../../shared/api'
-  import { setupNotices, type SetupNotice } from '../lib/setup-notices'
   import { safeName } from '../lib/copy'
   import { send } from '../lib/actions'
   import { ms } from '../lib/motion'
   import QrCode from '../components/QrCode.svelte'
   import VideoHint from '../components/VideoHint.svelte'
+  import SetupNotice from '../components/SetupNotice.svelte'
   import PlacementMap, { type MapScreen } from '../components/PlacementMap.svelte'
 
   interface Props {
@@ -44,26 +43,6 @@
     }
   }
   onMount(() => void ensureWeb())
-
-  /** Liberações de primeiro uso (firewall, Gravação de Tela, Acessibilidade): um aviso por vez, o mais importante. */
-  let firewall = $state<FirewallState | null>(null)
-  let macAccess = $state<MacAccess | null>(null)
-  const checkSetup = async (): Promise<void> => {
-    ;[firewall, macAccess] = await Promise.all([
-      window.horizonte.firewall().catch(() => null),
-      window.horizonte.macAccess().catch(() => null)
-    ])
-  }
-  onMount(() => void checkSetup())
-  const notice = $derived(setupNotices(window.horizonte.platform, firewall, macAccess)[0])
-  let acting = $state(false)
-  async function act(kind: NonNullable<SetupNotice['action']>['kind']): Promise<void> {
-    acting = true
-    if (kind === 'allow-firewall')
-      firewall = await window.horizonte.allowFirewall().catch(() => firewall)
-    else await window.horizonte.openPrivacy(kind === 'open-screen' ? 'screen' : 'accessibility')
-    acting = false
-  }
 
   const screens = $derived.by((): MapScreen[] => {
     const shown = devices.filter((d) => d.fingerprint && d.peerScreen)
@@ -171,18 +150,7 @@
             >
           {/if}
         </span>
-        {#if notice}
-          <span class="notice"
-            >{#each notice.text.split('**') as part, i (i)}{#if i % 2}<b>{part}</b
-                >{:else}{part}{/if}{/each}</span
-          >
-          {#if notice.action}
-            {@const action = notice.action}
-            <button class="link" disabled={acting} onclick={() => act(action.kind)}
-              >{action.label}</button
-            >
-          {/if}
-        {/if}
+        <SetupNotice />
       {:else if web.error}
         <span class="notice">{web.error}</span>
         <button class="link" onclick={ensureWeb}>Tentar de novo</button>
@@ -242,7 +210,6 @@
   bind:innerWidth={viewport.w}
   bind:innerHeight={viewport.h}
   onkeydown={(e) => e.key === 'Escape' && (zoomed = false)}
-  onfocus={() => notice && void checkSetup()}
 />
 {#if zoomed && link}
   <!-- Toque em qualquer lugar (ou Esc) e o QR volta para o cartão. -->

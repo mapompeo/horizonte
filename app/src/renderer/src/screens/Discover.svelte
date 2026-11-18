@@ -5,6 +5,7 @@
 
 <script lang="ts">
   import VideoHint from '../components/VideoHint.svelte'
+  import SetupNotice from '../components/SetupNotice.svelte'
   import DeviceIcon from '../components/DeviceIcon.svelte'
   import { guessKind } from '../../../shared/device'
   import { onMount } from 'svelte'
@@ -80,6 +81,8 @@
         <span class="searching">Nada por aqui. Abra o Horizonte no outro aparelho.</span>
       {/if}
     </div>
+    <!-- A busca na rede também passa pelo firewall: bloqueado ou em rede Pública, a lista fica vazia. -->
+    <SetupNotice role="receive" />
     {#if manual}
       <form
         class="manual"

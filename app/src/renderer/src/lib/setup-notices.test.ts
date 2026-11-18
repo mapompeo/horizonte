@@ -44,3 +44,11 @@ it('todo negrito abre e fecha (a tela troca ** por <b>)', () => {
   expect(all.length).toBe(8)
   for (const notice of all) expect(notice.text.split('**').length % 2).toBe(1)
 })
+
+it('quem recebe: no Mac, sem Gravação de Tela nem Acessibilidade; no Windows, o mesmo firewall', () => {
+  expect(ids('darwin', 'unknown', { screen: 'denied', accessibility: false }, 'receive')).toEqual(
+    []
+  )
+  expect(ids('darwin', 'blocked', null, 'receive')).toEqual(['mac-firewall-blocked'])
+  expect(ids('win32', 'public', null, 'receive')).toEqual(['win-public-network'])
+})
