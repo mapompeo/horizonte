@@ -89,10 +89,18 @@ async function launch(label) {
       pending.delete(message.id)
     }
   }
+  // Com prazo: a janela escondida (no Windows) pode nunca responder a um print, e o teste esperaria até a CI cair.
   const send = (method, params = {}) =>
-    new Promise((r) => {
+    new Promise((r, reject) => {
       const i = ++id
-      pending.set(i, r)
+      const timer = setTimeout(() => {
+        pending.delete(i)
+        reject(new Error(`a janela não respondeu a ${method} em 20 s`))
+      }, 20_000)
+      pending.set(i, (value) => {
+        clearTimeout(timer)
+        r(value)
+      })
       ws.send(JSON.stringify({ id: i, method, params }))
     })
   await send('Page.enable')
@@ -134,9 +142,14 @@ async function launch(label) {
       page.ev(
         `(()=>{const re=${re.toString()};const b=[...document.querySelectorAll('button,[role=button]')].find(x=>re.test(x.innerText||x.getAttribute('aria-label')||''));if(!b)return false;b.click();return true})()`
       ),
+    // O print é só registro: janela escondida ou tela bloqueada não desenham, e isso não derruba o passo.
     async shot(name) {
-      const r = await send('Page.captureScreenshot', { format: 'png' })
-      writeFileSync(join(OUT, `${name}.png`), Buffer.from(r.data, 'base64'))
+      try {
+        const r = await send('Page.captureScreenshot', { format: 'png' })
+        writeFileSync(join(OUT, `${name}.png`), Buffer.from(r.data, 'base64'))
+      } catch (error) {
+        console.log(`sem print ${name}: ${error instanceof Error ? error.message : error}`)
+      }
     },
     async close() {
       try {
@@ -163,11 +176,16 @@ async function launch(label) {
 
 /** A área de transferência do sistema, lida de fora do app (cada sistema tem o seu comando); null se não der. */
 function systemClipboard() {
-  const tries = {
-    win32: [['powershell', ['-NoProfile', '-Command', 'Get-Clipboard']]],
-    darwin: [['pbpaste', []]],
-    linux: [['wl-paste', ['-n']], ['xclip', ['-selection', 'clipboard', '-o']], ['xsel', ['-b', '-o']]]
-  }[process.platform] ?? []
+  const tries =
+    {
+      win32: [['powershell', ['-NoProfile', '-Command', 'Get-Clipboard']]],
+      darwin: [['pbpaste', []]],
+      linux: [
+        ['wl-paste', ['-n']],
+        ['xclip', ['-selection', 'clipboard', '-o']],
+        ['xsel', ['-b', '-o']]
+      ]
+    }[process.platform] ?? []
   for (const [cmd, args] of tries) {
     try {
       return execFileSync(cmd, args, { encoding: 'utf8', timeout: 5000 }).trim()
@@ -213,15 +231,18 @@ try {
       await app.click(/^Permitir$/)
       const text = await app.waitText(/tela conectada/, 30_000)
       if (!/Notebook/.test(text)) throw new Error('o aparelho não aparece na lista')
-      if (!/Adicionar/.test(text)) throw new Error(`sem o botão Adicionar ao conectar; tela: ${text.slice(0, 300)}`)
+      if (!/Adicionar/.test(text))
+        throw new Error(`sem o botão Adicionar ao conectar; tela: ${text.slice(0, 300)}`)
       await app.click(/Adicionar/)
       await app.waitText(/Mais um aparelho/)
       if ((await app.ev(`document.querySelector('.add').getAttribute('aria-expanded')`)) !== 'true')
         throw new Error('o Adicionar não abriu')
-      await app.shot('02-adicionar')
       await app.click(/^Fechar$/)
       // Conectado, a janela vai para o fundo e as animações de saída esperam ela voltar: confere o estado do botão.
-      await app.until(`document.querySelector('.add').getAttribute('aria-expanded') === 'false'`, 'o Adicionar fechar')
+      await app.until(
+        `document.querySelector('.add').getAttribute('aria-expanded') === 'false'`,
+        'o Adicionar fechar'
+      )
       // Conectado, o Horizonte sai da frente e fica nos ícones ocultos. No Linux ele só minimiza (sem extensão não há
       // bandeja), e a CI não tem gerenciador de janelas para minimizar.
       if (process.platform !== 'linux') {
@@ -247,11 +268,18 @@ try {
       await app.click(/Ajustes/)
       const text = await app.waitText(/Aparência/i)
       for (const part of ['Escuro', 'Nome', 'Enviar diagnóstico', 'GitHub'])
-        if (!text.toLowerCase().includes(part.toLowerCase())) throw new Error(`os Ajustes não têm "${part}"`)
+        if (!text.toLowerCase().includes(part.toLowerCase()))
+          throw new Error(`os Ajustes não têm "${part}"`)
       await app.click(/^120 fps$/)
-      await app.until(`document.querySelector('[aria-label=Fluidez] .on')?.innerText.trim() === '120 fps'`, 'escolher 120 fps')
+      await app.until(
+        `document.querySelector('[aria-label=Fluidez] .on')?.innerText.trim() === '120 fps'`,
+        'escolher 120 fps'
+      )
       await app.click(/^Escuro$/)
-      await app.until(`[...document.querySelectorAll('[aria-label=Tema] .on')].some(b => b.innerText.trim() === 'Escuro')`, 'escolher o tema Escuro')
+      await app.until(
+        `[...document.querySelectorAll('[aria-label=Tema] .on')].some(b => b.innerText.trim() === 'Escuro')`,
+        'escolher o tema Escuro'
+      )
       await app.click(/Desinstalar Horizonte/)
       await app.waitText(/não foi instalado por um instalador/)
       await app.shot('04-ajustes')
@@ -292,7 +320,10 @@ try {
     })
     await step('QR amplia ao clicar e volta no Esc e no toque', async () => {
       await app.click(/Ampliar o QR code/)
-      await app.until(`!!document.querySelector('.qr-big svg, .qr-big canvas, .qr-big img')`, 'o QR ampliar')
+      await app.until(
+        `!!document.querySelector('.qr-big svg, .qr-big canvas, .qr-big img')`,
+        'o QR ampliar'
+      )
       await app.shot('07-qr-grande')
       await app.ev(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
       await app.until(`!document.querySelector('.qr-big')`, 'o Esc fechar o QR')
