@@ -241,6 +241,16 @@ describe('eventos no estado errado', () => {
   })
 })
 
+describe('lembrar o computador', () => {
+  it('conectar guarda o nome dele, para conectar sozinho na próxima vez', async () => {
+    const { controller, saved } = await setup({ screen: 'discover', mode: 'receive' })
+    controller.dispatch({ type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(controller.getSnapshot().settings.lastHost).toBe('Desktop')
+    expect(saved.at(-1)?.lastHost).toBe('Desktop')
+  })
+})
+
 describe('troca de modo', () => {
   it('sair de conectado para mostrar para o envio', async () => {
     const { controller, engine } = await setup({

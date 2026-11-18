@@ -21,7 +21,8 @@ const current: Snapshot = {
     screenPlacement: { side: 'right' },
     screenPlacements: {},
     mode: 'send',
-    theme: 'system'
+    theme: 'system',
+    lastHost: null
   }
 }
 

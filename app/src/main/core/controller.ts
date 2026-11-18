@@ -218,6 +218,11 @@ export async function createController({
       settings = { ...settings, mode: event.mode }
       settingsQueue = settingsQueue.then(() => store.save(settings)).catch(() => undefined) // lembrar o modo é só conveniência
     }
+    // Lembra para quem conectou: na próxima vez que o app abrir, conecta sozinho quando ele aparecer na rede.
+    if (event.type === 'CONNECT' && next.screen === 'receiving') {
+      settings = { ...settings, lastHost: event.name }
+      settingsQueue = settingsQueue.then(() => store.save(settings)).catch(() => undefined)
+    }
     notify()
     runEffects(prev, next, event)
     if (!isSendLive(next)) queuedPairs = []

@@ -146,7 +146,7 @@
               placements={settings.screenPlacements}
             />
           {:else if state.screen === 'discover'}
-            <Discover />
+            <Discover lastHost={settings.lastHost} />
           {:else if state.screen === 'receiving'}
             <Receiving host={state.host} name={state.name} />
           {:else if state.screen === 'mouse'}

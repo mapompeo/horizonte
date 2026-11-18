@@ -35,7 +35,13 @@ describe('parseSettings', () => {
       screenPlacement: { side: 'below', offset: 0.5 },
       screenPlacements: { ['AB:'.repeat(31) + 'CD']: { side: 'left' } }
     }
-    expect(parseSettings(raw)).toEqual({ ...raw, profile: 'custom', mode: null, theme: 'system' })
+    expect(parseSettings(raw)).toEqual({
+      ...raw,
+      profile: 'custom',
+      mode: null,
+      theme: 'system',
+      lastHost: null
+    })
   })
 
   it('lado de cada computador no modo Mouse: só lados válidos, no máximo 20', () => {

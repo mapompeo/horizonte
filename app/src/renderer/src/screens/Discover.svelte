@@ -1,3 +1,8 @@
+<script lang="ts" module>
+  /** Conectar sozinho só na primeira busca depois de abrir o app: depois de Parar, ninguém conecta por conta própria. */
+  let autoTried = false
+</script>
+
 <script lang="ts">
   import VideoHint from '../components/VideoHint.svelte'
   import DeviceIcon from '../components/DeviceIcon.svelte'
@@ -9,9 +14,10 @@
   import type { Host } from '../../../shared/types'
   import { copyFor, safeName } from '../lib/copy'
   import { send } from '../lib/actions'
-  import { pollHosts } from '../lib/hosts'
+  import { pollHosts, rememberedHost } from '../lib/hosts'
   import { isHostAddress } from '../../../shared/address'
 
+  let { lastHost = null }: { lastHost?: string | null } = $props()
   const copy = copyFor({ screen: 'discover', mode: 'receive' })
   let hosts = $state<Host[]>([])
   let searching = $state(true)
@@ -21,12 +27,21 @@
   const valid = $derived(isHostAddress(address.trim()))
 
   // Procura de novo a cada poucos segundos: uma busca só deixava a lista vazia para sempre se falhasse.
-  onMount(() =>
-    pollHosts(window.horizonte.listHosts, (found, stillSearching) => {
+  onMount(() => {
+    const stop = pollHosts(window.horizonte.listHosts, (found, stillSearching) => {
       hosts = found
       searching = stillSearching
+      const last = autoTried ? undefined : rememberedHost(found, lastHost)
+      if (last) {
+        autoTried = true
+        send({ type: 'CONNECT', host: last.address, name: safeName(last.name) })
+      }
     })
-  )
+    return () => {
+      autoTried = true
+      stop()
+    }
+  })
 
   function connectByAddress(): void {
     const host = address.trim()

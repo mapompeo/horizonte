@@ -1,4 +1,9 @@
 import type { Host } from '../../../shared/types'
+import { safeName } from './copy'
+
+/** O computador da última vez, se ele está na lista agora (pelo nome, que é o que ele anuncia). */
+export const rememberedHost = (hosts: Host[], last: string | null): Host | undefined =>
+  last ? hosts.find((host) => safeName(host.name) === last) : undefined
 
 /** Quantas buscas vazias seguidas até o aparelho sair da lista: um anúncio que falha uma vez não conta. */
 const MISSES_BEFORE_CLEAR = 2

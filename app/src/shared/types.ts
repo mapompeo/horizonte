@@ -163,6 +163,8 @@ export interface Settings {
   mode: Mode | null
   /** Aparência: a do sistema, ou sempre clara, ou sempre escura. */
   theme: Theme
+  /** Receber: o último computador conectado (pelo nome), para conectar sozinho ao abrir o app. */
+  lastHost: string | null
 }
 
 export type Theme = 'system' | 'light' | 'dark'

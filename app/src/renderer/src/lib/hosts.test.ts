@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Host } from '../../../shared/types'
-import { pollHosts } from './hosts'
+import { pollHosts, rememberedHost } from './hosts'
 
 const DESKTOP: Host = { name: 'Desktop', address: '192.168.1.5' }
 
@@ -94,5 +94,14 @@ describe('pollHosts', () => {
     await vi.advanceTimersByTimeAsync(5000)
     expect(t.calls()).toBe(before)
     expect(t.seen).toHaveLength(count)
+  })
+})
+
+describe('computador da última vez', () => {
+  it('acha pelo nome na lista de agora; sem lembrança ou fora da lista, ninguém', () => {
+    const other: Host = { name: 'Notebook', address: '192.168.1.9' }
+    expect(rememberedHost([other, DESKTOP], 'Desktop')).toBe(DESKTOP)
+    expect(rememberedHost([other], 'Desktop')).toBeUndefined()
+    expect(rememberedHost([DESKTOP], null)).toBeUndefined()
   })
 })
