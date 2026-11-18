@@ -25,7 +25,8 @@ const PHONES = {
   chrome: {
     engine: chromium,
     channels: ['chrome', 'msedge'],
-    context: { viewport: { width: 1024, height: 640 } }
+    // Em espanhol: confere que a página fala o idioma do aparelho.
+    context: { viewport: { width: 1024, height: 640 }, locale: 'es-ES' }
   },
   iphone: { engine: webkit, channels: [undefined], context: devices['iPhone 15'] },
   android: {
@@ -108,6 +109,12 @@ async function phone(url) {
       )
     })
     await page.goto(url)
+    const greeting = await page.textContent('#texto')
+    const expected = { chrome: 'Toca Conectar.' }[PHONE]
+    if (expected && greeting !== expected) {
+      console.log(`navegador: a página não falou o idioma do aparelho ("${greeting}")`)
+      return 1
+    }
     await page.click('#form button[type=submit], #form button')
     const size = await page
       .waitForFunction(

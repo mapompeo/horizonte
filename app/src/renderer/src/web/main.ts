@@ -12,6 +12,7 @@ import {
 import { videoMimes } from '../motor/codecs'
 import { loadIdentity } from '../motor/identity'
 import { createReceiver } from '../motor/receiver'
+import { pickLang, WEB_TEXT } from './strings'
 
 /**
  * Receber a tela pelo navegador (tablet, celular, outro computador), sem instalar nada. Esta página faz o papel do
@@ -25,10 +26,19 @@ const text = $<HTMLParagraphElement>('texto')
 const form = $<HTMLFormElement>('form')
 const button = $<HTMLButtonElement>('entrar')
 
+const lang = pickLang(navigator.languages ?? [navigator.language])
+const T = WEB_TEXT[lang]
+document.documentElement.lang = { pt: 'pt-BR', en: 'en', es: 'es' }[lang]
+document.title = `Horizonte · ${T.title}`
+$<HTMLElement>('titulo').textContent = T.title
+button.textContent = T.connect
+text.textContent = T.start
+$<HTMLParagraphElement>('dica').textContent = T.tip
+
 const DENIED: Record<string, string> = {
-  user: 'O computador não permitiu.',
-  busy: 'O computador está em uso. Tente depois.',
-  version: 'Versões diferentes. Atualize a página.'
+  user: T.deniedUser,
+  busy: T.deniedBusy,
+  version: T.deniedVersion
 }
 
 function say(message: string, error = false): void {
@@ -89,13 +99,13 @@ async function connect(): Promise<void> {
   for (const old of document.querySelectorAll('.motor-video, .motor-cursor, .motor-panel'))
     old.remove()
   button.disabled = true
-  say('Conectando…')
+  say(T.connecting)
   const opened = await post('/api/abrir', {})
   const reply = (await opened.json().catch(() => ({}))) as { sessao?: string; erro?: string }
   if (!opened.ok || !reply.sessao) {
     if (retries) throw new Error(reply.erro)
     button.disabled = false
-    return say(reply.erro ?? 'Sem resposta do computador. Tente de novo.', true)
+    return say(opened.status === 429 ? T.busy : T.noAnswer, true)
   }
   const session = reply.sessao
   const send = (message: Message): void =>
@@ -132,7 +142,7 @@ async function connect(): Promise<void> {
     // Girou o aparelho: sai sem derrubar a tela cheia e entra de novo, com a tela estendida do jeito novo.
     turn: () => {
       send({ t: 'bye', reason: 'user' })
-      finish('Girando a tela…', false, true)
+      finish(T.turning, false, true)
     }
   }
   const events = new EventSource(`/api/eventos?sessao=${session}`)
@@ -158,7 +168,7 @@ async function connect(): Promise<void> {
   /** Caiu sem ninguém pedir (Wi-Fi, computador dormiu): fica na tela cheia e tenta de novo sozinho. */
   const lost = (message: string): void => {
     if (ended) return
-    finish('Reconectando…', false, true)
+    finish(T.reconnecting, false, true)
     reconnect(message)
   }
 
@@ -174,17 +184,17 @@ async function connect(): Promise<void> {
         void stayAwake()
       } else if (report.type === 'quit') {
         send({ t: 'bye', reason: 'user' })
-        finish('Você saiu. Toque em Conectar para voltar.')
-      } else if (report.type === 'error') lost(report.message)
+        finish(T.left)
+      } else if (report.type === 'error') lost(T.dropped)
     },
     input: () => undefined,
     onMessage: () => () => undefined
   }
   const side = createReceiver(api, identity, { testFrames: null, showStats: false })
 
-  events.addEventListener('fim', () => finish('O computador encerrou a conexão.'))
+  events.addEventListener('fim', () => finish(T.ended))
   events.addEventListener('error', () => {
-    if (events.readyState === EventSource.CLOSED) lost('A conexão caiu.')
+    if (events.readyState === EventSource.CLOSED) lost(T.dropped)
   })
   events.addEventListener('message', ({ data }) => {
     let message: Message
@@ -196,29 +206,26 @@ async function connect(): Promise<void> {
     switch (message.t) {
       case 'hello':
         peer = message
-        return say(`Aguardando ${message.name}…`)
+        return say(T.waiting.replace('{name}', message.name))
       case 'pending':
-        return say('Toque em Permitir no computador.')
+        return say(T.allow)
       case 'accepted':
-        say('Abrindo a tela…')
+        say(T.opening)
         // Na primeira vez, o computador instala o monitor virtual e pede uma permissão: daqui não dá para ver isso.
-        slow = setTimeout(
-          () => say('Abrindo a tela… Se o computador pedir uma permissão, confirme lá.'),
-          SLOW_START_MS
-        )
+        slow = setTimeout(() => say(T.slow), SLOW_START_MS)
         send(want)
         return void side.start(want)
       case 'denied':
-        return finish(DENIED[message.reason] ?? 'O computador recusou.', true)
+        return finish(DENIED[message.reason] ?? T.refused, true)
       case 'ping':
         return send({ t: 'pong', at: message.at })
       case 'bye':
-        return finish('O computador encerrou a conexão.')
+        return finish(T.ended)
       case 'offer':
         // A oferta precisa vir com o mesmo certificado que o computador anunciou no `hello`.
         if (!peer || sdpFingerprint(message.sdp) !== peer.fp) {
           send({ t: 'bye', reason: 'error' })
-          return finish('Não deu para confirmar o computador. Tente de novo.', true)
+          return finish(T.unverified, true)
         }
         return void side.deliver(message)
       case 'ice':
@@ -244,7 +251,7 @@ function reconnect(message: string): void {
     return say(message, true)
   }
   button.disabled = true
-  say('Reconectando…')
+  say(T.reconnecting)
   setTimeout(() => void connect().catch(() => reconnect(message)), delay)
 }
 
@@ -270,7 +277,7 @@ window.addEventListener('resize', () => {
     const current = live
     if (!current || current.landscape === landscape()) return
     current.turn()
-    connect().catch(() => say('Sem resposta do computador. Tente de novo.', true))
+    connect().catch(() => say(T.noAnswer, true))
   }, 700)
 })
 
@@ -281,7 +288,7 @@ form.addEventListener('submit', (event) => {
   void document.documentElement.requestFullscreen?.().catch(() => undefined)
   connect().catch(() => {
     button.disabled = false
-    say('Sem resposta do computador. Tente de novo.', true)
+    say(T.noAnswer, true)
   })
 })
 
