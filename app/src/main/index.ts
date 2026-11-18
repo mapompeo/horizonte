@@ -127,6 +127,16 @@ function overlayFor(): { color: string; symbolColor: string; height: number } {
 /** A janela do app (o motor próprio abre outras, escondidas, para o vídeo). */
 let mainWindow: BrowserWindow | null = null
 
+/** Traz a janela para a frente. No Wayland o app não pode desminimizar nem tomar o foco: só uma janela mostrada de
+ * novo (esconder e mostrar) volta para a frente com foco. */
+function raiseWindow(window: BrowserWindow | null): void {
+  if (!window || window.isDestroyed()) return
+  if (process.platform === 'linux' && !window.isFocused()) window.hide()
+  if (window.isMinimized()) window.restore()
+  window.show()
+  window.focus()
+}
+
 function createWindow(controller: Controller): void {
   const window = new BrowserWindow({
     title: 'Horizonte',
@@ -167,12 +177,7 @@ function createWindow(controller: Controller): void {
 
   // Conectado, a janela sai da frente e o Horizonte fica nos ícones ocultos; ao desconectar ela volta.
   let tray: Tray | null = null
-  const showWindow = (): void => {
-    if (window.isDestroyed()) return
-    if (window.isMinimized()) window.restore()
-    window.show()
-    window.focus()
-  }
+  const showWindow = (): void => raiseWindow(window)
   // No Linux o ícone da bandeja só aparece com uma extensão (o GNOME padrão não tem): esconder deixaria a janela sem
   // volta. Lá ela só minimiza e continua no dock e no Alt+Tab.
   const hideWindow = (): void => {
@@ -685,13 +690,7 @@ else if (restartWithoutPrivilegeLock()) {
 // Só uma cópia do app por vez (o instalador já abre uma): abrir de novo traz a janela existente para a frente.
 else if (!app.isPackaged || app.requestSingleInstanceLock()) {
   // Conectado, a janela fica escondida na bandeja: abrir pelo menu do sistema precisa mostrá-la, não só dar foco.
-  app.on('second-instance', () => {
-    const window = mainWindow
-    if (!window || window.isDestroyed()) return
-    if (window.isMinimized()) window.restore()
-    window.show()
-    window.focus()
-  })
+  app.on('second-instance', () => raiseWindow(mainWindow))
   if (!USE_FAKE) prepareMotorSwitches()
   void runStartup(boot, (error) => {
     console.error(error)
