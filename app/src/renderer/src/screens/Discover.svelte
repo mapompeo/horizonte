@@ -6,6 +6,7 @@
 <script lang="ts">
   import VideoHint from '../components/VideoHint.svelte'
   import SetupNotice from '../components/SetupNotice.svelte'
+  import { L } from '../lib/i18n'
   import DeviceIcon from '../components/DeviceIcon.svelte'
   import { guessKind } from '../../../shared/device'
   import { onMount } from 'svelte'
@@ -56,7 +57,7 @@
     {#each hosts as host (host.address)}
       <button
         class="host"
-        aria-label="Conectar a {safeName(host.name)} ({host.address})"
+        aria-label={`${L({ pt: 'Conectar a', en: 'Connect to', es: 'Conectar a' })} ${safeName(host.name)} (${host.address})`}
         animate:flip={{ duration: ms(240) }}
         in:fly={{ y: 8, duration: ms(260) }}
         out:fade={{ duration: ms(120) }}
@@ -76,10 +77,14 @@
   <div class="stack gap-xs">
     <div role="status">
       {#if searching}
-        <span class="searching">Procurando…</span>
+        <span class="searching">{L({ pt: 'Procurando…', en: 'Searching…', es: 'Buscando…' })}</span>
       {:else if hosts.length === 0}
         <span class="searching"
-          >Nada por aqui. No outro computador, abra o Horizonte em Enviar.</span
+          >{L({
+            pt: 'Nada por aqui. No outro computador, abra o Horizonte em Enviar.',
+            en: 'Nothing here. On the other computer, open Horizonte on Send.',
+            es: 'Nada por aquí. En la otra computadora, abre Horizonte en Enviar.'
+          })}</span
         >
       {/if}
     </div>
@@ -95,16 +100,28 @@
       >
         <input
           class="text-input manual-input"
-          aria-label="Endereço do outro aparelho"
+          aria-label={L({
+            pt: 'Endereço do outro aparelho',
+            en: 'Address of the other device',
+            es: 'Dirección del otro dispositivo'
+          })}
           placeholder="192.168.1.5"
           autocomplete="off"
           spellcheck="false"
           bind:value={address}
         />
-        <button class="btn btn-primary btn-sm" type="submit" disabled={!valid}>Conectar</button>
+        <button class="btn btn-primary btn-sm" type="submit" disabled={!valid}
+          >{L({ pt: 'Conectar', en: 'Connect', es: 'Conectar' })}</button
+        >
       </form>
     {:else}
-      <button class="link" onclick={() => (manual = true)}>Adicionar pelo endereço</button>
+      <button class="link" onclick={() => (manual = true)}
+        >{L({
+          pt: 'Adicionar pelo endereço',
+          en: 'Add by address',
+          es: 'Agregar por dirección'
+        })}</button
+      >
     {/if}
   </div>
 </div>

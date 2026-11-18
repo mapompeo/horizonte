@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { L } from '../lib/i18n'
   import type { Mode } from '../../../shared/types'
   import { chooseMode, openSettings } from '../lib/actions'
   import Segmented from './Segmented.svelte'
@@ -12,7 +13,11 @@
 
 <header class="topbar">
   <div class="topbar-left">
-    <button class="icon-btn" aria-label="Ajustes" onclick={openSettings}>
+    <button
+      class="icon-btn"
+      aria-label={L({ pt: 'Ajustes', en: 'Settings', es: 'Ajustes' })}
+      onclick={openSettings}
+    >
       <svg
         width="22"
         height="22"
@@ -52,8 +57,8 @@
       label="Modo"
       value={mode}
       options={[
-        { value: 'send', text: 'Enviar' },
-        { value: 'receive', text: 'Receber' }
+        { value: 'send', text: L({ pt: 'Enviar', en: 'Send', es: 'Enviar' }) },
+        { value: 'receive', text: L({ pt: 'Receber', en: 'Receive', es: 'Recibir' }) }
       ]}
       onSelect={(value) => chooseMode(value as Mode)}
     />
