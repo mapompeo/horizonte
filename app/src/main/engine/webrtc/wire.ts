@@ -1,4 +1,4 @@
-import { app, powerSaveBlocker, screen, type BrowserWindow } from 'electron'
+import { app, dialog, powerSaveBlocker, screen, type BrowserWindow } from 'electron'
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -39,12 +39,26 @@ export async function linuxFirewall(): Promise<void> {
     readConfig: () => readFile('/etc/ufw/ufw.conf', 'utf8').catch(() => null),
     marked: async () => existsSync(marker),
     mark: () => writeFile(marker, ''),
-    runPrivileged: (script) =>
-      new Promise((resolve, reject) =>
+    runPrivileged: async (script) => {
+      // A janela de senha do sistema só diz "rodar /bin/sh como administrador": antes dela, o porquê, em palavras.
+      const { response } = await dialog.showMessageBox({
+        type: 'question',
+        title: 'Firewall do Linux',
+        message: 'Liberar o Horizonte no firewall?',
+        detail:
+          'O firewall (ufw) está ligado. Para os aparelhos da sua casa conectarem, o Horizonte libera só as portas dele e só para a rede local. Em seguida, o sistema pede a sua senha.',
+        buttons: ['Liberar', 'Agora não'],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true
+      })
+      if (response !== 0) throw new Error('A pessoa preferiu não liberar agora.')
+      await new Promise<void>((resolve, reject) =>
         execFile('pkexec', ['sh', '-c', script], { timeout: 300_000 }, (error) =>
           error ? reject(error) : resolve()
         )
       )
+    }
   }).catch((error: unknown) => {
     // As portas podem já estar liberadas à mão: recusar a senha não pode travar o app.
     log('firewall não liberado:', error)
