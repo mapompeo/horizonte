@@ -154,6 +154,8 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     shareLink: async () => undefined,
     firewall: async () => null,
     allowFirewall: async () => null,
+    macAccess: async () => null,
+    openPrivacy: async () => undefined,
     reportDiagnostic: async () => {
       throw new Error('A demonstração não envia diagnósticos.')
     },

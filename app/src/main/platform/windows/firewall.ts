@@ -6,7 +6,8 @@ import { psQuote } from './elevation'
  * se a pessoa tocou em Cancelar (o Windows grava um bloqueio), oferecer liberar de novo, com um pedido de
  * administrador.
  */
-export type FirewallState = 'allowed' | 'blocked' | 'unknown'
+import type { FirewallState } from '../../../shared/api'
+export type { FirewallState }
 
 /** Lê as regras de entrada deste programa, sem administrador. Imprime "bloqueado", "liberado" ou "nada". */
 export function firewallStateScript(executable: string): string {

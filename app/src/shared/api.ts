@@ -28,6 +28,8 @@ export const CHANNELS = {
   copyText: 'horizonte:copy-text',
   shareLink: 'horizonte:share-link',
   firewall: 'horizonte:firewall',
+  macAccess: 'horizonte:mac-access',
+  openPrivacy: 'horizonte:open-privacy',
   allowFirewall: 'horizonte:allow-firewall',
   push: 'horizonte:push',
   update: 'horizonte:update',
@@ -67,10 +69,14 @@ export interface HorizonteApi {
   copyText(text: string): Promise<void>
   /** No Mac, abre o menu Compartilhar do sistema (AirDrop) com o link da página. Nos outros, não faz nada. */
   shareLink(url: string): Promise<void>
-  /** Windows: se o firewall deixa o Horizonte receber conexões; null nos outros sistemas. */
-  firewall(): Promise<'allowed' | 'blocked' | 'unknown' | null>
+  /** Windows e Mac: se o firewall deixa o Horizonte receber conexões; null no Linux. */
+  firewall(): Promise<FirewallState | null>
   /** Windows: tira o bloqueio e libera em redes privadas (pede administrador). Devolve o estado depois. */
-  allowFirewall(): Promise<'allowed' | 'blocked' | 'unknown' | null>
+  allowFirewall(): Promise<FirewallState | null>
+  /** Mac: Gravação de Tela e Acessibilidade; null nos outros sistemas. */
+  macAccess(): Promise<MacAccess | null>
+  /** Mac: abre os Ajustes do Sistema na permissão certa. */
+  openPrivacy(kind: 'screen' | 'accessibility'): Promise<void>
   getUpdateStatus(): Promise<UpdateStatus>
   update(action: UpdateAction): Promise<UpdateStatus>
   onUpdate(callback: (status: UpdateStatus) => void): () => void
@@ -81,4 +87,11 @@ declare global {
   interface Window {
     horizonte: HorizonteApi
   }
+}
+
+export type FirewallState = 'allowed' | 'blocked' | 'unknown'
+export interface MacAccess {
+  /** O que o macOS diz da Gravação de Tela: 'not-determined' até ele perguntar. */
+  screen: 'not-determined' | 'granted' | 'denied' | 'restricted' | 'unknown'
+  accessibility: boolean
 }

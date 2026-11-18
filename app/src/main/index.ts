@@ -13,6 +13,7 @@ import {
   session,
   shell,
   ShareMenu,
+  systemPreferences,
   Tray
 } from 'electron'
 import { execFile, spawn, spawnSync } from 'node:child_process'
@@ -642,6 +643,21 @@ async function boot(): Promise<void> {
       ])
       .catch(() => undefined) // recusou o pedido de administrador: o estado de agora diz o resto
     return firewallState()
+  })
+  // Mac: Gravação de Tela (sem ela, o aparelho recebe a tela preta) e Acessibilidade (o toque e o teclado do aparelho).
+  ipcMain.handle(CHANNELS.macAccess, () =>
+    process.platform === 'darwin'
+      ? {
+          screen: systemPreferences.getMediaAccessStatus('screen'),
+          accessibility: systemPreferences.isTrustedAccessibilityClient(false)
+        }
+      : null
+  )
+  ipcMain.handle(CHANNELS.openPrivacy, (_event, kind: unknown) => {
+    if (process.platform !== 'darwin' || (kind !== 'screen' && kind !== 'accessibility')) return
+    void shell.openExternal(
+      `x-apple.systempreferences:com.apple.preference.security?${kind === 'screen' ? 'Privacy_ScreenCapture' : 'Privacy_Accessibility'}`
+    )
   })
   // A página do receptor vem deste app (main/web/browser.ts).
   const webAccess = createBrowserAccess({

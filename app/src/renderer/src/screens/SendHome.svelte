@@ -10,6 +10,8 @@
     WebAccess
   } from '../../../shared/types'
   import { placeAll } from '../../../shared/placement'
+  import type { FirewallState, MacAccess } from '../../../shared/api'
+  import { setupNotices, type SetupNotice } from '../lib/setup-notices'
   import { safeName } from '../lib/copy'
   import { send } from '../lib/actions'
   import { ms } from '../lib/motion'
@@ -43,20 +45,24 @@
   }
   onMount(() => void ensureWeb())
 
-  /**
-   * Windows e Mac: o firewall pergunta na primeira vez. Antes, um aviso; se ficou bloqueado, como liberar (no Windows,
-   * um botão). No Linux, o ufw é liberado com a senha e a recusa aparece no aviso de baixo (VideoHint).
-   */
-  let firewall = $state<'allowed' | 'blocked' | 'unknown' | null>(null)
-  const checkFirewall = async (): Promise<void> => {
-    firewall = await window.horizonte.firewall().catch(() => null)
+  /** Liberações de primeiro uso (firewall, Gravação de Tela, Acessibilidade): um aviso por vez, o mais importante. */
+  let firewall = $state<FirewallState | null>(null)
+  let macAccess = $state<MacAccess | null>(null)
+  const checkSetup = async (): Promise<void> => {
+    ;[firewall, macAccess] = await Promise.all([
+      window.horizonte.firewall().catch(() => null),
+      window.horizonte.macAccess().catch(() => null)
+    ])
   }
-  onMount(() => void checkFirewall())
-  let freeing = $state(false)
-  async function allowFirewall(): Promise<void> {
-    freeing = true
-    firewall = await window.horizonte.allowFirewall().catch(() => firewall)
-    freeing = false
+  onMount(() => void checkSetup())
+  const notice = $derived(setupNotices(window.horizonte.platform, firewall, macAccess)[0])
+  let acting = $state(false)
+  async function act(kind: NonNullable<SetupNotice['action']>['kind']): Promise<void> {
+    acting = true
+    if (kind === 'allow-firewall')
+      firewall = await window.horizonte.allowFirewall().catch(() => firewall)
+    else await window.horizonte.openPrivacy(kind === 'open-screen' ? 'screen' : 'accessibility')
+    acting = false
   }
 
   const screens = $derived.by((): MapScreen[] => {
@@ -165,29 +171,17 @@
             >
           {/if}
         </span>
-        {#if firewall === 'unknown' && mac}
+        {#if notice}
           <span class="notice"
-            >Se o macOS perguntar se o Horizonte pode aceitar conexões de entrada, toque em
-            <b>Permitir</b>. Ele só conversa com aparelhos da sua casa.</span
+            >{#each notice.text.split('**') as part, i (i)}{#if i % 2}<b>{part}</b
+                >{:else}{part}{/if}{/each}</span
           >
-        {:else if firewall === 'unknown'}
-          <span class="notice"
-            >Se o Windows perguntar sobre a rede, marque <b>Redes privadas</b> e toque em Permitir. O
-            Horizonte só conversa com aparelhos da sua casa.</span
-          >
-        {:else if firewall === 'blocked' && mac}
-          <span class="notice"
-            >O firewall do macOS está bloqueando o Horizonte. Libere em <b>Ajustes do Sistema</b> ›
-            <b>Rede</b> › <b>Firewall</b> › <b>Opções</b>.</span
-          >
-        {:else if firewall === 'blocked'}
-          <span class="notice"
-            >O firewall do Windows está bloqueando o Horizonte, e os aparelhos não conseguem
-            conectar.</span
-          >
-          <button class="link" disabled={freeing} onclick={allowFirewall}
-            >Liberar no firewall</button
-          >
+          {#if notice.action}
+            {@const action = notice.action}
+            <button class="link" disabled={acting} onclick={() => act(action.kind)}
+              >{action.label}</button
+            >
+          {/if}
         {/if}
       {:else if web.error}
         <span class="notice">{web.error}</span>
@@ -248,7 +242,7 @@
   bind:innerWidth={viewport.w}
   bind:innerHeight={viewport.h}
   onkeydown={(e) => e.key === 'Escape' && (zoomed = false)}
-  onfocus={() => firewall !== null && firewall !== 'allowed' && void checkFirewall()}
+  onfocus={() => notice && void checkSetup()}
 />
 {#if zoomed && link}
   <!-- Toque em qualquer lugar (ou Esc) e o QR volta para o cartão. -->
