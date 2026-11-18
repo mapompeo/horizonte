@@ -74,7 +74,8 @@ describe.runIf(process.platform === 'win32')('monitor virtual do Windows de verd
       )
     }
     expect(attached, `o monitor virtual não ligou: ${last}`).not.toBeNull()
-    expect(attached!.width).toBeGreaterThan(0)
+    // 1280x720 não está na lista que vem com o driver: o tamanho exato prova que ele aprendeu o tamanho do aparelho.
+    expect([attached!.width, attached!.height], 'no tamanho exato pedido').toEqual([1280, 720])
     expect(attached!.x, 'encostado à direita das telas de verdade').toBeGreaterThan(0)
     expect(await activeScreens(), 'o Windows enxerga uma tela a mais').toBe(before + 1)
 

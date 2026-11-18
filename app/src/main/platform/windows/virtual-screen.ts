@@ -21,6 +21,13 @@ export function driverInstallScript(driver: PinnedArtifact, downloaded: string):
     `$inf = Get-ChildItem -LiteralPath $dir -Recurse -Filter 'MttVDD.inf' | Select-Object -First 1`,
     `$cer = Get-ChildItem -LiteralPath $dir -Recurse -Filter 'Virtual_Display_Driver.cer' | Select-Object -First 1`,
     `if (-not $inf -or -not $cer) { throw 'O pacote do driver veio incompleto.' }`,
+    // Os ajustes do driver numa pasta que o app grava sem administrador: cada aparelho novo ensina o tamanho dele.
+    `$cfg = 'C:\\VirtualDisplayDriver'`,
+    'New-Item -ItemType Directory -Force -Path $cfg | Out-Null',
+    `$xml = Get-ChildItem -LiteralPath $dir -Recurse -Filter 'vdd_settings.xml' | Select-Object -First 1`,
+    `if ($xml -and -not (Test-Path -LiteralPath (Join-Path $cfg 'vdd_settings.xml'))) { Copy-Item -LiteralPath $xml.FullName -Destination $cfg }`,
+    // S-1-5-32-545: o grupo Usuários, pelo número (o nome muda com o idioma do Windows).
+    `icacls.exe $cfg /grant '*S-1-5-32-545:(OI)(CI)M' | Out-Null`,
     DRIVER_INSTALL_SCRIPT,
     'Remove-Item -Recurse -Force -LiteralPath $stage -ErrorAction SilentlyContinue'
   ].join('\n')

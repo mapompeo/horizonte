@@ -85,6 +85,48 @@ for ($i = 0; $i -lt 32; $i++) {
   if ([HzPlace]::EnumDisplaySettings($a.DeviceName, -1, [ref]$dm)) { $others += $dm }
 }
 if (-not $virtual) { 'sem-virtual'; exit 0 }
+function Hz-Virtual {
+  for ($i = 0; $i -lt 32; $i++) {
+    $a = New-Object HzPlace+DISPLAY_DEVICE; $a.cb = [Runtime.InteropServices.Marshal]::SizeOf($a)
+    if (-not [HzPlace]::EnumDisplayDevices([NullString]::Value, $i, [ref]$a, 0)) { break }
+    $m = New-Object HzPlace+DISPLAY_DEVICE; $m.cb = [Runtime.InteropServices.Marshal]::SizeOf($m)
+    [void][HzPlace]::EnumDisplayDevices($a.DeviceName, 0, [ref]$m, 0)
+    if ($m.DeviceID -match 'MTT1337' -or $a.DeviceString -match 'Virtual Display') { return $a.DeviceName }
+  }
+  $null
+}
+function Hz-Exact($dev) {
+  for ($k = 0; $k -lt 512; $k++) {
+    $dm = New-Object HzPlace+DEVMODE; $dm.dmSize = [Runtime.InteropServices.Marshal]::SizeOf($dm)
+    if (-not [HzPlace]::EnumDisplaySettings($dev, $k, [ref]$dm)) { return $false }
+    if ($dm.dmPelsWidth -eq ${width} -and $dm.dmPelsHeight -eq ${height}) { return $true }
+  }
+  $false
+}
+# Sem o tamanho exato do aparelho, o driver ganha esse tamanho no arquivo de ajustes dele (a instalação deixa a pasta
+# gravável) e recarrega pelo canal dele, aberto a qualquer usuário: sem administrador. Sem arquivo, fica o mais perto.
+$cfg = 'C:\\VirtualDisplayDriver\\vdd_settings.xml'
+if (-not (Hz-Exact $virtual) -and (Test-Path -LiteralPath $cfg)) {
+  try {
+    [xml]$x = Get-Content -Raw -LiteralPath $cfg
+    $list = $x.vdd_settings.resolutions
+    if (-not @($list.resolution | Where-Object { [int]$_.width -eq ${width} -and [int]$_.height -eq ${height} }).Count) {
+      $r = $x.CreateElement('resolution')
+      foreach ($p in @(@('width', ${width}), @('height', ${height}), @('refresh_rate', 60))) {
+        $e = $x.CreateElement($p[0]); $e.InnerText = [string]$p[1]; [void]$r.AppendChild($e)
+      }
+      [void]$list.AppendChild($r); $x.Save($cfg)
+    }
+    $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', 'MTTVirtualDisplayPipe', [IO.Pipes.PipeDirection]::InOut)
+    $pipe.Connect(3000); $b = [Text.Encoding]::Unicode.GetBytes('RELOAD_DRIVER'); $pipe.Write($b, 0, $b.Length); $pipe.Flush(); $pipe.Dispose()
+    # O driver recria o monitor: espera ele voltar já com o tamanho novo.
+    for ($t = 0; $t -lt 40; $t++) {
+      Start-Sleep -Milliseconds 250
+      $v = Hz-Virtual
+      if ($v -and (Hz-Exact $v)) { $virtual = $v; break }
+    }
+  } catch { }
+}
 # O modo do driver mais perto do pedido (a lista dele vem do próprio driver).
 $best = $null; $score = [int]::MaxValue
 for ($k = 0; $k -lt 512; $k++) {

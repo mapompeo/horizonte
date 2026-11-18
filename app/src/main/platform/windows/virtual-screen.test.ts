@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { createWindowsVirtualScreen, parseAttached } from './virtual-screen'
+import { createWindowsVirtualScreen, driverInstallScript, parseAttached } from './virtual-screen'
+import { attachScript } from './placement'
+import { VIRTUAL_DISPLAY_DRIVER } from './versions'
 
 function harness(installed: boolean): {
   screen: ReturnType<typeof createWindowsVirtualScreen>
@@ -58,5 +60,15 @@ describe('tela estendida no Windows (driver de monitor virtual)', () => {
     await h.screen.release()
     expect(h.scripts.at(-1)).toContain('0x20 -bor 0x80000 -bor 0x100000')
     expect(h.scripts.at(-1)).not.toContain('$best')
+  })
+
+  it('tamanho que o driver não tem: entra nos ajustes dele e ele recarrega, sem administrador', () => {
+    const script = attachScript(1179, 2556, 'right')
+    expect(script).toContain("@(@('width', 1179), @('height', 2556), @('refresh_rate', 60))")
+    expect(script).toContain("GetBytes('RELOAD_DRIVER')")
+    // A instalação (com administrador) deixa a pasta dos ajustes gravável pelo grupo Usuários.
+    const install = driverInstallScript(VIRTUAL_DISPLAY_DRIVER, 'C:\\Temp\\vdd.zip')
+    expect(install).toContain("icacls.exe $cfg /grant '*S-1-5-32-545:(OI)(CI)M'")
+    expect(install.indexOf('icacls')).toBeLessThan(install.indexOf('pnputil'))
   })
 })
