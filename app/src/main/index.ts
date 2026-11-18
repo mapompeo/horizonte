@@ -3,6 +3,7 @@ import {
   BrowserWindow,
   globalShortcut,
   clipboard,
+  desktopCapturer,
   dialog,
   ipcMain,
   Menu,
@@ -174,7 +175,23 @@ function createWindow(controller: Controller): void {
   })
 
   mainWindow = window
-  window.once('ready-to-show', () => window.show())
+  window.once('ready-to-show', () => {
+    window.show()
+    // Mac, primeira vez: a pergunta da Gravação de Tela vem logo, com o aviso já na tela, e não no meio da primeira
+    // conexão (depois de permitir, o macOS manda reabrir o app, e a conexão se perderia).
+    if (
+      process.platform === 'darwin' &&
+      !USE_FAKE &&
+      systemPreferences.getMediaAccessStatus('screen') === 'not-determined'
+    )
+      setTimeout(
+        () =>
+          void desktopCapturer
+            .getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } })
+            .catch(() => undefined),
+        1500
+      )
+  })
   // Só Windows e Linux têm a barra por cima: no macOS os botões são nativos e não mudam de cor.
   if (process.platform !== 'darwin') {
     const refreshOverlay = (): void => {

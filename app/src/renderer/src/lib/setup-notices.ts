@@ -41,7 +41,7 @@ export function setupNotices(
     if (mac?.screen === 'not-determined')
       notices.push({
         id: 'mac-screen-ask',
-        text: 'Na primeira conexão, o macOS pergunta se o Horizonte pode gravar a tela: toque em **Permitir** e reabra o app quando ele pedir.'
+        text: 'O macOS vai perguntar se o Horizonte pode gravar a tela: toque em **Permitir** e reabra o app quando ele pedir. Sem isso, o aparelho recebe a tela preta.'
       })
     if (firewall === 'unknown')
       notices.push({
