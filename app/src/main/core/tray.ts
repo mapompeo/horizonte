@@ -29,3 +29,10 @@ export function createTrayFollower(
     }
   }
 }
+
+/**
+ * Um pedido que espera a resposta de quem está no computador (o Permitir de um aparelho novo, o pedido do modo Mouse):
+ * a janela vem para a frente na hora em que ele chega. Minimizada ou atrás de outras, o aparelho ficava esperando.
+ */
+export const wantsAttention = (before: AppState['screen'] | null, now: AppState): boolean =>
+  (now.screen === 'approve' || now.screen === 'mouse-request') && before !== now.screen

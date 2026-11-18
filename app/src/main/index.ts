@@ -30,10 +30,10 @@ import trayTemplate2x from '../../resources/trayTemplate@2x.png?asset'
 import { CHANNELS, REPO_URL } from '../shared/api'
 import { isUiEvent } from '../shared/events'
 import { cleanName } from '../shared/names'
-import type { MouseSide, ScreenSize, Settings, SettingsPatch } from '../shared/types'
+import type { AppState, MouseSide, ScreenSize, Settings, SettingsPatch } from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
-import { createTrayFollower } from './core/tray'
+import { createTrayFollower, wantsAttention } from './core/tray'
 import { createUninstaller, UninstallCancelled } from './core/uninstall'
 import { choosePlan } from './platform/uninstall-plans'
 import {
@@ -236,12 +236,15 @@ function createWindow(controller: Controller): void {
 
   // Aparência escolhida nos Ajustes: o Electron faz a página (prefers-color-scheme) e as barras seguirem.
   nativeTheme.themeSource = controller.getSnapshot().settings.theme
+  let lastScreen: AppState['screen'] | null = controller.getSnapshot().state.screen
   const unsubscribe = controller.subscribe((snapshot) => {
     if (nativeTheme.themeSource !== snapshot.settings.theme)
       nativeTheme.themeSource = snapshot.settings.theme
     if (window.isDestroyed()) return
     window.webContents.send(CHANNELS.push, snapshot)
     followTray(snapshot.state)
+    if (wantsAttention(lastScreen, snapshot.state)) showWindow()
+    lastScreen = snapshot.state.screen
   })
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null
