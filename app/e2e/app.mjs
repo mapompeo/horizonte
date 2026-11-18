@@ -47,7 +47,9 @@ async function launch(label) {
   const args = [
     ...(packaged ? [] : ['.']),
     `--remote-debugging-port=${port}`,
-    `--user-data-dir=${userData}`
+    `--user-data-dir=${userData}`,
+    // Os passos procuram os textos em português: o idioma fica fixo, seja qual for o da máquina da CI.
+    '--lang=pt-BR'
   ]
   if (process.platform === 'linux') args.push('--no-sandbox', '--disable-gpu')
   const log = createWriteStream(join(OUT, `app-${label}.log`))

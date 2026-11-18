@@ -53,3 +53,11 @@ it('quem recebe: no Mac, sem Gravação de Tela nem Acessibilidade; no Windows, 
   expect(setupNotices('darwin', 'blocked', null, 'receive')[0].action?.kind).toBe('open-firewall')
   expect(ids('win32', 'public', null, 'receive')).toEqual(['win-public-network'])
 })
+
+it('no inglês, o mesmo aviso e o mesmo botão, traduzidos', () => {
+  ;(globalThis as { __hzLang?: string }).__hzLang = 'en'
+  const [notice] = setupNotices('win32', 'public', null)
+  ;(globalThis as { __hzLang?: string }).__hzLang = 'pt'
+  expect(notice.text).toContain('**Public**')
+  expect(notice.action?.label).toBe('Mark as private network')
+})

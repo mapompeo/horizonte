@@ -16,6 +16,7 @@
   import QrCode from '../components/QrCode.svelte'
   import VideoHint from '../components/VideoHint.svelte'
   import SetupNotice from '../components/SetupNotice.svelte'
+  import { L } from '../lib/i18n'
   import PlacementMap, { type MapScreen } from '../components/PlacementMap.svelte'
 
   interface Props {
@@ -39,7 +40,14 @@
       web = await window.horizonte.getWebAccess()
       if (!web.on) web = await window.horizonte.setWebAccess(true)
     } catch {
-      web = { on: false, error: 'Não deu para abrir a página. Tente de novo.' }
+      web = {
+        on: false,
+        error: L({
+          pt: 'Não deu para abrir a página. Tente de novo.',
+          en: 'Could not open the page. Try again.',
+          es: 'No se pudo abrir la página. Inténtalo de nuevo.'
+        })
+      }
     }
   }
   onMount(() => void ensureWeb())
@@ -63,6 +71,7 @@
   const qrText = $derived(web.qr ?? link)
   const mac = window.horizonte.platform === 'darwin'
   const connected = $derived(devices.length > 0)
+  const COPY_LINK = L({ pt: 'Copiar link', en: 'Copy link', es: 'Copiar enlace' })
 
   /** Copia o link da página (com o código): para colar no navegador de outro PC. */
   let copied = $state(false)
@@ -89,7 +98,13 @@
   }
 
   const prepNote = $derived(
-    progress?.permission ? 'Confirme a permissão do sistema' : progress?.note || 'Preparando'
+    progress?.permission
+      ? L({
+          pt: 'Confirme a permissão do sistema',
+          en: 'Confirm the system permission',
+          es: 'Confirma el permiso del sistema'
+        })
+      : progress?.note || L({ pt: 'Preparando', en: 'Getting ready', es: 'Preparando' })
   )
 </script>
 
@@ -97,7 +112,14 @@
   <section class="hero card" class:compact class:vertical={!compact}>
     <div class="qr-card" class:compact>
       {#if link}
-        <button class="qr-zoom" aria-label="Ampliar o QR code" onclick={() => (zoomed = true)}
+        <button
+          class="qr-zoom"
+          aria-label={L({
+            pt: 'Ampliar o QR code',
+            en: 'Enlarge the QR code',
+            es: 'Ampliar el código QR'
+          })}
+          onclick={() => (zoomed = true)}
           ><QrCode text={qrText ?? ''} size={compact ? 112 : 176} /></button
         >
       {:else if preparing}
@@ -116,26 +138,45 @@
     </div>
     <div class="hero-text" aria-live="polite">
       <h1 class="title" class:title-sm={compact}>
-        {preparing ? 'Preparando' : compact ? 'Mais um aparelho' : 'Aponte a câmera'}
+        {preparing
+          ? L({ pt: 'Preparando', en: 'Getting ready', es: 'Preparando' })
+          : compact
+            ? L({ pt: 'Mais um aparelho', en: 'One more device', es: 'Un dispositivo más' })
+            : L({ pt: 'Aponte a câmera', en: 'Point the camera', es: 'Apunta la cámara' })}
       </h1>
       {#if link && web.url}
         <!-- Sem câmera (outro PC, tablet): o endereço para digitar ou copiar. -->
-        <span class="address" title="Abra no navegador de outro aparelho">
+        <span
+          class="address"
+          title={L({
+            pt: 'Abra no navegador de outro aparelho',
+            en: 'Open it in the browser of another device',
+            es: 'Ábrelo en el navegador de otro dispositivo'
+          })}
+        >
           <span class="address-text">{web.url.replace(/^https?:\/\//, '')}</span>
           <button class="copy" class:done={copied} onclick={copyLink}
             ><!-- O texto mais longo, invisível, segura a largura: trocar para "Copiado" não encolhe a barra. -->
-            <span class="copy-size" aria-hidden="true">Copiar link</span>{#key copied}<span
+            <span class="copy-size" aria-hidden="true">{COPY_LINK}</span>{#key copied}<span
                 class="copy-label"
                 in:scale={{ start: 0.7, duration: ms(260), easing: backOut }}
-                >{copied ? 'Copiado' : 'Copiar link'}</span
+                >{copied ? L({ pt: 'Copiado', en: 'Copied', es: 'Copiado' }) : COPY_LINK}</span
               >{/key}</button
           >
           {#if mac}
             <!-- AirDrop e o resto do menu Compartilhar do macOS, com o link pronto. -->
             <button
               class="share"
-              aria-label="Compartilhar o link"
-              title="Compartilhar (AirDrop)"
+              aria-label={L({
+                pt: 'Compartilhar o link',
+                en: 'Share the link',
+                es: 'Compartir el enlace'
+              })}
+              title={L({
+                pt: 'Compartilhar (AirDrop)',
+                en: 'Share (AirDrop)',
+                es: 'Compartir (AirDrop)'
+              })}
               onclick={() => link && window.horizonte.shareLink(link)}
               ><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"
                 ><path
@@ -153,9 +194,11 @@
         <SetupNotice />
       {:else if web.error}
         <span class="notice">{web.error}</span>
-        <button class="link" onclick={ensureWeb}>Tentar de novo</button>
+        <button class="link" onclick={ensureWeb}
+          >{L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}</button
+        >
       {:else if !preparing}
-        <span class="hint">Abrindo…</span>
+        <span class="hint">{L({ pt: 'Abrindo…', en: 'Opening…', es: 'Abriendo…' })}</span>
       {/if}
     </div>
   </section>
@@ -169,10 +212,14 @@
         {#key devices.length}<span class="count" in:fly={{ y: -10, duration: ms(320) }}
             >{devices.length}</span
           >{/key}
-        {devices.length === 1 ? 'tela conectada' : 'telas conectadas'}
+        {devices.length === 1
+          ? L({ pt: 'tela conectada', en: 'screen connected', es: 'pantalla conectada' })
+          : L({ pt: 'telas conectadas', en: 'screens connected', es: 'pantallas conectadas' })}
       </h1>
       <button class="add" aria-expanded={adding} onclick={() => (adding = !adding)}
-        >{adding ? 'Fechar' : '+ Adicionar'}</button
+        >{adding
+          ? L({ pt: 'Fechar', en: 'Close', es: 'Cerrar' })
+          : L({ pt: '+ Adicionar', en: '+ Add', es: '+ Agregar' })}</button
       >
     </div>
     {#if adding}
@@ -186,15 +233,25 @@
       </div>
     {/if}
     {#if unmapped.length}
-      <ul class="card list" role="list" aria-live="polite" aria-label="Aparelhos conectados">
+      <ul
+        class="card list"
+        role="list"
+        aria-live="polite"
+        aria-label={L({
+          pt: 'Aparelhos conectados',
+          en: 'Connected devices',
+          es: 'Dispositivos conectados'
+        })}
+      >
         {#each unmapped as d (d.fingerprint ?? d.device)}
           <li class="row">
             <span class="peer-dot" aria-hidden="true"></span>
             <span class="peer-name">{safeName(d.device)}</span>
             <button
               class="row-action danger"
-              aria-label="Parar {safeName(d.device)}"
-              onclick={() => stop(d.fingerprint)}>Parar</button
+              aria-label={`${L({ pt: 'Parar', en: 'Stop', es: 'Detener' })} ${safeName(d.device)}`}
+              onclick={() => stop(d.fingerprint)}
+              >{L({ pt: 'Parar', en: 'Stop', es: 'Detener' })}</button
             >
           </li>
         {/each}
@@ -215,7 +272,11 @@
   <!-- Toque em qualquer lugar (ou Esc) e o QR volta para o cartão. -->
   <button
     class="qr-big"
-    aria-label="Fechar o QR ampliado"
+    aria-label={L({
+      pt: 'Fechar o QR ampliado',
+      en: 'Close the enlarged QR',
+      es: 'Cerrar el QR ampliado'
+    })}
     onclick={() => (zoomed = false)}
     transition:fade={{ duration: ms(200) }}
   >

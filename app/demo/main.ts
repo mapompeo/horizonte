@@ -21,6 +21,8 @@ const START: Record<string, AppState> = {
 }
 
 const params = new URLSearchParams(location.search)
+// A demonstração fala o idioma da página do site (?lang=en|es); sem ele, português.
+;(globalThis as { __hzLang?: string }).__hzLang = params.get('lang') ?? 'pt'
 document.documentElement.dataset.platform = 'win32'
 const theme = params.get('theme')
 if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme
