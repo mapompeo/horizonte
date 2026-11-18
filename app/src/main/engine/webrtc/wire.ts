@@ -31,9 +31,10 @@ let firewallRefused = false
  * Linux: libera a sinalização e a página do navegador no ufw, se ele estiver ligado (o sistema pede a senha uma vez).
  * A v1 só liberava a sinalização: quem já tinha liberado libera de novo, agora com a página.
  */
-export async function linuxFirewall(): Promise<void> {
-  // Recusou nesta execução: não pergunta de novo a cada tela, e o aviso mostra o comando.
-  if (firewallRefused) return
+export async function linuxFirewall(options: { asked?: boolean } = {}): Promise<void> {
+  // Recusou nesta execução: não pergunta de novo a cada tela, e o aviso mostra o botão Liberar.
+  if (firewallRefused && !options.asked) return
+  firewallRefused = false
   const marker = join(app.getPath('userData'), 'firewall-motor-v4')
   const result = await ensureMotorFirewall({
     readConfig: () => readFile('/etc/ufw/ufw.conf', 'utf8').catch(() => null),
@@ -41,17 +42,20 @@ export async function linuxFirewall(): Promise<void> {
     mark: () => writeFile(marker, ''),
     runPrivileged: async (script) => {
       // A janela de senha do sistema só diz "rodar /bin/sh como administrador": antes dela, o porquê, em palavras.
-      const { response } = await dialog.showMessageBox({
-        type: 'question',
-        title: 'Firewall do Linux',
-        message: 'Liberar o Horizonte no firewall?',
-        detail:
-          'O firewall (ufw) está ligado. Para os aparelhos da sua casa conectarem, o Horizonte libera só as portas dele e só para a rede local. Em seguida, o sistema pede a sua senha.',
-        buttons: ['Liberar', 'Agora não'],
-        defaultId: 0,
-        cancelId: 1,
-        noLink: true
-      })
+      // Pelo botão Liberar, a pessoa já pediu: vai direto para a senha.
+      const { response } = options.asked
+        ? { response: 0 }
+        : await dialog.showMessageBox({
+            type: 'question',
+            title: 'Firewall do Linux',
+            message: 'Liberar o Horizonte no firewall?',
+            detail:
+              'O firewall (ufw) está ligado. Para os aparelhos da sua casa conectarem, o Horizonte libera só as portas dele e só para a rede local. Em seguida, o sistema pede a sua senha.',
+            buttons: ['Liberar', 'Agora não'],
+            defaultId: 0,
+            cancelId: 1,
+            noLink: true
+          })
       if (response !== 0) throw new Error('A pessoa preferiu não liberar agora.')
       await new Promise<void>((resolve, reject) =>
         execFile('pkexec', ['sh', '-c', script], { timeout: 300_000 }, (error) =>

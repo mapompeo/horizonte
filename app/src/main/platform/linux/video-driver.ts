@@ -3,6 +3,8 @@ export interface VideoHint {
   message: string
   /** Comando para instalar, quando a distribuição é conhecida. */
   command: string | null
+  /** Um botão que resolve sozinho, no lugar do comando (o firewall: o sistema pede a senha e pronto). */
+  action?: 'allow-firewall'
 }
 
 export interface VideoDriverFacts {

@@ -46,13 +46,12 @@ import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
 import { CLEAN_START_ENV, cleanStartCommand, hasNoNewPrivs } from './platform/linux/clean-start'
 import { dockEdgeHint } from './platform/linux/dock-edge'
-import { FIREWALL_COMMAND } from './platform/linux/firewall'
 import { parsePowerSave, wifiPowerHint } from './platform/linux/wifi-power'
 import { finishStartup, runStartup } from './startup'
 import { runDevDemo } from './dev-demo'
 import { MOTOR_USAGE, parseMotorArgs, type MotorArgs } from './motor/args'
 import { prepareMotorSwitches, runMotorBench } from './motor/bench'
-import { createAppWebRtcEngine, firewallWasRefused } from './engine/webrtc/wire'
+import { createAppWebRtcEngine, firewallWasRefused, linuxFirewall } from './engine/webrtc/wire'
 import {
   DRIVER_DIRS,
   parseOsRelease,
@@ -278,8 +277,10 @@ async function readVideoHint(sides: MouseSide[]): Promise<VideoHint | null> {
     videoDriverHint({ vendors: vendors.filter(Boolean), drivers, os }) ??
     (firewallWasRefused()
       ? {
-          message: 'O firewall pode estar bloqueando a conexão. Libere com o comando:',
-          command: FIREWALL_COMMAND
+          message:
+            'O firewall (ufw) está bloqueando os aparelhos. Toque em Liberar: o sistema pede a sua senha.',
+          command: null,
+          action: 'allow-firewall' as const
         }
       : null) ??
     (await readDockHint(sides)) ??
@@ -659,6 +660,11 @@ async function boot(): Promise<void> {
   }
   ipcMain.handle(CHANNELS.firewall, firewallState)
   ipcMain.handle(CHANNELS.allowFirewall, async () => {
+    // Linux: o botão do aviso de baixo pede a senha do sistema (pkexec) e libera o ufw na hora.
+    if (process.platform === 'linux') {
+      await linuxFirewall({ asked: true }).catch(() => undefined)
+      return null
+    }
     if (process.platform !== 'win32') return null
     await createElevation({ run: runWithUac, tmpDir: tmpdir() })
       .runElevated([
