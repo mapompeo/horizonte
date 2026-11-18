@@ -6,7 +6,7 @@ import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync } f
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { chromium } from 'playwright-core'
+import { chromium, devices, webkit } from 'playwright-core'
 
 
 const require = createRequire(import.meta.url)
@@ -19,6 +19,15 @@ const PORT = 47918
 const MODE = process.env.HZ_WEB_MODE ?? 'synthetic'
 const MODE_ARGS = { synthetic: ['--motor-synthetic'], screen: [], extend: ['--motor-extend'] }[MODE]
 if (!MODE_ARGS) throw new Error(`HZ_WEB_MODE desconhecido: ${MODE}`)
+// HZ_WEB_PHONE: chrome (Chrome de computador, padrão), iphone (o motor do Safari, com tela, toque e user agent de
+// iPhone) ou android (Chrome com tela e toque de celular Android). É o aparelho que de fato abre o QR.
+const PHONE = process.env.HZ_WEB_PHONE ?? 'chrome'
+const PHONES = {
+  chrome: { engine: chromium, channels: ['chrome', 'msedge'], context: { viewport: { width: 1024, height: 640 } } },
+  iphone: { engine: webkit, channels: [undefined], context: devices['iPhone 15'] },
+  android: { engine: chromium, channels: ['chrome', 'msedge', undefined], context: devices['Pixel 7'] }
+}
+if (!PHONES[PHONE]) throw new Error(`HZ_WEB_PHONE desconhecido: ${PHONE}`)
 const TIMEOUT_MS = 90_000
 
 function launch(label, args, onLine = () => undefined) {
@@ -43,18 +52,19 @@ function launch(label, args, onLine = () => undefined) {
 
 /** O celular: abre endereço/código, confere o código já preenchido, conecta e espera o vídeo andar. */
 async function phone(url, code) {
+  const phone = PHONES[PHONE]
   let browser = null
-  for (const channel of ['chrome', 'msedge']) {
+  for (const channel of phone.channels) {
     try {
-      browser = await chromium.launch({ channel, headless: true })
+      browser = await phone.engine.launch({ channel, headless: true })
       break
     } catch (error) {
-      console.log(`navegador: sem ${channel} (${String(error).split('\n')[0]})`)
+      console.log(`navegador: sem ${channel ?? phone.engine.name()} (${String(error).split('\n')[0]})`)
     }
   }
   if (!browser) return 1
   try {
-    const page = await browser.newPage({ viewport: { width: 1024, height: 640 } })
+    const page = await browser.newPage(phone.context)
     page.on('console', (message) => {
       if (message.text().includes('[motor]')) console.log(`navegador: ${message.text()}`)
     })
@@ -79,7 +89,7 @@ async function phone(url, code) {
     if (!size)
       console.log(`navegador: sem vídeo (${await page.textContent('#texto').catch(() => '?')})`)
     else console.log(`navegador: vídeo ${size}`)
-    await page.screenshot({ path: join(OUT, `web-${MODE}.png`) }).catch(() => undefined)
+    await page.screenshot({ path: join(OUT, `web-${MODE}-${PHONE}.png`) }).catch(() => undefined)
     return size ? 0 : 1
   } finally {
     await browser.close()
@@ -119,7 +129,7 @@ if (code !== 0)
 sender.kill()
 console.log(
   code === 0
-    ? `OK   navegador (${MODE}): a página recebeu o vídeo`
-    : `FALHA navegador (${MODE}, código ${code})`
+    ? `OK   navegador (${MODE}, ${PHONE}): a página recebeu o vídeo`
+    : `FALHA navegador (${MODE}, ${PHONE}, código ${code})`
 )
 process.exit(code)

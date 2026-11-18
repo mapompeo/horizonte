@@ -108,6 +108,15 @@ jobs:
       - name: Motor novo (transmissão WebRTC entre dois Electron)
         if: ${{ success() }}
         run: npm run e2e:motor
+      # Os aparelhos que de fato abrem o QR: o iPhone (motor do Safari, com tela, toque e user agent de iPhone) e um
+      # celular Android, cada um recebendo a tela pela página.
+      - name: Celulares imitados recebendo (iPhone e Android)
+        if: ${{ success() && runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then npx playwright-core install --with-deps webkit; else npx playwright-core install webkit; fi
+          HZ_WEB_PHONE=iphone node e2e/web.mjs
+          HZ_WEB_PHONE=android node e2e/web.mjs
       # O uso de verdade, sem quadro de teste: o app captura a tela do sistema e um navegador (o papel do celular)
       # abre o link com o código e recebe o vídeo. No Windows a tela estendida usa o driver que os testes acima instalaram.
       - name: Envio de verdade ao navegador (Windows)
