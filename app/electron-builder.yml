@@ -24,6 +24,10 @@ nsis:
   # Instala só para a pessoa, sem pedir administrador: o aviso do Windows aparece uma vez, no primeiro uso.
   oneClick: true
   perMachine: false
+  # Instalador e desinstalador em português do Brasil (o padrão é inglês).
+  language: '1046'
+  installerLanguages:
+    - pt_BR
   artifactName: Horizonte-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
@@ -50,11 +54,12 @@ mac:
       to: horizonte-display
     - from: native/macos/build/horizonte-mouse
       to: horizonte-mouse
+  # Os textos que o macOS mostra se algum dia pedir essas permissões: o app não usa câmera, microfone nem as pastas.
   extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    - NSCameraUsageDescription: O Horizonte não usa a câmera.
+    - NSMicrophoneUsageDescription: O Horizonte não usa o microfone.
+    - NSDocumentsFolderUsageDescription: O Horizonte só acessa a pasta Documentos se você colar um arquivo de lá.
+    - NSDownloadsFolderUsageDescription: O Horizonte só acessa a pasta Downloads se você colar um arquivo de lá.
   notarize: false
 dmg:
   artifactName: Horizonte-${version}-${arch}.${ext}
