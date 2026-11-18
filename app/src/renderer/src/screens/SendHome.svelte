@@ -55,6 +55,7 @@
     }))
   })
   const link = $derived(web.on && web.url ? web.url : null)
+  const qrText = $derived(web.qr ?? link)
   const mac = window.horizonte.platform === 'darwin'
   const connected = $derived(devices.length > 0)
 
@@ -92,7 +93,7 @@
     <div class="qr-card" class:compact>
       {#if link}
         <button class="qr-zoom" aria-label="Ampliar o QR code" onclick={() => (zoomed = true)}
-          ><QrCode text={link} size={compact ? 112 : 176} /></button
+          ><QrCode text={qrText ?? ''} size={compact ? 112 : 176} /></button
         >
       {:else if preparing}
         <div class="qr-prep" class:compact role="status">
@@ -213,7 +214,7 @@
     transition:fade={{ duration: ms(200) }}
   >
     <span class="qr-big-card" transition:scale={{ start: 0.6, duration: ms(380), easing: backOut }}>
-      <QrCode text={link} size={bigQr} />
+      <QrCode text={qrText ?? ''} size={bigQr} />
     </span>
   </button>
 {/if}

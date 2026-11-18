@@ -195,6 +195,8 @@ export interface Snapshot {
 export interface WebAccess {
   on: boolean
   url?: string
+  /** O que vai dentro do QR, quando não é o próprio endereço (só a demonstração do site usa). */
+  qr?: string
   user?: string
   error?: string
 }

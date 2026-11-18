@@ -1,8 +1,39 @@
 import { test, expect } from "@playwright/test";
+import { createRequire } from "node:module";
+
+/** O desenho do QR que o app faz para um texto (mesma biblioteca e mesmo nível de correção). */
+const qrPath = (text) => {
+  const qr = createRequire(import.meta.url)(
+    "../../app/node_modules/qrcode-generator",
+  )(0, "M");
+  qr.addData(text);
+  qr.make();
+  let path = "";
+  for (let row = 0; row < qr.getModuleCount(); row++)
+    for (let col = 0; col < qr.getModuleCount(); col++)
+      if (qr.isDark(row, col)) path += `M${col} ${row}h1v1h-1z`;
+  return path;
+};
+test("demo: endereço de sempre na tela, e o QR leva para o site", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const app = page.frameLocator("#hero-app iframe");
+  await expect(
+    app.getByText("192.168.1.6:7777", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    app
+      .getByRole("img", { name: "QR code para abrir no celular" })
+      .locator("path"),
+  ).toHaveAttribute("d", qrPath("https://horizonte-monitor.vercel.app"));
+});
 test("fluxo real de modos, aprovacao e parada", async ({ page }) => {
   await page.goto("/");
   const app = page.frameLocator("#hero-app iframe");
-  await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
+  await expect(
+    app.getByRole("heading", { name: "Aponte a câmera" }),
+  ).toBeVisible();
   await app.getByRole("button", { name: "Receber", exact: true }).click();
   await app.getByRole("button", { name: /^Conectar a Desktop/ }).click();
   await expect(
@@ -10,17 +41,25 @@ test("fluxo real de modos, aprovacao e parada", async ({ page }) => {
   ).toBeVisible();
   await app.getByRole("button", { name: "Parar Desktop", exact: true }).click();
   await app.getByRole("button", { name: "Enviar", exact: true }).click();
-  await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
+  await expect(
+    app.getByRole("heading", { name: "Aponte a câmera" }),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: "Pedir conexão", exact: true })
     .click();
   await app.getByRole("button", { name: "Permitir", exact: true }).click();
-  await expect(app.getByRole("heading", { name: "1 tela conectada" })).toBeVisible();
+  await expect(
+    app.getByRole("heading", { name: "1 tela conectada" }),
+  ).toBeVisible();
   await expect(app.getByText("Notebook", { exact: true })).toBeVisible();
   // O cartão do QR encolhe ao conectar e a lista sobe: espera a animação assentar antes de clicar.
   await page.waitForTimeout(600);
-  await app.getByRole("button", { name: "Parar Notebook", exact: true }).click();
-  await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
+  await app
+    .getByRole("button", { name: "Parar Notebook", exact: true })
+    .click();
+  await expect(
+    app.getByRole("heading", { name: "Aponte a câmera" }),
+  ).toBeVisible();
 });
 test("resumo interativo sem recortes nem erros", async ({ page }) => {
   const errors = [];
@@ -106,19 +145,25 @@ test("recomecar funciona a partir dos ajustes", async ({ page }) => {
   const app = page.frameLocator("#hero-app iframe");
   await app.getByRole("button", { name: "Ajustes", exact: true }).click();
   await page.getByRole("button", { name: "Recomeçar", exact: true }).click();
-  await expect(app.getByRole("heading", { name: "Aponte a câmera" })).toBeVisible();
+  await expect(
+    app.getByRole("heading", { name: "Aponte a câmera" }),
+  ).toBeVisible();
 });
 
 for (const [lang, title, htmlLang] of [
   ["en", /Your second screen\.\s*Wireless\./, "en"],
   ["es", /Tu segunda pantalla\.\s*Sin cables\./, "es"],
 ]) {
-  test(`?lang=${lang} traduz o título do hero e o seletor volta ao português`, async ({ page }) => {
+  test(`?lang=${lang} traduz o título do hero e o seletor volta ao português`, async ({
+    page,
+  }) => {
     await page.goto(`/?lang=${lang}`);
     await expect(page.locator("#hero-title")).toHaveText(title);
     await expect(page.locator("html")).toHaveAttribute("lang", htmlLang);
     await page.locator('footer [data-lang="pt"]').click();
-    await expect(page.locator("#hero-title")).toHaveText(/Sua segunda tela\.\s*Sem fio\./);
+    await expect(page.locator("#hero-title")).toHaveText(
+      /Sua segunda tela\.\s*Sem fio\./,
+    );
     await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
     expect(page.url()).toContain("lang=pt");
   });
@@ -127,21 +172,39 @@ for (const [lang, title, htmlLang] of [
 test("sem rolagem lateral e sem tabela de comparação", async ({ page }) => {
   await page.goto("/");
   await page.waitForTimeout(800);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
   await expect(page.locator(".cmp")).toHaveCount(0);
 });
 
-test("história: ponto clicável leva à cena, lista e dica acompanham", async ({ page }) => {
+test("história: ponto clicável leva à cena, lista e dica acompanham", async ({
+  page,
+}) => {
   await page.goto("/");
-  await page.waitForFunction(() => document.documentElement.classList.contains("motion"));
+  await page.waitForFunction(() =>
+    document.documentElement.classList.contains("motion"),
+  );
   await expect(page.locator("#hint")).toHaveCSS("opacity", "1");
   await page.locator("#dots button").nth(2).click();
-  await expect(page.locator("#captions .cap").nth(2)).toHaveCSS("opacity", "1", { timeout: 8000 });
+  await expect(page.locator("#captions .cap").nth(2)).toHaveCSS(
+    "opacity",
+    "1",
+    { timeout: 8000 },
+  );
   await expect(page.locator("#hint")).toHaveCSS("opacity", "0");
-  expect(await page.locator("#sbar").evaluate((e) => getComputedStyle(e).getPropertyValue("--p"))).not.toBe("");
+  expect(
+    await page
+      .locator("#sbar")
+      .evaluate((e) => getComputedStyle(e).getPropertyValue("--p")),
+  ).not.toBe("");
 });
 
-test("download: o sistema de quem visita fica no meio, em destaque", async ({ page }) => {
+test("download: o sistema de quem visita fica no meio, em destaque", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect(page.locator("#oses .os")).toHaveCount(3);
   await expect(page.locator("#oses .os").nth(1)).toHaveClass(/mine/);
@@ -150,12 +213,17 @@ test("download: o sistema de quem visita fica no meio, em destaque", async ({ pa
 
 test("apoiar abre o GitHub Sponsors", async ({ page }) => {
   await page.goto("/");
-  const links = page.locator('a.support[href="https://github.com/sponsors/mapompeo"]');
+  const links = page.locator(
+    'a.support[href="https://github.com/sponsors/mapompeo"]',
+  );
   await expect(links).toHaveCount(2);
   await expect(links.first()).toHaveAttribute("rel", "noopener");
 });
 
-test("apoiar abre o Pix: QR, copiar o código do Pix e fechar", async ({ page, context }) => {
+test("apoiar abre o Pix: QR, copiar o código do Pix e fechar", async ({
+  page,
+  context,
+}) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   const dialog = page.locator("#apoio");
