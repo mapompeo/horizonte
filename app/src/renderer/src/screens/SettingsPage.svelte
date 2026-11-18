@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { PROFILES } from '../../../shared/quality'
   import type { Fps, Settings, Theme } from '../../../shared/types'
-  import { showShortcut } from '../../../shared/shortcut'
   import { chooseMode, closeSettings, patchSettings } from '../lib/actions'
   import PlacementMap from '../components/PlacementMap.svelte'
   import ReportButton from '../components/ReportButton.svelte'
@@ -15,6 +15,16 @@
   }
 
   let { settings }: Props = $props()
+
+  /** Só onde o atalho vale de verdade (no Wayland, não). */
+  let shortcut = $state<string | null>(null)
+  onMount(
+    () =>
+      void window.horizonte
+        .shortcut()
+        .then((label) => (shortcut = label))
+        .catch(() => undefined)
+  )
 
   const tiles = [
     { id: 'economico', name: 'Econômico', mbps: PROFILES.economico },
@@ -131,10 +141,12 @@
             onChange={(checked) => patchSettings({ autostart: checked })}
           />
         </div>
-        <div class="row">
-          <span>Trazer esta janela de qualquer lugar</span>
-          <kbd class="row-value">{showShortcut(window.horizonte.platform).label}</kbd>
-        </div>
+        {#if shortcut}
+          <div class="row">
+            <span>Trazer esta janela de qualquer lugar</span>
+            <kbd class="row-value">{shortcut}</kbd>
+          </div>
+        {/if}
         <button
           class="row row-button"
           onclick={() => {

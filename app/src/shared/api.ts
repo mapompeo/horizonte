@@ -28,6 +28,7 @@ export const CHANNELS = {
   copyText: 'horizonte:copy-text',
   shareLink: 'horizonte:share-link',
   firewall: 'horizonte:firewall',
+  shortcut: 'horizonte:shortcut',
   macAccess: 'horizonte:mac-access',
   openPrivacy: 'horizonte:open-privacy',
   allowFirewall: 'horizonte:allow-firewall',
@@ -69,6 +70,8 @@ export interface HorizonteApi {
   copyText(text: string): Promise<void>
   /** No Mac, abre o menu Compartilhar do sistema (AirDrop) com o link da página. Nos outros, não faz nada. */
   shareLink(url: string): Promise<void>
+  /** O atalho que traz a janela, se ele está valendo (no Wayland não vale); null sem atalho. */
+  shortcut(): Promise<string | null>
   /** Windows e Mac: se o firewall deixa o Horizonte receber conexões; null no Linux. */
   firewall(): Promise<FirewallState | null>
   /** Windows: tira o bloqueio e libera em redes privadas (pede administrador). Devolve o estado depois. */

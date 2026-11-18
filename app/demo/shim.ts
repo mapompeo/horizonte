@@ -153,6 +153,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     },
     shareLink: async () => undefined,
     firewall: async () => null,
+    shortcut: async () => 'Ctrl+Alt+H',
     allowFirewall: async () => null,
     macAccess: async () => null,
     openPrivacy: async () => undefined,

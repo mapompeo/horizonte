@@ -342,7 +342,13 @@ async function boot(): Promise<void> {
   )
   app.on('browser-window-created', (_event, window) => optimizer.watchWindowShortcuts(window))
   // De qualquer lugar, traz a janela (ocupado por outro programa, o registro só falha e o resto segue).
-  globalShortcut.register(showShortcut(process.platform).accelerator, () => raiseWindow(mainWindow))
+  // No Wayland o registro falha calado (o sistema não deixa sem perguntar): aí os Ajustes não mostram o atalho.
+  const shortcutOn = globalShortcut.register(showShortcut(process.platform).accelerator, () =>
+    raiseWindow(mainWindow)
+  )
+  ipcMain.handle(CHANNELS.shortcut, () =>
+    shortcutOn ? showShortcut(process.platform).label : null
+  )
   app.on('will-quit', () => globalShortcut.unregisterAll())
 
   const persisted = createSettingsStore(

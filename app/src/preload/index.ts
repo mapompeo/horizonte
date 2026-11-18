@@ -21,6 +21,7 @@ const api: HorizonteApi = {
   copyText: (text) => ipcRenderer.invoke(CHANNELS.copyText, text),
   shareLink: (url) => ipcRenderer.invoke(CHANNELS.shareLink, url),
   firewall: () => ipcRenderer.invoke(CHANNELS.firewall),
+  shortcut: () => ipcRenderer.invoke(CHANNELS.shortcut),
   allowFirewall: () => ipcRenderer.invoke(CHANNELS.allowFirewall),
   macAccess: () => ipcRenderer.invoke(CHANNELS.macAccess),
   openPrivacy: (kind) => ipcRenderer.invoke(CHANNELS.openPrivacy, kind),
