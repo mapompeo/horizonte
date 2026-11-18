@@ -4,7 +4,10 @@ import type { FirewallState, MacAccess } from '../../../shared/api'
 export interface SetupNotice {
   id: string
   text: string
-  action?: { kind: 'allow-firewall' | 'open-screen' | 'open-accessibility'; label: string }
+  action?: {
+    kind: 'allow-firewall' | 'open-screen' | 'open-accessibility' | 'open-firewall'
+    label: string
+  }
 }
 
 /**
@@ -24,7 +27,8 @@ export function setupNotices(
     if (firewall === 'blocked')
       notices.push({
         id: 'mac-firewall-blocked',
-        text: 'O firewall do macOS está bloqueando o Horizonte. Libere em **Ajustes do Sistema** › **Rede** › **Firewall** › **Opções**.'
+        text: 'O firewall do macOS está bloqueando o Horizonte. Libere em **Ajustes do Sistema** › **Rede** › **Firewall** › **Opções**.',
+        action: { kind: 'open-firewall', label: 'Abrir Ajustes' }
       })
   } else if (platform === 'darwin') {
     if (mac && (mac.screen === 'denied' || mac.screen === 'restricted'))
@@ -36,7 +40,8 @@ export function setupNotices(
     if (firewall === 'blocked')
       notices.push({
         id: 'mac-firewall-blocked',
-        text: 'O firewall do macOS está bloqueando o Horizonte. Libere em **Ajustes do Sistema** › **Rede** › **Firewall** › **Opções**.'
+        text: 'O firewall do macOS está bloqueando o Horizonte. Libere em **Ajustes do Sistema** › **Rede** › **Firewall** › **Opções**.',
+        action: { kind: 'open-firewall', label: 'Abrir Ajustes' }
       })
     if (mac?.screen === 'not-determined')
       notices.push({

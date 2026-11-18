@@ -50,5 +50,6 @@ it('quem recebe: no Mac, sem Gravação de Tela nem Acessibilidade; no Windows, 
     []
   )
   expect(ids('darwin', 'blocked', null, 'receive')).toEqual(['mac-firewall-blocked'])
+  expect(setupNotices('darwin', 'blocked', null, 'receive')[0].action?.kind).toBe('open-firewall')
   expect(ids('win32', 'public', null, 'receive')).toEqual(['win-public-network'])
 })

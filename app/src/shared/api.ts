@@ -79,7 +79,7 @@ export interface HorizonteApi {
   /** Mac: Gravação de Tela e Acessibilidade; null nos outros sistemas. */
   macAccess(): Promise<MacAccess | null>
   /** Mac: abre os Ajustes do Sistema na permissão certa. */
-  openPrivacy(kind: 'screen' | 'accessibility'): Promise<void>
+  openPrivacy(kind: 'screen' | 'accessibility' | 'firewall'): Promise<void>
   getUpdateStatus(): Promise<UpdateStatus>
   update(action: UpdateAction): Promise<UpdateStatus>
   onUpdate(callback: (status: UpdateStatus) => void): () => void

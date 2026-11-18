@@ -24,7 +24,10 @@
     acting = true
     if (kind === 'allow-firewall')
       firewall = await window.horizonte.allowFirewall().catch(() => firewall)
-    else await window.horizonte.openPrivacy(kind === 'open-screen' ? 'screen' : 'accessibility')
+    else
+      await window.horizonte.openPrivacy(
+        kind === 'open-screen' ? 'screen' : kind === 'open-firewall' ? 'firewall' : 'accessibility'
+      )
     acting = false
   }
 </script>

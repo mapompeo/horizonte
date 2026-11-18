@@ -685,11 +685,15 @@ async function boot(): Promise<void> {
         }
       : null
   )
+  // Mac: os Ajustes do Sistema direto na permissão (o Firewall fica em Rede desde o macOS 13).
+  const PRIVACY: Record<string, string> = {
+    screen: 'com.apple.preference.security?Privacy_ScreenCapture',
+    accessibility: 'com.apple.preference.security?Privacy_Accessibility',
+    firewall: 'com.apple.Network-Settings.extension'
+  }
   ipcMain.handle(CHANNELS.openPrivacy, (_event, kind: unknown) => {
-    if (process.platform !== 'darwin' || (kind !== 'screen' && kind !== 'accessibility')) return
-    void shell.openExternal(
-      `x-apple.systempreferences:com.apple.preference.security?${kind === 'screen' ? 'Privacy_ScreenCapture' : 'Privacy_Accessibility'}`
-    )
+    if (process.platform !== 'darwin' || typeof kind !== 'string' || !(kind in PRIVACY)) return
+    void shell.openExternal(`x-apple.systempreferences:${PRIVACY[kind]}`)
   })
   // A página do receptor vem deste app (main/web/browser.ts).
   const webAccess = createBrowserAccess({
