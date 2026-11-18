@@ -114,8 +114,12 @@ jobs:
         if: ${{ success() && runner.os != 'Windows' }}
         shell: bash
         run: |
-          if [ "$RUNNER_OS" = Linux ]; then npx playwright-core install --with-deps webkit; else npx playwright-core install webkit; fi
-          HZ_WEB_PHONE=iphone node e2e/web.mjs
+          # O iPhone só no Linux: no Mac da CI o WebKit esconde o IP atrás de um nome .local que a máquina virtual não
+          # registra, e a busca de endereços nunca termina (visto em 18/11/2026: ICE "new" e nenhum candidato em 45 s).
+          if [ "$RUNNER_OS" = Linux ]; then
+            npx playwright-core install --with-deps webkit
+            HZ_WEB_PHONE=iphone node e2e/web.mjs
+          fi
           HZ_WEB_PHONE=android node e2e/web.mjs
       # O uso de verdade, sem quadro de teste: o app captura a tela do sistema e um navegador (o papel do celular)
       # abre o link com o código e recebe o vídeo. No Windows a tela estendida usa o driver que os testes acima instalaram.
