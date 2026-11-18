@@ -78,7 +78,7 @@
       {#if searching}
         <span class="searching">Procurando…</span>
       {:else if hosts.length === 0}
-        <span class="searching">Nada por aqui. Abra o Horizonte no outro aparelho.</span>
+        <span class="searching">Nada por aqui. No outro computador, abra o Horizonte em Enviar.</span>
       {/if}
     </div>
     <!-- A busca na rede também passa pelo firewall: bloqueado ou em rede Pública, a lista fica vazia. -->
