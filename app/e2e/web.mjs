@@ -72,6 +72,20 @@ async function phone(url, code) {
       if (message.text().includes('[motor]')) console.log(`navegador: ${message.text()}`)
     })
     page.on('pageerror', (error) => said.push(`erro: ${error.message}`))
+    // Guarda cada conexão WebRTC que a página abrir, para ver por dentro se o vídeo não chegar.
+    await page.addInitScript(() => {
+      const Original = window.RTCPeerConnection
+      window.__pcs = []
+      window.RTCPeerConnection = function (...args) {
+        const pc = new Original(...args)
+        window.__pcs.push(pc)
+        return pc
+      }
+      window.RTCPeerConnection.prototype = Original.prototype
+      Object.assign(window.RTCPeerConnection, Original)
+      window.RTCPeerConnection.generateCertificate = Original.generateCertificate.bind(Original)
+      addEventListener('unhandledrejection', (event) => console.error(`promessa recusada: ${event.reason}`))
+    })
     await page.goto(`${url}/${code}`)
     const filled = await page.inputValue('#codigo')
     if (filled !== code) {
@@ -93,6 +107,24 @@ async function phone(url, code) {
     if (!size) {
       console.log(`navegador: sem vídeo (${await page.textContent('#texto').catch(() => '?')})`)
       console.log(`--- o que a página disse\n${said.slice(-60).join('\n') || '(nada)'}`)
+      const inside = await page
+        .evaluate(async () =>
+          Promise.all(
+            (window.__pcs ?? []).map(async (pc) => ({
+              signaling: pc.signalingState,
+              ice: pc.iceConnectionState,
+              gathering: pc.iceGatheringState,
+              connection: pc.connectionState,
+              remote: (pc.remoteDescription?.sdp ?? '').split('\r\n').filter((l) => /^a=candidate|^m=/.test(l)),
+              local: (pc.localDescription?.sdp ?? '').split('\r\n').filter((l) => /^a=candidate|^m=/.test(l)),
+              stats: [...(await pc.getStats()).values()]
+                .filter((e) => /candidate|transport/.test(e.type))
+                .map((e) => `${e.type} ${e.state ?? ''} ${e.address ?? e.ip ?? ''}:${e.port ?? ''} ${e.candidateType ?? ''}`)
+            }))
+          )
+        )
+        .catch((error) => `sem acesso: ${error}`)
+      console.log(`--- conexões da página\n${JSON.stringify(inside, null, 1)}`)
     }
     else console.log(`navegador: vídeo ${size}`)
     await page.screenshot({ path: join(OUT, `web-${MODE}-${PHONE}.png`) }).catch(() => undefined)
