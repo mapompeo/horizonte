@@ -86,7 +86,8 @@ function recorder(role: MotorRole): {
 }
 
 async function runSend(args: Extract<MotorArgs, { role: 'send' }>): Promise<void> {
-  const frames = args.extend && process.platform === 'linux' && gnomeFrames() ? framesSocket() : null
+  const frames =
+    args.extend && process.platform === 'linux' && gnomeFrames() ? framesSocket() : null
   // A mesma tela virtual que o app usa em cada sistema: GNOME, a tela virtual do Mac ou o driver do Windows.
   const macHelper = args.extend && process.platform === 'darwin' ? macHelperPath() : null
   const virtual = !args.extend

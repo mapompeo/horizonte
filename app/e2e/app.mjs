@@ -118,6 +118,18 @@ async function launch(label) {
       }
       throw new Error(`não apareceu ${re} em ${ms} ms; tela: "${last.slice(0, 160)}"`)
     },
+    pressed: (text) =>
+      page.ev(
+        `[...document.querySelectorAll('button[aria-pressed]')].find(b=>b.innerText.trim()===${JSON.stringify(text)})?.getAttribute('aria-pressed') ?? null`
+      ),
+    async until(expression, what, ms = 10_000) {
+      const end = Date.now() + ms
+      while (Date.now() < end) {
+        if (await page.ev(expression)) return
+        await wait(200)
+      }
+      throw new Error(`não aconteceu em ${ms} ms: ${what}`)
+    },
     click: (re) =>
       page.ev(
         `(()=>{const re=${re.toString()};const b=[...document.querySelectorAll('button,[role=button]')].find(x=>re.test(x.innerText||x.getAttribute('aria-label')||''));if(!b)return false;b.click();return true})()`
@@ -147,6 +159,23 @@ async function launch(label) {
     }
   }
   return page
+}
+
+/** A área de transferência do sistema, lida de fora do app (cada sistema tem o seu comando); null se não der. */
+function systemClipboard() {
+  const tries = {
+    win32: [['powershell', ['-NoProfile', '-Command', 'Get-Clipboard']]],
+    darwin: [['pbpaste', []]],
+    linux: [['wl-paste', ['-n']], ['xclip', ['-selection', 'clipboard', '-o']], ['xsel', ['-b', '-o']]]
+  }[process.platform] ?? []
+  for (const [cmd, args] of tries) {
+    try {
+      return execFileSync(cmd, args, { encoding: 'utf8', timeout: 5000 }).trim()
+    } catch {
+      // sem esse comando
+    }
+  }
+  return null
 }
 
 async function step(name, fn) {
@@ -185,6 +214,14 @@ try {
       const text = await app.waitText(/tela conectada/, 30_000)
       if (!/Notebook/.test(text)) throw new Error('o aparelho não aparece na lista')
       if (!/Adicionar/.test(text)) throw new Error(`sem o botão Adicionar ao conectar; tela: ${text.slice(0, 300)}`)
+      await app.click(/Adicionar/)
+      await app.waitText(/Mais um aparelho/)
+      if ((await app.ev(`document.querySelector('.add').getAttribute('aria-expanded')`)) !== 'true')
+        throw new Error('o Adicionar não abriu')
+      await app.shot('02-adicionar')
+      await app.click(/^Fechar$/)
+      // Conectado, a janela vai para o fundo e as animações de saída esperam ela voltar: confere o estado do botão.
+      await app.until(`document.querySelector('.add').getAttribute('aria-expanded') === 'false'`, 'o Adicionar fechar')
       // Conectado, o Horizonte sai da frente e fica nos ícones ocultos. No Linux ele só minimiza (sem extensão não há
       // bandeja), e a CI não tem gerenciador de janelas para minimizar.
       if (process.platform !== 'linux') {
@@ -211,6 +248,10 @@ try {
       const text = await app.waitText(/Aparência/i)
       for (const part of ['Escuro', 'Nome', 'Enviar diagnóstico', 'GitHub'])
         if (!text.toLowerCase().includes(part.toLowerCase())) throw new Error(`os Ajustes não têm "${part}"`)
+      await app.click(/^120 fps$/)
+      await app.until(`document.querySelector('[aria-label=Fluidez] .on')?.innerText.trim() === '120 fps'`, 'escolher 120 fps')
+      await app.click(/^Escuro$/)
+      await app.until(`[...document.querySelectorAll('[aria-label=Tema] .on')].some(b => b.innerText.trim() === 'Escuro')`, 'escolher o tema Escuro')
       await app.click(/Desinstalar Horizonte/)
       await app.waitText(/não foi instalado por um instalador/)
       await app.shot('04-ajustes')
@@ -227,6 +268,38 @@ try {
       await app.click(/^Enviar$/)
       await app.waitText(/Aponte a câmera|Permitir o Notebook/, 30_000)
       await app.shot('06-enviar')
+    })
+    await step('reabrir: os Ajustes lembram 120 fps e o tema Escuro', async () => {
+      await app.click(/Ajustes/)
+      await app.waitText(/Fluidez/)
+      if ((await app.pressed('120 fps')) !== 'true') throw new Error('a fluidez voltou ao padrão')
+      if ((await app.pressed('Escuro')) !== 'true') throw new Error('o tema voltou ao padrão')
+      await app.click(/^60 fps$/)
+      await app.click(/^Sistema$/)
+      await app.click(/Voltar/)
+      await app.waitText(/Aponte a câmera|Permitir o Notebook|tela conectada/, 15_000)
+    })
+    await step('endereço com /código e Copiar link leva o código junto', async () => {
+      const text = await app.waitText(/Copiar link/, 30_000)
+      const address = /(\d+\.\d+\.\d+\.\d+:\d+)\/ ?(\d{4})/.exec(text)
+      if (!address) throw new Error(`sem endereço/código na tela: ${text.slice(0, 200)}`)
+      await app.click(/^Copiar link$/)
+      await app.waitText(/Copiado/, 5000)
+      const copied = systemClipboard()
+      if (copied !== null && !copied.endsWith(`${address[1]}/${address[2]}`))
+        throw new Error(`copiou "${copied}"`)
+      return copied ?? 'sem comando para ler a área de transferência'
+    })
+    await step('QR amplia ao clicar e volta no Esc e no toque', async () => {
+      await app.click(/Ampliar o QR code/)
+      await app.until(`!!document.querySelector('.qr-big svg, .qr-big canvas, .qr-big img')`, 'o QR ampliar')
+      await app.shot('07-qr-grande')
+      await app.ev(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
+      await app.until(`!document.querySelector('.qr-big')`, 'o Esc fechar o QR')
+      await app.click(/Ampliar o QR code/)
+      await app.until(`!!document.querySelector('.qr-big')`, 'o QR ampliar de novo')
+      await app.click(/Fechar o QR ampliado/)
+      await app.until(`!document.querySelector('.qr-big')`, 'o toque fechar o QR')
     })
   }
 } catch (error) {
