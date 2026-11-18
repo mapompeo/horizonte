@@ -1139,7 +1139,7 @@ h1[tabindex='-1']:focus {
   gap: 8px;
 }
 .video-hint-command {
-  max-width: 100%;
+  max-width: min(100%, 46ch);
   padding: 6px 10px;
   border-radius: var(--radius-small);
   background: var(--seg);
@@ -1148,7 +1148,8 @@ h1[tabindex='-1']:focus {
     12px/1.4 ui-monospace,
     monospace;
   user-select: all;
-  word-break: break-all;
+  /* Quebra nos espaços; só parte uma palavra (os números das portas) se ela não couber inteira. */
+  overflow-wrap: anywhere;
 }
 
 /* Movimento: desligado para quem pede menos movimento. */
