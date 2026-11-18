@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { L } from '../lib/i18n'
   import DeviceIcon from '../components/DeviceIcon.svelte'
   import { guessKind, type DeviceKind } from '../../../shared/device'
   import { isValidPin } from '../../../shared/pin'
@@ -49,7 +50,13 @@
 </div>
 {#if needsPin}
   <div class="stack gap-xs">
-    <label class="hint" for="pin">Digite o PIN do outro aparelho</label>
+    <label class="hint" for="pin"
+      >{L({
+        pt: 'Digite o PIN do outro aparelho',
+        en: 'Type the PIN of the other device',
+        es: 'Escribe el PIN del otro dispositivo'
+      })}</label
+    >
     <input
       id="pin"
       class="pin-input"
@@ -69,6 +76,10 @@
   </div>
 {/if}
 <div class="stack gap-xs">
-  <button class="btn btn-primary btn-wide" disabled={!ready} onclick={approve}>Permitir</button>
-  <button class="btn btn-ghost" onclick={() => send({ type: 'DENY' })}>Recusar</button>
+  <button class="btn btn-primary btn-wide" disabled={!ready} onclick={approve}
+    >{L({ pt: 'Permitir', en: 'Allow', es: 'Permitir' })}</button
+  >
+  <button class="btn btn-ghost" onclick={() => send({ type: 'DENY' })}
+    >{L({ pt: 'Recusar', en: 'Decline', es: 'Rechazar' })}</button
+  >
 </div>

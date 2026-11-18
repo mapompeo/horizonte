@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { L } from '../lib/i18n'
   import DeviceIcon from '../components/DeviceIcon.svelte'
   import { guessKind, type DeviceKind } from '../../../shared/device'
   import { copyFor, safeName } from '../lib/copy'
@@ -31,7 +32,11 @@
   <p class="subtitle">{copy.subtitle}</p>
 </div>
 <div class="stack gap-xs">
-  <button class="btn btn-primary" onclick={() => send({ type: 'MOUSE_ACCEPT' })}>Permitir</button>
-  <button class="btn btn-ghost" onclick={() => send({ type: 'MOUSE_DENY' })}>Recusar</button>
+  <button class="btn btn-primary" onclick={() => send({ type: 'MOUSE_ACCEPT' })}
+    >{L({ pt: 'Permitir', en: 'Allow', es: 'Permitir' })}</button
+  >
+  <button class="btn btn-ghost" onclick={() => send({ type: 'MOUSE_DENY' })}
+    >{L({ pt: 'Recusar', en: 'Decline', es: 'Rechazar' })}</button
+  >
 </div>
 <span class="hint">{safeName(device)} · {address}</span>

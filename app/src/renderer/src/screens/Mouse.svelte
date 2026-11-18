@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { L } from '../lib/i18n'
   import { onMount } from 'svelte'
   import type { Host, MouseSide, ScreenSize } from '../../../shared/types'
   import type { DeviceKind } from '../../../shared/device'
@@ -87,18 +88,34 @@
           send({
             type: 'MOUSE_SHARE',
             peers: placed.map((host) => ({ name: safeName(host.name), address: host.address }))
-          })}>Usar meu mouse</button
+          })}>{L({ pt: 'Usar meu mouse', en: 'Use my mouse', es: 'Usar mi mouse' })}</button
       >
       <span class="searching" aria-live="polite">
         {placed.length === 0
-          ? 'Arraste um aparelho até a borda deste.'
-          : `Vai usar o mouse em ${placed.map((host) => safeName(host.name)).join(' e ')}.`}
+          ? L({
+              pt: 'Arraste um aparelho até a borda deste.',
+              en: 'Drag a device to the edge of this one.',
+              es: 'Arrastra un dispositivo hasta el borde de este.'
+            })
+          : L({
+              pt: `Vai usar o mouse em ${placed.map((host) => safeName(host.name)).join(' e ')}.`,
+              en: `The mouse will be used on ${placed.map((host) => safeName(host.name)).join(' and ')}.`,
+              es: `Va a usar el mouse en ${placed.map((host) => safeName(host.name)).join(' y ')}.`
+            })}
       </span>
     {:else if searching}
-      <div role="status"><span class="searching">Procurando…</span></div>
+      <div role="status">
+        <span class="searching">{L({ pt: 'Procurando…', en: 'Searching…', es: 'Buscando…' })}</span>
+      </div>
     {:else}
       <div role="status">
-        <span class="searching">Nada por aqui. No outro aparelho, abra Compartilhar o mouse.</span>
+        <span class="searching"
+          >{L({
+            pt: 'Nada por aqui. No outro aparelho, abra Compartilhar o mouse.',
+            en: 'Nothing here. On the other device, open Share the mouse.',
+            es: 'Nada por aquí. En el otro dispositivo, abre Compartir el mouse.'
+          })}</span
+        >
       </div>
     {/if}
     {#if manual}
@@ -111,16 +128,28 @@
       >
         <input
           class="text-input manual-input"
-          aria-label="Endereço do outro aparelho"
+          aria-label={L({
+            pt: 'Endereço do outro aparelho',
+            en: 'Address of the other device',
+            es: 'Dirección del otro dispositivo'
+          })}
           placeholder="192.168.1.5"
           autocomplete="off"
           spellcheck="false"
           bind:value={address}
         />
-        <button class="btn btn-primary btn-sm" type="submit" disabled={!valid}>Adicionar</button>
+        <button class="btn btn-primary btn-sm" type="submit" disabled={!valid}
+          >{L({ pt: 'Adicionar', en: 'Add', es: 'Agregar' })}</button
+        >
       </form>
     {:else}
-      <button class="link" onclick={() => (manual = true)}>Adicionar pelo endereço</button>
+      <button class="link" onclick={() => (manual = true)}
+        >{L({
+          pt: 'Adicionar pelo endereço',
+          en: 'Add by address',
+          es: 'Agregar por dirección'
+        })}</button
+      >
     {/if}
   </div>
 </div>

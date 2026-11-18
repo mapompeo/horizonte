@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { L } from '../lib/i18n'
   import { copyFor, safeName } from '../lib/copy'
   import { send } from '../lib/actions'
   import Pill from '../components/Pill.svelte'
@@ -19,6 +20,6 @@
 </div>
 <button
   class="btn btn-danger"
-  aria-label="Parar {safeName(name)}"
-  onclick={() => send({ type: 'STOP' })}>Parar</button
+  aria-label={`${L({ pt: 'Parar', en: 'Stop', es: 'Detener' })} ${safeName(name)}`}
+  onclick={() => send({ type: 'STOP' })}>{L({ pt: 'Parar', en: 'Stop', es: 'Detener' })}</button
 >

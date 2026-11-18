@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { L } from '../lib/i18n'
   import type { AppError, Mode } from '../../../shared/types'
   import { chooseMode, send } from '../lib/actions'
   import ReportButton from '../components/ReportButton.svelte'
@@ -29,12 +30,16 @@
 </div>
 <div class="stack gap-sm">
   <h1 class="title">{error.message}</h1>
-  <p class="subtitle">Tente de novo.</p>
+  <p class="subtitle">{L({ pt: 'Tente de novo.', en: 'Try again.', es: 'Inténtalo de nuevo.' })}</p>
 </div>
 <div class="stack gap-xs">
-  <button class="btn btn-primary" onclick={() => send({ type: 'RETRY' })}>Tentar de novo</button>
+  <button class="btn btn-primary" onclick={() => send({ type: 'RETRY' })}
+    >{L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}</button
+  >
   <ReportButton class="link" />
   {#if mode !== 'send'}
-    <button class="link" onclick={() => chooseMode('send')}>Voltar para Enviar</button>
+    <button class="link" onclick={() => chooseMode('send')}
+      >{L({ pt: 'Voltar para Enviar', en: 'Back to Send', es: 'Volver a Enviar' })}</button
+    >
   {/if}
 </div>
