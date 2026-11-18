@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { L } from '../lib/i18n'
   import Logo from './Logo.svelte'
   interface Props {
     /** Uma linha discreta no rodapé da tela principal, em vez do bloco "Sobre" dos Ajustes. */
@@ -41,7 +42,11 @@
       initialError = null
     } catch {
       if (!active || request !== revision) return
-      initialError = 'Não consegui carregar as atualizações. Tente de novo.'
+      initialError = L({
+        pt: 'Não consegui carregar as atualizações. Tente de novo.',
+        en: 'Could not load the updates. Try again.',
+        es: 'No pude cargar las actualizaciones. Inténtalo de nuevo.'
+      })
     } finally {
       if (active && request === revision) loading = false
     }
@@ -61,10 +66,30 @@
         status = {
           ...status,
           phase: 'error',
-          message: 'Não consegui verificar a atualização. Tente de novo.'
+          message: L({
+            pt: 'Não consegui verificar a atualização. Tente de novo.',
+            en: 'Could not check for updates. Try again.',
+            es: 'No pude buscar actualizaciones. Inténtalo de nuevo.'
+          })
         }
     }
   }
+  /** A linha da versão, numa expressão só: quebrar em várias deixava espaços sobrando no meio do texto. */
+  const aboutLine = (status: UpdateStatus): string => {
+    const version = `${L({ pt: 'Versão', en: 'Version', es: 'Versión' })} ${pretty(status.currentVersion)}`
+    if (status.phase === 'downloading')
+      return `${L({ pt: 'Baixando', en: 'Downloading', es: 'Descargando' })} ${pretty(status.version)} · ${percent}%`
+    if (status.phase === 'ready')
+      return `${L({ pt: 'Atualização pronta:', en: 'Update ready:', es: 'Actualización lista:' })} ${pretty(status.version)}`
+    if (status.phase === 'checking')
+      return `${version} · ${L({ pt: 'Verificando…', en: 'Checking…', es: 'Buscando…' })}`
+    if (status.phase === 'current')
+      return `${version} · ${L({ pt: 'Atualizado', en: 'Up to date', es: 'Actualizado' })}`
+    return version
+  }
+  const LOADING = L({ pt: 'Carregando…', en: 'Loading…', es: 'Cargando…' })
+  const updateTo = (version?: string): string =>
+    `${L({ pt: 'Atualizar para', en: 'Update to', es: 'Actualizar a' })} ${pretty(version)}`
 </script>
 
 {#if compact}
@@ -74,16 +99,23 @@
       {#if status.phase === 'available'}
         <button
           class="foot-link"
-          title="Atualizar para {pretty(status.version)}"
-          aria-label="Atualizar para {pretty(status.version)}"
-          onclick={() => perform('download')}>Atualizar</button
+          title={updateTo(status.version)}
+          aria-label={updateTo(status.version)}
+          onclick={() => perform('download')}
+          >{L({ pt: 'Atualizar', en: 'Update', es: 'Actualizar' })}</button
         >
       {:else if status.phase === 'downloading'}
-        <span aria-live="polite">Baixando {percent}%</span>
+        <span aria-live="polite"
+          >{L({ pt: 'Baixando', en: 'Downloading', es: 'Descargando' })} {percent}%</span
+        >
         <div
           class="bar bar-xs"
           role="progressbar"
-          aria-label="Baixando atualização"
+          aria-label={L({
+            pt: 'Baixando atualização',
+            en: 'Downloading update',
+            es: 'Descargando actualización'
+          })}
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow={percent}
@@ -91,29 +123,35 @@
           <div class="bar-fill" style="width: {percent}%"></div>
         </div>
       {:else if status.phase === 'ready'}
-        <button class="foot-link" onclick={() => perform('install')}>Reiniciar e atualizar</button>
+        <button class="foot-link" onclick={() => perform('install')}
+          >{L({
+            pt: 'Reiniciar e atualizar',
+            en: 'Restart and update',
+            es: 'Reiniciar y actualizar'
+          })}</button
+        >
         {#if status.message}<span role="status">{status.message}</span>{/if}
       {/if}
     {/if}
   </footer>
 {:else}
   <section class="about" aria-labelledby="g-update">
-    <h2 class="sr-only" id="g-update">Atualizações</h2>
+    <h2 class="sr-only" id="g-update">
+      {L({ pt: 'Atualizações', en: 'Updates', es: 'Actualizaciones' })}
+    </h2>
     <Logo size={40} />
     <span class="about-name">Horizonte</span>
     {#if status}
-      <p class="about-line" aria-live="polite">
-        {#if status.phase === 'downloading'}Baixando {pretty(status.version)} · {percent}%
-        {:else if status.phase === 'ready'}Atualização pronta: {pretty(status.version)}
-        {:else if status.phase === 'checking'}Versão {pretty(status.currentVersion)} · Verificando…
-        {:else if status.phase === 'current'}Versão {pretty(status.currentVersion)} · Atualizado
-        {:else}Versão {pretty(status.currentVersion)}{/if}
-      </p>
+      <p class="about-line" aria-live="polite">{aboutLine(status)}</p>
       {#if status.phase === 'downloading'}
         <div
           class="bar bar-sm"
           role="progressbar"
-          aria-label="Baixando atualização"
+          aria-label={L({
+            pt: 'Baixando atualização',
+            en: 'Downloading update',
+            es: 'Descargando actualización'
+          })}
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow={percent}
@@ -124,24 +162,32 @@
       {#if status.message}<p class="about-line" role="status">{status.message}</p>{/if}
       {#if status.phase === 'available'}
         <button class="btn btn-primary btn-sm" onclick={() => perform('download')}
-          >Atualizar para {pretty(status.version)}</button
+          >{updateTo(status.version)}</button
         >
       {:else if status.phase === 'ready'}
         <button class="btn btn-primary btn-sm" onclick={() => perform('install')}
-          >Reiniciar e atualizar</button
+          >{L({
+            pt: 'Reiniciar e atualizar',
+            en: 'Restart and update',
+            es: 'Reiniciar y actualizar'
+          })}</button
         >
       {:else if status.phase !== 'unavailable' && status.phase !== 'checking' && status.phase !== 'downloading'}
         <button class="link about-link" onclick={() => perform('check')}
-          >Verificar atualização</button
+          >{L({
+            pt: 'Verificar atualização',
+            en: 'Check for updates',
+            es: 'Buscar actualizaciones'
+          })}</button
         >
       {/if}
     {:else if initialError}
       <p class="about-line" role="alert">{initialError}</p>
       <button class="about-link" disabled={loading} onclick={() => loadStatus()}>
-        {loading ? 'Carregando…' : 'Tentar de novo'}
+        {loading ? LOADING : L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}
       </button>
     {:else}
-      <p class="about-line" aria-live="polite">Carregando…</p>
+      <p class="about-line" aria-live="polite">{LOADING}</p>
     {/if}
   </section>
 {/if}

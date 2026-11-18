@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { L } from '../lib/i18n'
   import { PROFILES } from '../../../shared/quality'
   import type { Fps, Settings, Theme } from '../../../shared/types'
   import { chooseMode, closeSettings, patchSettings } from '../lib/actions'
@@ -27,9 +28,17 @@
   )
 
   const tiles = [
-    { id: 'economico', name: 'Econômico', mbps: PROFILES.economico },
-    { id: 'equilibrado', name: 'Equilibrado', mbps: PROFILES.equilibrado },
-    { id: 'maximo', name: 'Máximo', mbps: PROFILES.maximo }
+    {
+      id: 'economico',
+      name: L({ pt: 'Econômico', en: 'Economy', es: 'Económico' }),
+      mbps: PROFILES.economico
+    },
+    {
+      id: 'equilibrado',
+      name: L({ pt: 'Equilibrado', en: 'Balanced', es: 'Equilibrado' }),
+      mbps: PROFILES.equilibrado
+    },
+    { id: 'maximo', name: L({ pt: 'Máximo', en: 'Maximum', es: 'Máximo' }), mbps: PROFILES.maximo }
   ] as const
   /** Tamanho de quem ainda não conectou desde que passou a ser guardado: o real chega na próxima conexão. */
   const UNKNOWN_SCREEN = { width: 1920, height: 1080 }
@@ -51,23 +60,25 @@
         stroke-linejoin="round"
         aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg
       >
-      Voltar
+      {L({ pt: 'Voltar', en: 'Back', es: 'Volver' })}
     </button>
-    <h1 class="sheet-title">Ajustes</h1>
+    <h1 class="sheet-title">{L({ pt: 'Ajustes', en: 'Settings', es: 'Ajustes' })}</h1>
     <span></span>
   </header>
 
   <div class="sheet-body">
     <section class="group" aria-labelledby="g-look">
-      <h2 class="group-label" id="g-look">Aparência</h2>
+      <h2 class="group-label" id="g-look">
+        {L({ pt: 'Aparência', en: 'Appearance', es: 'Apariencia' })}
+      </h2>
       <div class="card card-pad">
         <Segmented
-          label="Tema"
+          label={L({ pt: 'Tema', en: 'Theme', es: 'Tema' })}
           value={settings.theme}
           options={[
-            { value: 'system', text: 'Sistema' },
-            { value: 'light', text: 'Claro' },
-            { value: 'dark', text: 'Escuro' }
+            { value: 'system', text: L({ pt: 'Sistema', en: 'System', es: 'Sistema' }) },
+            { value: 'light', text: L({ pt: 'Claro', en: 'Light', es: 'Claro' }) },
+            { value: 'dark', text: L({ pt: 'Escuro', en: 'Dark', es: 'Oscuro' }) }
           ]}
           onSelect={(value) => patchSettings({ theme: value as Theme })}
         />
@@ -75,13 +86,13 @@
     </section>
 
     <section class="group" aria-labelledby="g-quality">
-      <h2 class="group-label" id="g-quality">Imagem</h2>
+      <h2 class="group-label" id="g-quality">{L({ pt: 'Imagem', en: 'Picture', es: 'Imagen' })}</h2>
       <div class="card">
         <div class="row">
-          <span>Qualidade</span>
+          <span>{L({ pt: 'Qualidade', en: 'Quality', es: 'Calidad' })}</span>
           <Segmented
             compact
-            label="Qualidade"
+            label={L({ pt: 'Qualidade', en: 'Quality', es: 'Calidad' })}
             value={settings.profile}
             options={tiles.map((tile) => ({ value: tile.id, text: tile.name }))}
             onSelect={(id) => {
@@ -91,10 +102,10 @@
           />
         </div>
         <div class="row">
-          <span>Fluidez</span>
+          <span>{L({ pt: 'Fluidez', en: 'Smoothness', es: 'Fluidez' })}</span>
           <Segmented
             compact
-            label="Fluidez"
+            label={L({ pt: 'Fluidez', en: 'Smoothness', es: 'Fluidez' })}
             value={settings.fps}
             options={[
               { value: 30, text: '30 fps' },
@@ -108,13 +119,15 @@
     </section>
 
     <section class="group" aria-labelledby="g-place">
-      <h2 class="group-label" id="g-place">Posição da tela</h2>
+      <h2 class="group-label" id="g-place">
+        {L({ pt: 'Posição da tela', en: 'Screen position', es: 'Posición de la pantalla' })}
+      </h2>
       <div class="card card-pad">
         <PlacementMap
           screens={[
             {
               key: '*',
-              name: 'Tela estendida',
+              name: L({ pt: 'Tela estendida', en: 'Extended screen', es: 'Pantalla extendida' }),
               screen:
                 settings.trusted.findLast((device) => device.screen)?.screen ?? UNKNOWN_SCREEN,
               placement: settings.screenPlacement
@@ -127,23 +140,41 @@
     </section>
 
     <section class="group" aria-labelledby="g-computer">
-      <h2 class="group-label" id="g-computer">Este computador</h2>
+      <h2 class="group-label" id="g-computer">
+        {L({ pt: 'Este computador', en: 'This computer', es: 'Esta computadora' })}
+      </h2>
       <div class="card">
         <div class="row">
-          <span>Nome</span>
+          <span>{L({ pt: 'Nome', en: 'Name', es: 'Nombre' })}</span>
           <span class="row-value">{settings.deviceName}</span>
         </div>
         <div class="row">
-          <span>Abrir com o sistema</span>
+          <span
+            >{L({
+              pt: 'Abrir com o sistema',
+              en: 'Open at login',
+              es: 'Abrir con el sistema'
+            })}</span
+          >
           <Toggle
-            label="Abrir com o sistema"
+            label={L({
+              pt: 'Abrir com o sistema',
+              en: 'Open at login',
+              es: 'Abrir con el sistema'
+            })}
             checked={settings.autostart}
             onChange={(checked) => patchSettings({ autostart: checked })}
           />
         </div>
         {#if shortcut}
           <div class="row">
-            <span>Trazer esta janela de qualquer lugar</span>
+            <span
+              >{L({
+                pt: 'Trazer esta janela de qualquer lugar',
+                en: 'Bring this window from anywhere',
+                es: 'Traer esta ventana desde cualquier lugar'
+              })}</span
+            >
             <kbd class="row-value">{shortcut}</kbd>
           </div>
         {/if}
@@ -152,14 +183,21 @@
           onclick={() => {
             closeSettings()
             chooseMode('mouse')
-          }}>Compartilhar o mouse</button
+          }}
+          >{L({
+            pt: 'Compartilhar o mouse',
+            en: 'Share the mouse',
+            es: 'Compartir el mouse'
+          })}</button
         >
       </div>
     </section>
 
     {#if settings.trusted.length > 0}
       <section class="group" aria-labelledby="g-trusted">
-        <h2 class="group-label" id="g-trusted">Aparelhos permitidos</h2>
+        <h2 class="group-label" id="g-trusted">
+          {L({ pt: 'Aparelhos permitidos', en: 'Allowed devices', es: 'Dispositivos permitidos' })}
+        </h2>
         <div class="card">
           {#each settings.trusted as device (device.name + device.address)}
             <div class="row">
@@ -171,7 +209,7 @@
                     trusted: settings.trusted.filter(
                       (known) => known.name !== device.name || known.address !== device.address
                     )
-                  })}>Esquecer</button
+                  })}>{L({ pt: 'Esquecer', en: 'Forget', es: 'Olvidar' })}</button
               >
             </div>
           {/each}
@@ -180,17 +218,20 @@
     {/if}
 
     <section class="group" aria-labelledby="g-about">
-      <h2 class="group-label" id="g-about">Sobre</h2>
+      <h2 class="group-label" id="g-about">{L({ pt: 'Sobre', en: 'About', es: 'Acerca de' })}</h2>
       <UpdateControls />
       <div class="card">
         <ReportButton class="row row-button" />
         <button class="row row-button" onclick={() => window.horizonte.openRepo()}
-          >Código no GitHub</button
+          >{L({ pt: 'Código no GitHub', en: 'Code on GitHub', es: 'Código en GitHub' })}</button
         >
       </div>
     </section>
 
-    <section class="group" aria-label="Desinstalar">
+    <section
+      class="group"
+      aria-label={L({ pt: 'Desinstalar', en: 'Uninstall', es: 'Desinstalar' })}
+    >
       <div class="card">
         <UninstallControls />
       </div>

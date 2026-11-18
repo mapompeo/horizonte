@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { L } from '../lib/i18n'
   import qrcode from 'qrcode-generator'
 
   interface Props {
@@ -28,7 +29,11 @@
     viewBox="-2 -2 {code.count + 4} {code.count + 4}"
     shape-rendering="crispEdges"
     role="img"
-    aria-label="QR code para abrir no celular"
+    aria-label={L({
+      pt: 'QR code para abrir no celular',
+      en: 'QR code to open on the phone',
+      es: 'Código QR para abrir en el celular'
+    })}
   >
     <path d={code.path} fill="#000000" />
   </svg>

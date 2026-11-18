@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { L } from '../lib/i18n'
   import type { Host, MouseSide, ScreenSize } from '../../../shared/types'
   import { safeName } from '../lib/copy'
   import { guessKind, type DeviceKind } from '../../../shared/device'
@@ -201,12 +202,24 @@
     style="left: {me.x}px; top: {me.y}px; width: {me.w}px; height: {me.h}px"
   >
     <DeviceIcon kind={ownKind} size={16} />
-    <span>Este computador</span>
+    <span>{L({ pt: 'Este computador', en: 'This computer', es: 'Esta computadora' })}</span>
   </div>
   {#if dock}
     <div class="map-dock">
-      {#if boxes.length === 0}<span>Os computadores encontrados aparecem aqui</span>
-      {:else if boxes.every((box) => box.side)}<span>Solte aqui para deixar de fora</span>{/if}
+      {#if boxes.length === 0}<span
+          >{L({
+            pt: 'Os computadores encontrados aparecem aqui',
+            en: 'The computers found show up here',
+            es: 'Las computadoras encontradas aparecen aquí'
+          })}</span
+        >
+      {:else if boxes.every((box) => box.side)}<span
+          >{L({
+            pt: 'Solte aqui para deixar de fora',
+            en: 'Drop here to leave it out',
+            es: 'Suelta aquí para dejarla fuera'
+          })}</span
+        >{/if}
     </div>
   {/if}
   {#each boxes as box (box.host.address)}

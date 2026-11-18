@@ -65,6 +65,8 @@ beforeAll(async () => {
         resolveId(id) {
           if (id === 'virtual:update-controls') return '\0update-controls'
           if (id === './Logo.svelte') return '\0logo'
+          // O idioma do app: o arquivo de verdade (o componente é compilado à parte, sem caminho relativo).
+          if (id === '../lib/i18n') return resolve('src/renderer/src/lib/i18n.ts')
           return null
         },
         async load(id) {

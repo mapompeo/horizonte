@@ -1,12 +1,17 @@
 <script lang="ts">
+  import { L } from '../lib/i18n'
   import { overlap, snapRect, sideOf, type Rect } from '../../../shared/placement'
   import type { LinkQuality, ScreenPlacement, ScreenSize } from '../../../shared/types'
   import { safeName } from '../lib/copy'
 
   const LINK_LABEL: Record<LinkQuality, string> = {
-    good: 'Conexão boa',
-    fair: 'Conexão regular',
-    poor: 'Conexão fraca: aproxime do roteador'
+    good: L({ pt: 'Conexão boa', en: 'Good connection', es: 'Conexión buena' }),
+    fair: L({ pt: 'Conexão regular', en: 'Fair connection', es: 'Conexión regular' }),
+    poor: L({
+      pt: 'Conexão fraca: aproxime do roteador',
+      en: 'Weak connection: move closer to the router',
+      es: 'Conexión débil: acércate al router'
+    })
   }
 
   /** Uma tela estendida no mapa: tamanho em unidades da área de trabalho deste computador. */
@@ -141,7 +146,9 @@
 
 <div class="map" bind:clientWidth={width} style="height:{height}px">
   <div class="tile own" style={box(me)}>
-    <span class="name">Este computador</span>
+    <span class="name"
+      >{L({ pt: 'Este computador', en: 'This computer', es: 'Esta computadora' })}</span
+    >
     {#if ownDetail}<span class="detail">{ownDetail}</span>{/if}
   </div>
   {#each rects as { s, r } (s.key)}
@@ -151,7 +158,7 @@
       style={box(r)}
       role="button"
       tabindex="0"
-      aria-label="{safeName(s.name)}: arraste ou use as setas para posicionar"
+      aria-label={`${safeName(s.name)}: ${L({ pt: 'arraste ou use as setas para posicionar', en: 'drag or use the arrow keys to place it', es: 'arrastra o usa las flechas para colocarla' })}`}
       onpointerdown={(event) => down(event, s, r)}
       onpointermove={move}
       onpointerup={() => up(s)}
@@ -161,7 +168,7 @@
       {#if onStop}
         <button
           class="stop"
-          aria-label="Parar {safeName(s.name)}"
+          aria-label={`${L({ pt: 'Parar', en: 'Stop', es: 'Detener' })} ${safeName(s.name)}`}
           onpointerdown={(event) => event.stopPropagation()}
           onclick={() => onStop(s.key)}>✕</button
         >
