@@ -34,7 +34,7 @@ let firewallRefused = false
 export async function linuxFirewall(): Promise<void> {
   // Recusou nesta execução: não pergunta de novo a cada tela, e o aviso mostra o comando.
   if (firewallRefused) return
-  const marker = join(app.getPath('userData'), 'firewall-motor-v3')
+  const marker = join(app.getPath('userData'), 'firewall-motor-v4')
   const result = await ensureMotorFirewall({
     readConfig: () => readFile('/etc/ufw/ufw.conf', 'utf8').catch(() => null),
     marked: async () => existsSync(marker),

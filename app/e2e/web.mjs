@@ -1,4 +1,4 @@
-// Teste de ponta a ponta do receber pelo navegador: quem envia abre a página (porta 47920 ou a próxima livre) e o
+// Teste de ponta a ponta do receber pelo navegador: quem envia abre a página (porta 7777 ou a próxima livre) e o
 // Chrome da máquina, escondido e dirigido pelo Playwright, faz o papel do celular: abre o link com o código (o mesmo
 // do QR e do Copiar link), toca em Conectar e confere que o vídeo anda. Precisa do `npm run build`.
 import { spawn } from 'node:child_process'

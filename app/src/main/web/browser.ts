@@ -17,12 +17,12 @@ import { MAX_LINE_BYTES, parseMessage } from '../engine/webrtc/protocol'
  */
 
 /**
- * Porta da página: a primeira livre de 47920 a 47929, fora da faixa da sinalização (47910 a 47919). Ela fica dentro da
- * faixa que o Linux sorteia para conexões de saída, então outro programa pode estar usando a primeira (visto com o
- * Spotify): por isso a faixa, e o app mostra a porta que pegou.
+ * Porta da página: a primeira livre de 7777 a 7786. Curta e repetida, para digitar de cabeça, e abaixo da faixa que o
+ * Linux sorteia para conexões de saída (a 47920 já foi pega pelo Spotify assim). Se outro programa estiver nela, vai a
+ * próxima, e o app mostra a porta que pegou.
  */
-export const BROWSER_PORT = 47920
-export const BROWSER_PORT_LAST = 47929
+export const BROWSER_PORT = 7777
+export const BROWSER_PORT_LAST = 7786
 /** Adicionada à tela de início do celular, a página abre como app: tela inteira, deitada, sem as barras do navegador. */
 const MANIFEST = {
   name: 'Horizonte',

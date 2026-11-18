@@ -1,22 +1,23 @@
-import { SIGNALING_PORT } from '../../engine/webrtc/protocol'
-import { BROWSER_PORT_LAST } from '../../web/browser'
+import { SIGNALING_PORT, SIGNALING_PORT_LAST } from '../../engine/webrtc/protocol'
+import { BROWSER_PORT, BROWSER_PORT_LAST } from '../../web/browser'
 
 /**
  * Com o ufw ligado, o outro aparelho não alcança a sinalização do motor próprio nem a página de receber pelo
- * navegador. Libera só essas portas (TCP, 47910 a 47929, as duas faixas lado a lado) e só para as redes privadas,
+ * navegador. Libera só essas portas (TCP, 47910 a 47919 e 7777 a 7786) e só para as redes privadas,
  * nunca para a internet. O vídeo (UDP) não precisa de regra: as verificações do WebRTC saem
  * dos dois lados, e o firewall com estado deixa a volta entrar.
  */
 export const MOTOR_FIREWALL_SCRIPT = [
   'for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12; do',
-  `  ufw allow from "$net" to any port ${SIGNALING_PORT}:${BROWSER_PORT_LAST} proto tcp`,
+  `  ufw allow from "$net" to any port ${SIGNALING_PORT}:${SIGNALING_PORT_LAST} proto tcp`,
+  `  ufw allow from "$net" to any port ${BROWSER_PORT}:${BROWSER_PORT_LAST} proto tcp`,
   // Modo Mouse: o canal dos pedidos e o caminho do mouse.
   '  ufw allow from "$net" to any port 47901,47902 proto tcp',
   'done'
 ].join('\n')
 
 /** Para liberar à mão, se a pessoa recusou a janela de senha. */
-export const FIREWALL_COMMAND = `sudo ufw allow from 192.168.0.0/16 to any port 47901,47902,${SIGNALING_PORT}:${BROWSER_PORT_LAST} proto tcp`
+export const FIREWALL_COMMAND = `sudo ufw allow from 192.168.0.0/16 to any port 47901,47902,${SIGNALING_PORT}:${SIGNALING_PORT_LAST},${BROWSER_PORT}:${BROWSER_PORT_LAST} proto tcp`
 
 export interface FirewallDeps {
   /** Conteúdo de /etc/ufw/ufw.conf (legível sem administrador), ou null se não existe. */

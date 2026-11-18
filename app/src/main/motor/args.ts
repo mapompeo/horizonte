@@ -28,7 +28,7 @@ export const MOTOR_USAGE = [
   '      [--motor-extend]           cria uma tela extra e envia só ela (estender, em vez de espelhar)',
   '      [--motor-clock]            abre um relógio em milissegundos (medição de atraso por foto)',
   '      [--motor-synthetic]        envia um quadro de teste no lugar da tela',
-  '      [--motor-browser]          abre a página de receber pelo navegador (porta 47920)',
+  '      [--motor-browser]          abre a página de receber pelo navegador (porta 7777)',
   '      [--motor-port=47910]',
   '  --motor-receive=IP[:PORTA]     mostra a tela de outro aparelho',
   '      [--motor-fps=60] [--motor-bitrate=30] [--motor-size=1920x1080]',

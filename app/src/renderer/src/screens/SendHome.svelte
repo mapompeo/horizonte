@@ -256,7 +256,7 @@
     max-width: 100%;
   }
   .address-code {
-    /* Colado na barra: "192.168.1.7:47920/8775" se lê como um endereço só. */
+    /* Colado na barra: "192.168.1.7:7777/8775" se lê como um endereço só. */
     margin-left: -11px;
     font-size: 17px;
     font-weight: 600;
