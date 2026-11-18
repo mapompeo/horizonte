@@ -330,14 +330,16 @@ export function createWindowsScreen(): VirtualScreen {
   return createWindowsVirtualScreen({
     run: (script) => runPowerShell(script, 30_000),
     async installDriver() {
+      // Uma vez só, na primeira tela estendida. O texto diz o que vem a seguir (o pedido de administrador do Windows)
+      // para ninguém se assustar; o driver é o Virtual Display Driver, de código aberto, conferido pelo hash.
       const answer = await dialog.showMessageBox({
-        type: 'warning',
-        title: 'Instalar o driver de tela',
-        message: 'Instalar o driver de tela',
+        type: 'question',
+        title: 'Tela a mais no Windows',
+        message: 'Instalar o monitor virtual?',
         detail:
-          'O Windows precisa dele para estender a tela. É de código aberto e tem certificado próprio, confiado só durante a instalação. Instale só se confiar.',
-        buttons: ['Instalar', 'Cancelar'],
-        defaultId: 1,
+          'Para o aparelho virar uma tela a mais, o Windows precisa de um monitor virtual (Virtual Display Driver, de código aberto). É uma vez só: em seguida, o Windows pede permissão de administrador.',
+        buttons: ['Instalar', 'Agora não'],
+        defaultId: 0,
         cancelId: 1,
         noLink: true
       })

@@ -71,6 +71,8 @@ No Linux, pelo terminal, na pasta onde o arquivo foi baixado:
 sudo apt install ./horizonte_*.deb
 ```
 
+No Ubuntu e no Debian, prefira o `.deb`: o `.AppImage` precisa do FUSE 2, que não vem instalado (`sudo apt install libfuse2t64`, ou `libfuse2` nas versões antigas).
+
 > O instalador ainda não tem assinatura paga. No Windows, clique em **Mais informações › Executar assim mesmo**. No Mac, depois de arrastar para Aplicativos, rode uma vez `xattr -cr /Applications/Horizonte.app`.
 
 ## É seguro?
