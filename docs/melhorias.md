@@ -7,7 +7,7 @@ Lista para ir fazendo aos poucos. Marque `[x]` quando estiver na main e provado.
 - [x] Envio de verdade provado na CI nos três sistemas: o app captura a tela real e a tela estendida (driver no Windows, tela virtual no Mac) e um Chrome recebe pelo link com código (`app/e2e/web.mjs`).
 - [ ] Ainda falta em máquina de pessoa: o pedido de permissão do Windows (UAC) e do Mac na primeira vez, e copiar e colar e o mouse entre dois computadores.
 - [ ] Windows: a tela estendida veio em 800x600 quando o pedido foi 1024x640 (o driver só tem alguns tamanhos). Escrever o `vdd_settings.xml` com o tamanho do aparelho.
-- [ ] Assinar os instaladores: Windows com assinatura gratuita para código aberto (SignPath); Mac com notarização (conta de desenvolvedor da Apple, US$ 99/ano). Tira o SmartScreen e o `xattr`.
+- [ ] Assinar os instaladores: Windows com a SignPath Foundation (grátis para código aberto; o pedido é do dono do repositório em signpath.org, com MFA no GitHub; o certificado sai em nome da SignPath Foundation; depois de aprovado, entra a política de assinatura no README e o passo de assinar na CI, antes de gerar o `latest.yml`, senão o hash da atualização não bate). Mac com notarização (conta de desenvolvedor da Apple, US$ 99/ano). Tira o "Editor desconhecido" do SmartScreen e do firewall, e o `xattr`.
 - [ ] Ligar o botão Sponsor do repositório (Settings › General › Sponsorships).
 - [ ] Seção de apoiadores no README para o nível de $25 do Sponsors (pode ser automática com uma GitHub Action).
 - [x] Playwright do site de novo: 84 testes verdes, com o Apoiar (Pix) e a barra do topo; o servidor de teste não servia `.mjs`.

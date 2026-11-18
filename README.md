@@ -73,6 +73,13 @@ sudo apt install ./horizonte_*.deb
 
 > O instalador ainda não tem assinatura paga. No Windows, clique em **Mais informações › Executar assim mesmo**. No Mac, depois de arrastar para Aplicativos, rode uma vez `xattr -cr /Applications/Horizonte.app`.
 
+## É seguro?
+
+- **Por que o firewall pergunta:** o Horizonte recebe conexões dos aparelhos da sua casa, então o Windows pergunta uma vez se ele pode usar a rede, como faz com jogos e com o Steam. Marque só **Redes privadas**: em Wi-Fi público ele continua fechado. Se tocar em Cancelar sem querer, o app mostra **Liberar no firewall**.
+- **O que ele abre:** as portas 47910 a 47919 (conexão entre os aparelhos) e 7777 (a página do celular), só na rede local.
+- **Para onde vai a imagem:** direto de um aparelho para o outro, sem servidor, sem conta e sem internet. Cada aparelho novo precisa do **Permitir** no computador.
+- **De onde vem o instalador:** cada versão é montada pela CI do próprio GitHub, a partir do código que está neste repositório, e publicada em [Releases](https://github.com/mapompeo/horizonte/releases).
+
 ## Algo deu errado?
 
 Em **Ajustes › Enviar diagnóstico**. Um clique, sem conta: vão só a versão, o sistema e os códigos de erro.

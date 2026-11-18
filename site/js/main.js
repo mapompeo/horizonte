@@ -34,6 +34,24 @@ if (mineCard) {
   mineCard.classList.add("mine");
   document.getElementById("oses").append(sides[0], mineCard, sides[1]);
 }
+// O comando do terminal é o do sistema de quem visita: no Linux, instalar o .deb; no Mac, liberar o app depois de
+// arrastar para Aplicativos. No Windows (e no celular) não precisa de comando, então o terminal some.
+const term = document.querySelector("#baixar .term");
+const TERM = {
+  linux: { key: "dl.termLinux", cmd: "sudo apt install ./horizonte_*.deb" },
+  mac: { key: "dl.termMac", cmd: "xattr -cr /Applications/Horizonte.app" },
+};
+if (term) {
+  const shown = TERM[os];
+  term.hidden = !shown;
+  if (shown) {
+    const label = term.querySelector(".term-bar span");
+    label.dataset.i18n = shown.key;
+    label.textContent =
+      os === "mac" ? t("dl.termMac", "macOS, depois de arrastar para Aplicativos") : t("dl.termLinux", "Linux (Ubuntu, Debian)");
+    term.querySelector("#term-cmd").textContent = shown.cmd;
+  }
+}
 if (['ios', 'android', 'chromeos'].includes(os)) {
   const guidance = document.createElement('p');
   guidance.id = 'browser-guidance';

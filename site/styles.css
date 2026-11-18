@@ -2145,6 +2145,9 @@ body {
   color: var(--faint);
   font: 12px/1 var(--mono);
 }
+.term[hidden] {
+  display: none;
+}
 .term {
   position: relative;
   max-width: 560px;

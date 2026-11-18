@@ -14,6 +14,27 @@ const qrPath = (text) => {
       if (qr.isDark(row, col)) path += `M${col} ${row}h1v1h-1z`;
   return path;
 };
+test("comando do terminal é o do sistema de quem visita, e no Windows não aparece", async ({ browser }) => {
+  const agents = {
+    linux: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+    mac: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+    windows: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+  };
+  for (const [os, userAgent] of Object.entries(agents)) {
+    const context = await browser.newContext({ userAgent });
+    const page = await context.newPage();
+    await page.goto("/#baixar");
+    const term = page.locator("#baixar .term");
+    if (os === "windows") await expect(term).toBeHidden();
+    else {
+      await expect(term).toBeVisible();
+      await expect(page.locator("#term-cmd")).toHaveText(
+        os === "mac" ? "xattr -cr /Applications/Horizonte.app" : "sudo apt install ./horizonte_*.deb",
+      );
+    }
+    await context.close();
+  }
+});
 test("demo: endereço de sempre na tela, e o QR leva para o site", async ({
   page,
 }) => {
