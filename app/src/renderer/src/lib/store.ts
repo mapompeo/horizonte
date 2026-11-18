@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store'
 import type { Snapshot, WebAccess } from '../../../shared/types'
+import { L } from './i18n'
 
 export const snapshot = writable<Snapshot | null>(null)
 export const route = writable<'main' | 'settings'>('main')
@@ -23,7 +24,13 @@ export async function startSync(): Promise<() => void> {
   } catch (error) {
     if (receivedPush && stop) return stop
     stop?.()
-    syncError.set('Não consegui carregar o Horizonte. Tente de novo.')
+    syncError.set(
+      L({
+        pt: 'Não consegui carregar o Horizonte. Tente de novo.',
+        en: 'I could not load Horizonte. Try again.',
+        es: 'No pude cargar Horizonte. Inténtalo de nuevo.'
+      })
+    )
     throw error
   }
 }
@@ -39,6 +46,13 @@ export async function changeWebAccess(current: WebAccess): Promise<WebAccess> {
     } catch {
       // Mantém o último estado confirmado e suas credenciais.
     }
-    return { ...confirmed, error: 'Não consegui confirmar a mudança. Tente de novo.' }
+    return {
+      ...confirmed,
+      error: L({
+        pt: 'Não consegui confirmar a mudança. Tente de novo.',
+        en: 'I could not confirm the change. Try again.',
+        es: 'No pude confirmar el cambio. Inténtalo de nuevo.'
+      })
+    }
   }
 }
