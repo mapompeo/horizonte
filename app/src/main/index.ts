@@ -336,6 +336,8 @@ async function readWifiHint(): Promise<VideoHint | null> {
 
 async function boot(): Promise<void> {
   await app.whenReady()
+  // O idioma dos textos do processo principal (diálogos, avisos, erros): o do sistema, ou o do --lang dos testes.
+  ;(globalThis as { __hzLang?: string }).__hzLang = app.getLocale()
   electronApp.setAppUserModelId('com.horizonte.app')
   // O app não usa câmera, microfone, localização nem nada parecido: nega qualquer pedido.
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) =>

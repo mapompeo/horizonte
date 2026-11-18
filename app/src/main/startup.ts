@@ -1,3 +1,5 @@
+import { L } from '../shared/lang'
+
 export interface StartupDeps {
   createWindow(): void
   syncAutostart?(): Promise<void>
@@ -11,7 +13,11 @@ export async function finishStartup(deps: StartupDeps): Promise<void> {
   } catch (cause) {
     deps.reportError(
       new Error(
-        'O Horizonte abriu, mas não consegui configurar a abertura junto com o sistema. Confira as permissões da pasta de configuração e tente alterar essa opção em Ajustes.',
+        L({
+          pt: 'O Horizonte abriu, mas não consegui configurar a abertura junto com o sistema. Confira as permissões da pasta de configuração e tente alterar essa opção em Ajustes.',
+          en: 'Horizonte opened, but I could not set it to open at login. Check the permissions of the settings folder and try changing this option in Settings.',
+          es: 'Horizonte se abrió, pero no pude configurar que abra con el sistema. Revisa los permisos de la carpeta de configuración e intenta cambiar esta opción en Ajustes.'
+        }),
         { cause }
       )
     )
@@ -27,7 +33,11 @@ export async function runStartup(
   } catch (cause) {
     reportFatal(
       new Error(
-        'Não consegui iniciar o Horizonte. Confira as permissões das pastas de configuração e tente abrir o aplicativo novamente. Se o problema continuar, envie o detalhe abaixo ao suporte.',
+        L({
+          pt: 'Não consegui iniciar o Horizonte. Confira as permissões das pastas de configuração e tente abrir o aplicativo novamente. Se o problema continuar, envie o detalhe abaixo ao suporte.',
+          en: 'I could not start Horizonte. Check the permissions of the settings folders and try opening the app again. If the problem continues, send the detail below to support.',
+          es: 'No pude iniciar Horizonte. Revisa los permisos de las carpetas de configuración e intenta abrir la app de nuevo. Si el problema continúa, envía el detalle de abajo a soporte.'
+        }),
         { cause }
       )
     )

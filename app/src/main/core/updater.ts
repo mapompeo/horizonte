@@ -1,4 +1,5 @@
 import type { UpdateAction, UpdateStatus } from '../../shared/updates'
+import { L } from '../../shared/lang'
 
 export interface UpdateEvents {
   available(version: string): void
@@ -35,7 +36,14 @@ export function createUpdater(deps: {
     listeners.forEach((listener) => listener(state))
   }
   const fail = (): void =>
-    set({ phase: 'error', message: 'Não consegui atualizar. Confira a conexão e tente de novo.' })
+    set({
+      phase: 'error',
+      message: L({
+        pt: 'Não consegui atualizar. Confira a conexão e tente de novo.',
+        en: 'I could not update. Check the connection and try again.',
+        es: 'No pude actualizar. Revisa la conexión e inténtalo de nuevo.'
+      })
+    })
   const startDownload = async (): Promise<void> => {
     set({ phase: 'downloading', percent: 0 })
     try {

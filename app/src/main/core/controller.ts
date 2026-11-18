@@ -13,6 +13,7 @@ import { isValidPin } from '../../shared/pin'
 import { approvalPin, reduce } from './machine'
 import { placeAll } from '../../shared/placement'
 import { parseSettings, type SettingsStore } from './settings'
+import { L } from '../../shared/lang'
 
 export interface ControllerDeps {
   engine: EnginePort
@@ -101,24 +102,61 @@ export async function createController({
     const wasMouse = 'mode' in prev && prev.mode === 'mouse'
     const isMouse = 'mode' in next && next.mode === 'mouse'
     if (!mouse) {
-      if (isMouse && !wasMouse) fail('Mouse indisponível neste sistema', '')
+      if (isMouse && !wasMouse)
+        fail(
+          L({
+            pt: 'Mouse indisponível neste sistema',
+            en: 'Mouse not available on this system',
+            es: 'Mouse no disponible en este sistema'
+          }),
+          ''
+        )
       return
     }
     if (isMouse && !wasMouse) {
-      mouse.start(settings.deviceName).catch(failIfStill(next, 'Não deu para ligar o mouse'))
+      mouse
+        .start(settings.deviceName)
+        .catch(
+          failIfStill(
+            next,
+            L({
+              pt: 'Não deu para ligar o mouse',
+              en: 'Could not turn on the mouse',
+              es: 'No se pudo activar el mouse'
+            })
+          )
+        )
     }
     if (wasMouse && !isMouse) mouse.stop().catch(() => undefined)
     if (next.screen === 'mouse-active' && prev.screen === 'mouse' && event.type === 'MOUSE_SHARE') {
       sharingWith = event.peers
       mouse
         .share(placementsFor(event.peers), settings.deviceName)
-        .catch(failIfStill(next, 'Não deu para compartilhar o mouse'))
+        .catch(
+          failIfStill(
+            next,
+            L({
+              pt: 'Não deu para compartilhar o mouse',
+              en: 'Could not share the mouse',
+              es: 'No se pudo compartir el mouse'
+            })
+          )
+        )
     }
     if (prev.screen === 'mouse-request') {
       if (event.type === 'MOUSE_ACCEPT') {
         mouse
           .accept(settings.deviceName)
-          .catch(failIfStill(next, 'Não deu para conectar ao outro aparelho'))
+          .catch(
+            failIfStill(
+              next,
+              L({
+                pt: 'Não deu para conectar ao outro aparelho',
+                en: 'Could not connect to the other device',
+                es: 'No se pudo conectar al otro dispositivo'
+              })
+            )
+          )
       } else if (event.type === 'MOUSE_DENY') mouse.deny().catch(() => undefined)
     }
     if (
@@ -152,7 +190,15 @@ export async function createController({
           if (live()) dispatch({ type: 'PREP_DONE' })
         })
         .catch((cause: unknown) => {
-          if (live()) fail('Não deu para preparar', cause)
+          if (live())
+            fail(
+              L({
+                pt: 'Não deu para preparar',
+                en: 'Could not get ready',
+                es: 'No se pudo preparar'
+              }),
+              cause
+            )
         })
     }
 
@@ -171,7 +217,16 @@ export async function createController({
               ...(pin !== null ? { pin } : {}),
               name: prev.device
             })
-            .catch(failIfStill(next, 'Não deu para responder ao pedido'))
+            .catch(
+              failIfStill(
+                next,
+                L({
+                  pt: 'Não deu para responder ao pedido',
+                  en: 'Could not answer the request',
+                  es: 'No se pudo responder la solicitud'
+                })
+              )
+            )
         }
         if (event.trust && prev.address)
           trust({
@@ -182,25 +237,57 @@ export async function createController({
             ...(prev.peerScreen ? { screen: prev.peerScreen } : {})
           })
       } else if (event.type === 'DENY') {
-        engine.deny(prev.pairingId).catch(failIfStill(next, 'Não deu para responder ao pedido'))
+        engine
+          .deny(prev.pairingId)
+          .catch(
+            failIfStill(
+              next,
+              L({
+                pt: 'Não deu para responder ao pedido',
+                en: 'Could not answer the request',
+                es: 'No se pudo responder la solicitud'
+              })
+            )
+          )
       }
     }
 
     // Parar um aparelho só (o resto segue) ou sair de vez da tela de conectado. Um pedido novo (o "Permitir") não
     // derruba quem já estava vendo.
     if (prev.screen === 'connected' && event.type === 'STOP' && event.fingerprint) {
-      engine.stopSending(event.fingerprint).catch(failIfStill(next, 'Não deu para parar'))
+      engine
+        .stopSending(event.fingerprint)
+        .catch(
+          failIfStill(
+            next,
+            L({ pt: 'Não deu para parar', en: 'Could not stop', es: 'No se pudo detener' })
+          )
+        )
     } else if (
       prev.screen === 'connected' &&
       next.screen !== 'connected' &&
       next.screen !== 'approve' &&
       event.type !== 'CLIENT_DISCONNECTED'
     ) {
-      engine.stopSending().catch(failIfStill(next, 'Não deu para parar'))
+      engine
+        .stopSending()
+        .catch(
+          failIfStill(
+            next,
+            L({ pt: 'Não deu para parar', en: 'Could not stop', es: 'No se pudo detener' })
+          )
+        )
     }
 
     if (next.screen === 'receiving' && prev.screen !== 'receiving') {
-      engine.connect(next.host, settings).catch(failIfStill(next, 'Não deu para conectar'))
+      engine
+        .connect(next.host, settings)
+        .catch(
+          failIfStill(
+            next,
+            L({ pt: 'Não deu para conectar', en: 'Could not connect', es: 'No se pudo conectar' })
+          )
+        )
     }
 
     if (
@@ -208,7 +295,14 @@ export async function createController({
       next.screen !== 'receiving' &&
       event.type !== 'STREAM_ENDED'
     ) {
-      engine.disconnect().catch(failIfStill(next, 'Não deu para encerrar'))
+      engine
+        .disconnect()
+        .catch(
+          failIfStill(
+            next,
+            L({ pt: 'Não deu para encerrar', en: 'Could not end it', es: 'No se pudo terminar' })
+          )
+        )
     }
   }
 

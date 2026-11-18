@@ -24,6 +24,7 @@ import {
   type SenderOptions,
   type Session
 } from './session'
+import { L } from '../../../shared/lang'
 
 /** Um aparelho que está pronto para enviar a tela, como a descoberta o encontrou. */
 export interface WebRtcHost extends Host {
@@ -213,12 +214,29 @@ export class WebRtcEngine implements EnginePort {
     onStep('engine')
     onProgress?.({ note: 'Preparando', fraction: 0.2 })
     const identity = await this.ownIdentity()
-    onProgress?.({ note: 'Verificando a rede', fraction: 0.35 })
+    onProgress?.({
+      note: L({ pt: 'Verificando a rede', en: 'Checking the network', es: 'Revisando la red' }),
+      fraction: 0.35
+    })
     await this.deps.prepareSystem?.()
     onStep('display')
-    onProgress?.({ note: 'Preparando a tela estendida', fraction: 0.5 })
+    onProgress?.({
+      note: L({
+        pt: 'Preparando a tela estendida',
+        en: 'Preparing the extended screen',
+        es: 'Preparando la pantalla extendida'
+      }),
+      fraction: 0.5
+    })
     onStep('encoder')
-    onProgress?.({ note: 'Esperando conexão', fraction: 0.9 })
+    onProgress?.({
+      note: L({
+        pt: 'Esperando conexão',
+        en: 'Waiting for a connection',
+        es: 'Esperando conexión'
+      }),
+      fraction: 0.9
+    })
     const sender = await this.listen(identity)
     this.deps.presence.setSending({ port: sender.port, id: identity.id, fp: identity.fp })
   }

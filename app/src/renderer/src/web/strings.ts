@@ -1,16 +1,8 @@
-/**
- * Os textos da página de receber, no idioma do aparelho de quem abre o QR (pode ser uma visita): português, inglês ou
- * espanhol. Outro idioma cai no inglês; português de qualquer lugar fica em português.
- */
-export type WebLang = 'pt' | 'en' | 'es'
+/** Os textos da página de receber, no idioma do aparelho de quem abre o QR (pode ser uma visita). */
+import { pickLang, type Lang } from '../../../shared/lang'
 
-export function pickLang(languages: readonly string[]): WebLang {
-  for (const language of languages) {
-    const base = language.toLowerCase().split('-')[0]
-    if (base === 'pt' || base === 'en' || base === 'es') return base
-  }
-  return 'en'
-}
+export { pickLang }
+export type WebLang = Lang
 
 const PT = {
   title: 'Receber a tela',
