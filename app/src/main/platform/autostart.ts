@@ -30,6 +30,8 @@ export function createAutostart(deps: {
         await rm(join(dir, 'com.horizonte.app.desktop'), { force: true })
         if (on) {
           await mkdir(dir, { recursive: true })
+          // O GNOME pode deixar aqui um link para o atalho do sistema (do root): gravar por ele dá EACCES.
+          await rm(file, { force: true })
           await writeFile(file, desktopEntry(deps.executable), { encoding: 'utf8', mode: 0o600 })
         } else await rm(file, { force: true })
       } else deps.native(on)

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { chmod, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createAutostart, desktopEntry } from './autostart'
@@ -27,6 +27,30 @@ describe('autostart', () => {
       await expect(readFile(legacy)).rejects.toMatchObject({ code: 'ENOENT' })
       await start.set(false)
       await expect(readFile(file)).rejects.toMatchObject({ code: 'ENOENT' })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('Linux troca o link para o atalho do sistema (sem permissão) por um arquivo próprio', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'horizonte-autostart-'))
+    try {
+      const system = join(dir, 'sistema.desktop')
+      await writeFile(system, '[Desktop Entry]\n')
+      await chmod(system, 0o444)
+      const file = join(dir, 'autostart', 'horizonte.desktop')
+      await mkdir(join(dir, 'autostart'), { recursive: true })
+      await symlink(system, file)
+      const start = createAutostart({
+        platform: 'linux',
+        executable: '/app/Horizonte',
+        configDir: dir,
+        native: () => undefined
+      })
+      await start.set(true)
+      expect((await lstat(file)).isSymbolicLink()).toBe(false)
+      expect(await readFile(file, 'utf8')).toContain('Exec="/app/Horizonte"')
+      expect(await readFile(system, 'utf8')).toBe('[Desktop Entry]\n')
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
