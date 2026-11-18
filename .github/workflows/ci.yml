@@ -99,7 +99,63 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-dev libglib2.0-dev libei-dev
       - name: Usar a versão escolhida
         run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
+      # Assinatura do Windows (SignPath Foundation, grátis para código aberto): liga sozinha quando a variável
+      # SIGNPATH_ORGANIZATION_ID e o segredo SIGNPATH_API_TOKEN existem no repositório. Sem eles, nada muda.
       - run: npm run ${{ matrix.script }}
+        if: matrix.os != 'windows-latest' || vars.SIGNPATH_ORGANIZATION_ID == ''
+      - name: Windows assinado (1/4) - o app sem instalador
+        if: matrix.os == 'windows-latest' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        run: npm run build:helper:win && npm run build && npx electron-builder --win --dir --publish never
+      - name: Windows assinado (2/4) - assinar o Horizonte.exe e o auxiliar do Mouse
+        if: matrix.os == 'windows-latest' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        id: unpacked
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-unpacked
+          path: app/dist/win-unpacked
+      - if: matrix.os == 'windows-latest' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: horizonte
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: app
+          github-artifact-id: ${{ steps.unpacked.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: app/dist/win-unpacked-signed
+      - name: Windows assinado (3/4) - o instalador com o app assinado dentro
+        if: matrix.os == 'windows-latest' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        run: npx electron-builder --win --prepackaged dist/win-unpacked-signed --publish never
+      - name: Windows assinado (4/4) - assinar o instalador
+        if: matrix.os == 'windows-latest' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        id: installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-installer
+          path: app/dist/Horizonte-*-setup.exe
+      - if: matrix.os == 'windows-latest' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: horizonte
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.installer.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: app/dist/signed
+      - name: Instalador assinado no lugar, e o latest.yml com o hash dele
+        if: matrix.os == 'windows-latest' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        shell: bash
+        run: |
+          for f in dist/signed/Horizonte-*-setup.exe; do
+            cp -f "$f" dist/
+            node build-scripts/refresh-latest-yml.mjs dist/latest.yml "dist/$(basename "$f")"
+            # O mapa de blocos era do instalador sem assinatura: sem ele, a atualização baixa o arquivo inteiro.
+            rm -f "dist/$(basename "$f").blockmap"
+          done
+          powershell -Command "Get-AuthenticodeSignature dist/Horizonte-*-setup.exe | Format-List Status,SignerCertificate"
       - name: Conferir a assinatura do app do Mac
         if: matrix.os == 'macos-latest'
         run: |
