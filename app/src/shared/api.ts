@@ -27,6 +27,8 @@ export const CHANNELS = {
   reportDiagnostic: 'horizonte:report-diagnostic',
   copyText: 'horizonte:copy-text',
   shareLink: 'horizonte:share-link',
+  firewall: 'horizonte:firewall',
+  allowFirewall: 'horizonte:allow-firewall',
   push: 'horizonte:push',
   update: 'horizonte:update',
   updateStatus: 'horizonte:update-status',
@@ -65,6 +67,10 @@ export interface HorizonteApi {
   copyText(text: string): Promise<void>
   /** No Mac, abre o menu Compartilhar do sistema (AirDrop) com o link da página. Nos outros, não faz nada. */
   shareLink(url: string): Promise<void>
+  /** Windows: se o firewall deixa o Horizonte receber conexões; null nos outros sistemas. */
+  firewall(): Promise<'allowed' | 'blocked' | 'unknown' | null>
+  /** Windows: tira o bloqueio e libera em redes privadas (pede administrador). Devolve o estado depois. */
+  allowFirewall(): Promise<'allowed' | 'blocked' | 'unknown' | null>
   getUpdateStatus(): Promise<UpdateStatus>
   update(action: UpdateAction): Promise<UpdateStatus>
   onUpdate(callback: (status: UpdateStatus) => void): () => void

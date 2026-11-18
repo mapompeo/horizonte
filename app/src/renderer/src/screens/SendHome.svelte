@@ -43,6 +43,22 @@
   }
   onMount(() => void ensureWeb())
 
+  /**
+   * Windows e Mac: o firewall pergunta na primeira vez. Antes, um aviso; se ficou bloqueado, como liberar (no Windows,
+   * um botão). No Linux, o ufw é liberado com a senha e a recusa aparece no aviso de baixo (VideoHint).
+   */
+  let firewall = $state<'allowed' | 'blocked' | 'unknown' | null>(null)
+  const checkFirewall = async (): Promise<void> => {
+    firewall = await window.horizonte.firewall().catch(() => null)
+  }
+  onMount(() => void checkFirewall())
+  let freeing = $state(false)
+  async function allowFirewall(): Promise<void> {
+    freeing = true
+    firewall = await window.horizonte.allowFirewall().catch(() => firewall)
+    freeing = false
+  }
+
   const screens = $derived.by((): MapScreen[] => {
     const shown = devices.filter((d) => d.fingerprint && d.peerScreen)
     const at = placeAll(
@@ -149,8 +165,32 @@
             >
           {/if}
         </span>
+        {#if firewall === 'unknown' && mac}
+          <span class="notice"
+            >Se o macOS perguntar se o Horizonte pode aceitar conexões de entrada, toque em
+            <b>Permitir</b>. Ele só conversa com aparelhos da sua casa.</span
+          >
+        {:else if firewall === 'unknown'}
+          <span class="notice"
+            >Se o Windows perguntar sobre a rede, marque <b>Redes privadas</b> e toque em Permitir. O
+            Horizonte só conversa com aparelhos da sua casa.</span
+          >
+        {:else if firewall === 'blocked' && mac}
+          <span class="notice"
+            >O firewall do macOS está bloqueando o Horizonte. Libere em <b>Ajustes do Sistema</b> ›
+            <b>Rede</b> › <b>Firewall</b> › <b>Opções</b>.</span
+          >
+        {:else if firewall === 'blocked'}
+          <span class="notice"
+            >O firewall do Windows está bloqueando o Horizonte, e os aparelhos não conseguem
+            conectar.</span
+          >
+          <button class="link" disabled={freeing} onclick={allowFirewall}
+            >Liberar no firewall</button
+          >
+        {/if}
       {:else if web.error}
-        <span class="hint danger-text">{web.error}</span>
+        <span class="notice">{web.error}</span>
         <button class="link" onclick={ensureWeb}>Tentar de novo</button>
       {:else if !preparing}
         <span class="hint">Abrindo…</span>
@@ -208,6 +248,7 @@
   bind:innerWidth={viewport.w}
   bind:innerHeight={viewport.h}
   onkeydown={(e) => e.key === 'Escape' && (zoomed = false)}
+  onfocus={() => firewall !== null && firewall !== 'allowed' && void checkFirewall()}
 />
 {#if zoomed && link}
   <!-- Toque em qualquer lugar (ou Esc) e o QR volta para o cartão. -->

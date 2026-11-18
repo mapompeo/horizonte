@@ -18,7 +18,7 @@ import {
 import { execFile, spawn, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
-import { homedir, hostname, release as osRelease } from 'node:os'
+import { homedir, hostname, release as osRelease, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { autoUpdater } from 'electron-updater'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
@@ -65,6 +65,14 @@ import type { DeviceKind } from '../shared/device'
 import { FakeEngine } from './engine/fake'
 import type { EnginePort } from './engine/port'
 import { runPowerShell } from './platform/windows/probes'
+import { createElevation, runWithUac } from './platform/windows/elevation'
+import {
+  firewallAllowScript,
+  firewallStateScript,
+  parseFirewallState,
+  type FirewallState
+} from './platform/windows/firewall'
+import { appBundle, parseMacFirewall, SOCKETFILTERFW } from './platform/macos/firewall'
 import { lanAddress } from './web/wire'
 import { createBrowserAccess, isLocalPageUrl } from './web/browser'
 import { showShortcut } from '../shared/shortcut'
@@ -605,6 +613,35 @@ async function boot(): Promise<void> {
     if (process.platform !== 'darwin' || !isLocalPageUrl(url)) return
     const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
     new ShareMenu({ urls: [url] }).popup({ window })
+  })
+  // Windows: o firewall pergunta na primeira vez; com Cancelar, ele bloqueia e a tela oferece liberar.
+  const firewallState = async (): Promise<FirewallState | null> => {
+    if (process.platform === 'win32')
+      return parseFirewallState(
+        await runPowerShell(firewallStateScript(process.execPath), 20_000).catch(() => '')
+      )
+    if (process.platform !== 'darwin') return null
+    const ask = (args: string[]): Promise<string> =>
+      new Promise((resolve) =>
+        execFile(SOCKETFILTERFW, args, { timeout: 10_000 }, (_error, out) => resolve(String(out)))
+      )
+    return parseMacFirewall(
+      await ask(['--getglobalstate']),
+      await ask(['--getappblocked', appBundle(process.execPath)])
+    )
+  }
+  ipcMain.handle(CHANNELS.firewall, firewallState)
+  ipcMain.handle(CHANNELS.allowFirewall, async () => {
+    if (process.platform !== 'win32') return null
+    await createElevation({ run: runWithUac, tmpDir: tmpdir() })
+      .runElevated([
+        {
+          description: 'Liberar o Horizonte no firewall',
+          script: firewallAllowScript(process.execPath)
+        }
+      ])
+      .catch(() => undefined) // recusou o pedido de administrador: o estado de agora diz o resto
+    return firewallState()
   })
   // A página do receptor vem deste app (main/web/browser.ts).
   const webAccess = createBrowserAccess({

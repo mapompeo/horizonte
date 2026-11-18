@@ -1119,18 +1119,31 @@ h1[tabindex='-1']:focus {
 }
 
 /* Aviso de driver de vídeo faltando: discreto, com o comando selecionável de uma vez. */
+/* Avisos: um só jeito em todo o app, cinza, curto e centralizado, sem caixa nem vermelho. */
+.notice {
+  display: block;
+  max-width: 36ch;
+  margin: 0 auto;
+  font-size: var(--t-small);
+  color: var(--muted);
+  text-align: center;
+  text-wrap: pretty;
+}
+.notice b {
+  color: var(--fg);
+  font-weight: 600;
+}
 .video-hint {
   display: grid;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: var(--radius-small);
-  background: color-mix(in srgb, currentColor 6%, transparent);
-  text-align: left;
-}
-.video-hint .hint {
-  margin: 0;
+  justify-items: center;
+  gap: 8px;
 }
 .video-hint-command {
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--radius-small);
+  background: var(--seg);
+  color: var(--fg);
   font:
     12px/1.4 ui-monospace,
     monospace;

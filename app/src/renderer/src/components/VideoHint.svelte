@@ -14,7 +14,7 @@
 
 {#if hint}
   <div class="video-hint" role="note">
-    <p class="hint">{hint.message}</p>
+    <p class="notice">{hint.message}</p>
     {#if hint.command}<code class="video-hint-command">{hint.command}</code>{/if}
   </div>
 {/if}

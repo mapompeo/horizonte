@@ -152,6 +152,8 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
       await navigator.clipboard.writeText(text).catch(() => undefined)
     },
     shareLink: async () => undefined,
+    firewall: async () => null,
+    allowFirewall: async () => null,
     reportDiagnostic: async () => {
       throw new Error('A demonstração não envia diagnósticos.')
     },
