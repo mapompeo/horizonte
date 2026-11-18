@@ -108,14 +108,14 @@ function Hz-Exact($dev) {
 $cfg = 'C:\\VirtualDisplayDriver\\vdd_settings.xml'
 if (-not (Hz-Exact $virtual) -and (Test-Path -LiteralPath $cfg)) {
   try {
-    [xml]$x = Get-Content -Raw -LiteralPath $cfg
-    $list = $x.vdd_settings.resolutions
+    [xml]$hzDoc = Get-Content -Raw -LiteralPath $cfg
+    $list = $hzDoc.vdd_settings.resolutions
     if (-not @($list.resolution | Where-Object { [int]$_.width -eq ${width} -and [int]$_.height -eq ${height} }).Count) {
-      $r = $x.CreateElement('resolution')
+      $node = $hzDoc.CreateElement('resolution')
       foreach ($p in @(@('width', ${width}), @('height', ${height}), @('refresh_rate', 60))) {
-        $e = $x.CreateElement($p[0]); $e.InnerText = [string]$p[1]; [void]$r.AppendChild($e)
+        $e = $hzDoc.CreateElement($p[0]); $e.InnerText = [string]$p[1]; [void]$node.AppendChild($e)
       }
-      [void]$list.AppendChild($r); $x.Save($cfg)
+      [void]$list.AppendChild($node); $hzDoc.Save($cfg)
     }
     $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', 'MTTVirtualDisplayPipe', [IO.Pipes.PipeDirection]::InOut)
     $pipe.Connect(3000); $b = [Text.Encoding]::Unicode.GetBytes('RELOAD_DRIVER'); $pipe.Write($b, 0, $b.Length); $pipe.Flush(); $pipe.Dispose()
