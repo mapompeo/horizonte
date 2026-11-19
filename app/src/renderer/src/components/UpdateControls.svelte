@@ -2,6 +2,8 @@
   import { L } from '../lib/i18n'
   import Logo from './Logo.svelte'
   import ErrorCode from './ErrorCode.svelte'
+  import { CHANGELOG } from '../../../shared/changelog'
+  import { currentLang } from '../../../shared/lang'
   import { errorFix, errorTitle } from '../../../shared/errors'
   interface Props {
     /** Uma linha discreta no rodapé da tela principal, em vez do bloco "Sobre" dos Ajustes. */
@@ -81,6 +83,12 @@
       return `${version} · ${L({ pt: 'Atualizado', en: 'Up to date', es: 'Actualizado' })}`
     return version
   }
+  /** "19 de novembro", no idioma do app. */
+  const dateOf = (day: string): string =>
+    new Date(`${day}T12:00:00`).toLocaleDateString(
+      { pt: 'pt-BR', en: 'en-US', es: 'es' }[currentLang()],
+      { day: 'numeric', month: 'long' }
+    )
   const LOADING = L({ pt: 'Carregando…', en: 'Loading…', es: 'Cargando…' })
   const updateTo = (version?: string): string =>
     `${L({ pt: 'Atualizar para', en: 'Update to', es: 'Actualizar a' })} ${pretty(version)}`
@@ -155,6 +163,15 @@
       {/if}
       {#if status.message}<p class="about-line" role="status">{status.message}</p>{/if}
       {#if status.phase === 'error'}<ErrorCode code="HZ-501" />{/if}
+      <details class="changes">
+        <summary>{L({ pt: 'O que mudou', en: 'What’s new', es: 'Qué cambió' })}</summary>
+        {#each CHANGELOG.slice(0, 2) as change (change.date)}
+          <p class="changes-date">{dateOf(change.date)}</p>
+          <ul>
+            {#each change.items as item, i (i)}<li>{L(item)}</li>{/each}
+          </ul>
+        {/each}
+      </details>
       {#if status.phase === 'available'}
         <button class="btn btn-primary btn-sm" onclick={() => perform('download')}
           >{updateTo(status.version)}</button

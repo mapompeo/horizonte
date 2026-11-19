@@ -68,6 +68,8 @@ beforeAll(async () => {
           // O idioma do app: o arquivo de verdade (o componente é compilado à parte, sem caminho relativo).
           if (id === '../lib/i18n') return resolve('src/renderer/src/lib/i18n.ts')
           if (id === '../../../shared/errors') return resolve('src/shared/errors.ts')
+          if (id === '../../../shared/changelog') return resolve('src/shared/changelog.ts')
+          if (id === '../../../shared/lang') return resolve('src/shared/lang.ts')
           if (id === './ErrorCode.svelte') return '\0error-code'
           return null
         },
@@ -163,6 +165,15 @@ test('falha inicial mostra erro e retry da consulta sem inventar versão ou stat
   expect(update).not.toHaveBeenCalled()
   expect(document.body.textContent).toContain('Versão 1.0.0')
   expect(document.querySelector('[role="alert"]')).toBeNull()
+})
+
+test('o que mudou: as novidades mais recentes, com a data, embaixo da versão', async () => {
+  mount()
+  await flush()
+  const changes = document.querySelector('details.changes')
+  expect(changes?.querySelector('summary')?.textContent).toBe('O que mudou')
+  expect(changes?.textContent).toContain('19 de novembro')
+  expect(changes?.textContent).toContain('Escolha o idioma do app nos Ajustes.')
 })
 
 test('cleanup remove subscription e ignora consulta e push depois de unmount', async () => {

@@ -295,6 +295,11 @@ try {
         `[...document.querySelectorAll('[aria-label=Tema] .on')].some(b => b.innerText.trim() === 'Escuro')`,
         'escolher o tema Escuro'
       )
+      await app.ev(`document.querySelector('details.changes').open = true`)
+      if (!/O que mudou/.test(await app.ev('document.body.innerText')))
+        throw new Error('os Ajustes não mostram o que mudou')
+      await app.ev(`document.querySelector('details.changes').scrollIntoView({ block: 'center' })`)
+      await app.shot('04b-o-que-mudou')
       await app.click(/Desinstalar Horizonte/)
       await app.waitText(/não foi instalado por um instalador/)
       await app.shot('04-ajustes')
