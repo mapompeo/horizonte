@@ -252,8 +252,21 @@ try {
         if (hidden !== 'hidden') throw new Error(`a janela continuou na frente (${hidden})`)
       }
     })
+    await step(
+      'com aparelho conectado, trocar de modo pede confirmação; Cancelar mantém',
+      async () => {
+        await app.click(/^Receber$/)
+        await app.waitText(/Trocar para Receber\?/)
+        await app.click(/^Cancelar$/)
+        const text = await app.waitText(/tela conectada/)
+        if (/Trocar para Receber/.test(text))
+          throw new Error('a confirmação não fechou no Cancelar')
+      }
+    )
     await step('trocar para Receber vai direto para a lista', async () => {
       await app.click(/^Receber$/)
+      await app.waitText(/Trocar para Receber\?/)
+      await app.click(/^Trocar$/)
       const text = await app.waitText(/Na sua rede/, 30_000)
       if (/Preparando|permissão/.test(text)) throw new Error('mostrou preparação no receptor')
       await app.shot('03-lista')
@@ -300,6 +313,11 @@ try {
       await app.shot('06-enviar')
     })
     await step('reabrir: os Ajustes lembram 120 fps e o tema Escuro', async () => {
+      // O aparelho de teste pede conexão logo que o Enviar abre: o Permitir cobriria os Ajustes. Recusa e segue.
+      if (/Permitir o Notebook/.test(await app.ev('document.body.innerText'))) {
+        await app.click(/^Recusar$/)
+        await app.waitText(/Aponte a câmera/, 15_000)
+      }
       await app.click(/Ajustes/)
       await app.waitText(/Fluidez/)
       if ((await app.pressed('120 fps')) !== 'true') throw new Error('a fluidez voltou ao padrão')

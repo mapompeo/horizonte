@@ -116,7 +116,10 @@
   {:else}
     {@const mode = modeOf(state)}
     <div class="screen">
-      {#if mode}<TopBar {mode} />{/if}
+      {#if mode}<TopBar
+          {mode}
+          live={state.screen === 'connected' || state.screen === 'receiving'}
+        />{/if}
       {#key viewKey(state)}
         <main
           class="center"

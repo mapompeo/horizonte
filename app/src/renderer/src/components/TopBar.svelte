@@ -6,9 +6,23 @@
 
   interface Props {
     mode: Mode
+    /** Há conexão que a troca derrubaria: aparelhos conectados (Enviar) ou a tela chegando (Receber). */
+    live?: boolean
   }
 
-  let { mode }: Props = $props()
+  let { mode, live = false }: Props = $props()
+
+  /** Trocar com conexão ativa desconecta tudo: antes, a confirmação. */
+  let asking = $state<Mode | null>(null)
+  function select(next: Mode): void {
+    if (next === mode) return
+    if (live) asking = next
+    else void chooseMode(next)
+  }
+  function confirm(): void {
+    if (asking) void chooseMode(asking)
+    asking = null
+  }
 </script>
 
 <header class="topbar">
@@ -60,8 +74,79 @@
         { value: 'send', text: L({ pt: 'Enviar', en: 'Send', es: 'Enviar' }) },
         { value: 'receive', text: L({ pt: 'Receber', en: 'Receive', es: 'Recibir' }) }
       ]}
-      onSelect={(value) => chooseMode(value as Mode)}
+      onSelect={(value) => select(value as Mode)}
     />
   {/if}
   <div class="topbar-right"></div>
 </header>
+
+<svelte:window onkeydown={(event) => event.key === 'Escape' && (asking = null)} />
+{#if asking}
+  <div class="confirm-backdrop" role="presentation" onclick={() => (asking = null)}></div>
+  <div class="confirm card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+    <h2 class="confirm-title" id="confirm-title">
+      {asking === 'receive'
+        ? L({ pt: 'Trocar para Receber?', en: 'Switch to Receive?', es: '¿Cambiar a Recibir?' })
+        : L({ pt: 'Trocar para Enviar?', en: 'Switch to Send?', es: '¿Cambiar a Enviar?' })}
+    </h2>
+    <p class="notice">
+      {mode === 'send'
+        ? L({
+            pt: 'Os aparelhos conectados vão ser desconectados.',
+            en: 'The connected devices will be disconnected.',
+            es: 'Los dispositivos conectados se van a desconectar.'
+          })
+        : L({
+            pt: 'Você para de receber a tela do outro computador.',
+            en: 'You stop receiving the screen of the other computer.',
+            es: 'Dejas de recibir la pantalla de la otra computadora.'
+          })}
+    </p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost btn-sm" onclick={() => (asking = null)}
+        >{L({ pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' })}</button
+      >
+      <!-- svelte-ignore a11y_autofocus -->
+      <button class="btn btn-primary btn-sm" autofocus onclick={confirm}
+        >{L({
+          pt: 'Trocar',
+          en: 'Switch',
+          es: 'Cambiar'
+        })}</button
+      >
+    </div>
+  </div>
+{/if}
+
+<style>
+  .confirm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: color-mix(in srgb, var(--bg) 60%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-app-region: no-drag;
+  }
+  .confirm {
+    position: fixed;
+    z-index: 61;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    width: min(340px, calc(100vw - 32px));
+    display: grid;
+    gap: 12px;
+    padding: 22px 22px 18px;
+    text-align: center;
+    -webkit-app-region: no-drag;
+  }
+  .confirm-title {
+    margin: 0;
+    font-size: var(--t-title, 20px);
+  }
+  .confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+</style>

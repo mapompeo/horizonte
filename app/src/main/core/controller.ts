@@ -114,49 +114,43 @@ export async function createController({
       return
     }
     if (isMouse && !wasMouse) {
-      mouse
-        .start(settings.deviceName)
-        .catch(
-          failIfStill(
-            next,
-            L({
-              pt: 'Não deu para ligar o mouse',
-              en: 'Could not turn on the mouse',
-              es: 'No se pudo activar el mouse'
-            })
-          )
+      mouse.start(settings.deviceName).catch(
+        failIfStill(
+          next,
+          L({
+            pt: 'Não deu para ligar o mouse',
+            en: 'Could not turn on the mouse',
+            es: 'No se pudo activar el mouse'
+          })
         )
+      )
     }
     if (wasMouse && !isMouse) mouse.stop().catch(() => undefined)
     if (next.screen === 'mouse-active' && prev.screen === 'mouse' && event.type === 'MOUSE_SHARE') {
       sharingWith = event.peers
-      mouse
-        .share(placementsFor(event.peers), settings.deviceName)
-        .catch(
-          failIfStill(
-            next,
-            L({
-              pt: 'Não deu para compartilhar o mouse',
-              en: 'Could not share the mouse',
-              es: 'No se pudo compartir el mouse'
-            })
-          )
+      mouse.share(placementsFor(event.peers), settings.deviceName).catch(
+        failIfStill(
+          next,
+          L({
+            pt: 'Não deu para compartilhar o mouse',
+            en: 'Could not share the mouse',
+            es: 'No se pudo compartir el mouse'
+          })
         )
+      )
     }
     if (prev.screen === 'mouse-request') {
       if (event.type === 'MOUSE_ACCEPT') {
-        mouse
-          .accept(settings.deviceName)
-          .catch(
-            failIfStill(
-              next,
-              L({
-                pt: 'Não deu para conectar ao outro aparelho',
-                en: 'Could not connect to the other device',
-                es: 'No se pudo conectar al otro dispositivo'
-              })
-            )
+        mouse.accept(settings.deviceName).catch(
+          failIfStill(
+            next,
+            L({
+              pt: 'Não deu para conectar ao outro aparelho',
+              en: 'Could not connect to the other device',
+              es: 'No se pudo conectar al otro dispositivo'
+            })
           )
+        )
       } else if (event.type === 'MOUSE_DENY') mouse.deny().catch(() => undefined)
     }
     if (
@@ -237,18 +231,16 @@ export async function createController({
             ...(prev.peerScreen ? { screen: prev.peerScreen } : {})
           })
       } else if (event.type === 'DENY') {
-        engine
-          .deny(prev.pairingId)
-          .catch(
-            failIfStill(
-              next,
-              L({
-                pt: 'Não deu para responder ao pedido',
-                en: 'Could not answer the request',
-                es: 'No se pudo responder la solicitud'
-              })
-            )
+        engine.deny(prev.pairingId).catch(
+          failIfStill(
+            next,
+            L({
+              pt: 'Não deu para responder ao pedido',
+              en: 'Could not answer the request',
+              es: 'No se pudo responder la solicitud'
+            })
           )
+        )
       }
     }
 
