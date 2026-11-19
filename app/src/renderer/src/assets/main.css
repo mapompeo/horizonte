@@ -1461,3 +1461,9 @@ input,
 .changes-body {
   padding: 0 16px 12px;
 }
+
+/* No cartão compacto (mais um aparelho), o "Ou digite no navegador" segue o título e o endereço, à esquerda. */
+.hero.compact .notice {
+  margin: 0;
+  text-align: left;
+}

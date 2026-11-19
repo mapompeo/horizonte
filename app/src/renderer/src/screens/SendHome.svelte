@@ -9,7 +9,6 @@
     ScreenPlacement,
     WebAccess
   } from '../../../shared/types'
-  import { placeAll } from '../../../shared/placement'
   import { safeName } from '../lib/copy'
   import { send } from '../lib/actions'
   import { ms } from '../lib/motion'
@@ -19,7 +18,8 @@
   import ErrorCode from '../components/ErrorCode.svelte'
   import { errorFix, errorTitle } from '../../../shared/errors'
   import { L } from '../lib/i18n'
-  import PlacementMap, { type MapScreen } from '../components/PlacementMap.svelte'
+  import PlacementMap from '../components/PlacementMap.svelte'
+  import { mapScreens } from '../lib/map-screens'
 
   interface Props {
     devices: ConnectedDevice[]
@@ -50,21 +50,7 @@
   }
   onMount(() => void ensureWeb())
 
-  const screens = $derived.by((): MapScreen[] => {
-    const shown = devices.filter((d) => d.fingerprint && d.peerScreen)
-    const at = placeAll(
-      shown.map((d) => d.fingerprint),
-      placements,
-      placement
-    )
-    return shown.map((d, i) => ({
-      key: d.fingerprint as string,
-      name: d.device,
-      screen: d.peerScreen as NonNullable<ConnectedDevice['peerScreen']>,
-      placement: at[i],
-      quality: links[d.fingerprint as string]
-    }))
-  })
+  const screens = $derived(mapScreens(devices, placements, placement, links))
   const link = $derived(web.on && web.url ? web.url : null)
   const qrText = $derived(web.qr ?? link)
   const mac = window.horizonte.platform === 'darwin'

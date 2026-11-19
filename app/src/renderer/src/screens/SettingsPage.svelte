@@ -2,7 +2,15 @@
   import { onMount } from 'svelte'
   import { L } from '../lib/i18n'
   import { PROFILES } from '../../../shared/quality'
-  import type { Fps, Language, Settings, Theme } from '../../../shared/types'
+  import type {
+    ConnectedDevice,
+    Fps,
+    Language,
+    LinkQuality,
+    Settings,
+    Theme
+  } from '../../../shared/types'
+  import { mapScreens } from '../lib/map-screens'
   import { chooseMode, closeSettings, patchSettings } from '../lib/actions'
   import PlacementMap from '../components/PlacementMap.svelte'
   import ReportButton from '../components/ReportButton.svelte'
@@ -13,9 +21,15 @@
 
   interface Props {
     settings: Settings
+    /** Aparelhos conectados agora: o mapa de posição mostra eles, como na tela de conectados. */
+    devices?: ConnectedDevice[]
+    links?: Record<string, LinkQuality>
   }
 
-  let { settings }: Props = $props()
+  let { settings, devices = [], links = {} }: Props = $props()
+  const connected = $derived(
+    mapScreens(devices, settings.screenPlacements, settings.screenPlacement, links)
+  )
 
   /** Só onde o atalho vale de verdade (no Wayland, não). */
   let shortcut = $state<string | null>(null)
@@ -140,16 +154,23 @@
         {L({ pt: 'Posição da tela', en: 'Screen position', es: 'Posición de la pantalla' })}
       </h2>
       <div class="card card-pad">
+        <!-- Com aparelho conectado, o mesmo mapa da tela de conectados; sem nenhum, a posição padrão dos próximos. -->
         <PlacementMap
-          screens={[
-            {
-              key: '*',
-              name: L({ pt: 'Tela estendida', en: 'Extended screen', es: 'Pantalla extendida' }),
-              screen:
-                settings.trusted.findLast((device) => device.screen)?.screen ?? UNKNOWN_SCREEN,
-              placement: settings.screenPlacement
-            }
-          ]}
+          screens={connected.length
+            ? connected
+            : [
+                {
+                  key: '*',
+                  name: L({
+                    pt: 'Tela estendida',
+                    en: 'Extended screen',
+                    es: 'Pantalla extendida'
+                  }),
+                  screen:
+                    settings.trusted.findLast((device) => device.screen)?.screen ?? UNKNOWN_SCREEN,
+                  placement: settings.screenPlacement
+                }
+              ]}
           placements={settings.screenPlacements}
           height={180}
         />

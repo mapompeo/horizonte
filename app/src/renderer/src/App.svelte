@@ -115,7 +115,11 @@
   {@const state = $snapshot.state}
   {@const settings = $snapshot.settings}
   {#if $route === 'settings' && state.screen !== 'error' && state.screen !== 'approve'}
-    <SettingsPage {settings} />
+    <SettingsPage
+      {settings}
+      devices={state.screen === 'connected' ? state.devices : []}
+      links={$snapshot.links}
+    />
   {:else}
     {@const mode = modeOf(state)}
     <div class="screen">

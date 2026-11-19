@@ -37,7 +37,10 @@ async function html(
             codec: 'h264',
             autostart: false,
             deviceName: 'Desktop',
-            mode: 'send'
+            mode: 'send',
+            trusted: [],
+            screenPlacement: { side: 'right' },
+            screenPlacements: {}
           }
         }
       : null
