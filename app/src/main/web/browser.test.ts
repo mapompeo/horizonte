@@ -143,6 +143,22 @@ test('MJPEG: com a resposta aberta, a imagem vai nela e a ponte pede a próxima 
   await expect.poll(() => received).toEqual(['{"t":"more"}'])
 })
 
+test('pedir uma imagem avulsa larga a resposta MJPEG (navegador que não mostra MJPEG)', async () => {
+  const { sessao } = (await (await open()).json()) as { sessao: string }
+  await expect.poll(() => peers.length).toBe(1)
+  const video = await fetch(`${base}/api/video?sessao=${sessao}`)
+  const bytes = Buffer.from([0xff, 0xd8, 9, 0xff, 0xd9])
+  peers[0].write(`{"t":"jpeg","data":"data:image/jpeg;base64,${bytes.toString('base64')}"}\n`)
+  await expect.poll(() => received).toEqual(['{"t":"more"}'])
+  const frame = await fetch(`${base}/api/quadro?sessao=${sessao}&n=1`)
+  expect(Buffer.from(await frame.arrayBuffer())).toEqual(bytes)
+  // A resposta MJPEG terminou, e a próxima imagem volta a ser avisada pelos eventos.
+  await (video.body as ReadableStream<Uint8Array>).pipeTo(new WritableStream())
+  const events = readEvents(sessao, 2)
+  peers[0].write(`{"t":"jpeg","data":"data:image/jpeg;base64,${bytes.toString('base64')}"}\n`)
+  expect((await events)[1]).toBe('{"t":"quadro","n":2}')
+})
+
 test('mensagem fora do formato da sinalização não passa', async () => {
   const { sessao } = (await (await open()).json()) as { sessao: string }
   const sent = await fetch(`${base}/api/enviar?sessao=${sessao}`, {

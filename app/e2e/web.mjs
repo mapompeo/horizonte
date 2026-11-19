@@ -40,8 +40,9 @@ const TIMEOUT_MS = 90_000
 // HZ_WEB_COMPAT=1: abre com `?compat`, o modo dos navegadores antigos (iPad sem WebRTC): MJPEG em vez de vídeo.
 // HZ_WEB_COMPAT=quadro: o mesmo, forçando o jeito reserva (uma imagem por vez), o de navegador que não mostra MJPEG.
 const COMPAT = process.env.HZ_WEB_COMPAT
-const COMPAT_PATH = { 1: '/?compat', quadro: '/?compat=quadro' }[COMPAT]
-const COMPAT_SRC = { 1: '/api/video', quadro: '/api/quadro' }[COMPAT]
+// HZ_WEB_COMPAT=quebrado: o MJPEG falha (como no Safari do iOS 9, que mostra o "?"): tem que cair para o reserva.
+const COMPAT_PATH = { 1: '/?compat', quadro: '/?compat=quadro', quebrado: '/?compat' }[COMPAT]
+const COMPAT_SRC = { 1: '/api/video', quadro: '/api/quadro', quebrado: '/api/quadro' }[COMPAT]
 
 function launch(label, args, onLine = () => undefined) {
   const full = [`--user-data-dir=${mkdtempSync(join(tmpdir(), `hz-web-${label}-`))}`, ...args]
@@ -113,6 +114,8 @@ async function phone(url) {
         console.error(`promessa recusada: ${event.reason}`)
       )
     })
+    if (COMPAT === 'quebrado')
+      await page.route('**/api/video*', (route) => route.fulfill({ status: 500, body: '' }))
     await page.goto(url)
     const greeting = await page.textContent('#texto')
     const expected = { chrome: 'Toca Conectar.' }[PHONE]

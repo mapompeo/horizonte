@@ -293,7 +293,15 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
     if (route === 'POST /api/enviar') return done(send(id, req, res))
     if (route === 'GET /api/video') return startVideo(id, res)
     if (route === 'GET /api/quadro') {
-      const frame = tunnels.get(id)?.frame
+      // Pediu uma imagem avulsa: o navegador não mostra o MJPEG. Larga a resposta MJPEG (o Safari antigo pode deixá-la
+      // aberta) para os avisos de imagem nova voltarem a ir pelos eventos.
+      const tunnel = tunnels.get(id)
+      if (tunnel?.video) {
+        const video = tunnel.video
+        tunnel.video = null
+        video.end()
+      }
+      const frame = tunnel?.frame
       if (!frame) return reply(res, 404)
       res.writeHead(200, {
         'content-type': 'image/jpeg',

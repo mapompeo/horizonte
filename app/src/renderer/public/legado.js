@@ -213,7 +213,7 @@
     say(message)
   }
 
-  function showImage(send) {
+  function showImage(send, width) {
     image = document.createElement('img')
     image.alt = ''
     var style = image.style
@@ -229,15 +229,13 @@
     var since = new Date().getTime()
     var check = setInterval(function () {
       if (!image) return clearInterval(check)
-      if (image.naturalWidth > 0) {
+      // Só vale a imagem do tamanho pedido: o Safari antigo dá tamanho até ao ícone de imagem quebrada ("?").
+      if (image.naturalWidth === width) {
         start.hidden = true
         tries = 0
         return clearInterval(check)
       }
-      if (mode === 'video' && new Date().getTime() - since > 6000) {
-        mode = 'quadro'
-        image.src = frameUrl()
-      }
+      if (mode === 'video' && new Date().getTime() - since > 6000) toFrames()
     }, 250)
     image.onload = function () {
       if (mode !== 'quadro') return
@@ -246,8 +244,14 @@
       send({ t: 'more' })
     }
     // Imagem que não carregou: pede a próxima em vez de parar.
+    // MJPEG que o navegador não mostra: troca na hora para uma imagem por vez.
     image.onerror = function () {
       if (mode === 'quadro') send({ t: 'more' })
+      else toFrames()
+    }
+    function toFrames() {
+      mode = 'quadro'
+      image.src = frameUrl()
     }
     // Um dedo vira o toque da tela estendida. Uma mensagem por vez e na ordem (o "soltar" não passa na frente do
     // movimento); movimentos na fila viram só o mais recente.
@@ -348,7 +352,7 @@
         else if (message.t === 'pending') say(T.allow)
         else if (message.t === 'accepted') {
           say(T.opening)
-          showImage(send)
+          showImage(send, width)
           if (mode === 'video') image.src = '/api/video?sessao=' + session
           send({
             t: 'want',
