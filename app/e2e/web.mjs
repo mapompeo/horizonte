@@ -37,8 +37,11 @@ const PHONES = {
 }
 if (!PHONES[PHONE]) throw new Error(`HZ_WEB_PHONE desconhecido: ${PHONE}`)
 const TIMEOUT_MS = 90_000
-// HZ_WEB_COMPAT=1: abre com `?compat`, o modo dos navegadores antigos (iPad sem WebRTC): imagens JPEG em vez de vídeo.
-const COMPAT = process.env.HZ_WEB_COMPAT === '1'
+// HZ_WEB_COMPAT=1: abre com `?compat`, o modo dos navegadores antigos (iPad sem WebRTC): MJPEG em vez de vídeo.
+// HZ_WEB_COMPAT=quadro: o mesmo, forçando o jeito reserva (uma imagem por vez), o de navegador que não mostra MJPEG.
+const COMPAT = process.env.HZ_WEB_COMPAT
+const COMPAT_PATH = { 1: '/?compat', quadro: '/?compat=quadro' }[COMPAT]
+const COMPAT_SRC = { 1: '/api/video', quadro: '/api/quadro' }[COMPAT]
 
 function launch(label, args, onLine = () => undefined) {
   const full = [`--user-data-dir=${mkdtempSync(join(tmpdir(), `hz-web-${label}-`))}`, ...args]
@@ -119,18 +122,24 @@ async function phone(url) {
     }
     await page.click('#form button[type=submit], #form button')
     if (COMPAT) {
-      // A imagem tem que trocar várias vezes (o quadro de teste anda): é o `more` pedindo a próxima.
+      // A imagem tem que mudar várias vezes (o quadro de teste anda): compara os pixels, que no MJPEG o endereço é
+      // sempre o mesmo.
       const frames = await page
         .waitForFunction(
-          () => {
-            const img = document.querySelector('img[src*="/api/quadro"]')
+          (src) => {
+            const img = document.querySelector(`img[src*="${src}"]`)
             if (!img || !img.naturalWidth) return null
-            window.__srcs = window.__srcs ?? new Set()
-            window.__srcs.add(img.src)
-            return window.__srcs.size >= 5 ? `${img.naturalWidth}x${img.naturalHeight}` : null
+            const canvas = document.createElement('canvas')
+            canvas.width = 64
+            canvas.height = 40
+            const context = canvas.getContext('2d')
+            context.drawImage(img, 0, 0, 64, 40)
+            window.__seen = window.__seen ?? new Set()
+            window.__seen.add(canvas.toDataURL())
+            return window.__seen.size >= 5 ? `${img.naturalWidth}x${img.naturalHeight}` : null
           },
-          null,
-          { timeout: 45_000, polling: 50 }
+          COMPAT_SRC,
+          { timeout: 45_000, polling: 100 }
         )
         .then((handle) => handle.jsonValue())
         .catch(() => null)
@@ -146,11 +155,11 @@ async function phone(url) {
       await page.setViewportSize({ width: height, height: width })
       const turned = await page
         .waitForFunction(
-          (w) => {
-            const img = document.querySelector('img[src*="/api/quadro"]')
+          ([w, src]) => {
+            const img = document.querySelector(`img[src*="${src}"]`)
             return img && img.naturalWidth === w ? `${img.naturalWidth}x${img.naturalHeight}` : null
           },
-          height,
+          [height, COMPAT_SRC],
           { timeout: 45_000, polling: 100 }
         )
         .then((handle) => handle.jsonValue())
@@ -245,7 +254,7 @@ const sender = launch(
     const match = /no navegador: (http:\/\/\S+:\d+)/.exec(line)
     if (match && !started) {
       started = true
-      phone(COMPAT ? `${match[1]}/?compat` : match[1]).then(finish, (error) => {
+      phone(COMPAT_PATH ? `${match[1]}${COMPAT_PATH}` : match[1]).then(finish, (error) => {
         console.log(`navegador: erro ${error}`)
         finish(1)
       })

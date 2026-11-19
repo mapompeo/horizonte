@@ -78,7 +78,13 @@ interface Tunnel {
   /** A imagem mais recente do modo compatível, já em binário, e o número dela. */
   frame: Buffer | null
   frameNo: number
+  /** A resposta MJPEG aberta (`GET /api/video`), se o navegador usa esse jeito. */
+  video: ServerResponse | null
+  /** Número da última imagem que já foi para a resposta MJPEG. */
+  videoNo: number
 }
+
+const BOUNDARY = 'horizonte-quadro'
 
 const JPEG_LINE = '{"t":"jpeg","data":"data:image/jpeg;base64,'
 
@@ -123,6 +129,45 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
     clearTimeout(tunnel.idle)
     tunnel.socket.destroy()
     tunnel.events?.end()
+    tunnel.video?.end()
+  }
+
+  /**
+   * MJPEG (como as câmeras IP): uma resposta só, com uma imagem atrás da outra, que a `<img>` mostra sozinha, sem
+   * JavaScript nem um pedido por imagem. O ritmo é o da rede: a próxima só é pedida ao computador (`more`) depois que
+   * a anterior saiu daqui; um aparelho lento recebe menos imagens em vez de acumular atraso.
+   */
+  function writeVideo(tunnel: Tunnel): void {
+    const video = tunnel.video
+    const frame = tunnel.frame
+    if (!video || !frame || tunnel.videoNo === tunnel.frameNo) return
+    tunnel.videoNo = tunnel.frameNo
+    video.write(
+      `--${BOUNDARY}\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.length}\r\n\r\n`
+    )
+    video.write(frame)
+    const more = (): void => {
+      if (tunnel.video === video) tunnel.socket.write('{"t":"more"}\n')
+    }
+    if (video.write('\r\n')) more()
+    else video.once('drain', more)
+  }
+
+  function startVideo(id: string, res: ServerResponse): void {
+    const tunnel = tunnels.get(id)
+    if (!tunnel || tunnel.video) return reply(res, 404)
+    tunnel.video = res
+    tunnel.videoNo = 0
+    res.writeHead(200, {
+      'content-type': `multipart/x-mixed-replace; boundary=${BOUNDARY}`,
+      'cache-control': 'no-store'
+    })
+    // O cabeçalho sai já, antes da primeira imagem: o navegador não fica esperando a resposta começar.
+    res.flushHeaders()
+    res.on('close', () => {
+      if (tunnel.video === res) tunnel.video = null
+    })
+    writeVideo(tunnel)
   }
 
   function push(tunnel: Tunnel, line: string): void {
@@ -148,7 +193,9 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
       backlog: [],
       idle: setTimeout(() => close(id), IDLE_MS),
       frame: null,
-      frameNo: 0
+      frameNo: 0,
+      video: null,
+      videoNo: 0
     }
     tunnels.set(id, tunnel)
     let pending = ''
@@ -161,7 +208,11 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
       while ((at = pending.indexOf('\n')) >= 0) {
         const line = pending.slice(0, at)
         pending = pending.slice(at + 1)
-        if (line) push(tunnel, takeFrame(tunnel, line) ?? line)
+        if (!line) continue
+        const notice = takeFrame(tunnel, line)
+        if (!notice) push(tunnel, line)
+        else if (tunnel.video) writeVideo(tunnel)
+        else push(tunnel, notice)
       }
     })
     socket.on('error', () => close(id))
@@ -240,6 +291,7 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
     if (route === 'POST /api/abrir') return done(open(req, res))
     if (route === 'GET /api/eventos') return events(id, res)
     if (route === 'POST /api/enviar') return done(send(id, req, res))
+    if (route === 'GET /api/video') return startVideo(id, res)
     if (route === 'GET /api/quadro') {
       const frame = tunnels.get(id)?.frame
       if (!frame) return reply(res, 404)

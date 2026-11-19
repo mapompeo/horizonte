@@ -120,6 +120,29 @@ test('modo compatível: a imagem fica na ponte e o evento só leva o número', a
   expect((await fetch(`${base}/api/quadro?sessao=outra`)).status).toBe(404)
 })
 
+test('MJPEG: com a resposta aberta, a imagem vai nela e a ponte pede a próxima ao computador', async () => {
+  const { sessao } = (await (await open()).json()) as { sessao: string }
+  await expect.poll(() => peers.length).toBe(1)
+  const res = await fetch(`${base}/api/video?sessao=${sessao}`)
+  expect(res.headers.get('content-type')).toBe(
+    'multipart/x-mixed-replace; boundary=horizonte-quadro'
+  )
+  const bytes = Buffer.from([0xff, 0xd8, 7, 8, 0xff, 0xd9])
+  peers[0].write(`{"t":"jpeg","data":"data:image/jpeg;base64,${bytes.toString('base64')}"}\n`)
+  const reader = (res.body as ReadableStream<Uint8Array>).getReader()
+  let got = Buffer.alloc(0)
+  while (!got.includes(Buffer.from([0xff, 0xd9]))) {
+    const { value } = await reader.read()
+    got = Buffer.concat([got, Buffer.from(value as Uint8Array)])
+  }
+  await reader.cancel()
+  expect(got.toString('latin1')).toContain(
+    '--horizonte-quadro\r\nContent-Type: image/jpeg\r\nContent-Length: 6\r\n\r\n'
+  )
+  expect(got.includes(bytes)).toBe(true)
+  await expect.poll(() => received).toEqual(['{"t":"more"}'])
+})
+
 test('mensagem fora do formato da sinalização não passa', async () => {
   const { sessao } = (await (await open()).json()) as { sessao: string }
   const sent = await fetch(`${base}/api/enviar?sessao=${sessao}`, {

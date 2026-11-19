@@ -110,6 +110,13 @@
   }
 
   var image = null
+  /** 'video' (MJPEG) ou 'quadro' (uma imagem por vez). `?compat=quadro` força o segundo (teste). */
+  var mode = 'video'
+  var forceFrames = /[?&]compat=quadro\b/.test(location.search)
+  var frameNo = 0
+  function frameUrl() {
+    return '/api/quadro?sessao=' + session + '&n=' + ++frameNo
+  }
   var events = null
   var session = null
   /** Deitado ou em pé na hora de conectar: se girar, a tela estendida é refeita no tamanho novo. */
@@ -164,14 +171,31 @@
     style.height = '100%'
     style.zIndex = '3'
     style.background = '#000'
+    // Primeiro o MJPEG (uma resposta só, a imagem anda sozinha). Se em 6 s não aparecer nada (navegador que não
+    // mostra MJPEG), cai para uma imagem por vez, cada uma pedida pelo aviso `quadro`.
+    mode = forceFrames ? 'quadro' : 'video'
+    var since = new Date().getTime()
+    var check = setInterval(function () {
+      if (!image) return clearInterval(check)
+      if (image.naturalWidth > 0) {
+        start.hidden = true
+        tries = 0
+        return clearInterval(check)
+      }
+      if (mode === 'video' && new Date().getTime() - since > 6000) {
+        mode = 'quadro'
+        image.src = frameUrl()
+      }
+    }, 250)
     image.onload = function () {
+      if (mode !== 'quadro') return
       start.hidden = true
       tries = 0
       send({ t: 'more' })
     }
     // Imagem que não carregou: pede a próxima em vez de parar.
     image.onerror = function () {
-      send({ t: 'more' })
+      if (mode === 'quadro') send({ t: 'more' })
     }
     // Um dedo vira o toque da tela estendida. Uma mensagem por vez e na ordem (o "soltar" não passa na frente do
     // movimento); movimentos na fila viram só o mais recente.
@@ -271,6 +295,7 @@
         else if (message.t === 'accepted') {
           say(T.opening)
           showImage(send)
+          if (mode === 'video') image.src = '/api/video?sessao=' + session
           send({
             t: 'want',
             width: width,
@@ -281,8 +306,7 @@
             jpeg: true
           })
         } else if (message.t === 'denied') finish(T.denied, true)
-        else if (message.t === 'quadro' && image)
-          image.src = '/api/quadro?sessao=' + session + '&n=' + Number(message.n)
+        else if (message.t === 'quadro' && image && mode === 'quadro') image.src = frameUrl()
         else if (message.t === 'ping') send({ t: 'pong', at: message.at })
         else if (message.t === 'bye') finish(T.ended)
       }
