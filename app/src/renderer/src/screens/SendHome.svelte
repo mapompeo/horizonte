@@ -150,9 +150,9 @@
         <!-- Sem câmera (outro PC, tablet): o endereço para digitar ou copiar, dito com todas as letras. -->
         <span class="notice"
           >{L({
-            pt: 'Ou digite este endereço no navegador do outro aparelho:',
-            en: 'Or type this address in the other device’s browser:',
-            es: 'O escribe esta dirección en el navegador del otro dispositivo:'
+            pt: 'Ou digite no navegador:',
+            en: 'Or type it in a browser:',
+            es: 'O escríbela en el navegador:'
           })}</span
         >
         <span
