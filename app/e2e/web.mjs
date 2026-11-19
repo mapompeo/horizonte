@@ -123,7 +123,7 @@ async function phone(url) {
       const frames = await page
         .waitForFunction(
           () => {
-            const img = document.querySelector('img[src^="data:image/jpeg"]')
+            const img = document.querySelector('img[src*="/api/quadro"]')
             if (!img || !img.naturalWidth) return null
             window.__srcs = window.__srcs ?? new Set()
             window.__srcs.add(img.src)
@@ -140,7 +140,23 @@ async function phone(url) {
           : `navegador: sem imagens (${await page.textContent('#texto').catch(() => '?')})\n${said.slice(-30).join('\n')}`
       )
       await page.screenshot({ path: join(OUT, `web-compat-${PHONE}.png`) }).catch(() => undefined)
-      return frames ? 0 : 1
+      if (!frames) return 1
+      // Girou o aparelho: a tela estendida é refeita em pé, e as imagens chegam no tamanho novo.
+      const { width, height } = page.viewportSize()
+      await page.setViewportSize({ width: height, height: width })
+      const turned = await page
+        .waitForFunction(
+          (w) => {
+            const img = document.querySelector('img[src*="/api/quadro"]')
+            return img && img.naturalWidth === w ? `${img.naturalWidth}x${img.naturalHeight}` : null
+          },
+          height,
+          { timeout: 45_000, polling: 100 }
+        )
+        .then((handle) => handle.jsonValue())
+        .catch(() => null)
+      console.log(turned ? `navegador: girou, imagens ${turned}` : 'navegador: não refez ao girar')
+      return turned ? 0 : 1
     }
     const size = await page
       .waitForFunction(

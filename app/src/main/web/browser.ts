@@ -75,6 +75,23 @@ interface Tunnel {
   /** Mensagens que chegaram antes de o navegador abrir os eventos. */
   backlog: string[]
   idle: ReturnType<typeof setTimeout>
+  /** A imagem mais recente do modo compatível, já em binário, e o número dela. */
+  frame: Buffer | null
+  frameNo: number
+}
+
+const JPEG_LINE = '{"t":"jpeg","data":"data:image/jpeg;base64,'
+
+/**
+ * Modo compatível: a imagem não vai ao navegador dentro do evento (base64 em JSON, pesado de ler num iPad antigo).
+ * A ponte guarda os bytes e o evento só diz o número; o navegador carrega a imagem por `GET /api/quadro`, direto
+ * numa `<img>`, como qualquer foto.
+ */
+function takeFrame(tunnel: Tunnel, line: string): string | null {
+  if (!line.startsWith(JPEG_LINE) || !line.endsWith('"}')) return null
+  tunnel.frame = Buffer.from(line.slice(JPEG_LINE.length, -2), 'base64')
+  tunnel.frameNo++
+  return JSON.stringify({ t: 'quadro', n: tunnel.frameNo })
 }
 
 async function readBody(req: IncomingMessage, limit: number): Promise<string | null> {
@@ -129,7 +146,9 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
       socket,
       events: null,
       backlog: [],
-      idle: setTimeout(() => close(id), IDLE_MS)
+      idle: setTimeout(() => close(id), IDLE_MS),
+      frame: null,
+      frameNo: 0
     }
     tunnels.set(id, tunnel)
     let pending = ''
@@ -142,7 +161,7 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
       while ((at = pending.indexOf('\n')) >= 0) {
         const line = pending.slice(0, at)
         pending = pending.slice(at + 1)
-        if (line) push(tunnel, line)
+        if (line) push(tunnel, takeFrame(tunnel, line) ?? line)
       }
     })
     socket.on('error', () => close(id))
@@ -221,6 +240,16 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
     if (route === 'POST /api/abrir') return done(open(req, res))
     if (route === 'GET /api/eventos') return events(id, res)
     if (route === 'POST /api/enviar') return done(send(id, req, res))
+    if (route === 'GET /api/quadro') {
+      const frame = tunnels.get(id)?.frame
+      if (!frame) return reply(res, 404)
+      res.writeHead(200, {
+        'content-type': 'image/jpeg',
+        'content-length': frame.length,
+        'cache-control': 'no-store'
+      })
+      return void res.end(frame)
+    }
     if (route === 'POST /api/fechar') {
       close(id)
       return reply(res, 204)

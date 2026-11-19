@@ -23,7 +23,10 @@
       denied: 'O computador não permitiu.',
       ended: 'O computador encerrou a conexão.',
       dropped: 'A conexão caiu. Toque em Conectar.',
-      noAnswer: 'Sem resposta do computador. Tente de novo.'
+      noAnswer: 'Sem resposta do computador. Tente de novo.',
+      reconnecting: 'Reconectando…',
+      turning: 'Girando a tela…',
+      tip: 'Para tela cheia: Compartilhar, Adicionar à Tela de Início. Para a tela não apagar: Bloqueio Automático em Nunca, nos Ajustes.'
     },
     en: {
       connecting: 'Connecting…',
@@ -33,7 +36,10 @@
       denied: 'The computer did not allow it.',
       ended: 'The computer ended the connection.',
       dropped: 'The connection dropped. Tap Connect.',
-      noAnswer: 'No answer from the computer. Try again.'
+      noAnswer: 'No answer from the computer. Try again.',
+      reconnecting: 'Reconnecting…',
+      turning: 'Rotating the screen…',
+      tip: 'For full screen: Share, Add to Home Screen. To keep the screen on: set Auto-Lock to Never in Settings.'
     },
     es: {
       connecting: 'Conectando…',
@@ -43,7 +49,10 @@
       denied: 'La computadora no lo permitió.',
       ended: 'La computadora cerró la conexión.',
       dropped: 'Se cayó la conexión. Toca Conectar.',
-      noAnswer: 'Sin respuesta de la computadora. Inténtalo de nuevo.'
+      noAnswer: 'Sin respuesta de la computadora. Inténtalo de nuevo.',
+      reconnecting: 'Reconectando…',
+      turning: 'Girando la pantalla…',
+      tip: 'Para pantalla completa: Compartir, Agregar a inicio. Para que no se apague: Bloqueo automático en Nunca, en Ajustes.'
     }
   }
   var code = String(navigator.language || 'pt')
@@ -103,11 +112,41 @@
   var image = null
   var events = null
   var session = null
+  /** Deitado ou em pé na hora de conectar: se girar, a tela estendida é refeita no tamanho novo. */
+  var wide = null
+
+  /** A conexão caiu (Wi-Fi, tela do iPad apagou): tenta de novo sozinho algumas vezes antes de mostrar o erro. */
+  var WAITS = [1000, 2000, 4000, 8000, 8000]
+  var tries = 0
+  function retry(message) {
+    var wait = WAITS[tries++]
+    finish(wait === undefined ? message : T.reconnecting, wait === undefined)
+    if (wait === undefined) {
+      tries = 0
+      return
+    }
+    button.disabled = true
+    setTimeout(connect, wait)
+  }
+
+  var turning = null
+  window.addEventListener(
+    'resize',
+    function () {
+      clearTimeout(turning)
+      turning = setTimeout(function () {
+        if (!session || wide === window.innerWidth >= window.innerHeight) return
+        finish(T.turning)
+        connect()
+      }, 700)
+    },
+    false
+  )
 
   function finish(message, error) {
     if (events) events.close()
     if (session) post('/api/fechar?sessao=' + session, {})
-    events = session = null
+    events = session = wide = null
     if (image && image.parentNode) image.parentNode.removeChild(image)
     image = null
     start.hidden = false
@@ -127,11 +166,25 @@
     style.background = '#000'
     image.onload = function () {
       start.hidden = true
+      tries = 0
       send({ t: 'more' })
     }
-    // Um dedo vira o toque da tela estendida; o movimento sai um por vez, só o mais recente.
-    var moving = false
-    var nextMove = null
+    // Imagem que não carregou: pede a próxima em vez de parar.
+    image.onerror = function () {
+      send({ t: 'more' })
+    }
+    // Um dedo vira o toque da tela estendida. Uma mensagem por vez e na ordem (o "soltar" não passa na frente do
+    // movimento); movimentos na fila viram só o mais recente.
+    var queue = []
+    var sending = false
+    function pump() {
+      if (sending || !queue.length || !session) return
+      sending = true
+      post('/api/enviar?sessao=' + session, { t: 'input', raw: queue.shift().raw }, function () {
+        sending = false
+        pump()
+      })
+    }
     function touch(phase, event) {
       event.preventDefault()
       var point = event.changedTouches[0]
@@ -139,23 +192,10 @@
       var x = Math.max(0, Math.min(1, point.clientX / window.innerWidth))
       var y = Math.max(0, Math.min(1, point.clientY / window.innerHeight))
       var raw = JSON.stringify({ t: 'touch', id: 0, phase: phase, x: x, y: y })
-      if (phase !== 'move') {
-        nextMove = null
-        return send({ t: 'input', raw: raw })
-      }
-      if (moving) {
-        nextMove = raw
-        return
-      }
-      moving = true
-      ;(function go(value) {
-        post('/api/enviar?sessao=' + session, { t: 'input', raw: value }, function () {
-          var queued = nextMove
-          nextMove = null
-          if (queued) go(queued)
-          else moving = false
-        })
-      })(raw)
+      var last = queue[queue.length - 1]
+      if (phase === 'move' && last && last.phase === 'move') last.raw = raw
+      else queue.push({ phase: phase, raw: raw })
+      pump()
     }
     image.addEventListener(
       'touchstart',
@@ -198,8 +238,10 @@
       } catch (e) {
         reply = {}
       }
-      if (status !== 200 || !reply.sessao) return finish(T.noAnswer, true)
+      if (status !== 200 || !reply.sessao)
+        return tries ? retry(T.noAnswer) : finish(T.noAnswer, true)
       session = reply.sessao
+      wide = window.innerWidth >= window.innerHeight
       var id = identity()
       var width = even(window.innerWidth, 160)
       var height = even(window.innerHeight, 120)
@@ -215,7 +257,7 @@
         false
       )
       events.onerror = function () {
-        if (events && events.readyState === 2) finish(T.dropped, true)
+        if (events && events.readyState === 2) retry(T.dropped)
       }
       events.onmessage = function (event) {
         var message
@@ -239,8 +281,8 @@
             jpeg: true
           })
         } else if (message.t === 'denied') finish(T.denied, true)
-        else if (message.t === 'jpeg' && image && /^data:image\/jpeg;base64,/.test(message.data))
-          image.src = message.data
+        else if (message.t === 'quadro' && image)
+          image.src = '/api/quadro?sessao=' + session + '&n=' + Number(message.n)
         else if (message.t === 'ping') send({ t: 'pong', at: message.at })
         else if (message.t === 'bye') finish(T.ended)
       }
@@ -256,10 +298,18 @@
     })
   }
 
+  // Aberto pelo Safari (não pela Tela de Início), mostra como ficar em tela cheia e sem a tela apagar.
+  var tip = document.getElementById('dica')
+  if (tip && navigator.standalone !== true) {
+    tip.textContent = T.tip
+    tip.hidden = false
+  }
+
   form.addEventListener(
     'submit',
     function (event) {
       event.preventDefault()
+      tries = 0
       connect()
     },
     false

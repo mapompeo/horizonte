@@ -107,6 +107,19 @@ test('liga o navegador à sinalização nos dois sentidos', async () => {
   await expect.poll(() => received).toEqual(['{"t":"cancel"}'])
 })
 
+test('modo compatível: a imagem fica na ponte e o evento só leva o número', async () => {
+  const { sessao } = (await (await open()).json()) as { sessao: string }
+  const bytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 0xff, 0xd9])
+  const events = readEvents(sessao, 2)
+  await expect.poll(() => peers.length).toBe(1)
+  peers[0].write(`{"t":"jpeg","data":"data:image/jpeg;base64,${bytes.toString('base64')}"}\n`)
+  expect(await events).toEqual(['{"t":"pending"}', '{"t":"quadro","n":1}'])
+  const res = await fetch(`${base}/api/quadro?sessao=${sessao}&n=1`)
+  expect(res.headers.get('content-type')).toBe('image/jpeg')
+  expect(Buffer.from(await res.arrayBuffer())).toEqual(bytes)
+  expect((await fetch(`${base}/api/quadro?sessao=outra`)).status).toBe(404)
+})
+
 test('mensagem fora do formato da sinalização não passa', async () => {
   const { sessao } = (await (await open()).json()) as { sessao: string }
   const sent = await fetch(`${base}/api/enviar?sessao=${sessao}`, {

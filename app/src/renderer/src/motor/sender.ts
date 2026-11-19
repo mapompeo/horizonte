@@ -149,8 +149,9 @@ function dataUrl(blob: Blob): Promise<string> {
 
 /**
  * Modo compatível (navegador antigo, sem WebRTC): a tela vira imagens JPEG, uma por vez. A próxima só sai depois do
- * `more` de quem mostra, então um aparelho lento recebe menos imagens em vez de acumular atraso. Tela parada não
- * manda nada até mudar.
+ * `more` de quem mostra, então um aparelho lento recebe menos imagens em vez de acumular atraso. Ela já fica pronta
+ * enquanto o aparelho mostra a anterior (sai assim que o `more` chega) e é refeita se a tela mudar nesse meio tempo.
+ * Tela parada não manda nada até mudar.
  */
 export function jpegFrames(
   track: MediaStreamTrack,
@@ -162,23 +163,29 @@ export function jpegFrames(
   const context = canvas.getContext('2d')
   let latest: VideoFrame | null = null
   let fresh = false
+  let ready: string | null = null
   let wanted = true
   let busy = false
   let stopped = false
-  const encode = async (): Promise<void> => {
-    if (stopped || busy || !wanted || !fresh || !latest || !context) return
-    busy = true
+  const flush = (): void => {
+    if (stopped || !wanted || !ready) return
+    send(ready)
+    ready = null
     wanted = false
+  }
+  const encode = async (): Promise<void> => {
+    if (stopped || busy || !fresh || !latest || !context) return
+    busy = true
     fresh = false
     context.drawImage(latest, 0, 0, size.width, size.height)
     try {
-      const data = await dataUrl(
+      ready = await dataUrl(
         await canvas.convertToBlob({ type: 'image/jpeg', quality: JPEG_QUALITY })
       )
-      if (!stopped) send(data)
     } finally {
       busy = false
     }
+    flush()
     void encode()
   }
   void (async () => {
@@ -194,7 +201,7 @@ export function jpegFrames(
   return {
     more() {
       wanted = true
-      void encode()
+      flush()
     },
     stop() {
       stopped = true
