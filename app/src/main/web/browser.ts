@@ -266,7 +266,10 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
       const data = await readFile(join(options.pagesDir, relative))
       res.writeHead(200, {
         'content-type': TYPES[extname(relative)] ?? 'application/octet-stream',
-        'cache-control': relative === 'web.html' ? 'no-store' : 'max-age=3600',
+        // A página e o modo compatível (legado.js, sem nome com hash) nunca ficam guardados: uma versão velha no
+        // cache do aparelho seguia rodando depois de atualizar o app. Os arquivos de assets/ têm o hash no nome.
+        'cache-control':
+          relative === 'web.html' || relative === 'legado.js' ? 'no-store' : 'max-age=3600',
         // A página só fala com este mesmo endereço.
         'content-security-policy':
           "default-src 'self'; img-src 'self' data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'",

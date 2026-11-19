@@ -82,6 +82,13 @@ test('serve a página e os arquivos dela, e mais nada da pasta', async () => {
   expect((await fetch(`${base}/assets/%2e%2e/segredo.txt`)).status).toBe(404)
 })
 
+test('a página e o modo compatível nunca ficam no cache do aparelho; os assets com hash ficam', async () => {
+  writeFileSync(join(pages, 'legado.js'), 'var x = 1')
+  expect((await fetch(`${base}/`)).headers.get('cache-control')).toBe('no-store')
+  expect((await fetch(`${base}/legado.js?v=2`)).headers.get('cache-control')).toBe('no-store')
+  expect((await fetch(`${base}/assets/web.js`)).headers.get('cache-control')).toBe('max-age=3600')
+})
+
 test('manifesto: adicionada à tela de início, a página abre como app em tela inteira', async () => {
   const res = await fetch(`${base}/manifest.webmanifest`)
   expect(res.headers.get('content-type')).toContain('application/manifest+json')

@@ -38,7 +38,8 @@
       <p class="web-tip" id="dica" hidden>Para tela cheia, adicione à Tela de Início.</p>
     </main>
     <!-- Navegador antigo: o modo compatível, em JavaScript antigo e sem build. Em navegador novo, não faz nada. -->
-    <script src="/legado.js"></script>
+    <!-- O "?v=" muda o endereço: aparelhos que guardaram a versão velha (com cache de 1 hora) baixam a nova. -->
+    <script src="/legado.js?v=2"></script>
     <script type="module" src="./src/web/main.ts"></script>
   </body>
 </html>
