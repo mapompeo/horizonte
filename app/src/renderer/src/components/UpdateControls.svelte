@@ -45,7 +45,7 @@
       initialError = null
     } catch {
       if (!active || request !== revision) return
-      initialError = `${errorTitle('HZ-501')}. ${errorFix('HZ-501')}`
+      initialError = `${errorTitle('501')}. ${errorFix('501')}`
     } finally {
       if (active && request === revision) loading = false
     }
@@ -65,7 +65,7 @@
         status = {
           ...status,
           phase: 'error',
-          message: `${errorTitle('HZ-501')}. ${errorFix('HZ-501')}`
+          message: `${errorTitle('501')}. ${errorFix('501')}`
         }
     }
   }
@@ -184,7 +184,7 @@
       <p class="row-note" role="status">{status.message}</p>
     {/if}
     {#if status.phase === 'error'}<p class="row-note">
-        <ErrorCode code={status.code ?? 'HZ-501'} />
+        <ErrorCode code={status.code ?? '501'} />
       </p>{/if}
     <details class="changes">
       <summary class="row row-button"
@@ -201,7 +201,7 @@
     </details>
   {:else if initialError}
     <p class="row-note" role="alert">{initialError}</p>
-    <p class="row-note"><ErrorCode code="HZ-501" /></p>
+    <p class="row-note"><ErrorCode code="501" /></p>
     <button class="row row-button retry" disabled={loading} onclick={() => loadStatus()}>
       {loading ? LOADING : L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}
     </button>

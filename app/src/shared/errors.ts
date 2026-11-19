@@ -1,7 +1,7 @@
 import { L, type Lang } from './lang'
 
 /**
- * Os erros que a pessoa vê, cada um com um código (HZ-xxx), um título que diz o que aconteceu e uma frase que diz o
+ * Os erros que a pessoa vê, cada um com um código (número de 3 dígitos), um título que diz o que aconteceu e uma frase que diz o
  * que fazer. O código aparece junto e leva à tabela do site (`site/erros.html`), que repete este catálogo.
  *
  * Como escrever: o título é o que aconteceu, em palavras simples, sem culpar a pessoa e sem termo técnico. A frase é
@@ -34,12 +34,12 @@ const SENDING_OPEN = {
 }
 
 export const ERRORS = {
-  'HZ-100': {
+  '100': {
     title: { pt: 'Algo deu errado', en: 'Something went wrong', es: 'Algo salió mal' },
     fix: RESTART
   },
   // 1xx: preparar este computador
-  'HZ-101': {
+  '101': {
     title: {
       pt: 'Não deu para preparar a tela',
       en: 'Could not get the screen ready',
@@ -47,7 +47,7 @@ export const ERRORS = {
     },
     fix: RESTART
   },
-  'HZ-102': {
+  '102': {
     title: {
       pt: 'Outro programa está usando a conexão do Horizonte',
       en: 'Another program is using Horizonte’s connection',
@@ -59,7 +59,7 @@ export const ERRORS = {
       es: 'Cierra otros programas de pantalla remota u otra copia de Horizonte e inténtalo de nuevo.'
     }
   },
-  'HZ-103': {
+  '103': {
     title: {
       pt: 'O Horizonte não conseguiu salvar os arquivos dele',
       en: 'Horizonte could not save its files',
@@ -71,7 +71,7 @@ export const ERRORS = {
       es: 'Reinicia la computadora e inténtalo de nuevo.'
     }
   },
-  'HZ-104': {
+  '104': {
     title: { pt: 'O disco está cheio', en: 'The disk is full', es: 'El disco está lleno' },
     fix: {
       pt: 'Libere espaço no disco e tente de novo.',
@@ -79,7 +79,7 @@ export const ERRORS = {
       es: 'Libera espacio en el disco e inténtalo de nuevo.'
     }
   },
-  'HZ-105': {
+  '105': {
     title: {
       pt: 'Não deu para abrir a página do celular',
       en: 'Could not open the phone page',
@@ -91,7 +91,7 @@ export const ERRORS = {
       es: 'Cierra los programas que usen el puerto 7777 e inténtalo de nuevo.'
     }
   },
-  'HZ-106': {
+  '106': {
     title: {
       pt: 'Não deu para abrir o Horizonte junto com o sistema',
       en: 'Could not set Horizonte to open with the system',
@@ -103,7 +103,7 @@ export const ERRORS = {
       es: 'Apaga y vuelve a activar “Abrir con el sistema” en Ajustes. Si continúa, reinicia la computadora.'
     }
   },
-  'HZ-107': {
+  '107': {
     title: {
       pt: 'Não deu para iniciar o Horizonte',
       en: 'Could not start Horizonte',
@@ -116,7 +116,7 @@ export const ERRORS = {
     }
   },
   // 2xx: a tela estendida
-  'HZ-201': {
+  '201': {
     title: {
       pt: 'A tela estendida não apareceu',
       en: 'The extended screen did not appear',
@@ -128,7 +128,7 @@ export const ERRORS = {
       es: 'Reinicia la computadora e inténtalo de nuevo.'
     }
   },
-  'HZ-202': {
+  '202': {
     title: {
       pt: 'Não deu para instalar o monitor virtual',
       en: 'Could not install the virtual monitor',
@@ -140,7 +140,7 @@ export const ERRORS = {
       es: 'Inténtalo de nuevo y acepta el permiso de administrador cuando aparezca.'
     }
   },
-  'HZ-203': {
+  '203': {
     title: {
       pt: 'Este computador não cria uma tela estendida',
       en: 'This computer cannot create an extended screen',
@@ -152,7 +152,7 @@ export const ERRORS = {
       es: 'Actualiza el sistema. En Linux, usa GNOME.'
     }
   },
-  'HZ-204': {
+  '204': {
     title: {
       pt: 'O Horizonte não consegue ver a tela',
       en: 'Horizonte cannot see the screen',
@@ -165,11 +165,11 @@ export const ERRORS = {
     }
   },
   // 3xx: a conexão entre os aparelhos
-  'HZ-301': {
+  '301': {
     title: { pt: 'Não deu para conectar', en: 'Could not connect', es: 'No se pudo conectar' },
     fix: SAME_NETWORK
   },
-  'HZ-302': {
+  '302': {
     title: {
       pt: 'O outro aparelho não respondeu',
       en: 'The other device did not answer',
@@ -177,7 +177,7 @@ export const ERRORS = {
     },
     fix: SAME_NETWORK
   },
-  'HZ-303': {
+  '303': {
     title: {
       pt: 'O outro aparelho fechou a conexão',
       en: 'The other device closed the connection',
@@ -189,7 +189,7 @@ export const ERRORS = {
       es: 'Conéctate de nuevo.'
     }
   },
-  'HZ-304': {
+  '304': {
     title: {
       pt: 'Não deu para responder ao pedido',
       en: 'Could not answer the request',
@@ -197,7 +197,7 @@ export const ERRORS = {
     },
     fix: ASK_AGAIN
   },
-  'HZ-305': {
+  '305': {
     title: {
       pt: 'O pedido não vale mais',
       en: 'The request is no longer valid',
@@ -205,7 +205,7 @@ export const ERRORS = {
     },
     fix: ASK_AGAIN
   },
-  'HZ-306': {
+  '306': {
     title: {
       pt: 'Não deu para desconectar',
       en: 'Could not disconnect',
@@ -214,7 +214,7 @@ export const ERRORS = {
     fix: RESTART
   },
   // 4xx: o mouse compartilhado
-  'HZ-401': {
+  '401': {
     title: {
       pt: 'O mouse compartilhado não funciona neste sistema',
       en: 'The shared mouse does not work on this system',
@@ -226,7 +226,7 @@ export const ERRORS = {
       es: 'Usa Enviar o Recibir para extender la pantalla.'
     }
   },
-  'HZ-402': {
+  '402': {
     title: {
       pt: 'Não deu para ligar o mouse compartilhado',
       en: 'Could not turn on the shared mouse',
@@ -238,7 +238,7 @@ export const ERRORS = {
       es: 'Permite la Accesibilidad para Horizonte si el sistema lo pide, e inténtalo de nuevo.'
     }
   },
-  'HZ-403': {
+  '403': {
     title: {
       pt: 'Não deu para compartilhar o mouse',
       en: 'Could not share the mouse',
@@ -247,7 +247,7 @@ export const ERRORS = {
     fix: SAME_NETWORK
   },
   // 5xx: atualizações
-  'HZ-501': {
+  '501': {
     title: {
       pt: 'Não deu para procurar atualização',
       en: 'Could not check for updates',
@@ -259,7 +259,7 @@ export const ERRORS = {
       es: 'Revisa la conexión a internet e inténtalo de nuevo.'
     }
   },
-  'HZ-502': {
+  '502': {
     title: {
       pt: 'Não deu para baixar a atualização',
       en: 'Could not download the update',
@@ -271,7 +271,7 @@ export const ERRORS = {
       es: 'Revisa la conexión a internet e inténtalo de nuevo. Si continúa, descarga la versión nueva desde el sitio.'
     }
   },
-  'HZ-503': {
+  '503': {
     title: {
       pt: 'Não deu para instalar a atualização',
       en: 'Could not install the update',
@@ -284,7 +284,7 @@ export const ERRORS = {
     }
   },
   // 6xx: receber pelo navegador (celular, tablet)
-  'HZ-601': {
+  '601': {
     title: {
       pt: 'O computador não respondeu',
       en: 'The computer did not answer',
@@ -292,7 +292,7 @@ export const ERRORS = {
     },
     fix: SENDING_OPEN
   },
-  'HZ-602': {
+  '602': {
     title: {
       pt: 'O computador está ocupado',
       en: 'The computer is busy',
@@ -304,7 +304,7 @@ export const ERRORS = {
       es: 'Espera un poco y toca Conectar.'
     }
   },
-  'HZ-603': {
+  '603': {
     title: {
       pt: 'O computador não permitiu',
       en: 'The computer did not allow it',
@@ -316,7 +316,7 @@ export const ERRORS = {
       es: 'Toca Conectar y elige Permitir en la computadora.'
     }
   },
-  'HZ-604': {
+  '604': {
     title: {
       pt: 'Versões diferentes do Horizonte',
       en: 'Different versions of Horizonte',
@@ -328,7 +328,7 @@ export const ERRORS = {
       es: 'Actualiza Horizonte en la computadora y recarga esta página.'
     }
   },
-  'HZ-605': {
+  '605': {
     title: { pt: 'A conexão caiu', en: 'The connection dropped', es: 'Se cayó la conexión' },
     fix: {
       pt: 'Toque em Conectar.',
@@ -336,7 +336,7 @@ export const ERRORS = {
       es: 'Toca Conectar.'
     }
   },
-  'HZ-606': {
+  '606': {
     title: {
       pt: 'Não deu para confirmar que é o seu computador',
       en: 'Could not confirm it is your computer',
@@ -348,7 +348,7 @@ export const ERRORS = {
       es: 'Toca Conectar de nuevo. Si continúa, escanea otra vez el QR de la computadora.'
     }
   },
-  'HZ-607': {
+  '607': {
     title: {
       pt: 'Este navegador não conseguiu abrir a tela',
       en: 'This browser could not open the screen',
@@ -390,35 +390,35 @@ export type ErrorOp =
   | 'update'
 
 const OP_CODE: Record<ErrorOp, ErrorCode> = {
-  prepare: 'HZ-101',
-  'web-page': 'HZ-105',
-  answer: 'HZ-304',
-  connect: 'HZ-301',
-  disconnect: 'HZ-306',
-  'mouse-unavailable': 'HZ-401',
-  'mouse-start': 'HZ-402',
-  'mouse-share': 'HZ-403',
-  update: 'HZ-501'
+  prepare: '101',
+  'web-page': '105',
+  answer: '304',
+  connect: '301',
+  disconnect: '306',
+  'mouse-unavailable': '401',
+  'mouse-start': '402',
+  'mouse-share': '403',
+  update: '501'
 }
 
 /** Causas conhecidas (o texto do erro, em qualquer idioma do sistema) que têm um código mais certeiro. */
 const CAUSES: [RegExp, ErrorCode][] = [
-  [/não achei o monitor virtual|o monitor virtual não apareceu/i, 'HZ-201'],
+  [/não achei o monitor virtual|o monitor virtual não apareceu/i, '201'],
   [
     /pacote do driver veio incompleto|autorização para o certificado do monitor virtual|sem o driver do monitor virtual/i,
-    'HZ-202'
+    '202'
   ],
-  [/não tem como criar a tela estendida/i, 'HZ-203'],
-  [/nenhuma tela para capturar/i, 'HZ-204'],
-  [/EADDRINUSE|não deu para abrir a conexão/i, 'HZ-102'],
-  [/ENOSPC|disco cheio/i, 'HZ-104'],
-  [/EACCES|EPERM|EROFS|permission denied|sem permissão/i, 'HZ-103'],
-  [/pedido (já )?não está mais|não está mais esperando resposta/i, 'HZ-305'],
-  [/fechou a conexão/i, 'HZ-303'],
-  [/não respondeu|não se apresentou a tempo/i, 'HZ-302']
+  [/não tem como criar a tela estendida/i, '203'],
+  [/nenhuma tela para capturar/i, '204'],
+  [/EADDRINUSE|não deu para abrir a conexão/i, '102'],
+  [/ENOSPC|disco cheio/i, '104'],
+  [/EACCES|EPERM|EROFS|permission denied|sem permissão/i, '103'],
+  [/pedido (já )?não está mais|não está mais esperando resposta/i, '305'],
+  [/fechou a conexão/i, '303'],
+  [/não respondeu|não se apresentou a tempo/i, '302']
 ]
 
 export function errorCodeFor(op: ErrorOp | null, cause: string): ErrorCode {
   for (const [pattern, code] of CAUSES) if (pattern.test(cause)) return code
-  return op ? OP_CODE[op] : 'HZ-100'
+  return op ? OP_CODE[op] : '100'
 }

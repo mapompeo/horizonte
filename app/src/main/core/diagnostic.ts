@@ -3,7 +3,7 @@ import type { Snapshot } from '../../shared/types'
 
 /** O código do catálogo pelo texto do erro (só causas conhecidas); nunca devolve o texto da exceção. */
 export function diagnosticErrorCode(text: string): ErrorCode {
-  const code = /\bHZ-\d{3}\b/.exec(text)?.[0]
+  const code = /^\d{3}$/.exec(text.trim())?.[0]
   return isErrorCode(code) ? code : errorCodeFor(null, text)
 }
 

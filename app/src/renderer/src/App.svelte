@@ -176,8 +176,8 @@
     <main class="center">
       {#if $syncError}
         <h1 class="title" role="alert">{$syncError}</h1>
-        <p class="subtitle">{errorFix('HZ-100')}</p>
-        <ErrorCode code="HZ-100" />
+        <p class="subtitle">{errorFix('100')}</p>
+        <ErrorCode code="100" />
         <button class="btn btn-primary" onclick={initialize} disabled={syncing}>
           {syncing
             ? L({ pt: 'Carregando…', en: 'Loading…', es: 'Cargando…' })

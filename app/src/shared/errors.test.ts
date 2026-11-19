@@ -10,7 +10,7 @@ const codes = Object.keys(ERRORS) as ErrorCode[]
 describe('catálogo de erros', () => {
   it('cada código tem título e o que fazer nos três idiomas, no mesmo jeito de escrever', () => {
     for (const code of codes) {
-      expect(code).toMatch(/^HZ-\d{3}$/)
+      expect(code).toMatch(/^\d{3}$/)
       for (const lang of LANGS) {
         const { title, fix } = { title: ERRORS[code].title[lang], fix: ERRORS[code].fix[lang] }
         // Título: o que aconteceu, curto e sem ponto (vira título de tela). O que fazer: frase com ponto final.
@@ -27,36 +27,32 @@ describe('catálogo de erros', () => {
 
   it('a causa conhecida vira o código certeiro; sem causa conhecida, o da operação', () => {
     expect(errorCodeFor('prepare', 'Não achei o monitor virtual no motor de transmissão.')).toBe(
-      'HZ-201'
+      '201'
     )
-    expect(errorCodeFor('prepare', 'O pacote do driver veio incompleto.')).toBe('HZ-202')
+    expect(errorCodeFor('prepare', 'O pacote do driver veio incompleto.')).toBe('202')
     expect(errorCodeFor('prepare', 'listen EADDRINUSE: address already in use :::47910')).toBe(
-      'HZ-102'
+      '102'
     )
-    expect(errorCodeFor('prepare', 'ENOSPC: no space left on device')).toBe('HZ-104')
-    expect(errorCodeFor('prepare', "EACCES: permission denied, open 'settings.json'")).toBe(
-      'HZ-103'
-    )
-    expect(errorCodeFor('answer', 'Esse pedido não está mais esperando resposta.')).toBe('HZ-305')
-    expect(errorCodeFor('connect', 'O outro aparelho não respondeu ao pedido a tempo.')).toBe(
-      'HZ-302'
-    )
-    expect(errorCodeFor('connect', 'O outro aparelho fechou a conexão.')).toBe('HZ-303')
-    expect(errorCodeFor('connect', 'algo novo')).toBe('HZ-301')
-    expect(errorCodeFor('mouse-start', 'algo novo')).toBe('HZ-402')
-    expect(errorCodeFor(null, 'algo novo')).toBe('HZ-100')
+    expect(errorCodeFor('prepare', 'ENOSPC: no space left on device')).toBe('104')
+    expect(errorCodeFor('prepare', "EACCES: permission denied, open 'settings.json'")).toBe('103')
+    expect(errorCodeFor('answer', 'Esse pedido não está mais esperando resposta.')).toBe('305')
+    expect(errorCodeFor('connect', 'O outro aparelho não respondeu ao pedido a tempo.')).toBe('302')
+    expect(errorCodeFor('connect', 'O outro aparelho fechou a conexão.')).toBe('303')
+    expect(errorCodeFor('connect', 'algo novo')).toBe('301')
+    expect(errorCodeFor('mouse-start', 'algo novo')).toBe('402')
+    expect(errorCodeFor(null, 'algo novo')).toBe('100')
   })
 
   it('só código do catálogo passa como código', () => {
-    expect(isErrorCode('HZ-201')).toBe(true)
-    for (const bad of ['HZ-999', 'hz-201', 'toString', '__proto__', 42, null]) {
+    expect(isErrorCode('201')).toBe(true)
+    for (const bad of ['999', 'HZ-201', 'hz-201', '20', 'toString', '__proto__', 42, null]) {
       expect(isErrorCode(bad)).toBe(false)
     }
   })
 
   it('a página do navegador antigo (legado.js, sem build) usa os mesmos textos do catálogo', () => {
     const legacy = readFileSync(resolve('src/renderer/public/legado.js'), 'utf8')
-    const used = [...legacy.matchAll(/'(HZ-\d{3})'/g)].map((m) => m[1])
+    const used = [...legacy.matchAll(/'(\d{3})'/g)].map((m) => m[1])
     expect(used.length).toBeGreaterThan(0)
     for (const code of new Set(used)) {
       expect(isErrorCode(code), code).toBe(true)
@@ -140,7 +136,7 @@ function renderPage(): string {
   const groups = Object.keys(AREAS)
     .map((area) => {
       const rows = codes
-        .filter((code) => code.charAt(3) === area || (area === '1' && code === 'HZ-100'))
+        .filter((code) => code.charAt(0) === area)
         .map(
           (code) =>
             `        <tr id="${code}"><td class="code">${code}</td><td class="what">${escape(ERRORS[code].title.pt)}</td><td class="fix">${escape(ERRORS[code].fix.pt)}</td></tr>`
@@ -162,7 +158,7 @@ ${rows}
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>${pt.pageTitle}</title>
-    <meta name="description" content="Os códigos de erro do Horizonte (HZ-xxx): o que cada um quer dizer e como resolver.">
+    <meta name="description" content="Os códigos de erro do Horizonte (número de 3 dígitos): o que cada um quer dizer e como resolver.">
     <link rel="canonical" href="https://horizonte-monitor.vercel.app/erros">
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
     <style>

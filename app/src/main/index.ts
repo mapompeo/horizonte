@@ -51,7 +51,7 @@ import {
 import { createDiagnosticHistory } from './core/diagnostic-history'
 import { createSettingsStore } from './core/settings'
 import { createAutostart } from './platform/autostart'
-import { CLEAN_START_ENV, cleanStartCommand, hasNoNewPrivs } from './platform/linux/clean-start'
+import { cleanStartCommand, hasNoNewPrivs, takeCleanStartMark } from './platform/linux/clean-start'
 import { dockEdgeHint } from './platform/linux/dock-edge'
 import { parsePowerSave, wifiPowerHint } from './platform/linux/wifi-power'
 import { finishStartup, runStartup } from './startup'
@@ -492,7 +492,7 @@ async function boot(): Promise<void> {
   controller.subscribe(rememberError)
   rememberError(controller.getSnapshot())
   // O que o atualizador faz fica num arquivo (updater.log, na pasta do app): quando a atualização falha, o motivo
-  // está lá, e o código na tela (HZ-501, 502 ou 503) já diz o passo.
+  // está lá, e o código na tela (501, 502 ou 503) já diz o passo.
   const updaterLog = join(app.getPath('userData'), 'updater.log')
   const writeLog = (level: string, parts: unknown[]): void => {
     const line = `${new Date().toISOString()} ${level} ${parts.map((p) => (p instanceof Error ? p.message : String(p))).join(' ')}\n`
@@ -788,7 +788,7 @@ async function boot(): Promise<void> {
     reportError: (error) => {
       console.error(error)
       // O detalhe técnico fica no log; a pessoa vê o que aconteceu, o que fazer e o código.
-      dialog.showErrorBox(errorTitle('HZ-106'), errorDialogText('HZ-106'))
+      dialog.showErrorBox(errorTitle('106'), errorDialogText('106'))
     }
   })
   void updates.perform('check')
@@ -824,9 +824,12 @@ function readMotorArgs(): MotorArgs | null | 'invalid' {
 }
 const motor = readMotorArgs()
 
+// A marca da abertura limpa vale só para este processo (ver `takeCleanStartMark`).
+const cleanStarted = takeCleanStartMark(process.env)
+
 /** No Linux empacotado, com a trava ligada e sem já ter tentado: pede a abertura limpa. Devolve se pediu. */
 function restartWithoutPrivilegeLock(): boolean {
-  if (process.platform !== 'linux' || !app.isPackaged || process.env[CLEAN_START_ENV]) return false
+  if (process.platform !== 'linux' || !app.isPackaged || cleanStarted) return false
   try {
     if (!hasNoNewPrivs(readFileSync('/proc/self/status', 'utf8'))) return false
     const { command, args } = cleanStartCommand(process.execPath, process.argv.slice(1))
@@ -864,7 +867,7 @@ else if (!app.isPackaged || app.requestSingleInstanceLock()) {
   void runStartup(boot, (error) => {
     console.error(error)
     try {
-      dialog.showErrorBox(errorTitle('HZ-107'), errorDialogText('HZ-107'))
+      dialog.showErrorBox(errorTitle('107'), errorDialogText('107'))
     } finally {
       app.quit()
     }

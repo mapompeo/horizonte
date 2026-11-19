@@ -44,7 +44,7 @@
     } catch {
       web = {
         on: false,
-        error: 'HZ-105'
+        error: '105'
       }
     }
   }
@@ -198,8 +198,8 @@
         </span>
         <SetupNotice />
       {:else if web.error}
-        <span class="notice"><b>{errorTitle('HZ-105')}.</b> {errorFix('HZ-105')}</span>
-        <ErrorCode code="HZ-105" />
+        <span class="notice"><b>{errorTitle('105')}.</b> {errorFix('105')}</span>
+        <ErrorCode code="105" />
         <button class="link" onclick={ensureWeb}
           >{L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}</button
         >

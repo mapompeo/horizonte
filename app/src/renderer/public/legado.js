@@ -54,7 +54,7 @@
   }
   /** Os erros que esta página mostra, iguais aos do catálogo do app (src/shared/errors.ts; um teste confere). */
   var ERRORS = {
-    'HZ-601': {
+    601: {
       pt: [
         'O computador não respondeu',
         'Confira se o Horizonte está aberto em Enviar no computador, na mesma rede Wi-Fi.'
@@ -68,17 +68,17 @@
         'Revisa que Horizonte esté abierto en Enviar en la computadora, en la misma red Wi-Fi.'
       ]
     },
-    'HZ-602': {
+    602: {
       pt: ['O computador está ocupado', 'Espere um pouco e toque em Conectar.'],
       en: ['The computer is busy', 'Wait a moment and tap Connect.'],
       es: ['La computadora está ocupada', 'Espera un poco y toca Conectar.']
     },
-    'HZ-603': {
+    603: {
       pt: ['O computador não permitiu', 'Toque em Conectar e escolha Permitir no computador.'],
       en: ['The computer did not allow it', 'Tap Connect and choose Allow on the computer.'],
       es: ['La computadora no lo permitió', 'Toca Conectar y elige Permitir en la computadora.']
     },
-    'HZ-605': {
+    605: {
       pt: ['A conexão caiu', 'Toque em Conectar.'],
       en: ['The connection dropped', 'Tap Connect.'],
       es: ['Se cayó la conexión', 'Toca Conectar.']
@@ -319,7 +319,7 @@
         reply = {}
       }
       if (status !== 200 || !reply.sessao) {
-        var failed = status === 429 ? 'HZ-602' : 'HZ-601'
+        var failed = status === 429 ? '602' : '601'
         return tries ? retry(failed) : finish(failed)
       }
       session = reply.sessao
@@ -339,7 +339,7 @@
         false
       )
       events.onerror = function () {
-        if (events && events.readyState === 2) retry('HZ-605')
+        if (events && events.readyState === 2) retry('605')
       }
       events.onmessage = function (event) {
         var message
@@ -363,7 +363,7 @@
             codecs: [],
             jpeg: true
           })
-        } else if (message.t === 'denied') finish('HZ-603')
+        } else if (message.t === 'denied') finish('603')
         else if (message.t === 'quadro' && image && mode === 'quadro') image.src = frameUrl()
         else if (message.t === 'ping') send({ t: 'pong', at: message.at })
         else if (message.t === 'bye') finish(T.ended)

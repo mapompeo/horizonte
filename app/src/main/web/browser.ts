@@ -389,7 +389,7 @@ export function createBrowserAccess(options: {
         return status()
       } catch {
         // A janela mostra o título e o que fazer, no idioma da pessoa, pelo código.
-        return { on: false, error: 'HZ-105' }
+        return { on: false, error: '105' }
       }
     },
     async stop() {

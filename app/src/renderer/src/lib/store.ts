@@ -48,7 +48,7 @@ export async function changeWebAccess(current: WebAccess): Promise<WebAccess> {
     }
     return {
       ...confirmed,
-      error: 'HZ-105'
+      error: '105'
     }
   }
 }

@@ -32,8 +32,8 @@
 </div>
 <div class="stack gap-sm">
   <h1 class="title">{error.message}</h1>
-  <p class="subtitle">{errorFix(error.code ?? 'HZ-100')}</p>
-  <ErrorCode code={error.code ?? 'HZ-100'} />
+  <p class="subtitle">{errorFix(error.code ?? '100')}</p>
+  <ErrorCode code={error.code ?? '100'} />
 </div>
 <div class="stack gap-xs">
   <button class="btn btn-primary" onclick={() => send({ type: 'RETRY' })}

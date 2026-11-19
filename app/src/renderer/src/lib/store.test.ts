@@ -73,7 +73,7 @@ test.each(['error', 'approve'] as const)(
           ? {
               screen: 'error',
               mode: 'send',
-              error: { code: 'HZ-100' as const, message: 'Falha real' }
+              error: { code: '100' as const, message: 'Falha real' }
             }
           : { screen: 'approve', mode: 'send', device: 'Notebook', pairingId: 'p1', pin: null }
     }

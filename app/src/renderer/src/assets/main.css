@@ -1396,7 +1396,7 @@ input,
   }
 }
 
-/* Código do erro (HZ-xxx): no mesmo cinza dos avisos, com o link para a tabela do site. */
+/* Código do erro (número de 3 dígitos): no mesmo cinza dos avisos, com o link para a tabela do site. */
 .error-code {
   display: block;
   margin: 0 auto;

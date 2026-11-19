@@ -15,6 +15,6 @@ export interface UpdateStatus {
   version?: string
   percent?: number
   message?: string
-  /** Em que passo falhou: HZ-501 procurar, HZ-502 baixar, HZ-503 instalar. */
+  /** Em que passo falhou: 501 procurar, 502 baixar, 503 instalar. */
   code?: ErrorCode
 }

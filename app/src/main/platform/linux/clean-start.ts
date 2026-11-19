@@ -8,6 +8,16 @@
 /** Marca a segunda abertura: se a trava continuar (quem abriu quis assim), segue com ela, sem repetir para sempre. */
 export const CLEAN_START_ENV = 'HORIZONTE_CLEAN_START'
 
+/**
+ * Lê a marca e apaga do ambiente: ela vale só para este processo. Se ficasse, passava para o app reaberto pelo Electron
+ * depois de uma atualização, que nascia com a trava e achava que já tinha se corrigido.
+ */
+export function takeCleanStartMark(env: NodeJS.ProcessEnv): boolean {
+  const marked = Boolean(env[CLEAN_START_ENV])
+  delete env[CLEAN_START_ENV]
+  return marked
+}
+
 /** O campo `NoNewPrivs` de /proc/self/status. */
 export const hasNoNewPrivs = (status: string): boolean => /^NoNewPrivs:\s*1\s*$/m.test(status)
 

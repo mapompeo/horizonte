@@ -61,7 +61,7 @@ test('falha inicial sem snapshot mostra erro e botão de retry', async () => {
 })
 test('erro aparece mesmo com Ajustes aberto', async () => {
   const body = await html(
-    { screen: 'error', mode: 'send', error: { code: 'HZ-100' as const, message: 'Falha real' } },
+    { screen: 'error', mode: 'send', error: { code: '100' as const, message: 'Falha real' } },
     true
   )
   expect(body).toContain('Falha real')
@@ -72,16 +72,16 @@ test('erro mostra o que aconteceu, o que fazer e o código', async () => {
   const body = await html({
     screen: 'error',
     mode: 'send',
-    error: { code: 'HZ-201' as const, message: 'A tela estendida não apareceu' }
+    error: { code: '201' as const, message: 'A tela estendida não apareceu' }
   })
   expect(body).toContain('A tela estendida não apareceu')
   expect(body).toContain('Reinicie o computador e tente de novo.')
-  expect(body).toMatch(/Código <b>HZ-201<\/b>/)
+  expect(body).toMatch(/Código <b>201<\/b>/)
   expect(body).toContain('Como resolver')
 })
 test('falha ao carregar também tem o que fazer e o código', async () => {
   const body = await html(null, false, 'Não deu para abrir o Horizonte')
-  expect(body).toMatch(/Código <b>HZ-100<\/b>/)
+  expect(body).toMatch(/Código <b>100<\/b>/)
 })
 test('aprovação aparece mesmo com Ajustes aberto', async () => {
   const body = await html(

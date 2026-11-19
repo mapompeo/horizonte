@@ -43,9 +43,9 @@ text.textContent = T.start
 $<HTMLParagraphElement>('dica').textContent = T.tip
 
 const DENIED: Record<string, ErrorCode> = {
-  user: 'HZ-603',
-  busy: 'HZ-602',
-  version: 'HZ-604'
+  user: '603',
+  busy: '602',
+  version: '604'
 }
 
 /**
@@ -130,7 +130,7 @@ async function connect(): Promise<void> {
   if (!opened.ok || !reply.sessao) {
     if (retries) throw new Error(reply.erro)
     button.disabled = false
-    return say(opened.status === 429 ? 'HZ-602' : 'HZ-601')
+    return say(opened.status === 429 ? '602' : '601')
   }
   const session = reply.sessao
   const send = (message: Message): void =>
@@ -210,7 +210,7 @@ async function connect(): Promise<void> {
       } else if (report.type === 'quit') {
         send({ t: 'bye', reason: 'user' })
         finish(T.left)
-      } else if (report.type === 'error') lost('HZ-605')
+      } else if (report.type === 'error') lost('605')
     },
     input: () => undefined,
     onMessage: () => () => undefined
@@ -219,7 +219,7 @@ async function connect(): Promise<void> {
 
   events.addEventListener('fim', () => finish(T.ended))
   events.addEventListener('error', () => {
-    if (events.readyState === EventSource.CLOSED) lost('HZ-605')
+    if (events.readyState === EventSource.CLOSED) lost('605')
   })
   events.addEventListener('message', ({ data }) => {
     let message: Message
@@ -241,7 +241,7 @@ async function connect(): Promise<void> {
         send(want)
         return void side.start(want)
       case 'denied':
-        return finish(DENIED[message.reason] ?? 'HZ-603')
+        return finish(DENIED[message.reason] ?? '603')
       case 'ping':
         return send({ t: 'pong', at: message.at })
       case 'bye':
@@ -250,7 +250,7 @@ async function connect(): Promise<void> {
         // A oferta precisa vir com o mesmo certificado que o computador anunciou no `hello`.
         if (!peer || sdpFingerprint(message.sdp) !== peer.fp) {
           send({ t: 'bye', reason: 'error' })
-          return finish('HZ-606')
+          return finish('606')
         }
         return void side.deliver(message)
       case 'ice':
@@ -302,7 +302,7 @@ window.addEventListener('resize', () => {
     const current = live
     if (!current || current.landscape === landscape()) return
     current.turn()
-    connect().catch(() => say('HZ-601'))
+    connect().catch(() => say('601'))
   }, 700)
 })
 
@@ -324,7 +324,7 @@ form.addEventListener('submit', (event) => {
   void document.documentElement.requestFullscreen?.().catch(() => undefined)
   connect().catch(() => {
     button.disabled = false
-    say('HZ-601')
+    say('601')
   })
 })
 

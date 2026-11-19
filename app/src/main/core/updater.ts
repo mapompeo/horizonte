@@ -42,10 +42,10 @@ export function createUpdater(deps: {
   let installing = false
   const fail = (cause?: unknown): void => {
     const code: ErrorCode = installing
-      ? 'HZ-503'
+      ? '503'
       : state.phase === 'downloading' || state.phase === 'ready'
-        ? 'HZ-502'
-        : 'HZ-501'
+        ? '502'
+        : '501'
     installing = false
     deps.log?.(`${code}: ${cause instanceof Error ? cause.message : String(cause ?? '')}`)
     set({ phase: 'error', code, message: `${errorTitle(code)}. ${errorFix(code)}` })

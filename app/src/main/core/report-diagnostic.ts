@@ -4,7 +4,7 @@ import { buildDiagnostic, diagnosticErrorCode, type DiagnosticEnv } from './diag
 
 /** Recebe o diagnóstico no site do Horizonte (sem conta no GitHub para quem envia). */
 export const DIAGNOSTIC_URL = 'https://horizonte-monitor.vercel.app/api/diagnostico'
-const ERROR_LINE = /^Erro: HZ-\d{3}$/
+const ERROR_LINE = /^Erro: \d{3}$/
 
 export function buildReportDiagnostic(env: DiagnosticEnv, snapshot: Snapshot): string {
   if (snapshot.state.screen !== 'error') return buildDiagnostic(env, snapshot)

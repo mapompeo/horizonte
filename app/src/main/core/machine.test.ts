@@ -20,7 +20,7 @@ const receiving: AppState = {
   host: '192.168.1.3',
   name: 'Desktop'
 }
-const failure = { code: 'HZ-100' as const, message: 'Falhou', detail: 'detalhe' }
+const failure = { code: '100' as const, message: 'Falhou', detail: 'detalhe' }
 
 describe('reduce: caminho feliz', () => {
   const cases: [string, AppState, AppEvent, AppState][] = [
@@ -116,12 +116,12 @@ describe('reduce: erros', () => {
     const first: AppState = { screen: 'error', mode: 'send', error: failure }
     const next = reduce(first, {
       type: 'FAIL',
-      error: { code: 'HZ-100' as const, message: 'Outro' }
+      error: { code: '100' as const, message: 'Outro' }
     })
     expect(next).toEqual({
       screen: 'error',
       mode: 'send',
-      error: { code: 'HZ-100' as const, message: 'Outro' }
+      error: { code: '100' as const, message: 'Outro' }
     })
   })
 
