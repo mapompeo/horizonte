@@ -21,5 +21,14 @@ export default defineConfig(
       'svelte/no-unused-svelte-ignore': 'off'
     }
   },
+  {
+    // Modo compatível da página do navegador: JavaScript antigo (ES5), sem tipos, para rodar no Safari do iOS 9.
+    files: ['src/renderer/public/**/*.js'],
+    languageOptions: { ecmaVersion: 5, sourceType: 'script' },
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { caughtErrors: 'none' }]
+    }
+  },
   eslintConfigPrettier
 )

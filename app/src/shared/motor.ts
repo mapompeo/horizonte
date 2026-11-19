@@ -5,7 +5,10 @@ import type { RawFrame } from './frames'
 /** O que as janelas do motor de teste fazem: enviar, mostrar ou exibir o relógio da medição de atraso. */
 export type MotorRole = 'send' | 'receive' | 'clock'
 
-export type MediaMessage = Extract<Message, { t: 'offer' | 'answer' | 'ice' | 'bitrate' }>
+export type MediaMessage = Extract<
+  Message,
+  { t: 'offer' | 'answer' | 'ice' | 'bitrate' | 'jpeg' | 'more' | 'input' }
+>
 
 export interface MotorConfig {
   role: MotorRole

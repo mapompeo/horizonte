@@ -292,10 +292,8 @@ function modernEnough(w: Window & typeof globalThis): boolean {
 
 form.addEventListener('submit', (event) => {
   event.preventDefault()
-  if (!modernEnough(window)) {
-    location.hash = 'antigo'
-    return
-  }
+  // Navegador antigo: quem cuida é o modo compatível (public/legado.js).
+  if (!modernEnough(window) || /[?&]compat\b/.test(location.search)) return
   retries = 0
   // Tela cheia precisa do toque da pessoa: pede agora, e a tela entra assim que o vídeo chega.
   void document.documentElement.requestFullscreen?.().catch(() => undefined)

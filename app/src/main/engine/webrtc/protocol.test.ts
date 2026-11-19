@@ -58,6 +58,10 @@ describe('parseMessage', () => {
     },
     { t: 'ice', candidate: '', sdpMid: null, sdpMLineIndex: null },
     { t: 'bitrate', mbps: 20 },
+    { t: 'want', width: 1024, height: 768, fps: 30, bitrate: 2, codecs: [], jpeg: true },
+    { t: 'jpeg', data: 'data:image/jpeg;base64,/9j/4AAQ+/==' },
+    { t: 'more' },
+    { t: 'input', raw: '{"t":"touch","id":0,"phase":"down","x":0.5,"y":0.5}' },
     { t: 'bye', reason: 'user' },
     { t: 'ping', at: 1730000000000 },
     { t: 'pong', at: 1730000000000 }
@@ -69,6 +73,15 @@ describe('parseMessage', () => {
     ['JSON inválido', '{'],
     ['lista', '[]'],
     ['tipo desconhecido', '{"t":"oi"}'],
+    ['jpeg que não é imagem', '{"t":"jpeg","data":"data:text/html;base64,PHNjcmlwdD4="}'],
+    ['jpeg com endereço de fora', '{"t":"jpeg","data":"http://exemplo.com/a.jpg"}'],
+    ['jpeg com caractere fora do base64', '{"t":"jpeg","data":"data:image/jpeg;base64,AA\\"><x"}'],
+    [
+      'want com jpeg que não é sim ou não',
+      '{"t":"want","width":1024,"height":768,"fps":30,"bitrate":2,"codecs":[],"jpeg":1}'
+    ],
+    ['entrada longa demais', JSON.stringify({ t: 'input', raw: 'x'.repeat(201) })],
+    ['entrada vazia', '{"t":"input","raw":""}'],
     ['hello sem impressão digital', JSON.stringify({ ...hello, fp: undefined })],
     ['impressão digital em minúsculas', JSON.stringify({ ...hello, fp: FP.toLowerCase() })],
     ['impressão digital curta', JSON.stringify({ ...hello, fp: 'AB:CD' })],

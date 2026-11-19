@@ -135,6 +135,76 @@ async function capture(want: Want, synthetic: boolean): Promise<MediaStream> {
   })
 }
 
+/** Qualidade das imagens do modo compatível: texto legível sem pesar demais para um aparelho antigo. */
+const JPEG_QUALITY = 0.6
+
+function dataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+/**
+ * Modo compatível (navegador antigo, sem WebRTC): a tela vira imagens JPEG, uma por vez. A próxima só sai depois do
+ * `more` de quem mostra, então um aparelho lento recebe menos imagens em vez de acumular atraso. Tela parada não
+ * manda nada até mudar.
+ */
+export function jpegFrames(
+  track: MediaStreamTrack,
+  size: { width: number; height: number },
+  send: (data: string) => void
+): { more(): void; stop(): void } {
+  const reader = new MediaStreamTrackProcessor({ track }).readable.getReader()
+  const canvas = new OffscreenCanvas(size.width, size.height)
+  const context = canvas.getContext('2d')
+  let latest: VideoFrame | null = null
+  let fresh = false
+  let wanted = true
+  let busy = false
+  let stopped = false
+  const encode = async (): Promise<void> => {
+    if (stopped || busy || !wanted || !fresh || !latest || !context) return
+    busy = true
+    wanted = false
+    fresh = false
+    context.drawImage(latest, 0, 0, size.width, size.height)
+    try {
+      const data = await dataUrl(
+        await canvas.convertToBlob({ type: 'image/jpeg', quality: JPEG_QUALITY })
+      )
+      if (!stopped) send(data)
+    } finally {
+      busy = false
+    }
+    void encode()
+  }
+  void (async () => {
+    while (!stopped) {
+      const { value, done } = await reader.read().catch(() => ({ value: undefined, done: true }))
+      if (done || !value) break
+      latest?.close()
+      latest = value
+      fresh = true
+      void encode()
+    }
+  })()
+  return {
+    more() {
+      wanted = true
+      void encode()
+    },
+    stop() {
+      stopped = true
+      void reader.cancel().catch(() => undefined)
+      latest?.close()
+      latest = null
+    }
+  }
+}
+
 /** Lado que envia, dentro da janela de transmissão (oculta). */
 export function createSender(api: MotorApi, identity: Identity, synthetic: boolean): MotorSide {
   let pc: RTCPeerConnection | null = null
@@ -146,6 +216,7 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
   let targetMbps = 0
   let adapter: ReturnType<typeof createAdapter> | null = null
   let stopFrames: (() => void) | null = null
+  let jpeg: ReturnType<typeof jpegFrames> | null = null
 
   async function setBitrate(mbps: number, fps?: number): Promise<void> {
     if (!sender) return
@@ -168,6 +239,17 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
   async function start(want: Want, frames?: string): Promise<void> {
     stop()
     const send = (message: MediaMessage): void => api.signal(message)
+    if (want.jpeg) {
+      if (frames) {
+        const source = framesStream(frames, (reason) =>
+          console.warn('[motor] imagens da tela:', reason)
+        )
+        stream = source.stream
+        stopFrames = source.stop
+      } else stream = await capture(want, synthetic)
+      jpeg = jpegFrames(stream.getVideoTracks()[0], want, (data) => send({ t: 'jpeg', data }))
+      return
+    }
     pc = createPeer(identity.certificate, true)
     ice = iceQueue(pc)
     forwardIce(pc, send)
@@ -261,6 +343,9 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
   }
 
   async function deliver(message: MediaMessage): Promise<void> {
+    if (message.t === 'more') return jpeg?.more()
+    // Sem canal de dados no modo compatível, a entrada chega pela sinalização: o processo principal confere igual.
+    if (message.t === 'input') return jpeg ? api.input(message.raw) : undefined
     if (!pc || !ice) return
     if (message.t === 'answer') {
       await pc.setRemoteDescription({ type: 'answer', sdp: message.sdp })
@@ -279,6 +364,8 @@ export function createSender(api: MotorApi, identity: Identity, synthetic: boole
     if (rampTimer) clearInterval(rampTimer)
     statsTimer = rampTimer = null
     adapter = null
+    jpeg?.stop()
+    jpeg = null
     stopFrames?.()
     stopFrames = null
     for (const track of stream?.getTracks() ?? []) track.stop()

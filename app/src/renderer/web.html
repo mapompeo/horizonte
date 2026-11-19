@@ -25,11 +25,10 @@
         height="64"
       />
       <h1 class="web-title" id="titulo">Receber a tela</h1>
-      <!-- Navegador antigo (sem o JavaScript desta página), o Conectar cai aqui pelo endereço #antigo. -->
+      <!-- Sem JavaScript nenhum funcionando, o Conectar cai aqui pelo endereço #antigo. -->
       <p class="web-text web-error web-old" id="antigo" role="alert">
-        Este navegador é antigo demais para receber a tela. No iPad ou iPhone, precisa do iOS 15.4
-        ou mais novo (Ajustes, Geral, Sobre).<br />This browser is too old. iOS 15.4 or later is
-        required.
+        Este navegador não conseguiu abrir a página. Atualize o aparelho ou use outro navegador.<br />This
+        browser could not open the page. Update the device or try another browser.
       </p>
       <p class="web-text" id="texto" role="status" aria-live="polite">Toque em Conectar.</p>
       <form class="web-form" id="form" action="#antigo">
@@ -37,6 +36,8 @@
       </form>
       <p class="web-tip" id="dica" hidden>Para tela cheia, adicione à Tela de Início.</p>
     </main>
+    <!-- Navegador antigo: o modo compatível, em JavaScript antigo e sem build. Em navegador novo, não faz nada. -->
+    <script src="/legado.js"></script>
     <script type="module" src="./src/web/main.ts"></script>
   </body>
 </html>

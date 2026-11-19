@@ -14,7 +14,13 @@ import {
 export type { MediaMessage }
 
 const isMedia = (message: Message): message is MediaMessage =>
-  message.t === 'offer' || message.t === 'answer' || message.t === 'ice' || message.t === 'bitrate'
+  message.t === 'offer' ||
+  message.t === 'answer' ||
+  message.t === 'ice' ||
+  message.t === 'bitrate' ||
+  message.t === 'jpeg' ||
+  message.t === 'more' ||
+  message.t === 'input'
 
 /** A parte do motor que roda numa janela (captura, WebRTC, exibição). */
 export interface MediaSide {

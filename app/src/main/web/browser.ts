@@ -43,6 +43,8 @@ const MAX_TUNNELS = 8
 /** Sessões abertas e ainda sem eventos somem depois disto. */
 const IDLE_MS = 30_000
 const KEEPALIVE_MS = 15_000
+/** Maior linha que a sinalização deste aparelho manda ao navegador (uma imagem do modo compatível). */
+const MAX_FROM_HERE = 8 * 1024 * 1024
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -134,7 +136,8 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
     socket.setEncoding('utf8')
     socket.on('data', (chunk: string) => {
       pending += chunk
-      if (pending.length > MAX_LINE_BYTES * 4) return close(id)
+      // Daqui vem só o que este próprio computador manda; as imagens do modo compatível passam de 64 KiB.
+      if (pending.length > MAX_FROM_HERE) return close(id)
       let at: number
       while ((at = pending.indexOf('\n')) >= 0) {
         const line = pending.slice(0, at)
@@ -184,6 +187,7 @@ export async function startBrowserBridge(options: BrowserBridgeOptions): Promise
     const relative = path === '/' || /^\/\d{4}$/.test(path) ? 'web.html' : normalize(path.slice(1))
     const allowed =
       relative === 'web.html' ||
+      relative === 'legado.js' ||
       (relative.startsWith(`assets${sep}`) &&
         !relative.includes('..') &&
         extname(relative) in TYPES)

@@ -7,6 +7,12 @@ declare global {
     motorFrames?: MotorFramesApi
   }
 
+  /** Lê os quadros de uma trilha de vídeo (Chromium; ainda fora dos tipos do TypeScript). */
+  class MediaStreamTrackProcessor {
+    constructor(init: { track: MediaStreamTrack })
+    readonly readable: ReadableStream<VideoFrame>
+  }
+
   /** Trilha de vídeo alimentada por quadros (Chromium; ainda fora dos tipos do TypeScript). */
   class MediaStreamTrackGenerator extends MediaStreamTrack {
     constructor(init: { kind: 'video' | 'audio' })

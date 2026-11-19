@@ -41,7 +41,16 @@ export interface Want {
    * imagem. Sem isso (versões antigas), o cursor continua desenhado na imagem.
    */
   cursor?: boolean
+  /**
+   * Modo compatível (navegador antigo, sem WebRTC): a tela vai em imagens JPEG pela própria sinalização, uma por vez,
+   * a próxima só depois do `more` de quem mostra.
+   */
+  jpeg?: boolean
 }
+
+/** Uma imagem do modo compatível, já pronta para o `src` de uma `<img>`. */
+const JPEG_DATA = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/
+const MAX_JPEG = 4 * 1024 * 1024
 
 export type Message =
   | Hello
@@ -54,6 +63,10 @@ export type Message =
   | { t: 'answer'; sdp: string }
   | { t: 'ice'; candidate: string; sdpMid: string | null; sdpMLineIndex: number | null }
   | { t: 'bitrate'; mbps: number }
+  | { t: 'jpeg'; data: string }
+  | { t: 'more' }
+  /** Entrada do modo compatível (sem canal de dados): a mesma mensagem que iria no canal `entrada`. */
+  | { t: 'input'; raw: string }
   | { t: 'bye'; reason: ByeReason }
   | { t: 'ping'; at: number }
   | { t: 'pong'; at: number }
@@ -94,9 +107,10 @@ function parseHello(raw: Record<string, unknown>): Hello | null {
 }
 
 function parseWant(raw: Record<string, unknown>): Want | null {
-  const { width, height, fps, bitrate, codecs, scale, cursor } = raw
+  const { width, height, fps, bitrate, codecs, scale, cursor, jpeg } = raw
   if (scale !== undefined && !isNumber(scale, 1, 4)) return null
   if (cursor !== undefined && typeof cursor !== 'boolean') return null
+  if (jpeg !== undefined && typeof jpeg !== 'boolean') return null
   if (!isInt(width, 160, 8192) || !isInt(height, 120, 8192) || !isInt(fps, 1, 240)) return null
   if (!isNumber(bitrate, 0.5, 500)) return null
   if (!Array.isArray(codecs) || codecs.length > 16) return null
@@ -109,7 +123,8 @@ function parseWant(raw: Record<string, unknown>): Want | null {
     bitrate,
     codecs: [...new Set(codecs as string[])],
     ...(scale !== undefined ? { scale } : {}),
-    ...(cursor ? { cursor } : {})
+    ...(cursor ? { cursor } : {}),
+    ...(jpeg ? { jpeg } : {})
   }
 }
 
@@ -150,6 +165,14 @@ export function parseMessage(line: string): Message | null {
     }
     case 'bitrate':
       return isNumber(raw.mbps, 0.5, 500) ? { t: 'bitrate', mbps: raw.mbps } : null
+    case 'jpeg':
+      return typeof raw.data === 'string' && raw.data.length <= MAX_JPEG && JPEG_DATA.test(raw.data)
+        ? { t: 'jpeg', data: raw.data }
+        : null
+    case 'more':
+      return { t: 'more' }
+    case 'input':
+      return isText(raw.raw, 200) ? { t: 'input', raw: raw.raw } : null
     case 'bye':
       return raw.reason === 'user' || raw.reason === 'error' || raw.reason === 'quit'
         ? { t: 'bye', reason: raw.reason }

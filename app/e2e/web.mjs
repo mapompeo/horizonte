@@ -37,6 +37,8 @@ const PHONES = {
 }
 if (!PHONES[PHONE]) throw new Error(`HZ_WEB_PHONE desconhecido: ${PHONE}`)
 const TIMEOUT_MS = 90_000
+// HZ_WEB_COMPAT=1: abre com `?compat`, o modo dos navegadores antigos (iPad sem WebRTC): imagens JPEG em vez de vídeo.
+const COMPAT = process.env.HZ_WEB_COMPAT === '1'
 
 function launch(label, args, onLine = () => undefined) {
   const full = [`--user-data-dir=${mkdtempSync(join(tmpdir(), `hz-web-${label}-`))}`, ...args]
@@ -116,6 +118,30 @@ async function phone(url) {
       return 1
     }
     await page.click('#form button[type=submit], #form button')
+    if (COMPAT) {
+      // A imagem tem que trocar várias vezes (o quadro de teste anda): é o `more` pedindo a próxima.
+      const frames = await page
+        .waitForFunction(
+          () => {
+            const img = document.querySelector('img[src^="data:image/jpeg"]')
+            if (!img || !img.naturalWidth) return null
+            window.__srcs = window.__srcs ?? new Set()
+            window.__srcs.add(img.src)
+            return window.__srcs.size >= 5 ? `${img.naturalWidth}x${img.naturalHeight}` : null
+          },
+          null,
+          { timeout: 45_000, polling: 50 }
+        )
+        .then((handle) => handle.jsonValue())
+        .catch(() => null)
+      console.log(
+        frames
+          ? `navegador: modo compatível, imagens ${frames}`
+          : `navegador: sem imagens (${await page.textContent('#texto').catch(() => '?')})\n${said.slice(-30).join('\n')}`
+      )
+      await page.screenshot({ path: join(OUT, `web-compat-${PHONE}.png`) }).catch(() => undefined)
+      return frames ? 0 : 1
+    }
     const size = await page
       .waitForFunction(
         () => {
@@ -203,7 +229,7 @@ const sender = launch(
     const match = /no navegador: (http:\/\/\S+:\d+)/.exec(line)
     if (match && !started) {
       started = true
-      phone(match[1]).then(finish, (error) => {
+      phone(COMPAT ? `${match[1]}/?compat` : match[1]).then(finish, (error) => {
         console.log(`navegador: erro ${error}`)
         finish(1)
       })
