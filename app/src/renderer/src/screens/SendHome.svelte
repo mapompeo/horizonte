@@ -140,10 +140,21 @@
           ? L({ pt: 'Preparando', en: 'Getting ready', es: 'Preparando' })
           : compact
             ? L({ pt: 'Mais um aparelho', en: 'One more device', es: 'Un dispositivo más' })
-            : L({ pt: 'Aponte a câmera', en: 'Point the camera', es: 'Apunta la cámara' })}
+            : L({
+                pt: 'Aponte a câmera para o QR',
+                en: 'Point the camera at the QR',
+                es: 'Apunta la cámara al QR'
+              })}
       </h1>
       {#if link && web.url}
-        <!-- Sem câmera (outro PC, tablet): o endereço para digitar ou copiar. -->
+        <!-- Sem câmera (outro PC, tablet): o endereço para digitar ou copiar, dito com todas as letras. -->
+        <span class="notice"
+          >{L({
+            pt: 'Ou digite este endereço no navegador do outro aparelho:',
+            en: 'Or type this address in the other device’s browser:',
+            es: 'O escribe esta dirección en el navegador del otro dispositivo:'
+          })}</span
+        >
         <span
           class="address"
           title={L({

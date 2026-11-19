@@ -21,6 +21,11 @@ export const CHANGELOG: Change[] = [
         es: 'Los iPad y iPhone antiguos (hasta iOS 9) ahora reciben la pantalla en el navegador.'
       },
       {
+        pt: 'Sem câmera, a tela inicial diz para digitar o endereço no navegador do outro aparelho.',
+        en: 'Without a camera, the home screen says to type the address in the other device’s browser.',
+        es: 'Sin cámara, la pantalla inicial dice que escribas la dirección en el navegador del otro dispositivo.'
+      },
+      {
         pt: 'Escolha o idioma do app nos Ajustes.',
         en: 'Choose the app language in Settings.',
         es: 'Elige el idioma de la app en Ajustes.'
