@@ -327,6 +327,25 @@ try {
       await app.click(/Voltar/)
       await app.waitText(/Aponte a câmera|Permitir o Notebook|tela conectada/, 15_000)
     })
+    await step('idioma nos Ajustes: English troca a janela inteira e Português volta', async () => {
+      if (/Permitir o Notebook/.test(await app.ev('document.body.innerText'))) {
+        await app.click(/^Recusar$/)
+        await app.waitText(/Aponte a câmera/, 15_000)
+      }
+      await app.click(/Ajustes/)
+      await app.waitText(/Português/)
+      await app.click(/^English$/)
+      // A janela redesenha no idioma novo e os Ajustes continuam abertos.
+      const text = await app.waitText(/Settings/, 15_000)
+      for (const part of ['Back', 'Picture', 'Quality', 'Language'])
+        if (!text.toLowerCase().includes(part.toLowerCase()))
+          throw new Error(`em inglês, faltou "${part}"`)
+      await app.shot('07-ajustes-ingles')
+      await app.click(/^Português$/)
+      await app.waitText(/Ajustes/, 15_000)
+      await app.click(/Voltar/)
+      await app.waitText(/Aponte a câmera|Permitir o Notebook|tela conectada/, 15_000)
+    })
     await step('endereço na tela, sem código, e Copiar link leva ele', async () => {
       const text = await app.waitText(/Copiar link/, 30_000)
       const address = /(\d+\.\d+\.\d+\.\d+:\d+)(\/\d)?/.exec(text)

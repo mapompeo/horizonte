@@ -40,6 +40,7 @@ describe('parseSettings', () => {
       profile: 'custom',
       mode: null,
       theme: 'system',
+      language: 'system',
       lastHost: null
     })
   })
@@ -240,5 +241,7 @@ describe('tema', () => {
     expect(parseSettings({ theme: 'dark' }).theme).toBe('dark')
     expect(parseSettings({ theme: 'light' }).theme).toBe('light')
     expect(parseSettings({ theme: 'roxo' }).theme).toBe('system')
+    expect(parseSettings({ language: 'es' }).language).toBe('es')
+    expect(parseSettings({ language: 'fr' }).language).toBe('system')
   })
 })

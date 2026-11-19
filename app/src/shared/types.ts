@@ -166,11 +166,14 @@ export interface Settings {
   mode: Mode | null
   /** Aparência: a do sistema, ou sempre clara, ou sempre escura. */
   theme: Theme
+  /** Idioma do app: o do sistema, ou um escolhido nos Ajustes. */
+  language: Language
   /** Receber: o último computador conectado (pelo nome), para conectar sozinho ao abrir o app. */
   lastHost: string | null
 }
 
 export type Theme = 'system' | 'light' | 'dark'
+export type Language = 'system' | 'pt' | 'en' | 'es'
 
 /** O perfil é sempre derivado do bitrate, por isso não pode ser alterado diretamente. */
 export type SettingsPatch = Partial<Omit<Settings, 'profile' | 'mode'>>

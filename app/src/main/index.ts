@@ -30,7 +30,14 @@ import trayTemplate2x from '../../resources/trayTemplate@2x.png?asset'
 import { CHANNELS, REPO_URL } from '../shared/api'
 import { isUiEvent } from '../shared/events'
 import { cleanName } from '../shared/names'
-import type { AppState, MouseSide, ScreenSize, Settings, SettingsPatch } from '../shared/types'
+import type {
+  AppState,
+  MouseSide,
+  ScreenSize,
+  Settings,
+  SettingsPatch,
+  Language
+} from '../shared/types'
 import { createController, type Controller } from './core/controller'
 import { createUpdater } from './core/updater'
 import { createTrayFollower, wantsAttention } from './core/tray'
@@ -78,6 +85,7 @@ import { lanAddress } from './web/wire'
 import { createBrowserAccess, isLocalPageUrl } from './web/browser'
 import { showShortcut } from '../shared/shortcut'
 import { L } from '../shared/lang'
+import { killChildren } from './core/children'
 import { errorDialogText, errorHelpUrl, errorTitle, isErrorCode } from '../shared/errors'
 
 // O AppImage não tem o chrome-sandbox com permissão especial, e o Ubuntu 24.04+ (AppArmor) bloqueia o sandbox por
@@ -139,6 +147,8 @@ function overlayFor(): { color: string; symbolColor: string; height: number } {
 
 /** A janela do app (o motor próprio abre outras, escondidas, para o vídeo). */
 let mainWindow: BrowserWindow | null = null
+/** Abre a janela de novo (abriram o Horizonte outra vez e ela não existe mais). */
+let reopenWindow: (() => void) | null = null
 
 /** Traz a janela para a frente. No Wayland o app não pode desminimizar nem tomar o foco: só uma janela mostrada de
  * novo (esconder e mostrar) volta para a frente com foco. */
@@ -242,10 +252,12 @@ function createWindow(controller: Controller): void {
 
   // Aparência escolhida nos Ajustes: o Electron faz a página (prefers-color-scheme) e as barras seguirem.
   nativeTheme.themeSource = controller.getSnapshot().settings.theme
+  applyLanguage(controller.getSnapshot().settings.language)
   let lastScreen: AppState['screen'] | null = controller.getSnapshot().state.screen
   const unsubscribe = controller.subscribe((snapshot) => {
     if (nativeTheme.themeSource !== snapshot.settings.theme)
       nativeTheme.themeSource = snapshot.settings.theme
+    applyLanguage(snapshot.settings.language)
     if (window.isDestroyed()) return
     window.webContents.send(CHANNELS.push, snapshot)
     followTray(snapshot.state)
@@ -257,6 +269,9 @@ function createWindow(controller: Controller): void {
     unsubscribe()
     tray?.destroy()
     tray = null
+    // Fechar a janela fecha o app. Sem isto, a janela escondida da transmissão segurava o processo vivo, sem janela
+    // nenhuma (no Windows, "instâncias travadas" que nem abriam de novo).
+    if (process.platform !== 'darwin') app.quit()
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -344,9 +359,16 @@ async function readWifiHint(): Promise<VideoHint | null> {
   return wifiPowerHint({ interfaces })
 }
 
+/** O idioma escolhido nos Ajustes (ou o do sistema) para os textos do processo principal. */
+function applyLanguage(language: Language): void {
+  ;(globalThis as { __hzLang?: string }).__hzLang =
+    language === 'system' ? app.getLocale() : language
+}
+
 async function boot(): Promise<void> {
   await app.whenReady()
-  // O idioma dos textos do processo principal (diálogos, avisos, erros): o do sistema, ou o do --lang dos testes.
+  // O idioma dos textos do processo principal (diálogos, avisos, erros): o do sistema, ou o do --lang dos testes. O
+  // escolhido nos Ajustes vale assim que os ajustes carregam (`applyLanguage`).
   ;(globalThis as { __hzLang?: string }).__hzLang = app.getLocale()
   electronApp.setAppUserModelId('com.horizonte.app')
   // O app não usa câmera, microfone, localização nem nada parecido: nega qualquer pedido.
@@ -737,6 +759,7 @@ async function boot(): Promise<void> {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(controller)
   })
+  reopenWindow = () => createWindow(controller)
   await finishStartup({
     createWindow: () => createWindow(controller),
     syncAutostart: app.isPackaged
@@ -809,7 +832,14 @@ else if (restartWithoutPrivilegeLock()) {
 // Só uma cópia do app por vez (o instalador já abre uma): abrir de novo traz a janela existente para a frente.
 else if (!app.isPackaged || app.requestSingleInstanceLock()) {
   // Conectado, a janela fica escondida na bandeja: abrir pelo menu do sistema precisa mostrá-la, não só dar foco.
-  app.on('second-instance', () => raiseWindow(mainWindow))
+  app.on('second-instance', () =>
+    mainWindow && !mainWindow.isDestroyed() ? raiseWindow(mainWindow) : reopenWindow?.()
+  )
+  // Saindo: os auxiliares morrem junto (no Windows eles sobreviveriam ao app). Se algo travar a saída, em 5 s o app
+  // sai à força: um processo sem janela segurando a trava impedia o Horizonte de abrir de novo.
+  app.on('before-quit', () => setTimeout(() => app.exit(0), 5000).unref())
+  app.on('will-quit', killChildren)
+  process.on('exit', killChildren)
   if (!USE_FAKE) prepareMotorSwitches()
   void runStartup(boot, (error) => {
     console.error(error)

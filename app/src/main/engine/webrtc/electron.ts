@@ -9,7 +9,7 @@ import {
   type WebContents
 } from 'electron'
 import { is } from '@electron-toolkit/utils'
-import { spawn } from 'node:child_process'
+import { spawn } from '../../core/children'
 import { existsSync } from 'node:fs'
 import { hostname } from 'node:os'
 import { join } from 'node:path'

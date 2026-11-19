@@ -22,6 +22,7 @@ const current: Snapshot = {
     screenPlacements: {},
     mode: 'send',
     theme: 'system',
+    language: 'system',
     lastHost: null
   }
 }

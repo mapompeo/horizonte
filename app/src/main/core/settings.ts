@@ -13,7 +13,8 @@ import type {
   Resolution,
   Settings,
   TrustedDevice,
-  ScreenPlacement
+  ScreenPlacement,
+  Language
 } from '../../shared/types'
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: Settings = {
   screenPlacements: {},
   mode: null,
   theme: 'system',
+  language: 'system',
   lastHost: null
 }
 
@@ -176,6 +178,7 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
     codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
     autostart: typeof input.autostart === 'boolean' ? input.autostart : DEFAULT_SETTINGS.autostart,
     theme: input.theme === 'light' || input.theme === 'dark' ? input.theme : 'system',
+    language: oneOf<Language>(input.language, ['system', 'pt', 'en', 'es'], 'system'),
     lastHost:
       typeof input.lastHost === 'string' &&
       input.lastHost.length > 0 &&

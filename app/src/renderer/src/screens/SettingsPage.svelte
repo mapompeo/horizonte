@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { L } from '../lib/i18n'
   import { PROFILES } from '../../../shared/quality'
-  import type { Fps, Settings, Theme } from '../../../shared/types'
+  import type { Fps, Language, Settings, Theme } from '../../../shared/types'
   import { chooseMode, closeSettings, patchSettings } from '../lib/actions'
   import PlacementMap from '../components/PlacementMap.svelte'
   import ReportButton from '../components/ReportButton.svelte'
@@ -81,6 +81,23 @@
             { value: 'dark', text: L({ pt: 'Escuro', en: 'Dark', es: 'Oscuro' }) }
           ]}
           onSelect={(value) => patchSettings({ theme: value as Theme })}
+        />
+      </div>
+    </section>
+
+    <section class="group" aria-labelledby="g-lang">
+      <h2 class="group-label" id="g-lang">{L({ pt: 'Idioma', en: 'Language', es: 'Idioma' })}</h2>
+      <div class="card card-pad">
+        <Segmented
+          label={L({ pt: 'Idioma', en: 'Language', es: 'Idioma' })}
+          value={settings.language}
+          options={[
+            { value: 'system', text: L({ pt: 'Sistema', en: 'System', es: 'Sistema' }) },
+            { value: 'pt', text: 'Português' },
+            { value: 'en', text: 'English' },
+            { value: 'es', text: 'Español' }
+          ]}
+          onSelect={(value) => patchSettings({ language: value as Language })}
         />
       </div>
     </section>

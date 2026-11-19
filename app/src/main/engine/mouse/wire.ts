@@ -1,5 +1,6 @@
 import { app, clipboard, ClipboardItem } from 'electron'
-import { execFile, spawn, spawnSync } from 'node:child_process'
+import { execFile, spawnSync } from 'node:child_process'
+import { spawn } from '../../core/children'
 import { randomBytes } from 'node:crypto'
 import { createReadStream, createWriteStream, existsSync } from 'node:fs'
 import { mkdir, readFile, rm, stat } from 'node:fs/promises'
