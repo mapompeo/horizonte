@@ -655,13 +655,13 @@ h1[tabindex='-1']:focus {
   font-size: var(--t-body);
   text-align: left;
 }
-/* Divisória de ponta a ponta do cartão. */
+/* Divisória como no iOS: começa alinhada ao texto e para antes da borda (16 px dos dois lados). Vale para todas. */
 .row ~ .row::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  left: 16px;
+  right: 16px;
   height: 0.5px;
   background: var(--line);
 }
@@ -1450,8 +1450,8 @@ input,
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  left: 16px;
+  right: 16px;
   height: 0.5px;
   background: var(--line);
 }

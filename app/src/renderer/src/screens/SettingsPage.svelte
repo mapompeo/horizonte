@@ -71,20 +71,6 @@
       <h2 class="group-label" id="g-general">{L({ pt: 'Geral', en: 'General', es: 'General' })}</h2>
       <div class="card">
         <div class="row">
-          <span>{L({ pt: 'Aparência', en: 'Appearance', es: 'Apariencia' })}</span>
-          <Segmented
-            compact
-            label={L({ pt: 'Tema', en: 'Theme', es: 'Tema' })}
-            value={settings.theme}
-            options={[
-              { value: 'system', text: L({ pt: 'Sistema', en: 'System', es: 'Sistema' }) },
-              { value: 'light', text: L({ pt: 'Claro', en: 'Light', es: 'Claro' }) },
-              { value: 'dark', text: L({ pt: 'Escuro', en: 'Dark', es: 'Oscuro' }) }
-            ]}
-            onSelect={(value) => patchSettings({ theme: value as Theme })}
-          />
-        </div>
-        <div class="row">
           <span>{L({ pt: 'Idioma', en: 'Language', es: 'Idioma' })}</span>
           <Segmented
             compact
@@ -97,6 +83,20 @@
               { value: 'es', text: 'Español' }
             ]}
             onSelect={(value) => patchSettings({ language: value as Language })}
+          />
+        </div>
+        <div class="row">
+          <span>{L({ pt: 'Aparência', en: 'Appearance', es: 'Apariencia' })}</span>
+          <Segmented
+            compact
+            label={L({ pt: 'Tema', en: 'Theme', es: 'Tema' })}
+            value={settings.theme}
+            options={[
+              { value: 'system', text: L({ pt: 'Sistema', en: 'System', es: 'Sistema' }) },
+              { value: 'light', text: L({ pt: 'Claro', en: 'Light', es: 'Claro' }) },
+              { value: 'dark', text: L({ pt: 'Escuro', en: 'Dark', es: 'Oscuro' }) }
+            ]}
+            onSelect={(value) => patchSettings({ theme: value as Theme })}
           />
         </div>
       </div>
