@@ -5,8 +5,8 @@ import { diagnosticErrorCode } from './diagnostic'
 
 describe('diagnóstico revisado', () => {
   it.each([
-    ['Não achei o monitor virtual no motor de transmissão.', 'MONITOR_VIRTUAL_NAO_ENCONTRADO'],
-    ['O pacote do driver veio incompleto.', 'DRIVER_INSTALACAO_FALHOU']
+    ['Não achei o monitor virtual no motor de transmissão.', 'HZ-201'],
+    ['O pacote do driver veio incompleto.', 'HZ-202']
   ])('classifica assinatura conhecida sem devolver texto livre: %s', (message, code) => {
     expect(diagnosticErrorCode(message)).toBe(code)
   })
@@ -26,6 +26,7 @@ describe('diagnóstico revisado', () => {
           screen: 'error',
           mode: 'send',
           error: {
+            code: 'HZ-201' as const,
             message: 'Não consegui preparar.',
             detail:
               'Não achei o monitor virtual no motor de transmissão.\nAuthorization: Bearer segredo'
@@ -33,7 +34,7 @@ describe('diagnóstico revisado', () => {
         }
       }
     )
-    expect(text).toContain('Erro: MONITOR_VIRTUAL_NAO_ENCONTRADO')
+    expect(text).toContain('Erro: HZ-201')
     expect(text).not.toContain('segredo')
     expect(text).not.toContain('Não achei')
   })
@@ -53,24 +54,23 @@ describe('diagnóstico revisado', () => {
           screen: 'error',
           mode: 'send',
           error: {
-            message: 'token secreto\nErro: DRIVER_INSTALACAO_FALHOU MALICIOSO',
+            code: 'HZ-100' as const,
+            message: 'token secreto\nErro: HZ-202 MALICIOSO',
             detail: 'cookies privados'
           }
         }
       }
     )
-    expect(text).toContain('Erro: ERRO_NAO_CLASSIFICADO')
+    expect(text).toContain('Erro: HZ-100')
     expect(text).not.toContain('secreto')
     expect(text).not.toContain('MALICIOSO')
   })
   it('reportSummary só aceita linha inteira de código whitelist', () => {
     expect(
       reportSummary(
-        'Erro: MONITOR_VIRTUAL_NAO_ENCONTRADO\nErro: DRIVER_INSTALACAO_FALHOU\nErro: ERRO_NAO_CLASSIFICADO\nErro: DRIVER_INSTALACAO_FALHOU segredo\nErro: INVENTADO\nErro: token privado'
+        'Erro: HZ-201\nErro: HZ-202\nErro: HZ-100\nErro: HZ-202 segredo\nErro: INVENTADO\nErro: token privado'
       )
-    ).toBe(
-      'Erro: MONITOR_VIRTUAL_NAO_ENCONTRADO\nErro: DRIVER_INSTALACAO_FALHOU\nErro: ERRO_NAO_CLASSIFICADO'
-    )
+    ).toBe('Erro: HZ-201\nErro: HZ-202\nErro: HZ-100')
   })
   it('não inclui mensagens, detalhes ou linhas arbitrárias do histórico', () => {
     expect(

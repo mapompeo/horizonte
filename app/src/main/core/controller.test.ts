@@ -413,7 +413,7 @@ describe('motor avisado ao abandonar o modo enviar', () => {
 
   it('um erro no meio do envio também avisa o motor', async () => {
     const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
-    controller.dispatch({ type: 'FAIL', error: { message: 'x' } })
+    controller.dispatch({ type: 'FAIL', error: { code: 'HZ-100' as const, message: 'x' } })
     expect(engine.calls).toContain('abort')
   })
 

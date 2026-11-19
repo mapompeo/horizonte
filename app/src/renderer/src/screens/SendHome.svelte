@@ -16,6 +16,8 @@
   import QrCode from '../components/QrCode.svelte'
   import VideoHint from '../components/VideoHint.svelte'
   import SetupNotice from '../components/SetupNotice.svelte'
+  import ErrorCode from '../components/ErrorCode.svelte'
+  import { errorFix, errorTitle } from '../../../shared/errors'
   import { L } from '../lib/i18n'
   import PlacementMap, { type MapScreen } from '../components/PlacementMap.svelte'
 
@@ -42,11 +44,7 @@
     } catch {
       web = {
         on: false,
-        error: L({
-          pt: 'Não deu para abrir a página. Tente de novo.',
-          en: 'Could not open the page. Try again.',
-          es: 'No se pudo abrir la página. Inténtalo de nuevo.'
-        })
+        error: 'HZ-105'
       }
     }
   }
@@ -193,7 +191,8 @@
         </span>
         <SetupNotice />
       {:else if web.error}
-        <span class="notice">{web.error}</span>
+        <span class="notice"><b>{errorTitle('HZ-105')}.</b> {errorFix('HZ-105')}</span>
+        <ErrorCode code="HZ-105" />
         <button class="link" onclick={ensureWeb}
           >{L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}</button
         >

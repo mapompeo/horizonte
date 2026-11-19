@@ -86,6 +86,7 @@ describe('copyFor', () => {
       screen: 'error',
       mode: 'send',
       error: {
+        code: 'HZ-100' as const,
         message: 'Não consegui criar o monitor virtual.',
         detail: 'A permissão foi recusada.'
       }

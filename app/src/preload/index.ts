@@ -16,6 +16,7 @@ const api: HorizonteApi = {
   getWebAccess: () => ipcRenderer.invoke(CHANNELS.webAccess),
   setWebAccess: (on) => ipcRenderer.invoke(CHANNELS.setWebAccess, on),
   openRepo: () => ipcRenderer.invoke(CHANNELS.openRepo),
+  openErrorHelp: (code) => ipcRenderer.invoke(CHANNELS.openErrorHelp, code),
   uninstall: () => ipcRenderer.invoke(CHANNELS.uninstall),
   reportDiagnostic: () => ipcRenderer.invoke(CHANNELS.reportDiagnostic),
   copyText: (text) => ipcRenderer.invoke(CHANNELS.copyText, text),

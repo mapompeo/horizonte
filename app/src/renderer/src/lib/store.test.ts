@@ -69,7 +69,11 @@ test.each(['error', 'approve'] as const)(
       ...current,
       state:
         screen === 'error'
-          ? { screen: 'error', mode: 'send', error: { message: 'Falha real' } }
+          ? {
+              screen: 'error',
+              mode: 'send',
+              error: { code: 'HZ-100' as const, message: 'Falha real' }
+            }
           : { screen: 'approve', mode: 'send', device: 'Notebook', pairingId: 'p1', pin: null }
     }
     let push: (value: Snapshot) => void = () => undefined

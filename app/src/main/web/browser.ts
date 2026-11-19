@@ -376,14 +376,9 @@ export function createBrowserAccess(options: {
           signalingPort: options.signalingPort
         })
         return status()
-      } catch (error) {
-        const busy = (error as NodeJS.ErrnoException).code === 'EADDRINUSE'
-        return {
-          on: false,
-          error: busy
-            ? `As portas ${BROWSER_PORT} a ${BROWSER_PORT_LAST} estão em uso por outros programas.`
-            : 'Não consegui abrir a página para o navegador.'
-        }
+      } catch {
+        // A janela mostra o título e o que fazer, no idioma da pessoa, pelo código.
+        return { on: false, error: 'HZ-105' }
       }
     },
     async stop() {

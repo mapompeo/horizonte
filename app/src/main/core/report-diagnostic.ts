@@ -1,20 +1,19 @@
 import type { Snapshot } from '../../shared/types'
+import { isErrorCode } from '../../shared/errors'
 import { buildDiagnostic, diagnosticErrorCode, type DiagnosticEnv } from './diagnostic'
 
 /** Recebe o diagnóstico no site do Horizonte (sem conta no GitHub para quem envia). */
 export const DIAGNOSTIC_URL = 'https://horizonte-monitor.vercel.app/api/diagnostico'
-const ERROR_LINE =
-  /^Erro: (?:MONITOR_VIRTUAL_NAO_ENCONTRADO|DRIVER_INSTALACAO_FALHOU|ERRO_NAO_CLASSIFICADO)$/
+const ERROR_LINE = /^Erro: HZ-\d{3}$/
 
 export function buildReportDiagnostic(env: DiagnosticEnv, snapshot: Snapshot): string {
   if (snapshot.state.screen !== 'error') return buildDiagnostic(env, snapshot)
-  const { message, detail } = snapshot.state.error
+  const { code, message, detail } = snapshot.state.error
+  // Só o código vai: o título e o detalhe podem ter caminhos e textos livres.
+  const known = isErrorCode(code) ? code : diagnosticErrorCode(`${message}\n${detail ?? ''}`)
   return buildDiagnostic(env, {
     ...snapshot,
-    state: {
-      ...snapshot.state,
-      error: { message: diagnosticErrorCode(`${message}\n${detail ?? ''}`) }
-    }
+    state: { ...snapshot.state, error: { code: known, message: known } }
   })
 }
 

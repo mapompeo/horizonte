@@ -1,5 +1,5 @@
 import type { UpdateAction, UpdateStatus } from '../../shared/updates'
-import { L } from '../../shared/lang'
+import { errorFix, errorTitle } from '../../shared/errors'
 
 export interface UpdateEvents {
   available(version: string): void
@@ -38,11 +38,7 @@ export function createUpdater(deps: {
   const fail = (): void =>
     set({
       phase: 'error',
-      message: L({
-        pt: 'Não consegui atualizar. Confira a conexão e tente de novo.',
-        en: 'I could not update. Check the connection and try again.',
-        es: 'No pude actualizar. Revisa la conexión e inténtalo de nuevo.'
-      })
+      message: `${errorTitle('HZ-501')}. ${errorFix('HZ-501')}`
     })
   const startDownload = async (): Promise<void> => {
     set({ phase: 'downloading', percent: 0 })

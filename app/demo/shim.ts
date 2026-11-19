@@ -147,6 +147,8 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
       return web
     },
     openRepo: async () => void window.open(REPO_URL, '_blank', 'noopener'),
+    openErrorHelp: async (code) =>
+      void window.open(`https://horizonte-monitor.vercel.app/erros#${code}`, '_blank', 'noopener'),
     uninstall: async () => 'unavailable',
     copyText: async (text) => {
       await navigator.clipboard.writeText(text).catch(() => undefined)

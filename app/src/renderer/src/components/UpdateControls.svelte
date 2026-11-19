@@ -1,6 +1,8 @@
 <script lang="ts">
   import { L } from '../lib/i18n'
   import Logo from './Logo.svelte'
+  import ErrorCode from './ErrorCode.svelte'
+  import { errorFix, errorTitle } from '../../../shared/errors'
   interface Props {
     /** Uma linha discreta no rodapé da tela principal, em vez do bloco "Sobre" dos Ajustes. */
     compact?: boolean
@@ -42,11 +44,7 @@
       initialError = null
     } catch {
       if (!active || request !== revision) return
-      initialError = L({
-        pt: 'Não consegui carregar as atualizações. Tente de novo.',
-        en: 'Could not load the updates. Try again.',
-        es: 'No pude cargar las actualizaciones. Inténtalo de nuevo.'
-      })
+      initialError = `${errorTitle('HZ-501')}. ${errorFix('HZ-501')}`
     } finally {
       if (active && request === revision) loading = false
     }
@@ -66,11 +64,7 @@
         status = {
           ...status,
           phase: 'error',
-          message: L({
-            pt: 'Não consegui verificar a atualização. Tente de novo.',
-            en: 'Could not check for updates. Try again.',
-            es: 'No pude buscar actualizaciones. Inténtalo de nuevo.'
-          })
+          message: `${errorTitle('HZ-501')}. ${errorFix('HZ-501')}`
         }
     }
   }
@@ -160,6 +154,7 @@
         </div>
       {/if}
       {#if status.message}<p class="about-line" role="status">{status.message}</p>{/if}
+      {#if status.phase === 'error'}<ErrorCode code="HZ-501" />{/if}
       {#if status.phase === 'available'}
         <button class="btn btn-primary btn-sm" onclick={() => perform('download')}
           >{updateTo(status.version)}</button
@@ -183,6 +178,7 @@
       {/if}
     {:else if initialError}
       <p class="about-line" role="alert">{initialError}</p>
+      <ErrorCode code="HZ-501" />
       <button class="about-link" disabled={loading} onclick={() => loadStatus()}>
         {loading ? LOADING : L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}
       </button>

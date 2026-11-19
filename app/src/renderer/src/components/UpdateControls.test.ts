@@ -67,12 +67,19 @@ beforeAll(async () => {
           if (id === './Logo.svelte') return '\0logo'
           // O idioma do app: o arquivo de verdade (o componente é compilado à parte, sem caminho relativo).
           if (id === '../lib/i18n') return resolve('src/renderer/src/lib/i18n.ts')
+          if (id === '../../../shared/errors') return resolve('src/shared/errors.ts')
+          if (id === './ErrorCode.svelte') return '\0error-code'
           return null
         },
         async load(id) {
           if (id === '\0update-controls')
             return compile(await readFile(filename, 'utf8'), { filename, generate: 'client' }).js
               .code
+          if (id === '\0error-code') {
+            const file = resolve('src/renderer/src/components/ErrorCode.svelte')
+            return compile(await readFile(file, 'utf8'), { filename: file, generate: 'client' }).js
+              .code
+          }
           if (id === '\0logo')
             return compile('<img alt="" />', { filename: 'Logo.svelte', generate: 'client' }).js
               .code
@@ -145,9 +152,10 @@ test('falha inicial mostra erro e retry da consulta sem inventar versão ou stat
   mount()
   await flush()
   expect(document.querySelector('section')?.textContent ?? '').toContain('Atualizações')
-  expect(document.querySelector('[role="alert"]')?.textContent).toContain('Não consegui')
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain('Não deu para atualizar')
+  expect(document.querySelector('.error-code')?.textContent).toContain('HZ-501')
   expect(document.body.textContent).not.toContain('Versão')
-  const retry = document.querySelector('button')
+  const retry = document.querySelector<HTMLButtonElement>('button.about-link')
   expect(retry?.textContent).toContain('Tentar de novo')
   retry?.click()
   await flush()
@@ -204,12 +212,13 @@ test('retry falhando continua mostrando erro sem versão fictícia', async () =>
   getStatus.mockRejectedValue(new Error('IPC indisponível'))
   mount()
   await flush()
-  document.querySelector('button')?.click()
+  document.querySelector<HTMLButtonElement>('button.about-link')?.click()
   await flush()
   expect(getStatus).toHaveBeenCalledTimes(2)
-  expect(document.querySelector('[role="alert"]')?.textContent).toContain('Não consegui')
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain('Não deu para atualizar')
+  expect(document.querySelector('.error-code')?.textContent).toContain('HZ-501')
   expect(document.body.textContent).not.toContain('Versão')
-  expect(document.querySelector('button')?.disabled).toBe(false)
+  expect(document.querySelector<HTMLButtonElement>('button.about-link')?.disabled).toBe(false)
 })
 
 test('push durante retry vence sua resposta antiga', async () => {

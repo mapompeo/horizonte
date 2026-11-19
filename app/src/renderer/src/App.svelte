@@ -4,6 +4,9 @@
   import { cubicOut } from 'svelte/easing'
   import type { AppState, Mode } from '../../shared/types'
   import { route, snapshot, startSync, syncError } from './lib/store'
+  import ErrorCode from './components/ErrorCode.svelte'
+  import { L } from './lib/i18n'
+  import { errorFix } from '../../shared/errors'
   import { ms } from './lib/motion'
   import TopBar from './components/TopBar.svelte'
   import UpdateControls from './components/UpdateControls.svelte'
@@ -173,11 +176,21 @@
     <main class="center">
       {#if $syncError}
         <h1 class="title" role="alert">{$syncError}</h1>
+        <p class="subtitle">{errorFix('HZ-100')}</p>
+        <ErrorCode code="HZ-100" />
         <button class="btn btn-primary" onclick={initialize} disabled={syncing}>
-          {syncing ? 'Carregando…' : 'Tentar de novo'}
+          {syncing
+            ? L({ pt: 'Carregando…', en: 'Loading…', es: 'Cargando…' })
+            : L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}
         </button>
       {:else}
-        <p class="status" role="status">Carregando o Horizonte…</p>
+        <p class="status" role="status">
+          {L({
+            pt: 'Carregando o Horizonte…',
+            en: 'Loading Horizonte…',
+            es: 'Cargando Horizonte…'
+          })}
+        </p>
       {/if}
     </main>
   </div>

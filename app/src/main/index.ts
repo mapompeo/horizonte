@@ -78,6 +78,7 @@ import { lanAddress } from './web/wire'
 import { createBrowserAccess, isLocalPageUrl } from './web/browser'
 import { showShortcut } from '../shared/shortcut'
 import { L } from '../shared/lang'
+import { errorDialogText, errorHelpUrl, errorTitle, isErrorCode } from '../shared/errors'
 
 // O AppImage não tem o chrome-sandbox com permissão especial, e o Ubuntu 24.04+ (AppArmor) bloqueia o sandbox por
 // namespace de usuário: sem isto o app fecha ao abrir. O .deb instala o chrome-sandbox e não precisa disso.
@@ -218,11 +219,16 @@ function createWindow(controller: Controller): void {
     {
       open: () => {
         tray ??= new Tray(trayImage())
-        tray.setToolTip('Horizonte: conectado')
+        tray.setToolTip(
+          L({ pt: 'Horizonte: conectado', en: 'Horizonte: connected', es: 'Horizonte: conectado' })
+        )
         tray.setContextMenu(
           Menu.buildFromTemplate([
-            { label: 'Abrir Horizonte', click: showWindow },
-            { label: 'Sair', click: () => app.quit() }
+            {
+              label: L({ pt: 'Abrir Horizonte', en: 'Open Horizonte', es: 'Abrir Horizonte' }),
+              click: showWindow
+            },
+            { label: L({ pt: 'Sair', en: 'Quit', es: 'Salir' }), click: () => app.quit() }
           ])
         )
         tray.on('click', showWindow)
@@ -635,6 +641,10 @@ async function boot(): Promise<void> {
     return presence.kindOf(where, name)
   })
   ipcMain.handle(CHANNELS.openRepo, () => shell.openExternal(REPO_URL))
+  // Só um código do catálogo vira endereço: a janela não escolhe o site que abre.
+  ipcMain.handle(CHANNELS.openErrorHelp, (_event, code: unknown) =>
+    isErrorCode(code) ? shell.openExternal(errorHelpUrl(code)) : undefined
+  )
   const reports = createDiagnosticReporter({
     text: async () =>
       `${buildReportDiagnostic(diagnosticEnv, controller.getSnapshot())}\n\n${await history.summary()}`,
@@ -734,10 +744,8 @@ async function boot(): Promise<void> {
       : undefined,
     reportError: (error) => {
       console.error(error)
-      dialog.showErrorBox(
-        'Não consegui configurar a abertura com o sistema',
-        `${error.message}\n\nDetalhe: ${error.cause instanceof Error ? error.cause.message : String(error.cause)}`
-      )
+      // O detalhe técnico fica no log; a pessoa vê o que aconteceu, o que fazer e o código.
+      dialog.showErrorBox(errorTitle('HZ-106'), errorDialogText('HZ-106'))
     }
   })
   void updates.perform('check')
@@ -806,14 +814,7 @@ else if (!app.isPackaged || app.requestSingleInstanceLock()) {
   void runStartup(boot, (error) => {
     console.error(error)
     try {
-      dialog.showErrorBox(
-        L({
-          pt: 'Não consegui iniciar o Horizonte',
-          en: 'I could not start Horizonte',
-          es: 'No pude iniciar Horizonte'
-        }),
-        `${error.message}\n\nDetalhe: ${error.cause instanceof Error ? error.cause.message : String(error.cause)}`
-      )
+      dialog.showErrorBox(errorTitle('HZ-107'), errorDialogText('HZ-107'))
     } finally {
       app.quit()
     }

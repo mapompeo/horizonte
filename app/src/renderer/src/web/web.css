@@ -60,8 +60,20 @@ body {
 .web-old:target ~ .web-form {
   display: none;
 }
-.web-error {
-  color: #ff453a;
+/* Erros no mesmo jeito do app: o que aconteceu em branco, o que fazer em cinza e o código embaixo, sem vermelho. */
+.web-text b {
+  color: #fff;
+  font-weight: 600;
+}
+.web-code {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.web-code a {
+  color: inherit;
+  text-decoration: underline;
 }
 
 .web-form {

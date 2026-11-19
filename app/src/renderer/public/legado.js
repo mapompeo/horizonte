@@ -20,12 +20,11 @@
       waiting: 'Aguardando o computador…',
       allow: 'Toque em Permitir no computador.',
       opening: 'Abrindo a tela…',
-      denied: 'O computador não permitiu.',
       ended: 'O computador encerrou a conexão.',
-      dropped: 'A conexão caiu. Toque em Conectar.',
-      noAnswer: 'Sem resposta do computador. Tente de novo.',
       reconnecting: 'Reconectando…',
       turning: 'Girando a tela…',
+      code: 'Código',
+      howToFix: 'Como resolver',
       tip: 'Para tela cheia: Compartilhar, Adicionar à Tela de Início. Para a tela não apagar: Bloqueio Automático em Nunca, nos Ajustes.'
     },
     en: {
@@ -33,12 +32,11 @@
       waiting: 'Waiting for the computer…',
       allow: 'Tap Allow on the computer.',
       opening: 'Opening the screen…',
-      denied: 'The computer did not allow it.',
       ended: 'The computer ended the connection.',
-      dropped: 'The connection dropped. Tap Connect.',
-      noAnswer: 'No answer from the computer. Try again.',
       reconnecting: 'Reconnecting…',
       turning: 'Rotating the screen…',
+      code: 'Code',
+      howToFix: 'How to fix',
       tip: 'For full screen: Share, Add to Home Screen. To keep the screen on: set Auto-Lock to Never in Settings.'
     },
     es: {
@@ -46,28 +44,82 @@
       waiting: 'Esperando la computadora…',
       allow: 'Toca Permitir en la computadora.',
       opening: 'Abriendo la pantalla…',
-      denied: 'La computadora no lo permitió.',
       ended: 'La computadora cerró la conexión.',
-      dropped: 'Se cayó la conexión. Toca Conectar.',
-      noAnswer: 'Sin respuesta de la computadora. Inténtalo de nuevo.',
       reconnecting: 'Reconectando…',
       turning: 'Girando la pantalla…',
+      code: 'Código',
+      howToFix: 'Cómo resolverlo',
       tip: 'Para pantalla completa: Compartir, Agregar a inicio. Para que no se apague: Bloqueo automático en Nunca, en Ajustes.'
     }
   }
+  /** Os erros que esta página mostra, iguais aos do catálogo do app (src/shared/errors.ts; um teste confere). */
+  var ERRORS = {
+    'HZ-601': {
+      pt: [
+        'O computador não respondeu',
+        'Confira se o Horizonte está aberto em Enviar no computador, na mesma rede Wi-Fi.'
+      ],
+      en: [
+        'The computer did not answer',
+        'Check that Horizonte is open on Send on the computer, on the same Wi-Fi network.'
+      ],
+      es: [
+        'La computadora no respondió',
+        'Revisa que Horizonte esté abierto en Enviar en la computadora, en la misma red Wi-Fi.'
+      ]
+    },
+    'HZ-602': {
+      pt: ['O computador está ocupado', 'Espere um pouco e toque em Conectar.'],
+      en: ['The computer is busy', 'Wait a moment and tap Connect.'],
+      es: ['La computadora está ocupada', 'Espera un poco y toca Conectar.']
+    },
+    'HZ-603': {
+      pt: ['O computador não permitiu', 'Toque em Conectar e escolha Permitir no computador.'],
+      en: ['The computer did not allow it', 'Tap Connect and choose Allow on the computer.'],
+      es: ['La computadora no lo permitió', 'Toca Conectar y elige Permitir en la computadora.']
+    },
+    'HZ-605': {
+      pt: ['A conexão caiu', 'Toque em Conectar.'],
+      en: ['The connection dropped', 'Tap Connect.'],
+      es: ['Se cayó la conexión', 'Toca Conectar.']
+    }
+  }
+  var HELP = 'https://horizonte-monitor.vercel.app/erros#'
+
   var code = String(navigator.language || 'pt')
     .slice(0, 2)
     .toLowerCase()
-  var T = TEXT[code] || TEXT.pt
+  var lang = TEXT[code] ? code : 'pt'
+  var T = TEXT[lang]
 
   var start = document.getElementById('inicio')
   var text = document.getElementById('texto')
   var form = document.getElementById('form')
   var button = document.getElementById('entrar')
 
-  function say(message, error) {
-    text.textContent = message
-    text.className = error ? 'web-text web-error' : 'web-text'
+  /** Erro: o que aconteceu, o que fazer e o código, no mesmo jeito do app. Andamento: só o texto. */
+  function sayError(id) {
+    var entry = ERRORS[id][lang]
+    text.innerHTML = ''
+    var title = document.createElement('b')
+    title.textContent = entry[0] + '.'
+    var help = document.createElement('a')
+    help.href = HELP + id
+    help.target = '_blank'
+    help.textContent = T.howToFix
+    var small = document.createElement('span')
+    small.className = 'web-code'
+    small.appendChild(document.createTextNode(T.code + ' ' + id + ' · '))
+    small.appendChild(help)
+    text.appendChild(title)
+    text.appendChild(document.createTextNode(' ' + entry[1]))
+    text.appendChild(small)
+  }
+
+  function say(message) {
+    text.setAttribute('role', ERRORS[message] ? 'alert' : 'status')
+    if (ERRORS[message]) sayError(message)
+    else text.textContent = message
   }
 
   function post(path, body, done) {
@@ -127,7 +179,7 @@
   var tries = 0
   function retry(message) {
     var wait = WAITS[tries++]
-    finish(wait === undefined ? message : T.reconnecting, wait === undefined)
+    finish(wait === undefined ? message : T.reconnecting)
     if (wait === undefined) {
       tries = 0
       return
@@ -150,7 +202,7 @@
     false
   )
 
-  function finish(message, error) {
+  function finish(message) {
     if (events) events.close()
     if (session) post('/api/fechar?sessao=' + session, {})
     events = session = wide = null
@@ -158,7 +210,7 @@
     image = null
     start.hidden = false
     button.disabled = false
-    say(message, error)
+    say(message)
   }
 
   function showImage(send) {
@@ -262,8 +314,10 @@
       } catch (e) {
         reply = {}
       }
-      if (status !== 200 || !reply.sessao)
-        return tries ? retry(T.noAnswer) : finish(T.noAnswer, true)
+      if (status !== 200 || !reply.sessao) {
+        var failed = status === 429 ? 'HZ-602' : 'HZ-601'
+        return tries ? retry(failed) : finish(failed)
+      }
       session = reply.sessao
       wide = window.innerWidth >= window.innerHeight
       var id = identity()
@@ -281,7 +335,7 @@
         false
       )
       events.onerror = function () {
-        if (events && events.readyState === 2) retry(T.dropped)
+        if (events && events.readyState === 2) retry('HZ-605')
       }
       events.onmessage = function (event) {
         var message
@@ -305,7 +359,7 @@
             codecs: [],
             jpeg: true
           })
-        } else if (message.t === 'denied') finish(T.denied, true)
+        } else if (message.t === 'denied') finish('HZ-603')
         else if (message.t === 'quadro' && image && mode === 'quadro') image.src = frameUrl()
         else if (message.t === 'ping') send({ t: 'pong', at: message.at })
         else if (message.t === 'bye') finish(T.ended)

@@ -1,3 +1,4 @@
+import type { ErrorCode } from './errors'
 import type { DeviceKind } from './device'
 
 export type Mode = 'send' | 'receive' | 'mouse'
@@ -12,6 +13,8 @@ export interface PrepProgress {
 }
 
 export interface AppError {
+  /** Código do catálogo (`shared/errors.ts`), que a pessoa vê junto com o título. */
+  code: ErrorCode
   message: string
   detail?: string
 }
@@ -205,5 +208,6 @@ export interface WebAccess {
   /** O que vai dentro do QR, quando não é o próprio endereço (só a demonstração do site usa). */
   qr?: string
   user?: string
-  error?: string
+  /** Código do erro (`shared/errors.ts`) quando a página não abriu. */
+  error?: ErrorCode
 }

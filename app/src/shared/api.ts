@@ -23,6 +23,7 @@ export const CHANNELS = {
   webAccess: 'horizonte:web-access',
   setWebAccess: 'horizonte:set-web-access',
   openRepo: 'horizonte:open-repo',
+  openErrorHelp: 'horizonte:open-error-help',
   uninstall: 'horizonte:uninstall',
   reportDiagnostic: 'horizonte:report-diagnostic',
   copyText: 'horizonte:copy-text',
@@ -63,6 +64,8 @@ export interface HorizonteApi {
   setWebAccess(on: boolean): Promise<WebAccess>
   /** Abre a página do projeto no navegador padrão. */
   openRepo(): Promise<void>
+  /** Abre, no navegador padrão, a linha deste código na tabela de erros do site. */
+  openErrorHelp(code: string): Promise<void>
   uninstall(): Promise<import('./uninstall').UninstallResult>
   /** Manda o diagnóstico (só versão, sistema e códigos de erro) para quem mantém o Horizonte. */
   reportDiagnostic(): Promise<void>

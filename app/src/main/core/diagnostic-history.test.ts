@@ -17,7 +17,11 @@ const env = {
   home: 'C:/Users/amigo'
 }
 const failure = (detail: string): Snapshot => ({
-  state: { screen: 'error', mode: 'send', error: { message: 'Não consegui preparar.', detail } },
+  state: {
+    screen: 'error',
+    mode: 'send',
+    error: { code: 'HZ-100' as const, message: 'Não consegui preparar.', detail }
+  },
   settings: DEFAULT_SETTINGS
 })
 beforeEach(async () => {
@@ -35,7 +39,7 @@ describe('histórico de diagnóstico', () => {
       failure('Não achei o monitor virtual no motor de transmissão.\nsegredo privado')
     )
     const summary = await history.summary()
-    expect(summary).toContain('Erro: MONITOR_VIRTUAL_NAO_ENCONTRADO')
+    expect(summary).toContain('Erro: HZ-201')
     expect(summary).not.toContain('segredo privado')
     expect(summary).not.toContain('Não achei')
     expect(await history.text()).toContain('Não achei o monitor virtual')

@@ -26,9 +26,9 @@ export async function startSync(): Promise<() => void> {
     stop?.()
     syncError.set(
       L({
-        pt: 'Não consegui carregar o Horizonte. Tente de novo.',
-        en: 'I could not load Horizonte. Try again.',
-        es: 'No pude cargar Horizonte. Inténtalo de nuevo.'
+        pt: 'Não deu para abrir o Horizonte',
+        en: 'Could not open Horizonte',
+        es: 'No se pudo abrir Horizonte'
       })
     )
     throw error
@@ -48,11 +48,7 @@ export async function changeWebAccess(current: WebAccess): Promise<WebAccess> {
     }
     return {
       ...confirmed,
-      error: L({
-        pt: 'Não consegui confirmar a mudança. Tente de novo.',
-        en: 'I could not confirm the change. Try again.',
-        es: 'No pude confirmar el cambio. Inténtalo de nuevo.'
-      })
+      error: 'HZ-105'
     }
   }
 }

@@ -63,7 +63,7 @@ describe('buildDiagnostic', () => {
       snapshot({
         screen: 'error',
         mode: 'send',
-        error: { message: error, detail: error }
+        error: { code: 'HZ-100' as const, message: error, detail: error }
       })
     )
     for (const secret of secrets) expect(text).not.toContain(secret)
@@ -81,7 +81,7 @@ describe('buildDiagnostic', () => {
       snapshot({
         screen: 'error',
         mode: 'send',
-        error: { message: 'Falha de conexão', detail }
+        error: { code: 'HZ-100' as const, message: 'Falha de conexão', detail }
       })
     )
     expect(text).toContain(detail)
@@ -102,7 +102,7 @@ describe('buildDiagnostic', () => {
       snapshot({
         screen: 'error',
         mode: 'receive',
-        error: { message: 'Falhou', detail: 'porta 47990 fechada' }
+        error: { code: 'HZ-100' as const, message: 'Falhou', detail: 'porta 47990 fechada' }
       })
     )
     expect(text).toContain('Erro: Falhou')
@@ -137,6 +137,7 @@ describe('buildDiagnostic', () => {
         screen: 'error',
         mode: 'send',
         error: {
+          code: 'HZ-100' as const,
           message: 'Falhou',
           detail: 'ENOENT /Users/amigo/Library/Application Support/horizonte/engine.json'
         }
@@ -153,6 +154,7 @@ describe('buildDiagnostic', () => {
         screen: 'error',
         mode: 'send',
         error: {
+          code: 'HZ-100' as const,
           message: 'x',
           detail: 'falha em c:\\users\\MATHE\\AppData\\horizonte e C:/Users/mathe/dev'
         }
@@ -168,7 +170,7 @@ describe('buildDiagnostic', () => {
         snapshot({
           screen: 'error',
           mode: 'send',
-          error: { message: 'Falhou', detail: 'no disco C:' }
+          error: { code: 'HZ-100' as const, message: 'Falhou', detail: 'no disco C:' }
         })
       )
       expect(text).toContain('Erro: Falhou')

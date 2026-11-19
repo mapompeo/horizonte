@@ -1,16 +1,10 @@
+import { errorCodeFor, isErrorCode, type ErrorCode } from '../../shared/errors'
 import type { Snapshot } from '../../shared/types'
 
-/** Assinaturas conhecidas usadas apenas localmente; nunca devolve o texto da exceção. */
-export function diagnosticErrorCode(text: string): string {
-  if (/Não achei o monitor virtual no motor de transmissão\./i.test(text))
-    return 'MONITOR_VIRTUAL_NAO_ENCONTRADO'
-  if (
-    /O pacote do driver veio incompleto\.|Sem a sua autorização para o certificado do monitor virtual, não consigo instalá-lo\./i.test(
-      text
-    )
-  )
-    return 'DRIVER_INSTALACAO_FALHOU'
-  return 'ERRO_NAO_CLASSIFICADO'
+/** O código do catálogo pelo texto do erro (só causas conhecidas); nunca devolve o texto da exceção. */
+export function diagnosticErrorCode(text: string): ErrorCode {
+  const code = /\bHZ-\d{3}\b/.exec(text)?.[0]
+  return isErrorCode(code) ? code : errorCodeFor(null, text)
 }
 
 export interface DiagnosticEnv {

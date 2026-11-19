@@ -13,6 +13,13 @@ import { videoMimes } from '../motor/codecs'
 import { loadIdentity } from '../motor/identity'
 import { createReceiver } from '../motor/receiver'
 import { pickLang, WEB_TEXT } from './strings'
+import {
+  errorFix,
+  errorHelpUrl,
+  errorTitle,
+  isErrorCode,
+  type ErrorCode
+} from '../../../shared/errors'
 
 /**
  * Receber a tela pelo navegador (tablet, celular, outro computador), sem instalar nada. Esta página faz o papel do
@@ -35,16 +42,34 @@ button.textContent = T.connect
 text.textContent = T.start
 $<HTMLParagraphElement>('dica').textContent = T.tip
 
-const DENIED: Record<string, string> = {
-  user: T.deniedUser,
-  busy: T.deniedBusy,
-  version: T.deniedVersion
+const DENIED: Record<string, ErrorCode> = {
+  user: 'HZ-603',
+  busy: 'HZ-602',
+  version: 'HZ-604'
 }
 
-function say(message: string, error = false): void {
-  text.textContent = message
-  text.classList.toggle('web-error', error)
+/**
+ * O que a página diz: um texto de andamento, ou um erro do catálogo (`shared/errors.ts`), no mesmo jeito do app:
+ * o que aconteceu, o que fazer e o código, que leva à tabela do site.
+ */
+function say(shown: string | ErrorCode): void {
+  const error = isErrorCode(shown)
   text.setAttribute('role', error ? 'alert' : 'status')
+  if (!error) {
+    text.textContent = shown
+    return
+  }
+  const title = document.createElement('b')
+  title.textContent = `${errorTitle(shown)}.`
+  const help = document.createElement('a')
+  help.href = errorHelpUrl(shown)
+  help.target = '_blank'
+  help.rel = 'noopener'
+  help.textContent = T.howToFix
+  const code = document.createElement('span')
+  code.className = 'web-code'
+  code.append(`${T.code} ${shown} · `, help)
+  text.replaceChildren(title, ` ${errorFix(shown)}`, code)
 }
 
 function deviceOf(agent: string): { name: string; kind: DeviceKind } {
@@ -105,7 +130,7 @@ async function connect(): Promise<void> {
   if (!opened.ok || !reply.sessao) {
     if (retries) throw new Error(reply.erro)
     button.disabled = false
-    return say(opened.status === 429 ? T.busy : T.noAnswer, true)
+    return say(opened.status === 429 ? 'HZ-602' : 'HZ-601')
   }
   const session = reply.sessao
   const send = (message: Message): void =>
@@ -142,11 +167,11 @@ async function connect(): Promise<void> {
     // Girou o aparelho: sai sem derrubar a tela cheia e entra de novo, com a tela estendida do jeito novo.
     turn: () => {
       send({ t: 'bye', reason: 'user' })
-      finish(T.turning, false, true)
+      finish(T.turning, true)
     }
   }
   const events = new EventSource(`/api/eventos?sessao=${session}`)
-  const finish = (message: string, error = false, keepScreen = false): void => {
+  const finish = (message: string | ErrorCode, keepScreen = false): void => {
     if (ended) return
     ended = true
     clearTimeout(slow)
@@ -161,14 +186,14 @@ async function connect(): Promise<void> {
       void document.exitFullscreen().catch(() => undefined)
     start.hidden = false
     button.disabled = false
-    say(message, error)
+    say(message)
     button.focus()
   }
 
   /** Caiu sem ninguém pedir (Wi-Fi, computador dormiu): fica na tela cheia e tenta de novo sozinho. */
-  const lost = (message: string): void => {
+  const lost = (message: ErrorCode): void => {
     if (ended) return
-    finish(T.reconnecting, false, true)
+    finish(T.reconnecting, true)
     reconnect(message)
   }
 
@@ -185,7 +210,7 @@ async function connect(): Promise<void> {
       } else if (report.type === 'quit') {
         send({ t: 'bye', reason: 'user' })
         finish(T.left)
-      } else if (report.type === 'error') lost(T.dropped)
+      } else if (report.type === 'error') lost('HZ-605')
     },
     input: () => undefined,
     onMessage: () => () => undefined
@@ -194,7 +219,7 @@ async function connect(): Promise<void> {
 
   events.addEventListener('fim', () => finish(T.ended))
   events.addEventListener('error', () => {
-    if (events.readyState === EventSource.CLOSED) lost(T.dropped)
+    if (events.readyState === EventSource.CLOSED) lost('HZ-605')
   })
   events.addEventListener('message', ({ data }) => {
     let message: Message
@@ -216,7 +241,7 @@ async function connect(): Promise<void> {
         send(want)
         return void side.start(want)
       case 'denied':
-        return finish(DENIED[message.reason] ?? T.refused, true)
+        return finish(DENIED[message.reason] ?? 'HZ-603')
       case 'ping':
         return send({ t: 'pong', at: message.at })
       case 'bye':
@@ -225,7 +250,7 @@ async function connect(): Promise<void> {
         // A oferta precisa vir com o mesmo certificado que o computador anunciou no `hello`.
         if (!peer || sdpFingerprint(message.sdp) !== peer.fp) {
           send({ t: 'bye', reason: 'error' })
-          return finish(T.unverified, true)
+          return finish('HZ-606')
         }
         return void side.deliver(message)
       case 'ice':
@@ -243,12 +268,12 @@ const SLOW_START_MS = 5000
 /** Esperas entre as tentativas de reconectar; acabou a lista, mostra o erro e volta o botão. */
 const RETRY_MS = [1000, 2000, 4000, 8000, 8000]
 let retries = 0
-function reconnect(message: string): void {
+function reconnect(message: ErrorCode): void {
   const delay = RETRY_MS[retries++]
   if (delay === undefined) {
     retries = 0
     button.disabled = false
-    return say(message, true)
+    return say(message)
   }
   button.disabled = true
   say(T.reconnecting)
@@ -277,7 +302,7 @@ window.addEventListener('resize', () => {
     const current = live
     if (!current || current.landscape === landscape()) return
     current.turn()
-    connect().catch(() => say(T.noAnswer, true))
+    connect().catch(() => say('HZ-601'))
   }, 700)
 })
 
@@ -299,7 +324,7 @@ form.addEventListener('submit', (event) => {
   void document.documentElement.requestFullscreen?.().catch(() => undefined)
   connect().catch(() => {
     button.disabled = false
-    say(T.noAnswer, true)
+    say('HZ-601')
   })
 })
 
