@@ -393,6 +393,14 @@ export function createLinuxVirtualScreen(frames: string | null): VirtualScreen {
             // Mouse, teclado e toque de quem mostra agem nesta tela (sessão de controle remoto do GNOME).
             '--input'
           ])
+          // O que o auxiliar diz (posição aplicada ou recusada pelo GNOME) vai para o log do app.
+          child.stderr.on('data', (chunk) =>
+            console.warn(`[tela estendida] ${String(chunk).trim()}`)
+          )
+          child.stdout.on('data', (chunk) => {
+            for (const line of String(chunk).split('\n'))
+              if (line.startsWith('PLACED')) console.log(`[tela estendida] ${line}`)
+          })
           return {
             onStdout: (callback) => child.stdout.on('data', (chunk) => callback(String(chunk))),
             onStderr: (callback) => child.stderr.on('data', (chunk) => callback(String(chunk))),

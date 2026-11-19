@@ -26,6 +26,11 @@ export const CHANGELOG: Change[] = [
         es: 'Sin cámara, la pantalla inicial recuerda que puedes escribir la dirección en el navegador.'
       },
       {
+        pt: 'Arrastar a tela nos Ajustes muda de verdade a posição do aparelho conectado.',
+        en: 'Dragging the screen in Settings really moves the connected device.',
+        es: 'Arrastrar la pantalla en Ajustes mueve de verdad el dispositivo conectado.'
+      },
+      {
         pt: 'Escolha o idioma do app nos Ajustes.',
         en: 'Choose the app language in Settings.',
         es: 'Elige el idioma de la app en Ajustes.'
