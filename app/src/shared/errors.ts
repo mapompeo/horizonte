@@ -249,14 +249,38 @@ export const ERRORS = {
   // 5xx: atualizações
   'HZ-501': {
     title: {
-      pt: 'Não deu para atualizar',
-      en: 'Could not update',
-      es: 'No se pudo actualizar'
+      pt: 'Não deu para procurar atualização',
+      en: 'Could not check for updates',
+      es: 'No se pudo buscar actualizaciones'
     },
     fix: {
       pt: 'Confira a internet e tente de novo.',
       en: 'Check the internet connection and try again.',
       es: 'Revisa la conexión a internet e inténtalo de nuevo.'
+    }
+  },
+  'HZ-502': {
+    title: {
+      pt: 'Não deu para baixar a atualização',
+      en: 'Could not download the update',
+      es: 'No se pudo descargar la actualización'
+    },
+    fix: {
+      pt: 'Confira a internet e tente de novo. Se continuar, baixe a versão nova pelo site.',
+      en: 'Check the internet connection and try again. If it continues, download the new version from the website.',
+      es: 'Revisa la conexión a internet e inténtalo de nuevo. Si continúa, descarga la versión nueva desde el sitio.'
+    }
+  },
+  'HZ-503': {
+    title: {
+      pt: 'Não deu para instalar a atualização',
+      en: 'Could not install the update',
+      es: 'No se pudo instalar la actualización'
+    },
+    fix: {
+      pt: 'Tente de novo e confirme a senha do sistema se ela aparecer. Se continuar, instale a versão nova pelo site.',
+      en: 'Try again and confirm the system password if it appears. If it continues, install the new version from the website.',
+      es: 'Inténtalo de nuevo y confirma la contraseña del sistema si aparece. Si continúa, instala la versión nueva desde el sitio.'
     }
   },
   // 6xx: receber pelo navegador (celular, tablet)

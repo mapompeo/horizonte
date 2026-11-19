@@ -154,7 +154,9 @@ test('falha inicial mostra erro e retry da consulta sem inventar versão ou stat
   mount()
   await flush()
   expect(document.querySelector('section')?.textContent ?? '').toContain('Atualizações')
-  expect(document.querySelector('[role="alert"]')?.textContent).toContain('Não deu para atualizar')
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+    'Não deu para procurar atualização'
+  )
   expect(document.querySelector('.error-code')?.textContent).toContain('HZ-501')
   expect(document.body.textContent).not.toContain('Versão')
   const retry = document.querySelector<HTMLButtonElement>('button.about-link')
@@ -226,7 +228,9 @@ test('retry falhando continua mostrando erro sem versão fictícia', async () =>
   document.querySelector<HTMLButtonElement>('button.about-link')?.click()
   await flush()
   expect(getStatus).toHaveBeenCalledTimes(2)
-  expect(document.querySelector('[role="alert"]')?.textContent).toContain('Não deu para atualizar')
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+    'Não deu para procurar atualização'
+  )
   expect(document.querySelector('.error-code')?.textContent).toContain('HZ-501')
   expect(document.body.textContent).not.toContain('Versão')
   expect(document.querySelector<HTMLButtonElement>('button.about-link')?.disabled).toBe(false)

@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createUpdater, type UpdateEvents } from './updater'
 
-function setup(autoDownload = false): {
+function setup(
+  autoDownload = false,
+  log?: (line: string) => void
+): {
   updater: ReturnType<typeof createUpdater>
   events: UpdateEvents
   install: ReturnType<typeof vi.fn>
@@ -27,7 +30,8 @@ function setup(autoDownload = false): {
     download,
     install,
     canInstall: () => idle,
-    stop
+    stop,
+    log
   })
   return {
     updater,
@@ -74,6 +78,30 @@ describe('atualização', () => {
     expect(t.install).toHaveBeenCalledOnce()
     expect(t.stop).not.toHaveBeenCalled()
   })
+  it('o código do erro diz o passo: procurar (501), baixar (502), instalar (503)', async () => {
+    const t = setup()
+    t.events.error(new Error('rede'))
+    expect(t.updater.status()).toMatchObject({ phase: 'error', code: 'HZ-501' })
+
+    await t.updater.perform('check')
+    t.download.mockRejectedValueOnce(new Error('ECONNRESET'))
+    expect(await t.updater.perform('download')).toMatchObject({ phase: 'error', code: 'HZ-502' })
+
+    await t.updater.perform('check')
+    await t.updater.perform('download')
+    t.events.downloaded()
+    t.install.mockImplementationOnce(() => t.events.error(new Error('pkexec saiu com 126')))
+    expect(await t.updater.perform('install')).toMatchObject({ phase: 'error', code: 'HZ-503' })
+    expect(t.updater.status().message).toContain('Não deu para instalar a atualização')
+  })
+
+  it('cada falha fica registrada com o motivo', async () => {
+    const lines: string[] = []
+    const t = setup(false, (line) => lines.push(line))
+    t.events.error(new Error('net::ERR_INTERNET_DISCONNECTED'))
+    expect(lines).toEqual(['HZ-501: net::ERR_INTERNET_DISCONNECTED'])
+  })
+
   it('sozinho, baixa ao achar versão nova e depois só falta reiniciar', async () => {
     const t = setup(true)
     expect(await t.updater.perform('check')).toMatchObject({

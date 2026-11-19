@@ -1,12 +1,13 @@
 import type { UpdateAction, UpdateStatus } from '../../shared/updates'
-import { errorFix, errorTitle } from '../../shared/errors'
+import { errorFix, errorTitle, type ErrorCode } from '../../shared/errors'
 
 export interface UpdateEvents {
   available(version: string): void
   current(): void
   progress(percent: number): void
   downloaded(): void
-  error(): void
+  /** Erro do atualizador: o passo em andamento diz o código (procurar, baixar ou instalar). */
+  error(cause?: unknown): void
 }
 
 export function createUpdater(deps: {
@@ -21,6 +22,8 @@ export function createUpdater(deps: {
   canInstall(): boolean
   /** Encerra a conexão em andamento: o botão de atualizar faz isso sozinho, sem pedir. */
   stop(): void
+  /** Registro de cada falha, com o motivo (o arquivo de log do atualizador). */
+  log?(line: string): void
 }): {
   status(): UpdateStatus
   perform(action: UpdateAction): Promise<UpdateStatus>
@@ -32,20 +35,27 @@ export function createUpdater(deps: {
   }
   const listeners = new Set<(status: UpdateStatus) => void>()
   const set = (patch: Partial<UpdateStatus>): void => {
-    state = { ...state, message: undefined, ...patch }
+    state = { ...state, message: undefined, code: undefined, ...patch }
     listeners.forEach((listener) => listener(state))
   }
-  const fail = (): void =>
-    set({
-      phase: 'error',
-      message: `${errorTitle('HZ-501')}. ${errorFix('HZ-501')}`
-    })
+  /** O passo que falhou vira o código: quem lê o código sabe onde parou. */
+  let installing = false
+  const fail = (cause?: unknown): void => {
+    const code: ErrorCode = installing
+      ? 'HZ-503'
+      : state.phase === 'downloading' || state.phase === 'ready'
+        ? 'HZ-502'
+        : 'HZ-501'
+    installing = false
+    deps.log?.(`${code}: ${cause instanceof Error ? cause.message : String(cause ?? '')}`)
+    set({ phase: 'error', code, message: `${errorTitle(code)}. ${errorFix(code)}` })
+  }
   const startDownload = async (): Promise<void> => {
     set({ phase: 'downloading', percent: 0 })
     try {
       await deps.download()
-    } catch {
-      fail()
+    } catch (error) {
+      fail(error)
     }
   }
   deps.listen({
@@ -80,10 +90,11 @@ export function createUpdater(deps: {
           await startDownload()
         } else if (action === 'install' && state.phase === 'ready') {
           if (!deps.canInstall()) deps.stop()
+          installing = true
           deps.install()
         }
-      } catch {
-        fail()
+      } catch (error) {
+        fail(error)
       }
       return state
     }

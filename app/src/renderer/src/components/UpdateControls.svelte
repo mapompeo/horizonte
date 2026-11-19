@@ -162,7 +162,7 @@
         </div>
       {/if}
       {#if status.message}<p class="about-line" role="status">{status.message}</p>{/if}
-      {#if status.phase === 'error'}<ErrorCode code="HZ-501" />{/if}
+      {#if status.phase === 'error'}<ErrorCode code={status.code ?? 'HZ-501'} />{/if}
       <details class="changes">
         <summary>{L({ pt: 'O que mudou', en: 'What’s new', es: 'Qué cambió' })}</summary>
         {#each CHANGELOG.slice(0, 2) as change (change.date)}

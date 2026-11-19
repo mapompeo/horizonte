@@ -18,7 +18,7 @@ import {
   Tray
 } from 'electron'
 import { execFile, spawn, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { homedir, hostname, release as osRelease, tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -491,6 +491,25 @@ async function boot(): Promise<void> {
   }
   controller.subscribe(rememberError)
   rememberError(controller.getSnapshot())
+  // O que o atualizador faz fica num arquivo (updater.log, na pasta do app): quando a atualização falha, o motivo
+  // está lá, e o código na tela (HZ-501, 502 ou 503) já diz o passo.
+  const updaterLog = join(app.getPath('userData'), 'updater.log')
+  const writeLog = (level: string, parts: unknown[]): void => {
+    const line = `${new Date().toISOString()} ${level} ${parts.map((p) => (p instanceof Error ? p.message : String(p))).join(' ')}\n`
+    try {
+      if (existsSync(updaterLog) && statSync(updaterLog).size > 512 * 1024)
+        writeFileSync(updaterLog, '')
+      appendFileSync(updaterLog, line)
+    } catch {
+      // Sem como gravar: segue sem o arquivo.
+    }
+  }
+  autoUpdater.logger = {
+    info: (...parts: unknown[]) => writeLog('info', parts),
+    warn: (...parts: unknown[]) => writeLog('aviso', parts),
+    error: (...parts: unknown[]) => writeLog('erro', parts),
+    debug: () => undefined
+  }
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = false
   autoUpdater.allowPrerelease = app.getVersion().includes('-')
@@ -508,6 +527,7 @@ async function boot(): Promise<void> {
         controller.getSnapshot().state.screen
       ),
     stop: () => controller.dispatch({ type: 'STOP' }),
+    log: (line) => writeLog('falha', [line]),
     listen: (events) => {
       autoUpdater.on('update-available', (info) => events.available(info.version))
       autoUpdater.on('update-not-available', events.current)
