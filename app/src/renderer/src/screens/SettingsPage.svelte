@@ -67,38 +67,38 @@
   </header>
 
   <div class="sheet-body">
-    <section class="group" aria-labelledby="g-look">
-      <h2 class="group-label" id="g-look">
-        {L({ pt: 'Aparência', en: 'Appearance', es: 'Apariencia' })}
-      </h2>
-      <div class="card card-pad">
-        <Segmented
-          label={L({ pt: 'Tema', en: 'Theme', es: 'Tema' })}
-          value={settings.theme}
-          options={[
-            { value: 'system', text: L({ pt: 'Sistema', en: 'System', es: 'Sistema' }) },
-            { value: 'light', text: L({ pt: 'Claro', en: 'Light', es: 'Claro' }) },
-            { value: 'dark', text: L({ pt: 'Escuro', en: 'Dark', es: 'Oscuro' }) }
-          ]}
-          onSelect={(value) => patchSettings({ theme: value as Theme })}
-        />
-      </div>
-    </section>
-
-    <section class="group" aria-labelledby="g-lang">
-      <h2 class="group-label" id="g-lang">{L({ pt: 'Idioma', en: 'Language', es: 'Idioma' })}</h2>
-      <div class="card card-pad">
-        <Segmented
-          label={L({ pt: 'Idioma', en: 'Language', es: 'Idioma' })}
-          value={settings.language}
-          options={[
-            { value: 'system', text: L({ pt: 'Sistema', en: 'System', es: 'Sistema' }) },
-            { value: 'pt', text: 'Português' },
-            { value: 'en', text: 'English' },
-            { value: 'es', text: 'Español' }
-          ]}
-          onSelect={(value) => patchSettings({ language: value as Language })}
-        />
+    <section class="group" aria-labelledby="g-general">
+      <h2 class="group-label" id="g-general">{L({ pt: 'Geral', en: 'General', es: 'General' })}</h2>
+      <div class="card">
+        <div class="row">
+          <span>{L({ pt: 'Aparência', en: 'Appearance', es: 'Apariencia' })}</span>
+          <Segmented
+            compact
+            label={L({ pt: 'Tema', en: 'Theme', es: 'Tema' })}
+            value={settings.theme}
+            options={[
+              { value: 'system', text: L({ pt: 'Sistema', en: 'System', es: 'Sistema' }) },
+              { value: 'light', text: L({ pt: 'Claro', en: 'Light', es: 'Claro' }) },
+              { value: 'dark', text: L({ pt: 'Escuro', en: 'Dark', es: 'Oscuro' }) }
+            ]}
+            onSelect={(value) => patchSettings({ theme: value as Theme })}
+          />
+        </div>
+        <div class="row">
+          <span>{L({ pt: 'Idioma', en: 'Language', es: 'Idioma' })}</span>
+          <Segmented
+            compact
+            label={L({ pt: 'Idioma', en: 'Language', es: 'Idioma' })}
+            value={settings.language}
+            options={[
+              { value: 'system', text: L({ pt: 'Sistema', en: 'System', es: 'Sistema' }) },
+              { value: 'pt', text: 'Português' },
+              { value: 'en', text: 'English' },
+              { value: 'es', text: 'Español' }
+            ]}
+            onSelect={(value) => patchSettings({ language: value as Language })}
+          />
+        </div>
       </div>
     </section>
 
@@ -236,8 +236,8 @@
 
     <section class="group" aria-labelledby="g-about">
       <h2 class="group-label" id="g-about">{L({ pt: 'Sobre', en: 'About', es: 'Acerca de' })}</h2>
-      <UpdateControls />
       <div class="card">
+        <UpdateControls />
         <ReportButton class="row row-button" />
         <button class="row row-button" onclick={() => window.horizonte.openRepo()}
           >{L({ pt: 'Código no GitHub', en: 'Code on GitHub', es: 'Código en GitHub' })}</button

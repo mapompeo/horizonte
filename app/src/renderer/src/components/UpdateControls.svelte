@@ -1,6 +1,5 @@
 <script lang="ts">
   import { L } from '../lib/i18n'
-  import Logo from './Logo.svelte'
   import ErrorCode from './ErrorCode.svelte'
   import { CHANGELOG } from '../../../shared/changelog'
   import { currentLang } from '../../../shared/lang'
@@ -70,19 +69,6 @@
         }
     }
   }
-  /** A linha da versão, numa expressão só: quebrar em várias deixava espaços sobrando no meio do texto. */
-  const aboutLine = (status: UpdateStatus): string => {
-    const version = `${L({ pt: 'Versão', en: 'Version', es: 'Versión' })} ${pretty(status.currentVersion)}`
-    if (status.phase === 'downloading')
-      return `${L({ pt: 'Baixando', en: 'Downloading', es: 'Descargando' })} ${pretty(status.version)} · ${percent}%`
-    if (status.phase === 'ready')
-      return `${L({ pt: 'Atualização pronta:', en: 'Update ready:', es: 'Actualización lista:' })} ${pretty(status.version)}`
-    if (status.phase === 'checking')
-      return `${version} · ${L({ pt: 'Verificando…', en: 'Checking…', es: 'Buscando…' })}`
-    if (status.phase === 'current')
-      return `${version} · ${L({ pt: 'Atualizado', en: 'Up to date', es: 'Actualizado' })}`
-    return version
-  }
   /** "19 de novembro", no idioma do app. */
   const dateOf = (day: string): string =>
     new Date(`${day}T12:00:00`).toLocaleDateString(
@@ -137,17 +123,27 @@
     {/if}
   </footer>
 {:else}
-  <section class="about" aria-labelledby="g-update">
-    <h2 class="sr-only" id="g-update">
-      {L({ pt: 'Atualizações', en: 'Updates', es: 'Actualizaciones' })}
-    </h2>
-    <Logo size={40} />
-    <span class="about-name">Horizonte</span>
-    {#if status}
-      <p class="about-line" aria-live="polite">{aboutLine(status)}</p>
-      {#if status.phase === 'downloading'}
-        <div
-          class="bar bar-sm"
+  <!-- Linhas do cartão "Sobre" dos Ajustes: a versão, a atualização e o que mudou, no mesmo jeito das outras partes. -->
+  {#if status}
+    <div class="row">
+      <span>{L({ pt: 'Versão', en: 'Version', es: 'Versión' })}</span>
+      <span class="row-value">{pretty(status.currentVersion)}</span>
+    </div>
+    {#if status.phase === 'checking'}
+      <div class="row">
+        <span>{L({ pt: 'Atualização', en: 'Update', es: 'Actualización' })}</span>
+        <span class="row-value" aria-live="polite"
+          >{L({ pt: 'Verificando…', en: 'Checking…', es: 'Buscando…' })}</span
+        >
+      </div>
+    {:else if status.phase === 'downloading'}
+      <div class="row">
+        <span
+          >{L({ pt: 'Baixando', en: 'Downloading', es: 'Descargando' })}
+          {pretty(status.version)}</span
+        >
+        <span
+          class="row-value"
           role="progressbar"
           aria-label={L({
             pt: 'Baixando atualização',
@@ -156,51 +152,60 @@
           })}
           aria-valuemin="0"
           aria-valuemax="100"
-          aria-valuenow={percent}
+          aria-valuenow={percent}>{percent}%</span
         >
-          <div class="bar-fill" style="width: {percent}%"></div>
-        </div>
-      {/if}
-      {#if status.message}<p class="about-line" role="status">{status.message}</p>{/if}
-      {#if status.phase === 'error'}<ErrorCode code={status.code ?? 'HZ-501'} />{/if}
-      <details class="changes">
-        <summary>{L({ pt: 'O que mudou', en: 'What’s new', es: 'Qué cambió' })}</summary>
+      </div>
+    {:else if status.phase === 'available'}
+      <button class="row row-button row-accent" onclick={() => perform('download')}
+        >{updateTo(status.version)}</button
+      >
+    {:else if status.phase === 'ready'}
+      <button class="row row-button row-accent" onclick={() => perform('install')}
+        >{L({
+          pt: 'Reiniciar e atualizar',
+          en: 'Restart and update',
+          es: 'Reiniciar y actualizar'
+        })}</button
+      >
+    {:else if status.phase !== 'unavailable'}
+      <button class="row row-button" onclick={() => perform('check')}
+        ><span class="row-grow"
+          >{L({
+            pt: 'Verificar atualização',
+            en: 'Check for updates',
+            es: 'Buscar actualizaciones'
+          })}</span
+        >{#if status.phase === 'current'}<span class="row-value"
+            >{L({ pt: 'Atualizado', en: 'Up to date', es: 'Actualizado' })}</span
+          >{/if}</button
+      >
+    {/if}
+    {#if status.message}
+      <p class="row-note" role="status">{status.message}</p>
+    {/if}
+    {#if status.phase === 'error'}<p class="row-note">
+        <ErrorCode code={status.code ?? 'HZ-501'} />
+      </p>{/if}
+    <details class="changes">
+      <summary class="row row-button"
+        >{L({ pt: 'O que mudou', en: 'What’s new', es: 'Qué cambió' })}</summary
+      >
+      <div class="changes-body">
         {#each CHANGELOG.slice(0, 2) as change (change.date)}
           <p class="changes-date">{dateOf(change.date)}</p>
           <ul>
             {#each change.items as item, i (i)}<li>{L(item)}</li>{/each}
           </ul>
         {/each}
-      </details>
-      {#if status.phase === 'available'}
-        <button class="btn btn-primary btn-sm" onclick={() => perform('download')}
-          >{updateTo(status.version)}</button
-        >
-      {:else if status.phase === 'ready'}
-        <button class="btn btn-primary btn-sm" onclick={() => perform('install')}
-          >{L({
-            pt: 'Reiniciar e atualizar',
-            en: 'Restart and update',
-            es: 'Reiniciar y actualizar'
-          })}</button
-        >
-      {:else if status.phase !== 'unavailable' && status.phase !== 'checking' && status.phase !== 'downloading'}
-        <button class="link about-link" onclick={() => perform('check')}
-          >{L({
-            pt: 'Verificar atualização',
-            en: 'Check for updates',
-            es: 'Buscar actualizaciones'
-          })}</button
-        >
-      {/if}
-    {:else if initialError}
-      <p class="about-line" role="alert">{initialError}</p>
-      <ErrorCode code="HZ-501" />
-      <button class="about-link" disabled={loading} onclick={() => loadStatus()}>
-        {loading ? LOADING : L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}
-      </button>
-    {:else}
-      <p class="about-line" aria-live="polite">{LOADING}</p>
-    {/if}
-  </section>
+      </div>
+    </details>
+  {:else if initialError}
+    <p class="row-note" role="alert">{initialError}</p>
+    <p class="row-note"><ErrorCode code="HZ-501" /></p>
+    <button class="row row-button retry" disabled={loading} onclick={() => loadStatus()}>
+      {loading ? LOADING : L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}
+    </button>
+  {:else}
+    <div class="row"><span class="row-value" aria-live="polite">{LOADING}</span></div>
+  {/if}
 {/if}

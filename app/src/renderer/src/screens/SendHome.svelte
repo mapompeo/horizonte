@@ -140,11 +140,7 @@
           ? L({ pt: 'Preparando', en: 'Getting ready', es: 'Preparando' })
           : compact
             ? L({ pt: 'Mais um aparelho', en: 'One more device', es: 'Un dispositivo más' })
-            : L({
-                pt: 'Aponte a câmera para o QR',
-                en: 'Point the camera at the QR',
-                es: 'Apunta la cámara al QR'
-              })}
+            : L({ pt: 'Aponte a câmera', en: 'Point the camera', es: 'Apunta la cámara' })}
       </h1>
       {#if link && web.url}
         <!-- Sem câmera (outro PC, tablet): o endereço para digitar ou copiar, dito com todas as letras. -->

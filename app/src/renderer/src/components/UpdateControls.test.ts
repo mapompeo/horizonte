@@ -145,7 +145,7 @@ test('push recebido antes da consulta inicial não é sobrescrito pela resposta 
   await flush()
   initial.resolve(current)
   await flush()
-  expect(document.body.textContent).toContain('Atualização pronta')
+  expect(document.body.textContent).toContain('Reiniciar e atualizar')
   expect(document.body.textContent).not.toContain('versão mais recente')
 })
 
@@ -153,13 +153,12 @@ test('falha inicial mostra erro e retry da consulta sem inventar versão ou stat
   getStatus.mockRejectedValueOnce(new Error('IPC indisponível'))
   mount()
   await flush()
-  expect(document.querySelector('section')?.textContent ?? '').toContain('Atualizações')
   expect(document.querySelector('[role="alert"]')?.textContent).toContain(
     'Não deu para procurar atualização'
   )
   expect(document.querySelector('.error-code')?.textContent).toContain('HZ-501')
   expect(document.body.textContent).not.toContain('Versão')
-  const retry = document.querySelector<HTMLButtonElement>('button.about-link')
+  const retry = document.querySelector<HTMLButtonElement>('button.retry')
   expect(retry?.textContent).toContain('Tentar de novo')
   retry?.click()
   await flush()
@@ -200,14 +199,14 @@ test('resposta antiga de ação não sobrescreve push mais novo', async () => {
   listener(ready)
   action.resolve(current)
   await flush()
-  expect(document.body.textContent).toContain('Atualização pronta')
+  expect(document.body.textContent).toContain('Reiniciar e atualizar')
 })
 
 test('push síncrono na assinatura também vence a consulta inicial', async () => {
   pushOnSubscribe = ready
   mount()
   await flush()
-  expect(document.body.textContent).toContain('Atualização pronta')
+  expect(document.body.textContent).toContain('Reiniciar e atualizar')
 })
 
 test('rejeição atrasada da consulta não substitui push por erro', async () => {
@@ -217,7 +216,7 @@ test('rejeição atrasada da consulta não substitui push por erro', async () =>
   listener(ready)
   initial.reject(new Error('IPC indisponível'))
   await flush()
-  expect(document.body.textContent).toContain('Atualização pronta')
+  expect(document.body.textContent).toContain('Reiniciar e atualizar')
   expect(document.querySelector('[role="alert"]')).toBeNull()
 })
 
@@ -225,7 +224,7 @@ test('retry falhando continua mostrando erro sem versão fictícia', async () =>
   getStatus.mockRejectedValue(new Error('IPC indisponível'))
   mount()
   await flush()
-  document.querySelector<HTMLButtonElement>('button.about-link')?.click()
+  document.querySelector<HTMLButtonElement>('button.retry')?.click()
   await flush()
   expect(getStatus).toHaveBeenCalledTimes(2)
   expect(document.querySelector('[role="alert"]')?.textContent).toContain(
@@ -233,7 +232,7 @@ test('retry falhando continua mostrando erro sem versão fictícia', async () =>
   )
   expect(document.querySelector('.error-code')?.textContent).toContain('HZ-501')
   expect(document.body.textContent).not.toContain('Versão')
-  expect(document.querySelector<HTMLButtonElement>('button.about-link')?.disabled).toBe(false)
+  expect(document.querySelector<HTMLButtonElement>('button.retry')?.disabled).toBe(false)
 })
 
 test('push durante retry vence sua resposta antiga', async () => {
@@ -245,7 +244,7 @@ test('push durante retry vence sua resposta antiga', async () => {
   listener(ready)
   retry.resolve(current)
   await flush()
-  expect(document.body.textContent).toContain('Atualização pronta')
+  expect(document.body.textContent).toContain('Reiniciar e atualizar')
   expect(document.querySelector('[role="alert"]')).toBeNull()
 })
 
