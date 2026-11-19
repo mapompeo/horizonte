@@ -1,12 +1,6 @@
 /* Página de receber pelo navegador: o mesmo guia do app (docs/identidade), sempre no escuro, como a tela recebida. */
 body {
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    'SF Pro Text',
-    'Segoe UI',
-    system-ui,
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -53,6 +47,17 @@ body {
   color: rgba(235, 235, 245, 0.6);
 }
 .web-tip[hidden] {
+  display: none;
+}
+/* Mostrado só pelo endereço #antigo, sem JavaScript: some o texto normal e o botão. */
+.web-old {
+  display: none;
+}
+.web-old:target {
+  display: block;
+}
+.web-old:target ~ .web-text,
+.web-old:target ~ .web-form {
   display: none;
 }
 .web-error {

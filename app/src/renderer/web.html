@@ -25,8 +25,14 @@
         height="64"
       />
       <h1 class="web-title" id="titulo">Receber a tela</h1>
+      <!-- Navegador antigo (sem o JavaScript desta página), o Conectar cai aqui pelo endereço #antigo. -->
+      <p class="web-text web-error web-old" id="antigo" role="alert">
+        Este navegador é antigo demais para receber a tela. No iPad ou iPhone, precisa do iOS 15.4
+        ou mais novo (Ajustes, Geral, Sobre).<br />This browser is too old. iOS 15.4 or later is
+        required.
+      </p>
       <p class="web-text" id="texto" role="status" aria-live="polite">Toque em Conectar.</p>
-      <form class="web-form" id="form">
+      <form class="web-form" id="form" action="#antigo">
         <button class="web-button" id="entrar" type="submit">Conectar</button>
       </form>
       <p class="web-tip" id="dica" hidden>Para tela cheia, adicione à Tela de Início.</p>

@@ -281,8 +281,21 @@ window.addEventListener('resize', () => {
   }, 700)
 })
 
+/** O que o receptor usa e só existe do Safari 15.4 (iOS 15.4) em diante; antes disso, nem conectar adianta. */
+function modernEnough(w: Window & typeof globalThis): boolean {
+  return (
+    typeof w.RTCPeerConnection === 'function' &&
+    typeof w.Object.hasOwn === 'function' &&
+    typeof w.HTMLVideoElement?.prototype.requestVideoFrameCallback === 'function'
+  )
+}
+
 form.addEventListener('submit', (event) => {
   event.preventDefault()
+  if (!modernEnough(window)) {
+    location.hash = 'antigo'
+    return
+  }
   retries = 0
   // Tela cheia precisa do toque da pessoa: pede agora, e a tela entra assim que o vídeo chega.
   void document.documentElement.requestFullscreen?.().catch(() => undefined)
