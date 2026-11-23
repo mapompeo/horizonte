@@ -43,10 +43,11 @@ try {
   await page.evaluate(() => {
     window.horizonte.reportDiagnostic = async () => {
       window.reportCalls++
+      return 'sent'
     }
   })
   await page.getByRole('button', { name: 'Não enviou. Tentar de novo', exact: true }).click()
-  await page.getByText('Enviado', { exact: true }).waitFor()
+  await page.getByText('Enviado. Obrigado!', { exact: true }).waitFor()
   assert.equal(await page.evaluate(() => window.reportCalls), 2)
   console.log('Um clique: falha com tentar de novo e envio confirmado: OK')
 } finally {
