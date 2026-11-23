@@ -1,0 +1,255 @@
+import { describe, expect, it } from 'vitest'
+import { approvalPin, reduce } from './machine'
+import type { AppEvent, AppState } from '../../shared/types'
+
+const preparing: AppState = { screen: 'preparing', mode: 'send', step: 'engine' }
+const ready: AppState = { screen: 'ready', mode: 'send' }
+const approve: AppState = {
+  screen: 'approve',
+  mode: 'send',
+  device: 'Notebook',
+  pairingId: 'p1',
+  pin: null
+}
+const approveWithPin: AppState = { ...approve, pin: '4821' }
+const connected: AppState = { screen: 'connected', mode: 'send', devices: [{ device: 'Notebook' }] }
+const discover: AppState = { screen: 'discover', mode: 'receive' }
+const receiving: AppState = {
+  screen: 'receiving',
+  mode: 'receive',
+  host: '192.168.1.3',
+  name: 'Desktop'
+}
+const failure = { code: '100' as const, message: 'Falhou', detail: 'detalhe' }
+
+describe('reduce: caminho feliz', () => {
+  const cases: [string, AppState, AppEvent, AppState][] = [
+    ['escolher enviar', discover, { type: 'CHOOSE', mode: 'send' }, preparing],
+    ['escolher receber', ready, { type: 'CHOOSE', mode: 'receive' }, discover],
+    [
+      'passo da preparação',
+      preparing,
+      { type: 'PREP_STEP', step: 'display' },
+      { ...preparing, step: 'display' }
+    ],
+    ['preparação termina', preparing, { type: 'PREP_DONE' }, ready],
+    [
+      'pedido de pareamento',
+      ready,
+      { type: 'PAIR_REQUEST', device: 'Notebook', pairingId: 'p1' },
+      approve
+    ],
+    [
+      'pedido de pareamento já com o PIN',
+      ready,
+      { type: 'PAIR_REQUEST', device: 'Notebook', pairingId: 'p1', pin: '4821' },
+      approveWithPin
+    ],
+    [
+      'pedido com PIN inválido vira digitação manual',
+      ready,
+      { type: 'PAIR_REQUEST', device: 'Notebook', pairingId: 'p1', pin: 'zz' },
+      approve
+    ],
+    ['aprovar digitando o PIN', approve, { type: 'APPROVE', pin: '4821' }, ready],
+    ['aprovar com o PIN já conhecido', approveWithPin, { type: 'APPROVE' }, ready],
+    ['recusar', approve, { type: 'DENY' }, ready],
+    ['pedido cancelado pelo motor', approve, { type: 'PAIR_CANCELLED', pairingId: 'p1' }, ready],
+    ['cliente conecta', ready, { type: 'CLIENT_CONNECTED', device: 'Notebook' }, connected],
+    ['cliente desconecta', connected, { type: 'CLIENT_DISCONNECTED' }, ready],
+    ['parar o envio', connected, { type: 'STOP' }, ready],
+    [
+      'conectar a um computador',
+      discover,
+      { type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' },
+      receiving
+    ],
+    ['a transmissão acaba', receiving, { type: 'STREAM_ENDED' }, discover],
+    ['sair', receiving, { type: 'STOP' }, discover]
+  ]
+
+  it.each(cases)('%s', (_name, from, event, to) => {
+    expect(reduce(from, event)).toEqual(to)
+  })
+})
+
+describe('reduce: troca de modo a um clique', () => {
+  it('de enviar para mostrar a partir de qualquer tela do modo enviar', () => {
+    for (const from of [preparing, ready, approve, connected]) {
+      expect(reduce(from, { type: 'CHOOSE', mode: 'receive' })).toEqual(discover)
+    }
+  })
+
+  it('de mostrar para enviar', () => {
+    for (const from of [discover, receiving]) {
+      expect(reduce(from, { type: 'CHOOSE', mode: 'send' })).toEqual(preparing)
+    }
+  })
+
+  it('escolher o mesmo modo não reinicia nada', () => {
+    expect(reduce(ready, { type: 'CHOOSE', mode: 'send' })).toBe(ready)
+    expect(reduce(connected, { type: 'CHOOSE', mode: 'send' })).toBe(connected)
+    expect(reduce(discover, { type: 'CHOOSE', mode: 'receive' })).toBe(discover)
+  })
+
+  it('sai de uma tela de erro ao escolher o outro modo', () => {
+    const error: AppState = { screen: 'error', mode: 'send', error: failure }
+    expect(reduce(error, { type: 'CHOOSE', mode: 'receive' })).toEqual(discover)
+  })
+})
+
+describe('reduce: erros', () => {
+  it('qualquer estado vira erro com o modo atual', () => {
+    expect(reduce(ready, { type: 'FAIL', error: failure })).toEqual({
+      screen: 'error',
+      mode: 'send',
+      error: failure
+    })
+    expect(reduce(receiving, { type: 'FAIL', error: failure })).toEqual({
+      screen: 'error',
+      mode: 'receive',
+      error: failure
+    })
+  })
+
+  it('um novo erro substitui o anterior', () => {
+    const first: AppState = { screen: 'error', mode: 'send', error: failure }
+    const next = reduce(first, {
+      type: 'FAIL',
+      error: { code: '100' as const, message: 'Outro' }
+    })
+    expect(next).toEqual({
+      screen: 'error',
+      mode: 'send',
+      error: { code: '100' as const, message: 'Outro' }
+    })
+  })
+
+  it('tentar de novo volta ao início do modo', () => {
+    expect(reduce({ screen: 'error', mode: 'send', error: failure }, { type: 'RETRY' })).toEqual(
+      preparing
+    )
+    expect(reduce({ screen: 'error', mode: 'receive', error: failure }, { type: 'RETRY' })).toEqual(
+      discover
+    )
+  })
+})
+
+describe('reduce: eventos no estado errado são ignorados', () => {
+  const cases: [string, AppState, AppEvent][] = [
+    [
+      'pedido de pareamento com outro já pendente',
+      approve,
+      { type: 'PAIR_REQUEST', device: 'Outro', pairingId: 'y' }
+    ],
+    ['aprovar sem PIN', approve, { type: 'APPROVE' }],
+    ['aprovar com PIN curto', approve, { type: 'APPROVE', pin: '12' }],
+    ['aprovar com PIN que não é número', approve, { type: 'APPROVE', pin: 'abcd' }],
+    ['cancelamento de outro pedido', approve, { type: 'PAIR_CANCELLED', pairingId: 'outro' }],
+    ['cancelamento sem pedido', ready, { type: 'PAIR_CANCELLED', pairingId: 'p1' }],
+    ['aprovar sem pedido', ready, { type: 'APPROVE' }],
+    ['recusar sem pedido', ready, { type: 'DENY' }],
+    ['fim da preparação já pronto', ready, { type: 'PREP_DONE' }],
+    ['fim da preparação no modo mostrar', discover, { type: 'PREP_DONE' }],
+    ['passo da preparação já pronto', ready, { type: 'PREP_STEP', step: 'display' }],
+    ['conectar já recebendo', receiving, { type: 'CONNECT', host: '10.0.0.9', name: 'Outro' }],
+    ['conectar no modo enviar', ready, { type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' }],
+    [
+      'preparação termina em erro',
+      { screen: 'error', mode: 'send', error: failure },
+      { type: 'PREP_DONE' }
+    ],
+    ['parar sem conexão', ready, { type: 'STOP' }],
+    ['transmissão acaba no modo enviar', ready, { type: 'STREAM_ENDED' }],
+    ['tentar de novo sem erro', ready, { type: 'RETRY' }]
+  ]
+
+  it.each(cases)('%s', (_name, state, event) => {
+    expect(reduce(state, event)).toBe(state)
+  })
+})
+
+describe('approvalPin', () => {
+  it('usa o PIN do evento, depois o do estado, e só se for válido', () => {
+    if (approve.screen !== 'approve' || approveWithPin.screen !== 'approve')
+      throw new Error('estado de teste')
+    expect(approvalPin(approve, { type: 'APPROVE', pin: '4821' })).toBe('4821')
+    expect(approvalPin(approveWithPin, { type: 'APPROVE' })).toBe('4821')
+    expect(approvalPin(approveWithPin, { type: 'APPROVE', pin: '1111' })).toBe('1111')
+    expect(approvalPin(approve, { type: 'APPROVE' })).toBeNull()
+    expect(approvalPin(approve, { type: 'APPROVE', pin: 'xx' })).toBeNull()
+  })
+})
+
+describe('reduce: progresso da preparação', () => {
+  const base = { screen: 'preparing', mode: 'send', step: 'engine' } as const
+
+  it('guarda o texto e a fração do progresso', () => {
+    const next = reduce(base, {
+      type: 'PREP_PROGRESS',
+      progress: { note: 'Baixando', fraction: 0.2 }
+    })
+    expect(next).toEqual({ ...base, progress: { note: 'Baixando', fraction: 0.2 } })
+  })
+
+  it('a barra nunca volta para trás', () => {
+    const a = reduce(base, { type: 'PREP_PROGRESS', progress: { note: 'a', fraction: 0.5 } })
+    const b = reduce(a, { type: 'PREP_PROGRESS', progress: { note: 'b', fraction: 0.3 } })
+    expect(b).toMatchObject({ progress: { note: 'b', fraction: 0.5 } })
+  })
+
+  it('ao mudar de etapa o texto antigo sai, mas a fração continua', () => {
+    const a = reduce(base, { type: 'PREP_PROGRESS', progress: { note: 'a', fraction: 0.5 } })
+    expect(reduce(a, { type: 'PREP_STEP', step: 'display' })).toMatchObject({
+      step: 'display',
+      progress: { note: '', fraction: 0.5 }
+    })
+  })
+
+  it('fora da preparação o progresso é ignorado', () => {
+    const ready = { screen: 'ready', mode: 'send' } as const
+    expect(reduce(ready, { type: 'PREP_PROGRESS', progress: { note: 'x', fraction: 1 } })).toBe(
+      ready
+    )
+  })
+})
+
+describe('reduce: várias telas ao mesmo tempo', () => {
+  const one = { device: 'Notebook', fingerprint: 'A' }
+  const two = { device: 'iPhone', fingerprint: 'B' }
+  const both: AppState = { screen: 'connected', mode: 'send', devices: [one, two] }
+
+  it('outro aparelho conectando entra na lista; o mesmo de novo fica no lugar dele', () => {
+    const first = reduce(ready, { type: 'CLIENT_CONNECTED', device: 'Notebook', fingerprint: 'A' })
+    expect(reduce(first, { type: 'CLIENT_CONNECTED', device: 'iPhone', fingerprint: 'B' })).toEqual(
+      both
+    )
+    expect(
+      reduce(both, { type: 'CLIENT_CONNECTED', device: 'Notebook 2', fingerprint: 'A' })
+    ).toEqual({
+      ...both,
+      devices: [{ device: 'Notebook 2', fingerprint: 'A' }, two]
+    })
+  })
+
+  it('quem sai sai sozinho; sem ninguém, volta para pronto', () => {
+    const left = reduce(both, { type: 'CLIENT_DISCONNECTED', fingerprint: 'A' })
+    expect(left).toEqual({ ...both, devices: [two] })
+    expect(reduce(left, { type: 'STOP', fingerprint: 'B' })).toEqual(ready)
+    expect(reduce(both, { type: 'STOP' })).toEqual(ready)
+  })
+
+  it('um pedido durante a conexão pergunta e depois volta para quem já estava vendo', () => {
+    const asking = reduce(both, {
+      type: 'PAIR_REQUEST',
+      device: 'Tablet',
+      pairingId: 'p9',
+      fingerprint: 'C'
+    })
+    expect(asking).toMatchObject({ screen: 'approve', device: 'Tablet', connected: [one, two] })
+    expect(reduce(asking, { type: 'APPROVE' })).toEqual(both)
+    expect(reduce(asking, { type: 'DENY' })).toEqual(both)
+    const fewer = reduce(asking, { type: 'CLIENT_DISCONNECTED', fingerprint: 'B' })
+    expect(reduce(fewer, { type: 'DENY' })).toEqual({ ...both, devices: [one] })
+  })
+})

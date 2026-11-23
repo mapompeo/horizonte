@@ -1,0 +1,209 @@
+import { execFileSync, spawn, spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+const HELPER = resolve('native/macos/build/horizonte-display')
+/** Telas em uso segundo o próprio CoreGraphics (o system_profiler não lista nada em máquina virtual sem GPU). */
+const screens = (): number =>
+  Number(execFileSync(HELPER, ['--count'], { timeout: 30_000 }).toString().trim())
+interface DisplayBounds {
+  id: number
+  x: number
+  y: number
+  width: number
+  height: number
+}
+interface Layout {
+  main: number
+  displays: DisplayBounds[]
+}
+const layout = (): Layout =>
+  JSON.parse(execFileSync(HELPER, ['--layout'], { timeout: 30_000 }).toString()) as Layout
+const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
+async function until(condition: () => boolean, ms: number): Promise<boolean> {
+  const end = Date.now() + ms
+  while (Date.now() < end) {
+    if (condition()) return true
+    await wait(1_000)
+  }
+  return condition()
+}
+
+/** Só no macOS, com o auxiliar já compilado (npm run build:helper:mac). */
+describe.runIf(process.platform === 'darwin')('monitor virtual no Mac de verdade', () => {
+  it('o auxiliar cria uma tela nova, o sistema a enxerga e ela some quando ele encerra', async () => {
+    expect(existsSync(HELPER), 'o auxiliar foi compilado').toBe(true)
+    console.log(execFileSync('lipo', ['-info', HELPER]).toString().trim())
+
+    const before = screens()
+    console.log('telas antes:', before)
+
+    const child = spawn(HELPER, ['--width', '1920', '--height', '1080'], {
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    let out = ''
+    let err = ''
+    child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()))
+    child.stderr.on('data', (chunk: Buffer) => (err += chunk.toString()))
+    let exited: number | null = null
+    child.on('exit', (code) => (exited = code ?? -1))
+
+    try {
+      const ready = await until(() => /DISPLAY_ID \d+/.test(out) || exited !== null, 30_000)
+      console.log('saída do auxiliar:', JSON.stringify(out), 'erro:', JSON.stringify(err))
+      expect(
+        ready && /DISPLAY_ID \d+/.test(out),
+        `o auxiliar disse que criou a tela (saiu: ${exited}): ${err}`
+      ).toBe(true)
+
+      const appeared = await until(() => screens() > before, 30_000)
+      console.log('telas durante:', screens())
+      console.log(execFileSync('system_profiler', ['SPDisplaysDataType']).toString().slice(0, 1500))
+      expect(appeared, 'o sistema passou a enxergar uma tela a mais').toBe(true)
+      const displayId = Number(/DISPLAY_ID (\d+)/.exec(out)?.[1])
+      const actual = layout()
+      const main = actual.displays.find((display) => display.id === actual.main)
+      const virtual = actual.displays.find((display) => display.id === displayId)
+      expect(main, 'a tela principal aparece no layout Quartz').toBeDefined()
+      expect(virtual, 'a tela criada aparece no layout Quartz').toBeDefined()
+      expect(displayId, 'a tela virtual nao e a principal').not.toBe(actual.main)
+      expect(virtual!.x, 'a tela virtual comeca no maxX do principal').toBe(main!.x + main!.width)
+      expect(virtual!.y, 'a tela virtual alinha no minY do principal').toBe(main!.y)
+      expect(virtual!.width).toBe(1920)
+      expect(virtual!.height).toBe(1080)
+    } finally {
+      child.kill('SIGTERM')
+    }
+
+    expect(await until(() => exited !== null, 15_000), 'o auxiliar encerra com SIGTERM').toBe(true)
+    expect(exited).toBe(0)
+    expect(await until(() => screens() <= before, 30_000), 'a tela some junto com o auxiliar').toBe(
+      true
+    )
+  })
+
+  it('muda de lugar pelos pedidos na entrada padrão (esquerda, acima, abaixo e posição livre)', async () => {
+    expect(existsSync(HELPER), 'o auxiliar foi compilado').toBe(true)
+    const child = spawn(HELPER, ['--width', '1280', '--height', '720'], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    })
+    let out = ''
+    let err = ''
+    child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()))
+    child.stderr.on('data', (chunk: Buffer) => (err += chunk.toString()))
+    let exited: number | null = null
+    child.on('exit', (code) => (exited = code ?? -1))
+    const send = async (line: string, expected: RegExp): Promise<DisplayBounds> => {
+      out = ''
+      child.stdin.write(`${line}\n`)
+      const placed = await until(() => expected.test(out) || exited !== null, 20_000)
+      expect(placed && expected.test(out), `"${line}" foi aplicado (erro: ${err})`).toBe(true)
+      const actual = layout()
+      return actual.displays.find((d) => d.id === displayId)!
+    }
+    let displayId = 0
+    try {
+      expect(await until(() => /DISPLAY_ID \d+/.test(out) || exited !== null, 30_000)).toBe(true)
+      displayId = Number(/DISPLAY_ID (\d+)/.exec(out)?.[1])
+      const physical = layout().displays.filter((d) => d.id !== displayId)
+      const left = Math.min(...physical.map((d) => d.x))
+      const top = Math.min(...physical.map((d) => d.y))
+      const bottom = Math.max(...physical.map((d) => d.y + d.height))
+
+      const onLeft = await send('place left', /PLACED left/)
+      expect(onLeft.x, 'à esquerda das telas de verdade').toBe(left - 1280)
+
+      const above = await send('place above', /PLACED above/)
+      expect(above.y, 'acima das telas de verdade').toBe(top - 720)
+
+      const below = await send('place below', /PLACED below/)
+      expect(below.y, 'abaixo das telas de verdade').toBe(bottom)
+
+      const free = await send('at 0.5 0.5', /PLACED at/)
+      const overlapsPhysical = physical.some(
+        (d) =>
+          free.x < d.x + d.width &&
+          d.x < free.x + free.width &&
+          free.y < d.y + d.height &&
+          d.y < free.y + free.height
+      )
+      expect(overlapsPhysical, 'a posição livre não fica por cima de nenhuma tela').toBe(false)
+
+      child.stdin.write('place diagonal\n')
+      await wait(1_000)
+      expect(err, 'pedido inválido é recusado').toContain('invalido')
+    } finally {
+      child.kill('SIGTERM')
+    }
+    expect(await until(() => exited !== null, 15_000)).toBe(true)
+  })
+
+  it.each([
+    [['--width'], 'valor ausente'],
+    [['--height', 'abc'], 'numeros inteiros'],
+    [['--width', '0'], 'tamanho invalido'],
+    [['--desconhecido'], 'argumento desconhecido'],
+    [['--layout', '--width', '1920'], 'devem ser usados sozinhos'],
+    [['--width', '1920', '--width', '1280'], 'argumento repetido']
+  ])('rejeita argumentos invalidos %j sem anunciar uma tela', (args, message) => {
+    const result = spawnSync(HELPER, args, { encoding: 'utf8', timeout: 30_000 })
+    expect(result.error).toBeUndefined()
+    expect(result.status).toBe(64)
+    expect(result.stderr).toContain(message)
+    expect(result.stdout).not.toContain('DISPLAY_ID')
+  })
+
+  it('duas telas ao mesmo tempo, uma por aparelho, cada uma com o seu número de série', async () => {
+    const before = screens()
+    const start = (
+      serial: number,
+      width: number,
+      height: number
+    ): { out: () => string; kill(): void } => {
+      const child = spawn(
+        HELPER,
+        [
+          '--width',
+          String(width),
+          '--height',
+          String(height),
+          '--name',
+          `Horizonte ${serial}`,
+          '--serial',
+          String(serial)
+        ],
+        {
+          stdio: ['ignore', 'pipe', 'pipe']
+        }
+      )
+      let out = ''
+      child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()))
+      child.stderr.on('data', (chunk: Buffer) => (out += `[erro] ${chunk.toString()}`))
+      child.on('exit', (code) => (out += `[saiu ${code}]`))
+      return { out: () => out, kill: () => void child.kill('SIGTERM') }
+    }
+    const one = start(1, 1920, 1080)
+    const two = start(2, 780, 1560)
+    try {
+      const ready = await until(
+        () => /DISPLAY_ID/.test(one.out()) && /DISPLAY_ID/.test(two.out()),
+        30_000
+      )
+      expect(ready, `primeira: ${one.out()} | segunda: ${two.out()}`).toBe(true)
+      expect(await until(() => screens() >= before + 2, 30_000), 'o sistema enxerga as duas').toBe(
+        true
+      )
+      const portrait = layout().displays.find(
+        (display) => display.id === Number(/DISPLAY_ID (\d+)/.exec(two.out())?.[1])
+      )
+      expect(portrait?.width).toBe(780)
+      expect(portrait?.height).toBe(1560)
+    } finally {
+      one.kill()
+      two.kill()
+    }
+    expect(await until(() => screens() === before, 15_000), 'as duas somem').toBe(true)
+  })
+})

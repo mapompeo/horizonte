@@ -1,0 +1,399 @@
+import { INPUT, INPUT_MOVES } from '../../../shared/input'
+import type { Want } from '../../../main/engine/webrtc/protocol'
+import type { MediaMessage, MotorApi } from '../../../shared/motor'
+import type { RawFrame } from '../../../shared/frames'
+import {
+  CURSOR,
+  CURSOR_SHAPE,
+  encodePosition,
+  encodeShape,
+  SHAPE_MAX_BYTES,
+  type CursorShape,
+  type RawCursor
+} from '../../../shared/cursor'
+import { BASE_ORDER, orderCodecList, rankCodecs, type CodecProbe } from './codecs'
+import type { Identity } from './identity'
+import {
+  createPeer,
+  fixKeyFrames,
+  forwardIce,
+  iceQueue,
+  negotiateCaptureTime,
+  type MotorSide
+} from './peer'
+import { createAdapter, netSignal } from './adapt'
+import { summarize, type StatEntry } from './stats'
+import { syntheticStream } from './synthetic'
+
+/** A sessão começa abaixo do bitrate pedido e sobe em poucos segundos: evita uma rajada logo no começo. */
+const START_FRACTION = 0.6
+const RAMP_MS = 3000
+/** Depois da última imagem de uma rajada, quanto esperar para entregá-la de novo ao codificador. */
+const SETTLE_MS = 100
+
+/** Pergunta ao navegador quais codecs ele codifica, e quais pela placa de vídeo. */
+async function probeCodecs(want: Want): Promise<CodecProbe[]> {
+  return Promise.all(
+    BASE_ORDER.map(async (mime) => {
+      try {
+        const info = await navigator.mediaCapabilities.encodingInfo({
+          type: 'webrtc',
+          video: {
+            contentType: mime,
+            width: want.width,
+            height: want.height,
+            bitrate: want.bitrate * 1e6,
+            framerate: want.fps
+          }
+        })
+        return { mime, supported: info.supported, powerEfficient: info.powerEfficient }
+      } catch {
+        return { mime, supported: false, powerEfficient: false }
+      }
+    })
+  )
+}
+
+/**
+ * Vídeo feito das imagens que o auxiliar do Linux manda (a tela estendida do GNOME), sem passar pelo portal de captura
+ * e o seletor dele. Se uma imagem chega enquanto a anterior ainda está sendo entregue, ela espera a vez (só a mais
+ * recente): descartar deixava a última mudança da tela de fora até a próxima. E quando a tela para de mudar, a última
+ * imagem é entregue de novo depois de `SETTLE_MS`: o codificador limita os quadros por segundo e pode descartar
+ * justamente o último de uma rajada (o texto que acabou de ser digitado ficava ~1 s sem aparecer).
+ */
+function framesStream(
+  path: string,
+  onClose: (reason: string) => void,
+  onCursor?: (cursor: RawCursor) => void
+): { stream: MediaStream; stop(): void } {
+  const frames = window.motorFrames
+  if (!frames) throw new Error('Esta janela não lê as imagens da tela estendida.')
+  const generator = new MediaStreamTrackGenerator({ kind: 'video' })
+  const writer = generator.writable.getWriter()
+  let busy = false
+  let waiting: RawFrame | null = null
+  let last: RawFrame | null = null
+  let settle: ReturnType<typeof setTimeout> | null = null
+  const deliver = (raw: RawFrame): void => {
+    busy = true
+    const frame = new VideoFrame(raw.data, {
+      format: raw.format,
+      codedWidth: raw.width,
+      codedHeight: raw.height,
+      layout: [{ offset: 0, stride: raw.stride }],
+      timestamp: Math.round(performance.now() * 1000)
+    })
+    writer
+      .write(frame)
+      .catch(() => undefined)
+      .finally(() => {
+        frame.close()
+        busy = false
+        const next = waiting
+        waiting = null
+        if (next) deliver(next)
+      })
+  }
+  const receive = (raw: RawFrame): void => {
+    if (busy) waiting = raw
+    else deliver(raw)
+  }
+  const close = frames.open(
+    path,
+    (raw) => {
+      receive(raw)
+      last = raw
+      if (settle) clearTimeout(settle)
+      settle = setTimeout(() => {
+        settle = null
+        if (last) receive(last)
+      }, SETTLE_MS)
+    },
+    onClose,
+    onCursor
+  )
+  const stop = (): void => {
+    if (settle) clearTimeout(settle)
+    settle = null
+    last = null
+    close()
+  }
+  return { stream: new MediaStream([generator]), stop }
+}
+
+async function capture(want: Want, synthetic: boolean): Promise<MediaStream> {
+  if (synthetic)
+    return syntheticStream(Math.min(want.width, 1280), Math.min(want.height, 720), want.fps)
+  // O processo principal escolhe a tela (setDisplayMediaRequestHandler): aqui não aparece seletor.
+  return navigator.mediaDevices.getDisplayMedia({
+    audio: false,
+    video: {
+      width: { max: want.width },
+      height: { max: want.height },
+      frameRate: { ideal: want.fps, max: want.fps }
+    }
+  })
+}
+
+/** Qualidade das imagens do modo compatível: texto legível sem pesar demais para um aparelho antigo. */
+const JPEG_QUALITY = 0.6
+
+function dataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+/**
+ * Modo compatível (navegador antigo, sem WebRTC): a tela vira imagens JPEG, uma por vez. A próxima só sai depois do
+ * `more` de quem mostra, então um aparelho lento recebe menos imagens em vez de acumular atraso. Ela já fica pronta
+ * enquanto o aparelho mostra a anterior (sai assim que o `more` chega) e é refeita se a tela mudar nesse meio tempo.
+ * Tela parada não manda nada até mudar.
+ */
+export function jpegFrames(
+  track: MediaStreamTrack,
+  size: { width: number; height: number },
+  send: (data: string) => void
+): { more(): void; stop(): void } {
+  const reader = new MediaStreamTrackProcessor({ track }).readable.getReader()
+  const canvas = new OffscreenCanvas(size.width, size.height)
+  const context = canvas.getContext('2d')
+  let latest: VideoFrame | null = null
+  let fresh = false
+  let ready: string | null = null
+  let wanted = true
+  let busy = false
+  let stopped = false
+  const flush = (): void => {
+    if (stopped || !wanted || !ready) return
+    send(ready)
+    ready = null
+    wanted = false
+  }
+  if (!context) console.warn('[motor] modo compatível: sem canvas 2D, nenhuma imagem vai sair')
+  let encoded = 0
+  const encode = async (): Promise<void> => {
+    if (stopped || busy || !fresh || !latest || !context) return
+    busy = true
+    fresh = false
+    try {
+      context.drawImage(latest, 0, 0, size.width, size.height)
+      const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: JPEG_QUALITY })
+      // Sem JPEG (o navegador devolveu outro formato), a sinalização recusaria a imagem e a página ficaria sem nada.
+      if (blob.type !== 'image/jpeg') throw new Error(`o canvas gerou ${blob.type || 'nada'}`)
+      ready = await dataUrl(blob)
+      if (++encoded === 1)
+        console.log(
+          `[motor] modo compatível: primeira imagem ${size.width}x${size.height}, ${blob.size} bytes`
+        )
+    } catch (error) {
+      // A imagem que falhou fica de fora; a próxima mudança da tela tenta de novo.
+      console.warn('[motor] modo compatível: imagem não codificada:', error)
+    } finally {
+      busy = false
+    }
+    flush()
+    void encode()
+  }
+  void (async () => {
+    while (!stopped) {
+      const { value, done } = await reader.read().catch(() => ({ value: undefined, done: true }))
+      if (done || !value) break
+      latest?.close()
+      latest = value
+      fresh = true
+      void encode()
+    }
+  })()
+  return {
+    more() {
+      wanted = true
+      flush()
+    },
+    stop() {
+      stopped = true
+      void reader.cancel().catch(() => undefined)
+      latest?.close()
+      latest = null
+    }
+  }
+}
+
+/** Lado que envia, dentro da janela de transmissão (oculta). */
+export function createSender(api: MotorApi, identity: Identity, synthetic: boolean): MotorSide {
+  let pc: RTCPeerConnection | null = null
+  let stream: MediaStream | null = null
+  let sender: RTCRtpSender | null = null
+  let ice: ReturnType<typeof iceQueue> | null = null
+  let statsTimer: ReturnType<typeof setInterval> | null = null
+  let rampTimer: ReturnType<typeof setInterval> | null = null
+  let targetMbps = 0
+  let adapter: ReturnType<typeof createAdapter> | null = null
+  let stopFrames: (() => void) | null = null
+  let jpeg: ReturnType<typeof jpegFrames> | null = null
+
+  async function setBitrate(mbps: number, fps?: number): Promise<void> {
+    if (!sender) return
+    const params = sender.getParameters()
+    if (!params.encodings?.length) params.encodings = [{}]
+    params.encodings[0].maxBitrate = Math.round(mbps * 1e6)
+    if (fps) params.encodings[0].maxFramerate = fps
+    params.encodings[0].scaleResolutionDownBy = 1
+    // Texto nítido vale mais que quadros num monitor de trabalho.
+    ;(params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference =
+      'maintain-resolution'
+    try {
+      await sender.setParameters(params)
+    } catch {
+      delete (params as { degradationPreference?: string }).degradationPreference
+      await sender.setParameters(params).catch(() => undefined)
+    }
+  }
+
+  async function start(want: Want, frames?: string): Promise<void> {
+    stop()
+    const send = (message: MediaMessage): void => api.signal(message)
+    if (want.jpeg) {
+      if (frames) {
+        const source = framesStream(frames, (reason) =>
+          console.warn('[motor] imagens da tela:', reason)
+        )
+        stream = source.stream
+        stopFrames = source.stop
+      } else stream = await capture(want, synthetic)
+      const [track] = stream.getVideoTracks()
+      const { width, height, frameRate } = track.getSettings()
+      console.log(
+        `[motor] modo compatível: captura ${width}x${height} a ${frameRate} fps, imagens ${want.width}x${want.height}`
+      )
+      jpeg = jpegFrames(track, want, (data) => send({ t: 'jpeg', data }))
+      return
+    }
+    pc = createPeer(identity.certificate, true)
+    ice = iceQueue(pc)
+    forwardIce(pc, send)
+    pc.addEventListener('connectionstatechange', () =>
+      console.log('[motor] conexão:', pc?.connectionState)
+    )
+
+    // Cursor à parte (quem mostra desenha por cima do vídeo): a posição sem reenvio, só a mais recente importa; o
+    // desenho confiável, e de novo quando o canal abre (quem acabou de conectar ainda não tem nenhum).
+    const position = pc.createDataChannel(CURSOR, { ordered: false, maxRetransmits: 0 })
+    const shapes = pc.createDataChannel(CURSOR_SHAPE)
+    let shape: CursorShape | null = null
+    const sendShape = (): void => {
+      if (shape && shapes.readyState === 'open') shapes.send(encodeShape(shape))
+    }
+    shapes.addEventListener('open', sendShape)
+    const onCursor = (cursor: RawCursor): void => {
+      if (cursor.shape && cursor.shape.data.length <= SHAPE_MAX_BYTES) {
+        shape = { ...cursor.shape, data: cursor.shape.data.slice() }
+        sendShape()
+      }
+      if (position.readyState === 'open')
+        position.send(encodePosition(cursor.x / want.width, cursor.y / want.height, cursor.visible))
+    }
+
+    if (frames) {
+      const source = framesStream(
+        frames,
+        (reason) => console.warn('[motor] imagens da tela:', reason),
+        want.cursor ? onCursor : undefined
+      )
+      stream = source.stream
+      stopFrames = source.stop
+    } else stream = await capture(want, synthetic)
+    const [track] = stream.getVideoTracks()
+    track.contentHint = 'detail'
+    const transceiver = pc.addTransceiver(track, { direction: 'sendonly', streams: [stream] })
+    sender = transceiver.sender
+    negotiateCaptureTime(transceiver)
+    fixKeyFrames(sender)
+
+    const ranked = rankCodecs(await probeCodecs(want), want.codecs)
+    const capabilities = RTCRtpSender.getCapabilities('video')?.codecs ?? []
+    const ordered = orderCodecList(capabilities, ranked)
+    if (ranked.length > 0) transceiver.setCodecPreferences(ordered)
+    console.log('[motor] ordem dos codecs:', ranked.join(', ') || 'padrão do navegador')
+
+    pc.createDataChannel('controle')
+    // Entrada vinda de quem mostra (mouse, teclado, toque): vai ao processo principal, que confere e aplica.
+    for (const label of [INPUT_MOVES, INPUT]) {
+      const channel = pc.createDataChannel(
+        label,
+        label === INPUT_MOVES ? { ordered: false, maxRetransmits: 0 } : {}
+      )
+      channel.addEventListener('message', ({ data }) => {
+        if (typeof data === 'string') api.input(data)
+      })
+    }
+    const offer = await pc.createOffer()
+    await pc.setLocalDescription(offer)
+    send({ t: 'offer', sdp: pc.localDescription?.sdp ?? offer.sdp ?? '' })
+
+    targetMbps = want.bitrate
+    adapter = null
+    await setBitrate(targetMbps * START_FRACTION, want.fps)
+    const began = Date.now()
+    rampTimer = setInterval(() => {
+      const progress = Math.min(1, (Date.now() - began) / RAMP_MS)
+      const fraction = START_FRACTION + (1 - START_FRACTION) * progress
+      void setBitrate(targetMbps * fraction)
+      if (progress >= 1 && rampTimer) {
+        clearInterval(rampTimer)
+        // Depois da subida inicial, o perfil vira o teto e a qualidade passa a seguir a rede.
+        adapter = createAdapter({ mbps: targetMbps, fps: want.fps })
+      }
+    }, 500)
+
+    let previous: StatEntry[] | null = null
+    statsTimer = setInterval(async () => {
+      if (!pc) return
+      const current = [...(await pc.getStats()).values()] as StatEntry[]
+      const stats = summarize(previous, current)
+      previous = current
+      const change = adapter?.next(netSignal(current))
+      if (change) {
+        console.log(`[motor] qualidade automática: ${change.mbps} Mbps, ${change.fps} fps`)
+        void setBitrate(change.mbps, change.fps)
+      }
+      if (stats) api.report({ type: 'stats', stats })
+    }, 1000)
+  }
+
+  async function deliver(message: MediaMessage): Promise<void> {
+    if (message.t === 'more') return jpeg?.more()
+    // Sem canal de dados no modo compatível, a entrada chega pela sinalização: o processo principal confere igual.
+    if (message.t === 'input') return jpeg ? api.input(message.raw) : undefined
+    if (!pc || !ice) return
+    if (message.t === 'answer') {
+      await pc.setRemoteDescription({ type: 'answer', sdp: message.sdp })
+      await ice.flush()
+    } else if (message.t === 'ice') await ice.add(message)
+    else if (message.t === 'bitrate') {
+      targetMbps = message.mbps
+      const fps = adapter?.current().fps
+      adapter?.setCeiling({ mbps: message.mbps, fps: fps ?? 60 })
+      await setBitrate(message.mbps)
+    }
+  }
+
+  function stop(): void {
+    if (statsTimer) clearInterval(statsTimer)
+    if (rampTimer) clearInterval(rampTimer)
+    statsTimer = rampTimer = null
+    adapter = null
+    jpeg?.stop()
+    jpeg = null
+    stopFrames?.()
+    stopFrames = null
+    for (const track of stream?.getTracks() ?? []) track.stop()
+    pc?.close()
+    pc = stream = sender = ice = null
+  }
+
+  return { start, deliver, stop }
+}

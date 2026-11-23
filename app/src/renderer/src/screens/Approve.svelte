@@ -1,0 +1,85 @@
+<script lang="ts">
+  import { L } from '../lib/i18n'
+  import DeviceIcon from '../components/DeviceIcon.svelte'
+  import { guessKind, type DeviceKind } from '../../../shared/device'
+  import { isValidPin } from '../../../shared/pin'
+  import { copyFor } from '../lib/copy'
+  import { send } from '../lib/actions'
+
+  interface Props {
+    device: string
+    pin: string | null
+    address?: string
+    /** Motor próprio: a identidade vem pelo certificado, sem PIN. */
+    fingerprint?: string
+  }
+
+  let { device, pin, address, fingerprint }: Props = $props()
+
+  /** Palpite pelo nome na hora; o que o aparelho anuncia na rede chega logo depois. */
+  let announced = $state<DeviceKind | null>(null)
+  const kind = $derived(announced ?? guessKind(device))
+  $effect(() => {
+    void window.horizonte
+      .deviceKind(address, device)
+      .then((value) => (announced = value))
+      .catch(() => undefined)
+  })
+
+  let typed = $state('')
+
+  const copy = $derived(copyFor({ screen: 'approve', mode: 'send', device, pairingId: '', pin }))
+  const needsPin = $derived(pin === null && !fingerprint)
+  const ready = $derived(!needsPin || isValidPin(typed))
+
+  /** Aprovar já confia no aparelho: os Ajustes têm o Esquecer. */
+  function approve(): void {
+    if (!ready) return
+    void send(
+      needsPin ? { type: 'APPROVE', pin: typed, trust: true } : { type: 'APPROVE', trust: true }
+    )
+  }
+</script>
+
+<div class="badge">
+  <DeviceIcon {kind} size={40} />
+</div>
+<div class="stack gap-sm">
+  <h1 class="title">{copy.title}</h1>
+  <p class="subtitle">{copy.subtitle}</p>
+</div>
+{#if needsPin}
+  <div class="stack gap-xs">
+    <label class="hint" for="pin"
+      >{L({
+        pt: 'Digite o PIN do outro aparelho',
+        en: 'Type the PIN of the other device',
+        es: 'Escribe el PIN del otro dispositivo'
+      })}</label
+    >
+    <input
+      id="pin"
+      class="pin-input"
+      inputmode="numeric"
+      autocomplete="off"
+      maxlength="4"
+      value={typed}
+      oninput={(event) => {
+        // Regrava o campo: se o texto limpo for igual ao anterior, o Svelte não atualizaria a tela.
+        const clean = event.currentTarget.value.replace(/\D/g, '').slice(0, 4)
+        event.currentTarget.value = clean
+        typed = clean
+        if (isValidPin(clean)) approve()
+      }}
+      onkeydown={(event) => event.key === 'Enter' && approve()}
+    />
+  </div>
+{/if}
+<div class="stack gap-xs">
+  <button class="btn btn-primary btn-wide" disabled={!ready} onclick={approve}
+    >{L({ pt: 'Permitir', en: 'Allow', es: 'Permitir' })}</button
+  >
+  <button class="btn btn-ghost" onclick={() => send({ type: 'DENY' })}
+    >{L({ pt: 'Recusar', en: 'Decline', es: 'Rechazar' })}</button
+  >
+</div>

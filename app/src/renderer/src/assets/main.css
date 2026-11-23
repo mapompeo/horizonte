@@ -1,0 +1,1469 @@
+/* Cores, fonte e formas do guia de identidade (docs/identidade): as do sistema da Apple. */
+:root {
+  --bg: #f2f2f7;
+  --fg: #000000;
+  --muted: #5c5c61;
+  --line: rgba(60, 60, 67, 0.29);
+  --card: #ffffff;
+  --seg: rgba(118, 118, 128, 0.12);
+  --seg-on: #ffffff;
+  --ok-dot: #34c759;
+  --accent: #0062cc;
+  --on-accent: #ffffff;
+  --danger-fg: #c4271d;
+  --radius-group: 20px;
+  --radius-small: 12px;
+  --radius-hero: 32px;
+  /* Três tamanhos de texto e nada mais: título, texto e detalhe. */
+  --t-title: 26px;
+  --t-body: 15px;
+  --t-small: 12px;
+  --font:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI Variable',
+    'Segoe UI', system-ui, sans-serif;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  color-scheme: light dark;
+}
+
+/* Escuro pelo sistema, ou à força pelo tema (o app usa o do Electron; a demonstração do site, data-theme). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #000000;
+    --fg: #ffffff;
+    --muted: rgba(235, 235, 245, 0.6);
+    --line: rgba(84, 84, 88, 0.6);
+    --card: #1c1c1e;
+    --seg: rgba(118, 118, 128, 0.24);
+    --seg-on: #636366;
+    --ok-dot: #30d158;
+    --accent: #0a84ff;
+    --danger-fg: #ff453a;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #000000;
+  --fg: #ffffff;
+  --muted: rgba(235, 235, 245, 0.6);
+  --line: rgba(84, 84, 88, 0.6);
+  --card: #1c1c1e;
+  --seg: rgba(118, 118, 128, 0.24);
+  --seg-on: #636366;
+  --ok-dot: #30d158;
+  --accent: #0a84ff;
+  --danger-fg: #ff453a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+/* Rolagem sem a barra padrão do sistema, como no macOS. */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* O foco vai para o título ao trocar de tela (leitor de tela): sem contorno, não é um controle. */
+h1[tabindex='-1']:focus {
+  outline: none;
+}
+
+/* Telas */
+.screen {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 24px 64px;
+  text-align: center;
+}
+
+.center {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gap-xs {
+  gap: 8px;
+}
+.gap-sm {
+  gap: 16px;
+}
+
+.title {
+  margin: 0 auto;
+  font-size: var(--t-title);
+  font-weight: 600;
+  line-height: 32px;
+  letter-spacing: -0.5px;
+  white-space: pre-line;
+  max-width: 560px;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--t-body);
+  color: var(--muted);
+  line-height: 20px;
+  max-width: 420px;
+  text-align: center;
+  align-self: center;
+}
+
+.hint {
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+.hint strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+.danger-text {
+  color: var(--danger-fg);
+}
+
+/* Barra do topo: vidro fosco sobre o que rola por baixo; o fio só aparece quando rolou. */
+.topbar {
+  width: 100%;
+  height: 64px;
+  display: grid;
+  grid-template-columns: 220px 1fr 220px;
+  align-items: center;
+}
+.topbar > :nth-child(2) {
+  justify-self: center;
+}
+
+.topbar-left {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  width: 220px;
+}
+
+/* No macOS os botões vermelho, amarelo e verde ficam sobre a barra (ver trafficLightPosition na janela). */
+[data-platform='darwin'] .topbar-left {
+  padding-left: 84px;
+}
+
+/* Direita do topo: a atualização, longe dos botões da janela (Windows e Linux). A largura é a da esquerda,
+   para o seletor do meio não pular quando o botão aparece. */
+.topbar-right {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 220px;
+  padding-right: 140px;
+  -webkit-app-region: no-drag;
+}
+[data-platform='darwin'] .topbar-right {
+  padding-right: 16px;
+}
+
+.topbar,
+.sheet-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-app-region: drag;
+  transition: box-shadow 0.2s ease;
+}
+[data-scrolled] .topbar,
+[data-scrolled] .sheet-head {
+  box-shadow: 0 0.5px 0 var(--line);
+}
+[data-platform='darwin'] .sheet-head {
+  padding-left: 84px;
+}
+
+/* Seletor em pílula: o indicador desliza sob o texto escolhido. */
+.seg {
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr));
+  padding: 2px;
+  background: var(--seg);
+  border-radius: 999px;
+}
+
+.seg-thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px) / var(--n, 2));
+  border-radius: 999px;
+  background: var(--seg-on);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.12),
+    0 3px 1px rgba(0, 0, 0, 0.04);
+  transform: translateX(calc(var(--i, 0) * 100%));
+  transition: transform 0.38s var(--ease);
+}
+
+.seg-item {
+  position: relative;
+  z-index: 1;
+  height: 30px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    color 0.25s ease,
+    opacity 0.15s ease;
+}
+.seg-item:active {
+  opacity: 0.6;
+}
+
+/* O visual mede 34 px com o trilho; a área clicável chega a 44 px sem mudar o desenho. */
+.seg-item::after {
+  content: '';
+  position: absolute;
+  inset: -7px 0;
+}
+
+.seg-item.on {
+  font-weight: 600;
+}
+.seg-text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+.seg-text::after {
+  content: attr(data-text);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 600;
+}
+/* No topo o seletor nunca muda de tamanho. */
+.topbar .seg {
+  min-width: 200px;
+}
+
+.seg-wide {
+  display: grid;
+}
+
+.row .seg-item {
+  padding: 0 12px;
+}
+
+.seg-thumb-off {
+  opacity: 0;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn:hover,
+.icon-btn:active {
+  background: var(--seg);
+}
+
+/* Botões */
+.btn {
+  min-height: 48px;
+  padding: 0 28px;
+  border-radius: 999px;
+  border: 0;
+  font-size: var(--t-body);
+  font-weight: 600;
+}
+.btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+  filter: brightness(0.92);
+}
+
+.btn-primary {
+  /* Como o Baixar da barra do site: branco no escuro, preto no claro, sem brilho. */
+  background: var(--fg);
+  color: var(--bg);
+}
+.btn-wide {
+  width: 280px;
+  max-width: 100%;
+}
+.btn-danger {
+  min-width: 44px;
+  background: color-mix(in srgb, var(--danger-fg) 14%, transparent);
+  color: var(--danger-fg);
+}
+.btn-ghost {
+  height: 44px;
+  padding: 0 20px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--t-body);
+  font-weight: 400;
+}
+.btn-sm {
+  min-height: 44px;
+  padding: 0 20px;
+}
+
+.link {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--t-body);
+  font-weight: 400;
+}
+.link:hover {
+  filter: brightness(1.15);
+}
+.link[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn,
+.icon-btn,
+.back {
+  transition:
+    transform 0.2s var(--ease-out),
+    filter 0.2s ease,
+    background-color 0.25s ease;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Selo de estado: o ponto respira (parado para quem pede menos movimento). */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--seg);
+  font-size: var(--t-small);
+  font-weight: 400;
+  color: var(--muted);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+.pill-ok .dot {
+  background: var(--ok-dot);
+  animation: breathe 2.4s ease-in-out infinite;
+}
+.pill-wait .dot {
+  background: var(--muted);
+}
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+}
+
+/* Preparando */
+.bar {
+  width: 280px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--fg);
+  transition: width 0.25s linear;
+}
+.bar-sm {
+  width: 160px;
+}
+.bar-xs {
+  width: 72px;
+}
+
+.status {
+  margin: 0;
+  min-height: 26px;
+  font-size: var(--t-body);
+  color: var(--muted);
+}
+
+/* Permitir e erro: ícone de aplicativo. */
+.badge {
+  width: 80px;
+  height: 80px;
+  border-radius: 22px;
+  background: var(--card);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.badge-danger {
+  color: var(--danger-fg);
+}
+
+.pin-input {
+  width: 160px;
+  height: 56px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--fg);
+  font-size: var(--t-title);
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+
+/* Tela principal de enviar: o QR, o código e os aparelhos. */
+.home {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 24px;
+  border-radius: var(--radius-hero);
+  border: 0.5px solid var(--line);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+  text-align: left;
+}
+.hero.compact {
+  gap: 20px;
+  padding: 16px 20px;
+}
+.hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.hero-text .title {
+  margin: 0;
+  text-align: left;
+}
+.code {
+  font-family: ui-rounded, 'SF Pro Rounded', var(--font);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+  line-height: 48px;
+  user-select: all;
+}
+.hero.compact .code {
+  font-size: 30px;
+  line-height: 36px;
+}
+.qr-card {
+  flex: none;
+  padding: 10px;
+  border-radius: calc(var(--radius-small) + 10px);
+  background: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .qr-card {
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, 0.3),
+      0 0 36px rgba(255, 255, 255, 0.14);
+  }
+}
+:root[data-theme='dark'] .qr-card {
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.3),
+    0 0 36px rgba(255, 255, 255, 0.14);
+}
+.qr-empty,
+.qr-prep {
+  width: 176px;
+  height: 176px;
+  border-radius: var(--radius-small);
+}
+.qr-empty.compact,
+.qr-prep.compact {
+  width: 112px;
+  height: 112px;
+}
+.qr-empty {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.05) 25%,
+    rgba(0, 0, 0, 0.1) 50%,
+    rgba(0, 0, 0, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+/* O cartão do QR é sempre branco: as cores daqui dentro não seguem o tema. */
+.qr-prep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 12px;
+}
+.qr-prep .bar {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.12);
+}
+.qr-prep .bar-fill {
+  background: #000000;
+}
+.qr-prep .hint {
+  color: #5c5c61;
+  text-align: center;
+}
+.qr {
+  flex: none;
+  padding: 8px;
+  border-radius: var(--radius-small);
+  background: #ffffff;
+}
+.qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+@media (max-width: 560px) {
+  .hero {
+    flex-direction: column;
+    text-align: center;
+  }
+  .hero-text {
+    align-items: center;
+  }
+  .hero-text .title {
+    text-align: center;
+  }
+}
+
+/* Cartões e linhas (Ajustes e listas) */
+.card {
+  background: var(--card);
+  border: 0;
+  border-radius: var(--radius-group);
+  overflow: hidden;
+}
+.card-pad {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  position: relative;
+  min-height: 48px;
+  padding: 0 16px;
+  gap: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--t-body);
+  text-align: left;
+}
+/* Divisória como no iOS: começa alinhada ao texto e para antes da borda (16 px dos dois lados). Vale para todas. */
+.row ~ .row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 0.5px;
+  background: var(--line);
+}
+.row-value {
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: var(--t-body);
+}
+.peer-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok-dot);
+}
+.peer-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Linhas que são botões: ocupam a linha toda, com a seta à direita. */
+.row-button {
+  width: 100%;
+  border: 0;
+  background-color: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--t-body);
+  text-align: left;
+  cursor: pointer;
+}
+.chevron,
+.row-button::after {
+  content: '';
+  flex: none;
+  display: block;
+  width: 8px;
+  height: 14px;
+  background: var(--muted);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M1 1l6 6-6 6' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M1 1l6 6-6 6' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+.row-button:hover {
+  background-color: var(--seg);
+}
+.row-button:active {
+  background-color: color-mix(in srgb, var(--fg) 12%, transparent);
+}
+.row-button.danger {
+  color: var(--danger-fg);
+}
+.row-button.danger::after {
+  display: none;
+}
+.row-button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.row-button[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+.row-note {
+  margin: 0;
+  padding: 0 18px 12px;
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .row-button {
+    transition: background 160ms ease;
+  }
+}
+
+/* Ação dentro de uma linha (Parar, Esquecer): alvo de 44 px, texto do tamanho da linha. */
+.row-action {
+  min-width: 44px;
+  min-height: 44px;
+  margin-right: -8px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--t-body);
+}
+.row-action.danger {
+  color: var(--danger-fg);
+}
+/* Só o botão é clicável (a linha não faz nada), então só ele acende ao passar o mouse. */
+.row-action {
+  border-radius: 999px;
+}
+.row-action:hover {
+  background-color: var(--seg);
+}
+.row-action.danger:hover {
+  background-color: color-mix(in srgb, var(--danger-fg) 14%, transparent);
+}
+
+.text-input {
+  width: 180px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--seg);
+  color: var(--fg);
+  font-size: var(--t-body);
+  text-align: right;
+}
+.manual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.manual-input {
+  text-align: left;
+}
+
+/* Interruptor do iOS: 51 x 31, o botão desliza e se alonga ao apertar. */
+.switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 51px;
+  height: 31px;
+  padding: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--seg);
+  transition: background-color 0.25s ease;
+}
+/* O interruptor mede 31 px; a área clicável chega a 44 px sem mudar o desenho. */
+.switch::after {
+  content: '';
+  position: absolute;
+  inset: -7px -4px;
+}
+.switch.on {
+  background: var(--ok-dot);
+}
+.switch-thumb {
+  display: block;
+  width: 27px;
+  height: 27px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.15),
+    0 3px 1px rgba(0, 0, 0, 0.06);
+  transition:
+    transform 0.3s var(--ease-out),
+    width 0.2s ease;
+}
+.switch.on .switch-thumb {
+  transform: translateX(20px);
+}
+.switch:active .switch-thumb {
+  width: 33px;
+}
+.switch.on:active .switch-thumb {
+  transform: translateX(14px);
+}
+
+/* Lista de computadores */
+.hosts {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+.hosts-wide {
+  max-width: 600px;
+}
+.hosts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.host {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-group);
+  background: var(--card);
+  color: var(--fg);
+  border: 0;
+  font: inherit;
+  text-align: left;
+  transition:
+    transform 0.2s var(--ease-out),
+    background-color 0.2s ease;
+}
+.host:hover {
+  background: color-mix(in srgb, var(--card) 92%, var(--fg));
+}
+.host:active {
+  transform: scale(0.99);
+}
+.host-icon {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--seg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.host-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.host-name {
+  font-size: var(--t-body);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.host-addr {
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+.searching {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+.mouse-actions {
+  align-items: center;
+}
+.mouse-map {
+  position: relative;
+  width: 100%;
+  height: var(--h);
+  border-radius: var(--radius-group);
+  border: 1px dashed var(--line);
+  overflow: hidden;
+  touch-action: none;
+}
+.map-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--dock);
+  border-top: 1px dashed var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 16px;
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+.map-screen {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: var(--radius-small);
+  font-size: var(--t-small);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+  padding: 0 4px;
+}
+.map-own {
+  background: var(--seg);
+  border: 2px solid var(--line);
+  color: var(--muted);
+}
+.map-peer {
+  background: var(--card);
+  border: 2px solid var(--accent);
+  color: var(--fg);
+  cursor: grab;
+  transition:
+    left 0.18s ease,
+    top 0.18s ease,
+    width 0.18s ease,
+    height 0.18s ease;
+}
+.map-out {
+  border-style: dashed;
+  border-color: var(--line);
+  color: var(--muted);
+}
+.map-dragging {
+  cursor: grabbing;
+  transition: none;
+  z-index: 2;
+  box-shadow: none;
+}
+.map-peer:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Ajustes */
+.sheet {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.sheet-head {
+  height: 64px;
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 20px;
+}
+.sheet-title {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: 600;
+}
+.sheet-title:focus {
+  outline: none;
+}
+.back {
+  height: 44px;
+  padding: 0 10px 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--t-body);
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  justify-self: start;
+}
+/* Voltar do modo Mouse, no meio do topo: clicável, fora da área de arrastar a janela. */
+.topbar .back {
+  -webkit-app-region: no-drag;
+}
+.sheet-body {
+  width: 100%;
+  max-width: 500px;
+  align-self: center;
+  padding: 8px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.group {
+  display: flex;
+  flex-direction: column;
+}
+.group-label {
+  margin: 0 20px 6px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Rodapé do topo: a atualização, só quando há o que fazer. O botão é branco nos dois temas (pedido do dono). */
+.version-foot {
+  /* Fixo no rodapé da janela: aparece mesmo com o mapa grande ocupando a tela. */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 28px;
+  font-size: var(--t-small);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.foot-link {
+  pointer-events: auto;
+  height: 32px;
+  white-space: nowrap;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #000000;
+  font-size: var(--t-small);
+  font-weight: 600;
+  padding: 0 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 0.2s ease;
+  -webkit-app-region: no-drag;
+}
+.foot-link:hover {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.28),
+    0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Aviso de driver de vídeo faltando: discreto, com o comando selecionável de uma vez. */
+/* Avisos: um só jeito em todo o app, cinza, curto e centralizado, sem caixa nem vermelho. */
+.notice {
+  display: block;
+  max-width: 36ch;
+  margin: 0 auto;
+  font-size: var(--t-small);
+  color: var(--muted);
+  text-align: center;
+  text-wrap: pretty;
+}
+.notice b {
+  color: var(--fg);
+  font-weight: 600;
+}
+.video-hint {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.video-hint-command {
+  max-width: min(100%, 46ch);
+  padding: 6px 10px;
+  border-radius: var(--radius-small);
+  background: var(--seg);
+  color: var(--fg);
+  font:
+    12px/1.4 ui-monospace,
+    monospace;
+  user-select: all;
+  /* Quebra nos espaços; só parte uma palavra (os números das portas) se ela não couber inteira. */
+  overflow-wrap: anywhere;
+}
+
+/* Movimento: desligado para quem pede menos movimento. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Barra de título própria: o arraste fica na faixa do topo, e o resto da interface não arrasta. */
+.drag-strip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  -webkit-app-region: drag;
+  z-index: 0;
+}
+
+button,
+input,
+.seg {
+  -webkit-app-region: no-drag;
+}
+
+/* Qualidade em passos: só a prévia da demonstração usa (demo/Preview.svelte). */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.stepper-value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+}
+.stepper-num {
+  font-size: var(--t-title);
+  font-weight: 600;
+}
+.stepper-cap {
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+.round {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--seg);
+  color: var(--accent);
+  font-size: var(--t-body);
+  line-height: 1;
+}
+
+/* ---------- Movimento ----------
+   Curvas do iOS: entrada com desaceleração longa e, para objetos que "chegam", um leve passar do ponto. O bloco de
+   movimento reduzido acima desliga tudo isto. */
+:root {
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes push-in {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+@keyframes back-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+}
+/* Ajustes entram como uma tela empurrada; ao voltar, a principal volta do lado oposto. */
+.sheet {
+  animation: push-in 0.38s var(--ease-out) both;
+}
+.screen {
+  animation: back-in 0.32s var(--ease-out) both;
+}
+/* Os grupos dos Ajustes chegam em sequência. */
+.sheet-body > * {
+  animation: rise-in 0.42s var(--ease-out) both;
+}
+.sheet-body > :nth-child(2) {
+  animation-delay: 40ms;
+}
+.sheet-body > :nth-child(3) {
+  animation-delay: 80ms;
+}
+.sheet-body > :nth-child(4) {
+  animation-delay: 120ms;
+}
+.sheet-body > :nth-child(5) {
+  animation-delay: 160ms;
+}
+.sheet-body > :nth-child(n + 6) {
+  animation-delay: 200ms;
+}
+/* O QR surge com um leve passar do ponto, como um objeto que chega. */
+.qr-card {
+  animation: pop-in 0.5s var(--ease-spring) both;
+}
+/* Pedido de conexão: o selo dá um pequeno salto. */
+.badge {
+  animation: pop-in 0.55s var(--ease-spring) both;
+}
+/* Atualização: o botão sobe do rodapé. */
+.foot-link {
+  animation: rise-in 0.45s var(--ease-spring) both;
+}
+/* Cartões e linhas tocáveis respondem ao toque. */
+.row-button,
+.host {
+  transition:
+    background-color 0.2s var(--ease-out),
+    transform 0.2s var(--ease-out);
+}
+.row-button:active,
+.host:active {
+  transform: scale(0.985);
+}
+
+/* ============ Motion dos controles ============
+   Seletor com mola, engrenagem que gira, Copiar que responde ao toque e QR que cresce ao passar o mouse. */
+@media (prefers-reduced-motion: no-preference) {
+  .seg-thumb {
+    transition:
+      transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+      width 0.3s ease;
+  }
+  .seg-item:not(.on):hover {
+    opacity: 0.7;
+  }
+  .seg:has(.seg-item:active) .seg-thumb {
+    transform: translateX(calc(var(--i, 0) * 100%)) scale(0.94);
+  }
+  .icon-btn svg {
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .icon-btn:hover svg {
+    transform: rotate(60deg);
+  }
+  .icon-btn:active svg {
+    transform: rotate(120deg) scale(0.9);
+  }
+  .copy:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+  }
+  .copy:active {
+    transform: scale(0.95);
+  }
+  .copy.done {
+    animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .qr-card:not(.compact) {
+    transition:
+      transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow 0.35s ease;
+  }
+  .qr-card:not(.compact):hover {
+    transform: scale(1.05);
+    box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.55);
+  }
+  .qr-card:not(.compact):active {
+    transform: scale(0.98);
+  }
+}
+
+/* ============ Motion no resto do app ============
+   Toda peça tocável responde: sobe um pouco no hover, afunda no clique, e as setas apontam para onde vão. */
+@media (prefers-reduced-motion: no-preference) {
+  .switch-thumb {
+    transition:
+      transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+      width 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .link,
+  .row-action,
+  .add,
+  .foot-link {
+    transition:
+      transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+      filter 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease;
+  }
+  .link:active,
+  .row-action:active,
+  .add:active {
+    transform: scale(0.94);
+    opacity: 0.7;
+  }
+  .add:hover,
+  .foot-link:hover {
+    transform: translateY(-1px);
+  }
+  .foot-link:active {
+    transform: scale(0.95);
+  }
+  /* Voltar: a seta puxa para a esquerda. */
+  .back svg {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .back:hover svg {
+    transform: translateX(-3px);
+  }
+  .back:active {
+    transform: scale(0.95);
+  }
+  /* Linhas com seta: a seta anda para a direita. */
+  .row-button::after,
+  .chevron {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .row-button:hover::after,
+  .row-button:hover .chevron {
+    transform: translateX(3px);
+  }
+  /* Computadores achados na rede: o cartão sobe e o ícone cresce. */
+  .host:hover {
+    transform: translateY(-2px);
+  }
+  .host-icon {
+    transition:
+      transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+      background-color 0.2s ease;
+  }
+  .host:hover .host-icon {
+    transform: scale(1.08);
+  }
+  /* Telas do mapa: a de outro aparelho se destaca ao passar o mouse. */
+  .tile.peer {
+    transition:
+      box-shadow 0.25s ease,
+      filter 0.2s ease;
+  }
+  .tile.peer:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.5);
+  }
+  .tile .stop {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .tile .stop:hover {
+    transform: scale(1.15);
+  }
+}
+
+/* Código do erro (número de 3 dígitos): no mesmo cinza dos avisos, com o link para a tabela do site. */
+.error-code {
+  display: block;
+  margin: 0 auto;
+  font-size: var(--t-small);
+  color: var(--muted);
+  text-align: center;
+}
+.error-code b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+.link-inline {
+  display: inline;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* O que mudou: as novidades, com a data. */
+.changes-date {
+  margin: 4px 0 4px;
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--fg);
+}
+.changes ul {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+.changes li + li {
+  margin-top: 4px;
+}
+
+/* Cartão "Sobre": a linha da atualização em azul quando há o que fazer, e "O que mudou" abre dentro do cartão. */
+.row-accent {
+  color: var(--accent);
+}
+.row-grow {
+  flex: 1;
+}
+.changes > summary {
+  list-style: none;
+}
+.changes > summary::-webkit-details-marker {
+  display: none;
+}
+.changes > summary::before,
+.card .row-note + .row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 0.5px;
+  background: var(--line);
+}
+.changes[open] > summary::after {
+  transform: rotate(90deg);
+}
+.changes-body {
+  padding: 0 16px 12px;
+}
+
+/* No cartão compacto (mais um aparelho), o "Ou digite no navegador" segue o título e o endereço, à esquerda. */
+.hero.compact .notice {
+  margin: 0;
+  text-align: left;
+}

@@ -1,0 +1,31 @@
+<!-- @dsCard height=288 -->
+<div class="cover">
+  <svg class="art" viewBox="-32 0 480 288" aria-hidden="true">
+    <!--
+      blocos: preto 480×288 (o quadrado do ícone, como laje), sol branco r=56 com duas ondas, faixa branca 24px que sai pela borda direita
+      arranjo: uma laje com o logo em grande; o desenho fica centrado na laje, como no ícone
+      padrão: motivo literal (o sol nascendo sobre o horizonte, com o sinal), um só, sem repetição; escolhido porque o README pede deferência e pouca cor
+      passos e raios: space-4 (24), space-5 (32); radius-capsule na faixa
+    -->
+    <rect class="slab" x="0" y="0" width="480" height="288" />
+    <path class="sun" d="M152 176A56 56 0 0 1 264 176Z" />
+    <path class="wave" d="M110 176A98 98 0 0 1 306 176" />
+    <path class="wave" d="M68 176A140 140 0 0 1 348 176" />
+    <rect class="horizon" x="68" y="200" width="280" height="24" rx="12" />
+  </svg>
+  <div class="name">
+    <h1>Horizonte</h1>
+    <p>A tela que continua além da borda.</p>
+  </div>
+</div>
+<style>
+  .cover { position: relative; width: 960px; height: 288px; background: var(--background); overflow: hidden; font-family: var(--font-sans); }
+  .art { position: absolute; left: 480px; top: 0; width: 480px; height: 288px; }
+  .slab { fill: #000000; }
+  .sun { fill: #ffffff; }
+  .wave { fill: none; stroke: #ffffff; stroke-width: 26; stroke-linecap: round; }
+  .horizon { fill: #ffffff; }
+  .name { position: absolute; left: 32px; bottom: 32px; max-width: 440px; display: grid; gap: 8px; }
+  .name h1 { margin: 0; font-size: 80px; line-height: 0.95; font-weight: 700; color: var(--label); }
+  .name p { margin: 0; font-size: 12px; color: var(--label-secondary); }
+</style>

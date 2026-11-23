@@ -1,0 +1,5 @@
+tests
+e2e
+test-results
+playwright.config.mjs
+node_modules

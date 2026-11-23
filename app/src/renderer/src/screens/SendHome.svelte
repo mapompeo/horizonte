@@ -1,0 +1,443 @@
+<script lang="ts">
+  import { onMount } from 'svelte'
+  import { fade, fly, scale, slide } from 'svelte/transition'
+  import { backOut } from 'svelte/easing'
+  import type {
+    ConnectedDevice,
+    LinkQuality,
+    PrepProgress,
+    ScreenPlacement,
+    WebAccess
+  } from '../../../shared/types'
+  import { safeName } from '../lib/copy'
+  import { send } from '../lib/actions'
+  import { ms } from '../lib/motion'
+  import QrCode from '../components/QrCode.svelte'
+  import VideoHint from '../components/VideoHint.svelte'
+  import SetupNotice from '../components/SetupNotice.svelte'
+  import ErrorCode from '../components/ErrorCode.svelte'
+  import { errorFix, errorTitle } from '../../../shared/errors'
+  import { L } from '../lib/i18n'
+  import PlacementMap from '../components/PlacementMap.svelte'
+  import { mapScreens } from '../lib/map-screens'
+
+  interface Props {
+    devices: ConnectedDevice[]
+    placement: ScreenPlacement
+    placements: Record<string, ScreenPlacement>
+    /** Ainda preparando: no lugar do QR, o andamento. */
+    preparing?: boolean
+    progress?: PrepProgress
+    /** A conexão de cada aparelho, pela impressão digital: pinta a bolinha dele no mapa. */
+    links?: Record<string, LinkQuality>
+  }
+
+  let { devices, placement, placements, preparing = false, progress, links = {} }: Props = $props()
+
+  /** O QR fica sempre ligado: a página abre sozinha, sem botão. */
+  let web = $state<WebAccess>({ on: false })
+
+  async function ensureWeb(): Promise<void> {
+    try {
+      web = await window.horizonte.getWebAccess()
+      if (!web.on) web = await window.horizonte.setWebAccess(true)
+    } catch {
+      web = {
+        on: false,
+        error: '105'
+      }
+    }
+  }
+  onMount(() => {
+    void ensureWeb()
+    // Um aparelho que ficou sem a imagem (erro 608 na página dele) aparece aqui também, e some quando a imagem chega.
+    const timer = setInterval(() => {
+      if (!web.on) return
+      window.horizonte
+        .getWebAccess()
+        .then((next) => (web = next))
+        .catch(() => undefined)
+    }, 3000)
+    return () => clearInterval(timer)
+  })
+
+  const screens = $derived(mapScreens(devices, placements, placement, links))
+  const link = $derived(web.on && web.url ? web.url : null)
+  const qrText = $derived(web.qr ?? link)
+  const mac = window.horizonte.platform === 'darwin'
+  const connected = $derived(devices.length > 0)
+  const COPY_LINK = L({ pt: 'Copiar link', en: 'Copy link', es: 'Copiar enlace' })
+
+  /** Copia o link da página (com o código): para colar no navegador de outro PC. */
+  let copied = $state(false)
+  async function copyLink(): Promise<void> {
+    if (!link) return
+    try {
+      await window.horizonte.copyText(link)
+      copied = true
+      setTimeout(() => (copied = false), 2000)
+    } catch {
+      // Sem área de transferência: o endereço continua à vista para digitar.
+    }
+  }
+  /** QR ampliado: ocupa a janela toda, para a câmera achar de longe. */
+  let zoomed = $state(false)
+  let viewport = $state({ w: 800, h: 600 })
+  const bigQr = $derived(Math.max(176, Math.min(viewport.w, viewport.h) - 200))
+  /** Aberto o "Adicionar": o QR, o código e o link para mais um aparelho. */
+  let adding = $state(false)
+  /** Quem não tem tela no mapa (sem tamanho ou impressão digital): fica numa lista simples. */
+  const unmapped = $derived(devices.filter((d) => !d.fingerprint || !d.peerScreen))
+  function stop(fingerprint?: string): void {
+    void send({ type: 'STOP', ...(fingerprint ? { fingerprint } : {}) })
+  }
+
+  const prepNote = $derived(
+    progress?.permission
+      ? L({
+          pt: 'Confirme a permissão do sistema',
+          en: 'Confirm the system permission',
+          es: 'Confirma el permiso del sistema'
+        })
+      : progress?.note || L({ pt: 'Preparando', en: 'Getting ready', es: 'Preparando' })
+  )
+</script>
+
+{#snippet hero(compact: boolean)}
+  <section class="hero card" class:compact class:vertical={!compact}>
+    <div class="qr-card" class:compact>
+      {#if link}
+        <button
+          class="qr-zoom"
+          aria-label={L({
+            pt: 'Ampliar o QR code',
+            en: 'Enlarge the QR code',
+            es: 'Ampliar el código QR'
+          })}
+          onclick={() => (zoomed = true)}
+          ><QrCode text={qrText ?? ''} size={compact ? 112 : 176} /></button
+        >
+      {:else if preparing}
+        <div class="qr-prep" class:compact role="status">
+          <div class="bar">
+            <div
+              class="bar-fill"
+              style="width: {Math.round((progress?.fraction ?? 0) * 100)}%"
+            ></div>
+          </div>
+          <span class="hint">{prepNote}</span>
+        </div>
+      {:else}
+        <div class="qr-empty" class:compact aria-hidden="true"></div>
+      {/if}
+    </div>
+    <div class="hero-text" aria-live="polite">
+      <h1 class="title" class:title-sm={compact}>
+        {preparing
+          ? L({ pt: 'Preparando', en: 'Getting ready', es: 'Preparando' })
+          : compact
+            ? L({ pt: 'Mais um aparelho', en: 'One more device', es: 'Un dispositivo más' })
+            : L({ pt: 'Aponte a câmera', en: 'Point the camera', es: 'Apunta la cámara' })}
+      </h1>
+      {#if link && web.url}
+        <!-- Sem câmera (outro PC, tablet): o endereço para digitar ou copiar, dito com todas as letras. -->
+        <span class="notice"
+          >{L({
+            pt: 'Ou digite no navegador:',
+            en: 'Or type it in a browser:',
+            es: 'O escríbela en el navegador:'
+          })}</span
+        >
+        <span
+          class="address"
+          title={L({
+            pt: 'Abra no navegador de outro aparelho',
+            en: 'Open it in the browser of another device',
+            es: 'Ábrelo en el navegador de otro dispositivo'
+          })}
+        >
+          <span class="address-text">{web.url.replace(/^https?:\/\//, '')}</span>
+          <button class="copy" class:done={copied} onclick={copyLink}
+            ><!-- O texto mais longo, invisível, segura a largura: trocar para "Copiado" não encolhe a barra. -->
+            <span class="copy-size" aria-hidden="true">{COPY_LINK}</span>{#key copied}<span
+                class="copy-label"
+                in:scale={{ start: 0.7, duration: ms(260), easing: backOut }}
+                >{copied ? L({ pt: 'Copiado', en: 'Copied', es: 'Copiado' }) : COPY_LINK}</span
+              >{/key}</button
+          >
+          {#if mac}
+            <!-- AirDrop e o resto do menu Compartilhar do macOS, com o link pronto. -->
+            <button
+              class="share"
+              aria-label={L({
+                pt: 'Compartilhar o link',
+                en: 'Share the link',
+                es: 'Compartir el enlace'
+              })}
+              title={L({
+                pt: 'Compartilhar (AirDrop)',
+                en: 'Share (AirDrop)',
+                es: 'Compartir (AirDrop)'
+              })}
+              onclick={() => link && window.horizonte.shareLink(link)}
+              ><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"
+                ><path
+                  d="M12 3v12M7.5 7.5 12 3l4.5 4.5M8 11H6.5A1.5 1.5 0 0 0 5 12.5v7A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg
+              ></button
+            >
+          {/if}
+        </span>
+        <SetupNotice />
+      {:else if web.error}
+        <span class="notice"><b>{errorTitle('105')}.</b> {errorFix('105')}</span>
+        <ErrorCode code="105" />
+        <button class="link" onclick={ensureWeb}
+          >{L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}</button
+        >
+      {:else if !preparing}
+        <span class="hint">{L({ pt: 'Abrindo…', en: 'Opening…', es: 'Abriendo…' })}</span>
+      {/if}
+    </div>
+  </section>
+{/snippet}
+
+<div class="home">
+  {#if web.problem}
+    <p class="card card-pad problem" role="alert">
+      <span class="notice"><b>{errorTitle(web.problem)}.</b> {errorFix(web.problem)}</span>
+      <ErrorCode code={web.problem} />
+    </p>
+  {/if}
+  {#if connected}
+    <!-- Conectado: a mesa é a tela. O QR só aparece para adicionar mais um. -->
+    <div class="status">
+      <h1 class="title">
+        {#key devices.length}<span class="count" in:fly={{ y: -10, duration: ms(320) }}
+            >{devices.length}</span
+          >{/key}
+        {devices.length === 1
+          ? L({ pt: 'tela conectada', en: 'screen connected', es: 'pantalla conectada' })
+          : L({ pt: 'telas conectadas', en: 'screens connected', es: 'pantallas conectadas' })}
+      </h1>
+      <button class="add" aria-expanded={adding} onclick={() => (adding = !adding)}
+        >{adding
+          ? L({ pt: 'Fechar', en: 'Close', es: 'Cerrar' })
+          : L({ pt: '+ Adicionar', en: '+ Add', es: '+ Agregar' })}</button
+      >
+    </div>
+    {#if adding}
+      <div transition:slide={{ duration: ms(300) }}>
+        {@render hero(true)}
+      </div>
+    {/if}
+    {#if screens.length}
+      <div class="card card-pad">
+        <PlacementMap {screens} {placements} height={adding ? 220 : 320} onStop={stop} />
+      </div>
+    {/if}
+    {#if unmapped.length}
+      <ul
+        class="card list"
+        role="list"
+        aria-live="polite"
+        aria-label={L({
+          pt: 'Aparelhos conectados',
+          en: 'Connected devices',
+          es: 'Dispositivos conectados'
+        })}
+      >
+        {#each unmapped as d (d.fingerprint ?? d.device)}
+          <li class="row">
+            <span class="peer-dot" aria-hidden="true"></span>
+            <span class="peer-name">{safeName(d.device)}</span>
+            <button
+              class="row-action danger"
+              aria-label={`${L({ pt: 'Parar', en: 'Stop', es: 'Detener' })} ${safeName(d.device)}`}
+              onclick={() => stop(d.fingerprint)}
+              >{L({ pt: 'Parar', en: 'Stop', es: 'Detener' })}</button
+            >
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  {:else}
+    {@render hero(false)}
+  {/if}
+  <VideoHint />
+</div>
+
+<svelte:window
+  bind:innerWidth={viewport.w}
+  bind:innerHeight={viewport.h}
+  onkeydown={(e) => e.key === 'Escape' && (zoomed = false)}
+/>
+{#if zoomed && link}
+  <!-- Toque em qualquer lugar (ou Esc) e o QR volta para o cartão. -->
+  <button
+    class="qr-big"
+    aria-label={L({
+      pt: 'Fechar o QR ampliado',
+      en: 'Close the enlarged QR',
+      es: 'Cerrar el QR ampliado'
+    })}
+    onclick={() => (zoomed = false)}
+    transition:fade={{ duration: ms(200) }}
+  >
+    <span class="qr-big-card" transition:scale={{ start: 0.6, duration: ms(380), easing: backOut }}>
+      <QrCode text={qrText ?? ''} size={bigQr} />
+    </span>
+  </button>
+{/if}
+
+<style>
+  .status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .status .title {
+    margin: 0;
+    text-align: left;
+  }
+  .add {
+    flex: none;
+    min-height: 32px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+    font-size: var(--t-small);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .add:hover {
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  /* Sem ninguém conectado: tudo em coluna, centralizado (QR, pedido, endereço e código). */
+  :global(.hero.vertical) {
+    /* Do tamanho do que tem dentro (QR, pedido e endereço), centralizado: sem sobra cinza dos lados. */
+    align-self: center;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+    flex-direction: column;
+    gap: 18px;
+    padding: 28px 32px 30px;
+    text-align: center;
+  }
+  :global(.hero.vertical .hero-text) {
+    align-items: center;
+    gap: 14px;
+  }
+  :global(.hero.vertical .title) {
+    text-align: center;
+  }
+  .address {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 6px 6px 16px;
+    border-radius: 999px;
+    background: var(--seg);
+    max-width: 100%;
+  }
+  .copy {
+    min-height: 32px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: var(--t-small);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .copy {
+    transition:
+      background-color 0.25s ease,
+      transform 0.15s ease;
+  }
+  .copy:active {
+    transform: scale(0.96);
+  }
+  .copy.done {
+    background: var(--ok-dot);
+  }
+  .count {
+    display: inline-block;
+  }
+  .address-text {
+    font-size: 17px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    user-select: all;
+  }
+  .title-sm {
+    font-size: var(--t-title, 20px);
+    text-align: left;
+  }
+  .copy {
+    display: inline-grid;
+    place-items: center;
+  }
+  .share {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin-left: -6px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--accent);
+    transition: background-color 0.2s ease;
+  }
+  .share:hover {
+    background: var(--seg);
+  }
+  .copy-size,
+  .copy-label {
+    grid-area: 1 / 1;
+  }
+  .copy-size {
+    visibility: hidden;
+  }
+  .copy-label {
+    display: inline-block;
+  }
+  .qr-zoom {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
+    border-radius: inherit;
+  }
+  .qr-big {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    backdrop-filter: blur(18px);
+    cursor: zoom-out;
+    -webkit-app-region: no-drag;
+  }
+  .qr-big-card {
+    display: block;
+    padding: 22px;
+    border-radius: 32px;
+    background: #fff;
+    box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.5);
+  }
+</style>

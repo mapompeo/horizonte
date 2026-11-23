@@ -1,0 +1,218 @@
+import type { ErrorCode } from './errors'
+import type { DeviceKind } from './device'
+
+export type Mode = 'send' | 'receive' | 'mouse'
+export type PrepStep = 'engine' | 'display' | 'encoder'
+
+/** O que a preparação está fazendo agora, em palavras, e quanto do caminho todo já foi (0 a 1). */
+export interface PrepProgress {
+  note: string
+  fraction: number
+  /** O Windows está pedindo (ou vai pedir em instantes) a permissão de administrador. */
+  permission?: boolean
+}
+
+export interface AppError {
+  /** Código do catálogo (`shared/errors.ts`), que a pessoa vê junto com o título. */
+  code: ErrorCode
+  message: string
+  detail?: string
+}
+
+/** Um aparelho vendo a tela agora (motor próprio: vários ao mesmo tempo, cada um com a sua tela estendida). */
+export interface ConnectedDevice {
+  device: string
+  /** Motor próprio: quem está mostrando (é por ela que a posição da tela é guardada). */
+  fingerprint?: string
+  /** Tamanho da tela dele, para o mapa de posição. */
+  peerScreen?: ScreenSize
+}
+
+export type AppState =
+  | {
+      screen: 'preparing'
+      mode: 'send'
+      step: PrepStep
+      progress?: PrepProgress
+    }
+  | { screen: 'ready'; mode: 'send' }
+  | {
+      screen: 'approve'
+      mode: 'send'
+      device: string
+      pairingId: string
+      pin: string | null
+      /** De onde veio o pedido; é o que permite confiar neste aparelho. */
+      address?: string
+      /**
+       * Motor próprio: impressão digital do certificado do outro aparelho. Com ela não há PIN: a identidade já vem
+       * conferida pelo DTLS, e é nela que vale a confiança.
+       */
+      fingerprint?: string
+      deviceId?: string
+      /** Tamanho da tela do outro aparelho, para o mapa de posição. */
+      peerScreen?: ScreenSize
+      /** Quem já estava conectado quando o pedido chegou: a tela volta para eles depois da resposta. */
+      connected?: ConnectedDevice[]
+    }
+  | {
+      screen: 'connected'
+      mode: 'send'
+      /** Na ordem em que conectaram. */
+      devices: ConnectedDevice[]
+    }
+  | { screen: 'discover'; mode: 'receive' }
+  | { screen: 'receiving'; mode: 'receive'; host: string; name: string }
+  | { screen: 'mouse'; mode: 'mouse' }
+  | { screen: 'mouse-request'; mode: 'mouse'; device: string; address: string }
+  /** `share`: o mouse deste PC passa para o outro; `follow`: este PC é controlado pelo mouse do outro. */
+  | { screen: 'mouse-active'; mode: 'mouse'; device: string; role: 'share' | 'follow' }
+  | { screen: 'error'; mode: Mode; error: AppError }
+
+export type AppEvent =
+  | { type: 'CHOOSE'; mode: Mode }
+  | { type: 'PREP_STEP'; step: PrepStep }
+  | { type: 'PREP_PROGRESS'; progress: PrepProgress }
+  | { type: 'PREP_DONE' }
+  | {
+      type: 'PAIR_REQUEST'
+      device: string
+      pairingId: string
+      pin?: string
+      address?: string
+      fingerprint?: string
+      deviceId?: string
+      screen?: ScreenSize
+    }
+  | { type: 'PAIR_CANCELLED'; pairingId: string }
+  | { type: 'APPROVE'; pin?: string; trust?: boolean }
+  | { type: 'DENY' }
+  | { type: 'CLIENT_CONNECTED'; device: string; fingerprint?: string; screen?: ScreenSize }
+  /** Sem a impressão digital: todos saíram (o motor antigo não diz quem). */
+  | { type: 'CLIENT_DISCONNECTED'; fingerprint?: string }
+  /** Com a impressão digital, para de mostrar só para esse aparelho. */
+  | { type: 'STOP'; fingerprint?: string }
+  | { type: 'CONNECT'; host: string; name: string }
+  | { type: 'STREAM_ENDED' }
+  | { type: 'FAIL'; error: AppError }
+  | { type: 'RETRY' }
+  /** Empresta o mouse a estes computadores (os encostados no mapa). */
+  | { type: 'MOUSE_SHARE'; peers: Host[] }
+  | { type: 'MOUSE_REQUEST'; device: string; address: string }
+  | { type: 'MOUSE_ACCEPT' }
+  | { type: 'MOUSE_DENY' }
+  | { type: 'MOUSE_ENDED' }
+
+export type ProfileId = 'economico' | 'equilibrado' | 'maximo' | 'custom'
+export type Resolution = '720p' | '1080p' | '1440p'
+export type Fps = 30 | 60 | 120
+export type Encoding = 'auto' | 'gpu' | 'cpu'
+export type Codec = 'h264' | 'hevc' | 'av1'
+
+/** Onde a tela estendida fica em relação às telas deste aparelho. */
+export type ExtendSide = 'left' | 'right' | 'above'
+
+/** Modo Mouse: de que lado deste computador o outro fica (o mouse passa pela borda desse lado). */
+export type MouseSide = 'left' | 'right' | 'above' | 'below'
+
+/**
+ * Aparelho aprovado sozinho nos próximos pedidos. Com `fingerprint` (motor próprio), vale o certificado, seja qual
+ * for o nome ou o endereço; sem ela (motor antigo), valem o nome e o endereço juntos.
+ */
+export interface TrustedDevice {
+  name: string
+  address: string
+  fingerprint?: string
+  deviceId?: string
+  /** Tamanho da tela dele, para acertar a posição antes de conectar. */
+  screen?: ScreenSize
+}
+
+/**
+ * Onde fica a tela estendida de um aparelho: de que lado das telas deste e onde começa ao longo dessa borda (fração
+ * da borda deste; sem valor, centralizada).
+ */
+export interface ScreenPlacement {
+  side: MouseSide
+  offset?: number
+  /**
+   * Posição livre (arrastada no mapa): canto de cima à esquerda da tela, em frações da área de trabalho deste
+   * computador (0,0 é o canto dela; 1 é a largura ou a altura inteira). Com ela, `side` é só a direção aproximada.
+   */
+  x?: number
+  y?: number
+}
+
+export interface Settings {
+  profile: ProfileId
+  bitrate: number
+  resolution: Resolution
+  fps: Fps
+  encoding: Encoding
+  codec: Codec
+  autostart: boolean
+  deviceName: string
+  extendSide: ExtendSide
+  /** Modo Mouse: de que lado fica cada outro computador (pelo nome), para o mouse passar pela borda certa. */
+  mouseSides: Record<string, MouseSide>
+  /** Modo Mouse: onde começa a borda de cada outro computador, em fração da borda deste; sem valor, centralizado. */
+  mouseOffsets: Record<string, number>
+  trusted: TrustedDevice[]
+  /** Motor próprio: onde fica a tela estendida de quem ainda não tem posição própria (o padrão). */
+  screenPlacement: ScreenPlacement
+  /** Motor próprio: a posição de cada aparelho que já foi arrastado, pela impressão digital do certificado. */
+  screenPlacements: Record<string, ScreenPlacement>
+  /** Último modo escolhido neste aparelho; null até a pessoa escolher pela primeira vez. */
+  mode: Mode | null
+  /** Aparência: a do sistema, ou sempre clara, ou sempre escura. */
+  theme: Theme
+  /** Idioma do app: o do sistema, ou um escolhido nos Ajustes. */
+  language: Language
+  /** Receber: o último computador conectado (pelo nome), para conectar sozinho ao abrir o app. */
+  lastHost: string | null
+}
+
+export type Theme = 'system' | 'light' | 'dark'
+export type Language = 'system' | 'pt' | 'en' | 'es'
+
+/** O perfil é sempre derivado do bitrate, por isso não pode ser alterado diretamente. */
+export type SettingsPatch = Partial<Omit<Settings, 'profile' | 'mode'>>
+
+export interface ScreenSize {
+  width: number
+  height: number
+}
+
+export interface Host {
+  name: string
+  address: string
+  /** Área de trabalho do outro computador (todas as telas juntas), quando ele anuncia; usado no modo Mouse. */
+  screen?: ScreenSize
+  /** Tipo de aparelho, quando ele anuncia (Horizonte); sem isso, o ícone vem de um palpite pelo nome. */
+  kind?: DeviceKind
+  /** Modo Mouse: ele captura e recebe o mouse. */
+  nativeMouse?: boolean
+}
+
+/** Como está a conexão com um aparelho: pelo tempo de ida e volta e por falta de banda. */
+export type LinkQuality = 'good' | 'fair' | 'poor'
+
+export interface Snapshot {
+  state: AppState
+  settings: Settings
+  /** A conexão de cada aparelho conectado, pela impressão digital (só o motor próprio informa). */
+  links?: Record<string, LinkQuality>
+}
+
+/** Receber pelo navegador: onde abrir e com qual acesso. */
+export interface WebAccess {
+  on: boolean
+  url?: string
+  /** O que vai dentro do QR, quando não é o próprio endereço (só a demonstração do site usa). */
+  qr?: string
+  user?: string
+  /** Código do erro (`shared/errors.ts`) quando a página não abriu. */
+  error?: ErrorCode
+  /** A página abriu, mas um aparelho ficou sem a imagem da tela (o mesmo erro que ele mostrou). */
+  problem?: ErrorCode
+}

@@ -1,0 +1,401 @@
+import type {
+  AppEvent,
+  AppState,
+  Host,
+  LinkQuality,
+  Settings,
+  SettingsPatch,
+  Snapshot,
+  TrustedDevice
+} from '../../shared/types'
+import type { EnginePort, MouseEngine, MousePlacement } from '../engine/port'
+import { isValidPin } from '../../shared/pin'
+import { approvalPin, reduce } from './machine'
+import { placeAll } from '../../shared/placement'
+import { parseSettings, type SettingsStore } from './settings'
+import { errorCodeFor, errorTitle, type ErrorOp } from '../../shared/errors'
+
+export interface ControllerDeps {
+  engine: EnginePort
+  /** Sem ele, o modo Mouse mostra que não está disponível neste sistema. */
+  mouse?: MouseEngine
+  store: SettingsStore
+  initial?: AppState
+}
+
+export interface Controller {
+  getSnapshot(): Snapshot
+  dispatch(event: AppEvent): void
+  updateSettings(patch: SettingsPatch): Promise<Settings>
+  listHosts(): Promise<Host[]>
+  listMousePeers(): Promise<Host[]>
+  subscribe(listener: (snapshot: Snapshot) => void): () => void
+}
+
+/** Telas do modo enviar em que o motor está preparando ou esperando, sem conexão ainda. */
+const isSendIdle = (state: AppState): boolean =>
+  state.screen === 'preparing' || state.screen === 'ready' || state.screen === 'approve'
+
+const isSendLive = (state: AppState): boolean => isSendIdle(state) || state.screen === 'connected'
+
+/** Abre sempre pronto para enviar; só Receber é lembrado (o modo Mouse nunca é tela inicial). */
+function startFor(mode: Settings['mode']): AppState {
+  return mode === 'receive'
+    ? { screen: 'discover', mode: 'receive' }
+    : { screen: 'preparing', mode: 'send', step: 'engine' }
+}
+
+function describeError(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause)
+}
+
+export async function createController({
+  engine,
+  mouse,
+  store,
+  initial
+}: ControllerDeps): Promise<Controller> {
+  let settings = await store.load()
+  /** Depois da primeira vez o app abre direto no último modo, sem a tela de começar. */
+  let state: AppState = initial ?? startFor(settings.mode)
+  /** Cada preparação recebe um número; só a mais recente pode mexer no estado. */
+  let prepareRun = 0
+  /** Pedidos de pareamento que chegaram com a tela ocupada (outro pedido ou uma conexão). */
+  let queuedPairs: Extract<AppEvent, { type: 'PAIR_REQUEST' }>[] = []
+  const listeners = new Set<(snapshot: Snapshot) => void>()
+  let settingsQueue: Promise<unknown> = Promise.resolve()
+
+  /** A conexão de cada aparelho conectado: medida uma vez por segundo, e a tela só é avisada quando o nível muda. */
+  let links: Record<string, LinkQuality> = {}
+  const snapshot = (): Snapshot => ({ state, settings, links })
+
+  function notify(): void {
+    const current = snapshot()
+    for (const listener of [...listeners]) listener(current)
+  }
+
+  function fail(op: ErrorOp, cause: unknown): void {
+    // Um erro novo não apaga o que já está na tela: o primeiro costuma ser a causa.
+    if (state.screen === 'error') return
+    const detail = describeError(cause)
+    const code = errorCodeFor(op, detail)
+    dispatch({ type: 'FAIL', error: { code, message: errorTitle(code), detail } })
+  }
+
+  /** A falha de uma operação só importa se o usuário ainda está na tela a que ela levou. */
+  function failIfStill(target: AppState, op: ErrorOp): (cause: unknown) => void {
+    return (cause) => {
+      if (state === target && target.screen !== 'error') fail(op, cause)
+    }
+  }
+
+  /** Computadores com quem este PC está compartilhando o mouse (para mudar a posição durante o uso). */
+  let sharingWith: Host[] = []
+
+  /** Onde cada um fica, pelos ajustes (sem lado salvo: à direita). */
+  const placementsFor = (hosts: Host[]): MousePlacement[] =>
+    hosts.map((host) => ({
+      host,
+      side: settings.mouseSides[host.name] ?? 'right',
+      offset: settings.mouseOffsets[host.name]
+    }))
+
+  function runMouseEffects(prev: AppState, next: AppState, event: AppEvent): void {
+    const wasMouse = 'mode' in prev && prev.mode === 'mouse'
+    const isMouse = 'mode' in next && next.mode === 'mouse'
+    if (!mouse) {
+      if (isMouse && !wasMouse) fail('mouse-unavailable', '')
+      return
+    }
+    if (isMouse && !wasMouse) {
+      mouse.start(settings.deviceName).catch(failIfStill(next, 'mouse-start'))
+    }
+    if (wasMouse && !isMouse) mouse.stop().catch(() => undefined)
+    if (next.screen === 'mouse-active' && prev.screen === 'mouse' && event.type === 'MOUSE_SHARE') {
+      sharingWith = event.peers
+      mouse
+        .share(placementsFor(event.peers), settings.deviceName)
+        .catch(failIfStill(next, 'mouse-share'))
+    }
+    if (prev.screen === 'mouse-request') {
+      if (event.type === 'MOUSE_ACCEPT') {
+        mouse.accept(settings.deviceName).catch(failIfStill(next, 'mouse-share'))
+      } else if (event.type === 'MOUSE_DENY') mouse.deny().catch(() => undefined)
+    }
+    if (
+      prev.screen === 'mouse-active' &&
+      next.screen !== 'mouse-active' &&
+      event.type !== 'MOUSE_ENDED'
+    ) {
+      mouse.end().catch(() => undefined)
+    }
+  }
+
+  function runEffects(prev: AppState, next: AppState, event: AppEvent): void {
+    runMouseEffects(prev, next, event)
+    // Sair da preparação por qualquer caminho abandona a execução em andamento.
+    if (prev.screen === 'preparing' && next.screen !== 'preparing') prepareRun++
+
+    if (next.screen === 'preparing' && prev.screen !== 'preparing') {
+      const run = ++prepareRun
+      const live = (): boolean => run === prepareRun
+      engine
+        .prepare(
+          (step) => {
+            if (live()) dispatch({ type: 'PREP_STEP', step })
+          },
+          settings,
+          (progress) => {
+            if (live()) dispatch({ type: 'PREP_PROGRESS', progress })
+          }
+        )
+        .then(() => {
+          if (live()) dispatch({ type: 'PREP_DONE' })
+        })
+        .catch((cause: unknown) => {
+          if (live()) fail('prepare', cause)
+        })
+    }
+
+    // Saiu do modo enviar sem ter conectado: o motor precisa parar de preparar ou de esperar.
+    if (isSendIdle(prev) && !isSendLive(next)) {
+      engine.abort().catch(() => undefined) // melhor esforço, o usuário já saiu daquela tela
+    }
+
+    if (prev.screen === 'approve' && (next.screen === 'ready' || next.screen === 'connected')) {
+      if (event.type === 'APPROVE') {
+        const pin = approvalPin(prev, event)
+        if (pin !== null || prev.fingerprint) {
+          engine
+            .approve({
+              pairingId: prev.pairingId,
+              ...(pin !== null ? { pin } : {}),
+              name: prev.device
+            })
+            .catch(failIfStill(next, 'answer'))
+        }
+        if (event.trust && prev.address)
+          trust({
+            name: prev.device,
+            address: prev.address,
+            ...(prev.fingerprint ? { fingerprint: prev.fingerprint } : {}),
+            ...(prev.deviceId ? { deviceId: prev.deviceId } : {}),
+            ...(prev.peerScreen ? { screen: prev.peerScreen } : {})
+          })
+      } else if (event.type === 'DENY') {
+        engine.deny(prev.pairingId).catch(failIfStill(next, 'answer'))
+      }
+    }
+
+    // Parar um aparelho só (o resto segue) ou sair de vez da tela de conectado. Um pedido novo (o "Permitir") não
+    // derruba quem já estava vendo.
+    if (prev.screen === 'connected' && event.type === 'STOP' && event.fingerprint) {
+      engine.stopSending(event.fingerprint).catch(failIfStill(next, 'disconnect'))
+    } else if (
+      prev.screen === 'connected' &&
+      next.screen !== 'connected' &&
+      next.screen !== 'approve' &&
+      event.type !== 'CLIENT_DISCONNECTED'
+    ) {
+      engine.stopSending().catch(failIfStill(next, 'disconnect'))
+    }
+
+    if (next.screen === 'receiving' && prev.screen !== 'receiving') {
+      engine.connect(next.host, settings).catch(failIfStill(next, 'connect'))
+    }
+
+    if (
+      prev.screen === 'receiving' &&
+      next.screen !== 'receiving' &&
+      event.type !== 'STREAM_ENDED'
+    ) {
+      engine.disconnect().catch(failIfStill(next, 'disconnect'))
+    }
+  }
+
+  function dispatch(event: AppEvent): void {
+    const prev = state
+    const next = reduce(prev, event)
+    if (next === prev) return
+    state = next
+    if (event.type === 'CHOOSE' && event.mode !== 'mouse') {
+      settings = { ...settings, mode: event.mode }
+      settingsQueue = settingsQueue.then(() => store.save(settings)).catch(() => undefined) // lembrar o modo é só conveniência
+    }
+    // Lembra para quem conectou: na próxima vez que o app abrir, conecta sozinho quando ele aparecer na rede.
+    if (event.type === 'CONNECT' && next.screen === 'receiving') {
+      settings = { ...settings, lastHost: event.name }
+      settingsQueue = settingsQueue.then(() => store.save(settings)).catch(() => undefined)
+    }
+    notify()
+    runEffects(prev, next, event)
+    if (!isSendLive(next)) queuedPairs = []
+    else if (next.screen === 'ready' || next.screen === 'connected') {
+      const queued = queuedPairs.shift()
+      if (queued !== undefined) dispatch(queued)
+    }
+  }
+
+  /**
+   * Lembra o aparelho: o próximo pedido dele é aprovado sozinho (pelo certificado, no motor próprio; pelo nome e
+   * endereço, no antigo). A entrada antiga do mesmo aparelho sai.
+   */
+  function trust(device: TrustedDevice): void {
+    const others = settings.trusted.filter(
+      (known) =>
+        (known.name !== device.name || known.address !== device.address) &&
+        (!device.fingerprint || known.fingerprint !== device.fingerprint)
+    )
+    settings = {
+      ...parseSettings({ ...settings, trusted: [device, ...others] }),
+      mode: settings.mode
+    }
+    notify()
+    settingsQueue = settingsQueue.then(() => store.save(settings)).catch(() => undefined)
+  }
+
+  const isTrusted = (request: {
+    device: string
+    address?: string
+    fingerprint?: string
+  }): boolean =>
+    request.fingerprint
+      ? settings.trusted.some((known) => known.fingerprint === request.fingerprint)
+      : settings.trusted.some(
+          (known) =>
+            !known.fingerprint && known.name === request.device && known.address === request.address
+        )
+
+  function onPairRequest(request: {
+    device: string
+    pairingId: string
+    pin?: string
+    address?: string
+    fingerprint?: string
+    deviceId?: string
+  }): void {
+    const event = { type: 'PAIR_REQUEST', ...request } as const
+    // Aparelho confiável (pelo certificado, ou com o PIN do Horizonte no motor antigo): aprova sem mostrar o pedido.
+    // Se falhar, mostra como sempre.
+    const verified = request.fingerprint || (request.pin && isValidPin(request.pin))
+    if (
+      (state.screen === 'ready' || state.screen === 'connected') &&
+      verified &&
+      isTrusted(request)
+    ) {
+      engine
+        .approve({
+          pairingId: request.pairingId,
+          ...(request.pin ? { pin: request.pin } : {}),
+          name: request.device
+        })
+        .catch(() => dispatch(event))
+      return
+    }
+    if (state.screen !== 'approve') return dispatch(event)
+    // O vigia já marcou este pedido como conhecido e não o anuncia de novo: guardamos para a vez dele.
+    const shown = state.screen === 'approve' && state.pairingId === request.pairingId
+    if (!shown && !queuedPairs.some((queued) => queued.pairingId === request.pairingId)) {
+      queuedPairs.push(event)
+    }
+  }
+
+  engine.onPairRequest(onPairRequest)
+  engine.onPairCancelled((pairingId) => {
+    queuedPairs = queuedPairs.filter((queued) => queued.pairingId !== pairingId)
+    dispatch({ type: 'PAIR_CANCELLED', pairingId })
+  })
+  engine.onClientConnected((device, peer) => {
+    dispatch({ type: 'CLIENT_CONNECTED', device, ...(peer ?? {}) })
+    // Aparelho confiável: guarda o tamanho atual da tela dele, para acertar a posição nos ajustes depois.
+    const known = peer?.fingerprint
+      ? settings.trusted.find((t) => t.fingerprint === peer.fingerprint)
+      : undefined
+    const size = peer?.screen
+    if (
+      known &&
+      size &&
+      (known.screen?.width !== size.width || known.screen?.height !== size.height)
+    )
+      trust({ ...known, screen: size })
+  })
+  engine.onClientDisconnected((fingerprint) => {
+    if (fingerprint) delete links[fingerprint]
+    else links = {}
+    dispatch({ type: 'CLIENT_DISCONNECTED', ...(fingerprint ? { fingerprint } : {}) })
+  })
+  engine.onLink?.((fingerprint, link) => {
+    const before = links[fingerprint]
+    if (link) links = { ...links, [fingerprint]: link }
+    else delete links[fingerprint]
+    if (before !== link) notify()
+  })
+  engine.onStreamEnded(() => dispatch({ type: 'STREAM_ENDED' }))
+  mouse?.onRequest((request) => dispatch({ type: 'MOUSE_REQUEST', ...request }))
+  mouse?.onEnded(() => dispatch({ type: 'MOUSE_ENDED' }))
+
+  // Abrindo direto em enviar não há transição para disparar a preparação: começa aqui.
+  if (state.screen === 'preparing')
+    runEffects({ screen: 'discover', mode: 'receive' }, state, { type: 'CHOOSE', mode: 'send' })
+  // Abrindo direto no modo Mouse, o mesmo: anuncia este PC e escuta pedidos.
+  if (state.screen === 'mouse')
+    runEffects({ screen: 'discover', mode: 'receive' }, state, { type: 'CHOOSE', mode: 'mouse' })
+
+  return {
+    getSnapshot: snapshot,
+    dispatch,
+    updateSettings(patch) {
+      const update = settingsQueue.then(async () => {
+        const next = parseSettings({ ...settings, ...patch })
+        const moved = next.extendSide !== settings.extendSide
+        // Motor próprio: mudou a posição de alguma tela conectada agora (a própria ou, sem ela, a padrão).
+        const connected = state.screen === 'connected' ? state.devices : []
+        const before = placeAll(
+          connected.map((d) => d.fingerprint),
+          settings.screenPlacements,
+          settings.screenPlacement
+        )
+        const after = placeAll(
+          connected.map((d) => d.fingerprint),
+          next.screenPlacements,
+          next.screenPlacement
+        )
+        const movedScreens = connected.flatMap((d, i) =>
+          JSON.stringify(before[i]) !== JSON.stringify(after[i])
+            ? [{ fp: d.fingerprint, at: after[i] }]
+            : []
+        )
+        const sharing = state.screen === 'mouse-active' && state.role === 'share'
+        const mouseMoved =
+          sharing &&
+          sharingWith.some(
+            ({ name }) =>
+              next.mouseSides[name] !== settings.mouseSides[name] ||
+              next.mouseOffsets[name] !== settings.mouseOffsets[name]
+          )
+        await store.save(next)
+        settings = { ...next, mode: settings.mode }
+        notify()
+        if (moved) await engine.placeDisplay?.(settings.extendSide).catch(() => undefined)
+        for (const { fp, at } of movedScreens)
+          await engine.placeScreen?.(at, fp).catch(() => undefined)
+        if (mouseMoved) await mouse?.setLayout(placementsFor(sharingWith)).catch(() => undefined)
+        if (state.screen === 'connected' || state.screen === 'receiving') {
+          // Ajuste ao vivo é melhor esforço: se falhar, a conexão segue com o valor anterior.
+          await engine.applyBitrate(settings.bitrate).catch(() => undefined)
+        }
+        return settings
+      })
+      settingsQueue = update.catch(() => undefined)
+      return update
+    },
+    listHosts: () => engine.listHosts(),
+    listMousePeers: async () => (mouse ? mouse.listPeers() : []),
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+name: Algo não funciona
+description: Conte o que aconteceu. O jeito mais rápido é o botão de diagnóstico do próprio app.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Antes de escrever:** no app, em **Ajustes › Enviar diagnóstico**, toque no botão. Ele abre sozinho uma issue com o relatório do seu computador (sistema, placa de vídeo, telas e registros, sem dados pessoais). Se você já mandou, só comente nela o que estava fazendo.
+  - type: input
+    id: version
+    attributes:
+      label: Versão do Horizonte
+      description: Ajustes › Sobre.
+      placeholder: 0.2.0 beta 100
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Computador que envia a tela
+      options: [Windows 10, Windows 11, macOS (Apple), macOS (Intel), Linux GNOME (Wayland), Linux GNOME (Xorg), Outro]
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Aparelho que recebe e navegador
+      placeholder: iPad 2 com iOS 9 (Safari); iPhone 15 (Safari); outro computador com o Horizonte
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu
+      description: O que você fez, o que esperava e o que viu. Se aparecer um número de erro (3 dígitos), escreva ele.
+    validations:
+      required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Falha de segurança
+    url: https://github.com/mapompeo/horizonte/security/advisories/new
+    about: Não abra issue pública. Use o aviso privado.
+  - name: Tabela de códigos de erro
+    url: https://horizonte-monitor.vercel.app/erros
+    about: O erro mostra um número de 3 dígitos? Veja o que ele quer dizer e como resolver.

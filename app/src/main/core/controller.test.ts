@@ -1,0 +1,995 @@
+import { describe, expect, it, vi } from 'vitest'
+import { createController, type Controller } from './controller'
+import { DEFAULT_SETTINGS, type SettingsStore } from './settings'
+import { FakeEngine } from '../engine/fake'
+import type { MouseEngine } from '../engine/port'
+import type { AppState, Settings } from '../../shared/types'
+
+function memoryStore(): { store: SettingsStore; saved: Settings[] } {
+  const saved: Settings[] = []
+  const store: SettingsStore = {
+    load: async () => ({ ...DEFAULT_SETTINGS }),
+    save: async (settings) => {
+      saved.push(settings)
+    }
+  }
+  return { store, saved }
+}
+
+async function setup(
+  initial: AppState,
+  engine = new FakeEngine(0)
+): Promise<{ controller: Controller; engine: FakeEngine; saved: Settings[] }> {
+  const { store, saved } = memoryStore()
+  const controller = await createController({ engine, store, initial })
+  return { controller, engine, saved }
+}
+
+async function startWith(
+  mode: Settings['mode'],
+  engine = new FakeEngine(0)
+): Promise<{ controller: Controller; engine: FakeEngine; saved: Settings[] }> {
+  const saved: Settings[] = []
+  const store: SettingsStore = {
+    load: async () => ({ ...DEFAULT_SETTINGS, mode }),
+    save: async (settings) => {
+      saved.push(settings)
+    }
+  }
+  const controller = await createController({ engine, store })
+  return { controller, engine, saved }
+}
+
+const screen = (controller: Controller): string => controller.getSnapshot().state.screen
+const settle = (ms = 40): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+describe('pedidos de pareamento em sequência', () => {
+  it('falha ao salvar ajustes preserva o último estado confirmado', async () => {
+    const controller = await createController({
+      engine: new FakeEngine(0),
+      store: {
+        load: async () => ({ ...DEFAULT_SETTINGS }),
+        save: async () => {
+          throw new Error('disco cheio')
+        }
+      },
+      initial: { screen: 'ready', mode: 'send' }
+    })
+    await expect(controller.updateSettings({ bitrate: 60 })).rejects.toThrow('disco cheio')
+    expect(controller.getSnapshot().settings.bitrate).toBe(30)
+  })
+
+  const ready: AppState = { screen: 'ready', mode: 'send' }
+
+  it('um segundo pedido durante a tela Permitir aparece depois que o primeiro é respondido', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulatePairRequest('Notebook', 'p1')
+    engine.simulatePairRequest('Tablet', 'p2')
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'approve', pairingId: 'p1' })
+
+    controller.dispatch({ type: 'DENY' })
+    expect(controller.getSnapshot().state).toMatchObject({
+      screen: 'approve',
+      device: 'Tablet',
+      pairingId: 'p2'
+    })
+  })
+
+  it('um pedido que chega durante a conexão aparece na hora, sem derrubar quem já está vendo', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulateClientConnected('Notebook')
+    engine.simulatePairRequest('Tablet', 'p2')
+    expect(controller.getSnapshot().state).toMatchObject({
+      screen: 'approve',
+      pairingId: 'p2',
+      connected: [{ device: 'Notebook' }]
+    })
+    expect(engine.calls).not.toContain('stopSending')
+    controller.dispatch({ type: 'DENY' })
+    expect(controller.getSnapshot().state).toMatchObject({
+      screen: 'connected',
+      devices: [{ device: 'Notebook' }]
+    })
+  })
+
+  it('o pedido cancelado enquanto esperava na fila não aparece', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulatePairRequest('Notebook', 'p1')
+    engine.simulatePairRequest('Tablet', 'p2')
+    engine.simulatePairCancelled('p2')
+
+    controller.dispatch({ type: 'DENY' })
+    expect(screen(controller)).toBe('ready')
+  })
+
+  it('o mesmo pedido repetido não entra duas vezes na fila', async () => {
+    const { controller, engine } = await setup(ready)
+    engine.simulatePairRequest('Notebook', 'p1')
+    engine.simulatePairRequest('Tablet', 'p2')
+    engine.simulatePairRequest('Tablet', 'p2')
+    engine.simulatePairRequest('Notebook', 'p1')
+
+    controller.dispatch({ type: 'DENY' })
+    controller.dispatch({ type: 'DENY' })
+    expect(screen(controller)).toBe('ready')
+  })
+})
+
+describe('fluxo de envio', () => {
+  it('escolhe enviar, prepara, aprova e conecta', async () => {
+    const { controller, engine } = await setup({ screen: 'discover', mode: 'receive' })
+
+    controller.dispatch({ type: 'CHOOSE', mode: 'send' })
+    expect(screen(controller)).toBe('preparing')
+    await vi.waitFor(() => expect(screen(controller)).toBe('ready'))
+
+    engine.simulatePairRequest('Notebook')
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: null
+    })
+
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
+    expect(engine.lastApprove).toEqual({ pairingId: 'p1', pin: '4821', name: 'Notebook' })
+    expect(screen(controller)).toBe('ready')
+
+    engine.simulateClientConnected('Notebook')
+    expect(screen(controller)).toBe('connected')
+
+    controller.dispatch({ type: 'STOP' })
+    expect(screen(controller)).toBe('ready')
+    expect(engine.calls).toContain('stopSending')
+  })
+
+  it('recusar avisa o motor', async () => {
+    const { controller, engine } = await setup({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: null
+    })
+    controller.dispatch({ type: 'DENY' })
+    expect(engine.calls).toContain('deny')
+    expect(engine.lastDeny).toBe('p1')
+    expect(screen(controller)).toBe('ready')
+  })
+
+  it('cliente que desconecta volta para pronto sem parar o motor de novo', async () => {
+    const { controller, engine } = await setup({
+      screen: 'connected',
+      mode: 'send',
+      devices: [{ device: 'Notebook' }]
+    })
+    engine.simulateClientDisconnected()
+    expect(screen(controller)).toBe('ready')
+    expect(engine.calls).not.toContain('stopSending')
+  })
+})
+
+describe('fluxo de recebimento', () => {
+  it('conecta e sai', async () => {
+    const { controller, engine } = await setup({ screen: 'discover', mode: 'receive' })
+
+    controller.dispatch({ type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' })
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'receiving',
+      mode: 'receive',
+      host: '192.168.1.3',
+      name: 'Desktop'
+    })
+    expect(engine.calls).toContain('connect:192.168.1.3')
+
+    controller.dispatch({ type: 'STOP' })
+    expect(screen(controller)).toBe('discover')
+    expect(engine.calls).toContain('disconnect')
+  })
+
+  it('lista os computadores da rede', async () => {
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' })
+    expect(await controller.listHosts()).toEqual([{ name: 'Desktop', address: '192.168.1.3' }])
+  })
+
+  it('falha ao conectar mostra erro com o detalhe', async () => {
+    const engine = new FakeEngine(0)
+    engine.failConnect = 'sem rede'
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' }, engine)
+    controller.dispatch({ type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' })
+    await vi.waitFor(() => expect(screen(controller)).toBe('error'))
+    const state = controller.getSnapshot().state
+    expect(state.screen === 'error' && state.error.detail).toBe('sem rede')
+  })
+})
+
+describe('erros', () => {
+  it('falha ao preparar mostra erro e tentar de novo funciona', async () => {
+    const engine = new FakeEngine(0)
+    engine.failPrepare = 'sem permissão'
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' }, engine)
+
+    controller.dispatch({ type: 'CHOOSE', mode: 'send' })
+    await vi.waitFor(() => expect(screen(controller)).toBe('error'))
+
+    controller.dispatch({ type: 'RETRY' })
+    expect(screen(controller)).toBe('preparing')
+    await vi.waitFor(() => expect(screen(controller)).toBe('ready'))
+  })
+})
+
+describe('eventos no estado errado', () => {
+  it('aprovar duas vezes avisa o motor uma vez só', async () => {
+    const { controller, engine } = await setup({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: null
+    })
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
+    expect(engine.calls.filter((call) => call === 'approve')).toHaveLength(1)
+  })
+
+  it('eventos do modo enviar no modo mostrar são ignorados', async () => {
+    const { controller, engine } = await setup({ screen: 'discover', mode: 'receive' })
+    engine.simulateClientConnected('Notebook')
+    engine.simulatePairRequest('Notebook')
+    expect(screen(controller)).toBe('discover')
+  })
+})
+
+describe('conexão de cada aparelho', () => {
+  it('a tela só é avisada quando o nível muda, e o aparelho que sai some da lista', async () => {
+    const { controller, engine } = await setup({
+      screen: 'connected',
+      mode: 'send',
+      devices: [{ device: 'iPhone', fingerprint: 'fp1' }]
+    })
+    const seen: unknown[] = []
+    controller.subscribe((snapshot) => seen.push(snapshot.links))
+    engine.simulateLink('fp1', 'good')
+    engine.simulateLink('fp1', 'good')
+    engine.simulateLink('fp1', 'poor')
+    expect(seen).toEqual([{ fp1: 'good' }, { fp1: 'poor' }])
+    engine.simulateClientDisconnected()
+    expect(controller.getSnapshot().links).toEqual({})
+  })
+})
+
+describe('lembrar o computador', () => {
+  it('conectar guarda o nome dele, para conectar sozinho na próxima vez', async () => {
+    const { controller, saved } = await setup({ screen: 'discover', mode: 'receive' })
+    controller.dispatch({ type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(controller.getSnapshot().settings.lastHost).toBe('Desktop')
+    expect(saved.at(-1)?.lastHost).toBe('Desktop')
+  })
+})
+
+describe('troca de modo', () => {
+  it('sair de conectado para mostrar para o envio', async () => {
+    const { controller, engine } = await setup({
+      screen: 'connected',
+      mode: 'send',
+      devices: [{ device: 'Notebook' }]
+    })
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    expect(screen(controller)).toBe('discover')
+    expect(engine.calls).toContain('stopSending')
+  })
+
+  it('sair de recebendo para enviar encerra a conexão', async () => {
+    const { controller, engine } = await setup({
+      screen: 'receiving',
+      mode: 'receive',
+      host: '192.168.1.3',
+      name: 'Desktop'
+    })
+    controller.dispatch({ type: 'CHOOSE', mode: 'send' })
+    expect(screen(controller)).toBe('preparing')
+    expect(engine.calls).toContain('disconnect')
+  })
+
+  it('enviar, mostrar, enviar termina pronto e sem erro', async () => {
+    const { controller, engine } = await setup({ screen: 'discover', mode: 'receive' })
+    controller.dispatch({ type: 'CHOOSE', mode: 'send' })
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    controller.dispatch({ type: 'CHOOSE', mode: 'send' })
+    await vi.waitFor(() => expect(screen(controller)).toBe('ready'))
+    await settle()
+    expect(screen(controller)).toBe('ready')
+    expect(engine.calls.filter((call) => call === 'prepare')).toHaveLength(2)
+  })
+
+  it('a falha de uma preparação abandonada não mostra erro', async () => {
+    const engine = new FakeEngine(0)
+    engine.failPrepare = 'tarde demais'
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' }, engine)
+    controller.dispatch({ type: 'CHOOSE', mode: 'send' })
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    await settle()
+    expect(controller.getSnapshot().state).toEqual({ screen: 'discover', mode: 'receive' })
+  })
+
+  it('o fim de uma preparação abandonada não tira o usuário da tela atual', async () => {
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' })
+    controller.dispatch({ type: 'CHOOSE', mode: 'send' })
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    await settle()
+    expect(screen(controller)).toBe('discover')
+  })
+})
+
+describe('falhas tardias e de limpeza', () => {
+  it('a falha tardia de uma conexão abandonada não aparece sobre a conexão nova', async () => {
+    const engine = new FakeEngine(30)
+    engine.failConnect = 'sem rede'
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' }, engine)
+    controller.dispatch({ type: 'CONNECT', host: '10.0.0.1', name: 'A' })
+    controller.dispatch({ type: 'STOP' })
+    controller.dispatch({ type: 'CONNECT', host: '10.0.0.2', name: 'B' })
+    await settle(150)
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'receiving',
+      mode: 'receive',
+      host: '10.0.0.2',
+      name: 'B'
+    })
+  })
+
+  it('a falha tardia de aprovar não derruba uma conexão já estabelecida', async () => {
+    const engine = new FakeEngine(30)
+    engine.failApprove = 'demorou'
+    const { controller } = await setup(
+      { screen: 'approve', mode: 'send', device: 'Notebook', pairingId: 'p1', pin: null },
+      engine
+    )
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
+    engine.simulateClientConnected('Notebook')
+    await settle(150)
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'connected',
+      mode: 'send',
+      devices: [{ device: 'Notebook' }]
+    })
+  })
+
+  it('a falha de aprovar, com o usuário ainda na tela, mostra erro', async () => {
+    const engine = new FakeEngine(0)
+    engine.failApprove = 'recusado pelo motor'
+    const { controller } = await setup(
+      { screen: 'approve', mode: 'send', device: 'Notebook', pairingId: 'p1', pin: null },
+      engine
+    )
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
+    await vi.waitFor(() => expect(screen(controller)).toBe('error'))
+    const state = controller.getSnapshot().state
+    expect(state.screen === 'error' && state.error.detail).toBe('recusado pelo motor')
+  })
+
+  it('se desconectar também falhar, o erro original continua na tela', async () => {
+    const engine = new FakeEngine(0)
+    engine.failConnect = 'sem rede'
+    engine.failDisconnect = 'já tinha caído'
+    const { controller } = await setup({ screen: 'discover', mode: 'receive' }, engine)
+    controller.dispatch({ type: 'CONNECT', host: '192.168.1.3', name: 'Desktop' })
+    await vi.waitFor(() => expect(screen(controller)).toBe('error'))
+    await settle()
+    const state = controller.getSnapshot().state
+    expect(state.screen === 'error' && state.error.message).toBe('Não deu para conectar')
+    expect(state.screen === 'error' && state.error.detail).toBe('sem rede')
+  })
+
+  it('falha ao encerrar a conexão, com o usuário na mesma tela, mostra erro', async () => {
+    const engine = new FakeEngine(0)
+    engine.failDisconnect = 'travou'
+    const { controller } = await setup(
+      { screen: 'receiving', mode: 'receive', host: '192.168.1.3', name: 'Desktop' },
+      engine
+    )
+    controller.dispatch({ type: 'STOP' })
+    await vi.waitFor(() => expect(screen(controller)).toBe('error'))
+  })
+})
+
+describe('motor avisado ao abandonar o modo enviar', () => {
+  const idle: [string, AppState][] = [
+    ['preparando', { screen: 'preparing', mode: 'send', step: 'engine' }],
+    ['pronto', { screen: 'ready', mode: 'send' }],
+    [
+      'permitir',
+      { screen: 'approve', mode: 'send', device: 'Notebook', pairingId: 'p1', pin: null }
+    ]
+  ]
+
+  it.each(idle)('sair de %s para mostrar chama abort', async (_name, initial) => {
+    const { controller, engine } = await setup(initial)
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    expect(engine.calls).toContain('abort')
+  })
+
+  it('um erro no meio do envio também avisa o motor', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    controller.dispatch({ type: 'FAIL', error: { code: '100' as const, message: 'x' } })
+    expect(engine.calls).toContain('abort')
+  })
+
+  it('avançar dentro do modo enviar não chama abort', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    engine.simulatePairRequest('Notebook')
+    controller.dispatch({ type: 'APPROVE', pin: '4821' })
+    engine.simulateClientConnected('Notebook')
+    expect(screen(controller)).toBe('connected')
+    expect(engine.calls).not.toContain('abort')
+  })
+})
+
+describe('pareamento com PIN', () => {
+  it('aprovar sem PIN não chama o motor e não sai da tela', async () => {
+    const { controller, engine } = await setup({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: null
+    })
+    controller.dispatch({ type: 'APPROVE' })
+    controller.dispatch({ type: 'APPROVE', pin: '12' })
+    expect(screen(controller)).toBe('approve')
+    expect(engine.calls).not.toContain('approve')
+  })
+
+  it('com o PIN já conhecido aprova sem digitar', async () => {
+    const { controller, engine } = await setup({
+      screen: 'approve',
+      mode: 'send',
+      device: 'Notebook',
+      pairingId: 'p1',
+      pin: '4821'
+    })
+    controller.dispatch({ type: 'APPROVE' })
+    expect(engine.lastApprove).toEqual({ pairingId: 'p1', pin: '4821', name: 'Notebook' })
+  })
+
+  it('o cancelamento do pedido volta para pronto sem chamar o motor', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    engine.simulatePairRequest('Notebook', 'p9')
+    expect(screen(controller)).toBe('approve')
+    engine.simulatePairCancelled('p9')
+    expect(screen(controller)).toBe('ready')
+    expect(engine.calls).not.toContain('deny')
+    expect(engine.calls).not.toContain('approve')
+  })
+
+  it('o cancelamento de outro pedido é ignorado', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    engine.simulatePairRequest('Notebook', 'p9')
+    engine.simulatePairCancelled('outro')
+    expect(screen(controller)).toBe('approve')
+  })
+})
+
+describe('ajustes e assinantes', () => {
+  it('atualizar o bitrate valida, persiste e avisa os assinantes', async () => {
+    const { controller, saved } = await setup({ screen: 'ready', mode: 'send' })
+    const seen: number[] = []
+    controller.subscribe((snapshot) => seen.push(snapshot.settings.bitrate))
+
+    const next = await controller.updateSettings({ bitrate: 33.4 })
+    expect(next.bitrate).toBe(33)
+    expect(next.profile).toBe('custom')
+    expect(saved[saved.length - 1]?.bitrate).toBe(33)
+    expect(seen).toEqual([33])
+  })
+
+  it('mudar a posição da tela estendida reposiciona na hora; outro ajuste não mexe nela', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    await controller.updateSettings({ bitrate: 40 })
+    expect(engine.calls.some((call) => call.startsWith('place:'))).toBe(false)
+    await controller.updateSettings({ extendSide: 'left' })
+    expect(engine.calls).toContain('place:left')
+  })
+
+  it('o perfil não pode ser forçado pelo patch', async () => {
+    const { controller } = await setup({ screen: 'ready', mode: 'send' })
+    const next = await controller.updateSettings({ profile: 'maximo', bitrate: 10 } as never)
+    expect(next.profile).toBe('economico')
+  })
+
+  it('aplica o bitrate ao vivo quando há conexão', async () => {
+    const { controller, engine } = await setup({
+      screen: 'connected',
+      mode: 'send',
+      devices: [{ device: 'Notebook' }]
+    })
+    await controller.updateSettings({ bitrate: 50 })
+    expect(engine.calls).toContain('bitrate:50')
+  })
+
+  it('não mexe no motor quando não há conexão', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    await controller.updateSettings({ bitrate: 50 })
+    expect(engine.calls.some((call) => call.startsWith('bitrate:'))).toBe(false)
+  })
+
+  it('quem cancela a assinatura deixa de receber', async () => {
+    const { controller } = await setup({ screen: 'ready', mode: 'send' })
+    let count = 0
+    const stop = controller.subscribe(() => count++)
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    stop()
+    controller.dispatch({ type: 'CHOOSE', mode: 'send' })
+    expect(count).toBe(1)
+  })
+})
+
+describe('abrir o app depois de instalado', () => {
+  it('primeira vez (nenhum modo escolhido ainda): abre direto enviando, sem boas-vindas nem escolha', async () => {
+    const { controller } = await startWith(null)
+    expect(['preparing', 'ready']).toContain(screen(controller))
+  })
+
+  it('último modo foi mostrar: abre direto procurando aparelhos', async () => {
+    const { controller } = await startWith('receive')
+    expect(controller.getSnapshot().state).toEqual({ screen: 'discover', mode: 'receive' })
+  })
+
+  it('último modo foi enviar: abre direto preparando e chega em pronto', async () => {
+    const engine = new FakeEngine(0)
+    const prepare = vi.spyOn(engine, 'prepare')
+    const { controller } = await startWith('send', engine)
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'preparing', mode: 'send' })
+    await settle(200)
+    expect(prepare).toHaveBeenCalledOnce()
+    expect(screen(controller)).toBe('ready')
+  })
+
+  it('escolher um modo grava para a próxima abertura', async () => {
+    const { controller, saved } = await startWith(null)
+    await settle(200)
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    await settle()
+    expect(saved.at(-1)?.mode).toBe('receive')
+  })
+
+  it('trocar de modo pela pílula também grava', async () => {
+    const { controller, saved } = await startWith('receive')
+    controller.dispatch({ type: 'CHOOSE', mode: 'send' })
+    await settle()
+    expect(saved.at(-1)?.mode).toBe('send')
+  })
+
+  it('escolher o mesmo modo de novo não regrava à toa', async () => {
+    const { controller, saved } = await startWith('receive')
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    await settle()
+    expect(saved).toHaveLength(0)
+  })
+
+  it('o modo Mouse nunca é tela inicial nem é lembrado', async () => {
+    const { controller, saved } = await startWith('mouse')
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'preparing', mode: 'send' })
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    await settle()
+    expect(saved).toHaveLength(0)
+  })
+})
+
+describe('persistencia concorrente de modo e ajustes', () => {
+  it('CHOOSE espera o update pendente e persiste o bitrate confirmado', async () => {
+    let persisted = { ...DEFAULT_SETTINGS }
+    let releaseUpdate!: () => void
+    let releaseMode!: () => void
+    let updateStarted!: () => void
+    let modeStarted!: () => void
+    let modeFinished!: () => void
+    const updating = new Promise<void>((resolve) => {
+      updateStarted = resolve
+    })
+    const choosing = new Promise<void>((resolve) => {
+      modeStarted = resolve
+    })
+    const chosen = new Promise<void>((resolve) => {
+      modeFinished = resolve
+    })
+    const saves: Settings[] = []
+    const controller = await createController({
+      engine: new FakeEngine(0),
+      initial: { screen: 'ready', mode: 'send' },
+      store: {
+        load: async () => persisted,
+        save: async (value) => {
+          saves.push({ ...value })
+          if (saves.length === 1) {
+            updateStarted()
+            await new Promise<void>((resolve) => {
+              releaseUpdate = resolve
+            })
+          } else {
+            modeStarted()
+            await new Promise<void>((resolve) => {
+              releaseMode = resolve
+            })
+          }
+          persisted = { ...value }
+          if (saves.length === 2) modeFinished()
+        }
+      }
+    })
+    const update = controller.updateSettings({ bitrate: 60 })
+    await updating
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    expect(controller.getSnapshot().settings.mode).toBe('receive')
+    const savesWhilePending = saves.length
+    releaseUpdate()
+    await update
+    expect(controller.getSnapshot().settings).toMatchObject({ mode: 'receive', bitrate: 60 })
+    await choosing
+    releaseMode()
+    await chosen
+    expect(persisted).toMatchObject({ mode: 'receive', bitrate: 60 })
+    expect(savesWhilePending).toBe(1)
+  })
+
+  it('rejeicao ao salvar modo preserva memoria e permite o proximo update sem unhandled', async () => {
+    const unhandled: unknown[] = []
+    const onUnhandled = (cause: unknown): void => {
+      unhandled.push(cause)
+    }
+    process.on('unhandledRejection', onUnhandled)
+    try {
+      let persisted = { ...DEFAULT_SETTINGS }
+      let rejectMode!: (cause: Error) => void
+      let modeStarted!: () => void
+      const choosing = new Promise<void>((resolve) => {
+        modeStarted = resolve
+      })
+      let saves = 0
+      const controller = await createController({
+        engine: new FakeEngine(0),
+        initial: { screen: 'ready', mode: 'send' },
+        store: {
+          load: async () => persisted,
+          save: async (value) => {
+            if (++saves === 1) {
+              modeStarted()
+              await new Promise<void>((_resolve, reject) => {
+                rejectMode = reject
+              })
+            }
+            persisted = { ...value }
+          }
+        }
+      })
+      controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+      await choosing
+      expect(controller.getSnapshot().settings.mode).toBe('receive')
+      const update = controller.updateSettings({ bitrate: 60 })
+      rejectMode(new Error('disco cheio'))
+      await update
+      await new Promise<void>((resolve) => setImmediate(resolve))
+      expect(controller.getSnapshot().settings).toMatchObject({ mode: 'receive', bitrate: 60 })
+      expect(persisted).toMatchObject({ mode: 'receive', bitrate: 60 })
+      expect(unhandled).toEqual([])
+      expect(screen(controller)).toBe('discover')
+    } finally {
+      process.off('unhandledRejection', onUnhandled)
+    }
+  })
+})
+
+describe('modo Mouse', () => {
+  function fakeMouse(): MouseEngine & {
+    calls: string[]
+    request(device: string, address: string): void
+    endItself(): void
+  } {
+    const calls: string[] = []
+    let onRequest: ((r: { device: string; address: string }) => void) | null = null
+    let onEnded: (() => void) | null = null
+    return {
+      calls,
+      start: async (name) => void calls.push(`start:${name}`),
+      stop: async () => void calls.push('stop'),
+      listPeers: async () => [{ name: 'Notebook', address: '192.168.1.6' }],
+      share: async (placements) =>
+        void calls.push(
+          ...placements.map(({ host, side }) =>
+            side === 'right' ? `share:${host.address}` : `share:${host.address}:${side}`
+          )
+        ),
+      setLayout: async (placements) =>
+        void calls.push(
+          ...placements.map(({ side, offset }) =>
+            offset === undefined ? `side:${side}` : `side:${side}:${offset}`
+          )
+        ),
+      accept: async () => void calls.push('accept'),
+      deny: async () => void calls.push('deny'),
+      end: async () => void calls.push('end'),
+      onRequest: (callback) => {
+        onRequest = callback
+        return () => undefined
+      },
+      onEnded: (callback) => {
+        onEnded = callback
+        return () => undefined
+      },
+      request: (device, address) => onRequest?.({ device, address }),
+      endItself: () => onEnded?.()
+    }
+  }
+
+  async function mouseSetup(): Promise<{
+    controller: Controller
+    mouse: ReturnType<typeof fakeMouse>
+  }> {
+    const mouse = fakeMouse()
+    const { store } = memoryStore()
+    const controller = await createController({
+      engine: new FakeEngine(0),
+      mouse,
+      store,
+      initial: { screen: 'discover', mode: 'receive' }
+    })
+    return { controller, mouse }
+  }
+
+  it('entrar no modo anuncia este PC; emprestar o mouse pede ao outro; parar encerra', async () => {
+    const { controller, mouse } = await mouseSetup()
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    expect(screen(controller)).toBe('mouse')
+    controller.dispatch({
+      type: 'MOUSE_SHARE',
+      peers: [{ name: 'Notebook', address: '192.168.1.6' }]
+    })
+    expect(screen(controller)).toBe('mouse-active')
+    controller.dispatch({ type: 'STOP' })
+    expect(screen(controller)).toBe('mouse')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mouse.calls).toEqual(['start:Dispositivo', 'share:192.168.1.6', 'end'])
+  })
+
+  it('pedido do outro PC: aceitar passa a ser controlado; recusar volta à lista', async () => {
+    const { controller, mouse } = await mouseSetup()
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    mouse.request('Desktop', '192.168.1.4')
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'mouse-request',
+      mode: 'mouse',
+      device: 'Desktop',
+      address: '192.168.1.4'
+    })
+    controller.dispatch({ type: 'MOUSE_ACCEPT' })
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'mouse-active', role: 'follow' })
+    mouse.endItself()
+    expect(screen(controller)).toBe('mouse')
+
+    mouse.request('Desktop', '192.168.1.4')
+    controller.dispatch({ type: 'MOUSE_DENY' })
+    expect(screen(controller)).toBe('mouse')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mouse.calls).toContain('accept')
+    expect(mouse.calls).toContain('deny')
+    expect(mouse.calls).not.toContain('end') // o fim veio do outro lado: não precisa avisar de volta
+  })
+
+  it('usa o lado salvo de cada computador e troca ao vivo enquanto compartilha', async () => {
+    const { controller, mouse } = await mouseSetup()
+    await controller.updateSettings({ mouseSides: { Notebook: 'left' } })
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    controller.dispatch({
+      type: 'MOUSE_SHARE',
+      peers: [{ name: 'Notebook', address: '192.168.1.6' }]
+    })
+    await controller.updateSettings({ mouseSides: { Notebook: 'above' } })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mouse.calls).toContain('share:192.168.1.6:left')
+    expect(mouse.calls).toContain('side:above')
+  })
+
+  it('sair do modo Mouse desliga o anúncio', async () => {
+    const { controller, mouse } = await mouseSetup()
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    controller.dispatch({ type: 'CHOOSE', mode: 'receive' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mouse.calls).toContain('stop')
+  })
+
+  it('sistema sem o motor do Mouse mostra um aviso claro', async () => {
+    const { store } = memoryStore()
+    const controller = await createController({
+      engine: new FakeEngine(0),
+      store,
+      initial: { screen: 'discover', mode: 'receive' }
+    })
+    controller.dispatch({ type: 'CHOOSE', mode: 'mouse' })
+    expect(controller.getSnapshot().state).toMatchObject({ screen: 'error', mode: 'mouse' })
+  })
+})
+
+describe('aparelhos confiáveis', () => {
+  async function trustedSetup(
+    trusted: Settings['trusted']
+  ): Promise<{ controller: Controller; engine: FakeEngine; saved: Settings[] }> {
+    const engine = new FakeEngine(0)
+    const saved: Settings[] = []
+    const store: SettingsStore = {
+      load: async () => ({ ...DEFAULT_SETTINGS, mode: 'send', trusted }),
+      save: async (settings) => {
+        saved.push(settings)
+      }
+    }
+    const controller = await createController({
+      engine,
+      store,
+      initial: { screen: 'ready', mode: 'send' }
+    })
+    return { controller, engine, saved }
+  }
+
+  it('aparelho confiável com o PIN do Horizonte é aprovado sozinho, sem mostrar o pedido', async () => {
+    const { controller, engine } = await trustedSetup([{ name: 'Desktop', address: '192.168.1.4' }])
+    engine.simulatePairRequest('Desktop', 'p1', '4821', '192.168.1.4')
+    expect(screen(controller)).toBe('ready')
+    expect(engine.lastApprove).toEqual({ pairingId: 'p1', pin: '4821', name: 'Desktop' })
+  })
+
+  it('mesmo nome vindo de outro endereço não é aprovado sozinho', async () => {
+    const { controller, engine } = await trustedSetup([{ name: 'Desktop', address: '192.168.1.4' }])
+    engine.simulatePairRequest('Desktop', 'p1', '4821', '192.168.1.99')
+    expect(screen(controller)).toBe('approve')
+    expect(engine.calls).not.toContain('approve')
+  })
+
+  it('aprovar com "Confiar" guarda o aparelho; sem marcar, não guarda', async () => {
+    const { controller, engine, saved } = await trustedSetup([])
+    engine.simulatePairRequest('Notebook', 'p1', '4821', '192.168.1.6')
+    controller.dispatch({ type: 'APPROVE', trust: true })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(controller.getSnapshot().settings.trusted).toEqual([
+      { name: 'Notebook', address: '192.168.1.6' }
+    ])
+    expect(saved.at(-1)?.trusted).toEqual([{ name: 'Notebook', address: '192.168.1.6' }])
+
+    engine.simulatePairRequest('Tablet', 'p2', '1234', '192.168.1.8')
+    controller.dispatch({ type: 'APPROVE', trust: false })
+    expect(controller.getSnapshot().settings.trusted).toHaveLength(1)
+  })
+
+  const FP = 'AB:'.repeat(31) + 'CD'
+  const OTHER = 'EF:'.repeat(31) + '01'
+
+  it('motor próprio: o pedido não pede PIN e "Permitir" aprova sem ele', async () => {
+    const { controller, engine } = await trustedSetup([])
+    engine.simulateVerifiedRequest('Notebook', FP)
+    expect(controller.getSnapshot().state).toMatchObject({
+      screen: 'approve',
+      pin: null,
+      fingerprint: FP
+    })
+    controller.dispatch({ type: 'APPROVE', trust: false })
+    expect(screen(controller)).toBe('ready')
+    expect(engine.lastApprove).toEqual({ pairingId: 'p1', name: 'Notebook' })
+  })
+
+  it('motor próprio: confiar guarda o certificado, e o próximo pedido dele passa sozinho', async () => {
+    const { controller, engine } = await trustedSetup([])
+    engine.simulateVerifiedRequest('Notebook', FP, 'p1', '192.168.1.6')
+    controller.dispatch({ type: 'APPROVE', trust: true })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(controller.getSnapshot().settings.trusted).toEqual([
+      { name: 'Notebook', address: '192.168.1.6', fingerprint: FP, deviceId: '0f8fad5b-d9cb-469f' }
+    ])
+
+    // Outro endereço (o DHCP mudou) e outro nome: vale o certificado.
+    engine.simulateVerifiedRequest('Notebook novo', FP, 'p2', '192.168.1.50')
+    expect(screen(controller)).toBe('ready')
+    expect(engine.lastApprove).toEqual({ pairingId: 'p2', name: 'Notebook novo' })
+  })
+
+  it('motor próprio: outro certificado com o mesmo nome e endereço pede aprovação', async () => {
+    const { controller, engine } = await trustedSetup([
+      { name: 'Notebook', address: '192.168.1.6', fingerprint: FP }
+    ])
+    engine.simulateVerifiedRequest('Notebook', OTHER, 'p1', '192.168.1.6')
+    expect(screen(controller)).toBe('approve')
+    expect(engine.calls).not.toContain('approve')
+  })
+
+  it('motor próprio: confiável só pelo nome e endereço (motor antigo) ainda pergunta uma vez', async () => {
+    const { controller, engine } = await trustedSetup([
+      { name: 'Notebook', address: '192.168.1.6' }
+    ])
+    engine.simulateVerifiedRequest('Notebook', FP, 'p1', '192.168.1.6')
+    expect(screen(controller)).toBe('approve')
+    controller.dispatch({ type: 'APPROVE', trust: true })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    // A entrada antiga dá lugar à nova, com o certificado.
+    expect(controller.getSnapshot().settings.trusted).toEqual([
+      { name: 'Notebook', address: '192.168.1.6', fingerprint: FP, deviceId: '0f8fad5b-d9cb-469f' }
+    ])
+  })
+})
+
+describe('posição da tela estendida (motor próprio)', () => {
+  const FP = 'AB:'.repeat(31) + 'CD'
+
+  it('mudar a posição com alguém conectado aplica na hora, uma vez só', async () => {
+    const engine = new FakeEngine(0)
+    const store: SettingsStore = {
+      load: async () => ({ ...DEFAULT_SETTINGS, mode: 'send' }),
+      save: async () => undefined
+    }
+    const controller = await createController({
+      engine,
+      store,
+      initial: {
+        screen: 'connected',
+        mode: 'send',
+        devices: [{ device: 'Notebook', fingerprint: FP, peerScreen: { width: 1366, height: 768 } }]
+      }
+    })
+    await controller.updateSettings({ screenPlacement: { side: 'left', offset: 0.1 } })
+    expect(engine.lastPlacement).toEqual({ side: 'left', offset: 0.1 })
+
+    const placed = (): number => engine.calls.filter((call) => call === 'placeScreen').length
+    expect(placed()).toBe(1)
+    await controller.updateSettings({ screenPlacement: { side: 'left', offset: 0.1 } })
+    expect(placed()).toBe(1)
+  })
+
+  it('a conexão chega com quem é e o tamanho da tela dele', async () => {
+    const engine = new FakeEngine(0)
+    const store: SettingsStore = {
+      load: async () => ({ ...DEFAULT_SETTINGS, mode: 'send' }),
+      save: async () => undefined
+    }
+    const controller = await createController({
+      engine,
+      store,
+      initial: { screen: 'ready', mode: 'send' }
+    })
+    engine.simulateClientConnected('Notebook', {
+      fingerprint: FP,
+      screen: { width: 1366, height: 768 }
+    })
+    expect(controller.getSnapshot().state).toEqual({
+      screen: 'connected',
+      mode: 'send',
+      devices: [{ device: 'Notebook', fingerprint: FP, peerScreen: { width: 1366, height: 768 } }]
+    })
+  })
+
+  it('aparelho confiável conectando guarda o tamanho atual da tela dele', async () => {
+    const engine = new FakeEngine(0)
+    const store: SettingsStore = {
+      load: async () => ({
+        ...DEFAULT_SETTINGS,
+        mode: 'send',
+        trusted: [{ name: 'Notebook', address: '192.168.1.9', fingerprint: FP }]
+      }),
+      save: async () => undefined
+    }
+    const controller = await createController({
+      engine,
+      store,
+      initial: { screen: 'ready', mode: 'send' }
+    })
+    engine.simulateClientConnected('Notebook', {
+      fingerprint: FP,
+      screen: { width: 1366, height: 768 }
+    })
+    expect(controller.getSnapshot().settings.trusted).toEqual([
+      {
+        name: 'Notebook',
+        address: '192.168.1.9',
+        fingerprint: FP,
+        screen: { width: 1366, height: 768 }
+      }
+    ])
+  })
+})

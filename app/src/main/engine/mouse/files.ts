@@ -1,0 +1,123 @@
+import { randomUUID } from 'node:crypto'
+
+/** Até onde vale copiar e colar entre os PCs: arquivos soltos (pastas ainda não), somando no máximo 2 GB. */
+export const MAX_TOTAL_BYTES = 2 * 1024 ** 3
+
+export interface OfferedFile {
+  id: string
+  name: string
+  size: number
+  /** Uma imagem copiada (um print, uma foto do navegador): do outro lado vira imagem para colar, não arquivo. */
+  image?: true
+}
+
+export interface FileClipboardDeps {
+  /**
+   * Avisa sempre que a lista de arquivos copiados muda (lista vazia: nada copiado); `image` quando é uma imagem
+   * copiada, guardada num arquivo. Devolve como parar.
+   */
+  watch(onChange: (paths: string[], image?: boolean) => void): () => void
+  /** Põe estes arquivos (ou, com `image`, a imagem deste arquivo) na área de transferência, prontos para colar. */
+  setClipboard(paths: string[], image?: boolean): Promise<void>
+  /** Tamanho do arquivo, ou null se não for um arquivo comum (pasta, atalho quebrado). */
+  sizeOf(path: string): Promise<number | null>
+  baseName(path: string): string
+  /** Pasta nova para os arquivos que chegam do outro PC. */
+  newInbox(): Promise<string>
+  join(...parts: string[]): string
+  /** Baixa um arquivo oferecido pelo outro PC, conferindo o tamanho. */
+  download(from: string, file: OfferedFile, dest: string): Promise<void>
+  /** Manda a oferta ao outro PC. */
+  offer(to: string, files: OfferedFile[]): Promise<void>
+  /** Relógio (para os testes). */
+  now?: () => number
+}
+
+/**
+ * No Windows e no Mac, a imagem que este lado põe para colar volta do observador como cópia nova (ela não é igual ao
+ * arquivo: o sistema codifica de novo). Por isso, logo depois de pôr uma, a próxima imagem não vira oferta.
+ */
+const IMAGE_ECHO_MS = 2500
+
+/**
+ * Copiar num PC e colar no outro. Ao copiar arquivos aqui, oferece ao outro PC; ao receber uma oferta, baixa e
+ * deixa pronto para colar. Os arquivos que este lado pôs na área de transferência não voltam como oferta nova.
+ */
+export function createFileClipboard(deps: FileClipboardDeps): {
+  /** Passa a observar o que é copiado aqui e oferece a estes computadores. */
+  start(peerAddresses: string[]): void
+  stop(): void
+  /** Caminho de um arquivo oferecido, só para os PCs que receberam a oferta. */
+  served(id: string, from: string): string | null
+  /** Oferta que chegou do outro PC. */
+  receive(files: OfferedFile[], from: string): Promise<void>
+} {
+  let peers: string[] = []
+  let unwatch: (() => void) | null = null
+  let offered = new Map<string, string>()
+  let placedByUs = ''
+  let placedImageAt = -Infinity
+  const now = deps.now ?? Date.now
+
+  async function onCopied(paths: string[], image = false): Promise<void> {
+    const key = paths.join('\n')
+    if (peers.length === 0 || paths.length === 0 || key === placedByUs) return
+    if (image && now() - placedImageAt < IMAGE_ECHO_MS) return
+    const files: OfferedFile[] = []
+    const next = new Map<string, string>()
+    let total = 0
+    for (const path of paths) {
+      const size = await deps.sizeOf(path)
+      if (size === null) continue
+      total += size
+      if (total > MAX_TOTAL_BYTES) return
+      const id = randomUUID()
+      next.set(id, path)
+      files.push({
+        id,
+        name: deps.baseName(path),
+        size,
+        ...(image ? { image: true as const } : {})
+      })
+    }
+    if (files.length === 0) return
+    offered = next
+    await Promise.all(peers.map((to) => deps.offer(to, files).catch(() => undefined)))
+  }
+
+  return {
+    start(peerAddresses) {
+      peers = [...peerAddresses]
+      unwatch?.()
+      unwatch = deps.watch((paths, image) => void onCopied(paths, image))
+    },
+    stop() {
+      peers = []
+      unwatch?.()
+      unwatch = null
+      offered = new Map()
+    },
+    served(id, from) {
+      return peers.includes(from) ? (offered.get(id) ?? null) : null
+    },
+    async receive(files, from) {
+      if (!peers.includes(from) || files.length === 0) return
+      const inbox = await deps.newInbox()
+      const paths: string[] = []
+      for (const file of files) {
+        // O nome vem da rede: sem pastas nem caminho, só o nome do arquivo.
+        const safe =
+          [...deps.baseName(file.name)]
+            .map((char) => (char < ' ' || '<>:"/\\|?*'.includes(char) ? '_' : char))
+            .join('') || 'arquivo'
+        const dest = deps.join(inbox, safe)
+        await deps.download(from, file, dest)
+        paths.push(dest)
+      }
+      placedByUs = paths.join('\n')
+      const image = files.length === 1 && files[0].image === true
+      if (image) placedImageAt = now()
+      await deps.setClipboard(paths, image)
+    }
+  }
+}

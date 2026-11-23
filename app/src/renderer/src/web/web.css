@@ -1,0 +1,124 @@
+/* Página de receber pelo navegador: o mesmo guia do app (docs/identidade), sempre no escuro, como a tela recebida. */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.web-start {
+  position: fixed;
+  /* Os quatro lados, e não o atalho "inset": o Safari antigo (iPad com iOS 9) não conhece e a tela ia para o canto. */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px 16px;
+  background: #000;
+  text-align: center;
+}
+.web-start[hidden] {
+  display: none;
+}
+
+.web-logo {
+  border-radius: 14px;
+}
+
+.web-title {
+  margin: 8px 0 0;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 700;
+}
+
+.web-text {
+  margin: 0;
+  max-width: 360px;
+  font-size: 17px;
+  line-height: 22px;
+  color: rgba(235, 235, 245, 0.6);
+}
+.web-tip {
+  margin: 8px 0 0;
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 18px;
+  color: rgba(235, 235, 245, 0.6);
+}
+.web-tip[hidden] {
+  display: none;
+}
+/* Mostrado só pelo endereço #antigo, sem JavaScript: some o texto normal e o botão. */
+.web-old {
+  display: none;
+}
+.web-old:target {
+  display: block;
+}
+.web-old:target ~ .web-text,
+.web-old:target ~ .web-form {
+  display: none;
+}
+/* Erros no mesmo jeito do app: o que aconteceu em branco, o que fazer em cinza e o código embaixo, sem vermelho. */
+.web-text b {
+  color: #fff;
+  font-weight: 600;
+}
+.web-code {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.web-code a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.web-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.web-button:focus-visible {
+  outline: 3px solid #0a84ff;
+  outline-offset: 2px;
+}
+
+.web-button {
+  width: 220px;
+  min-height: 50px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.web-button:disabled {
+  opacity: 0.5;
+}
+
+/* Com o vídeo, só o vídeo. */
+.web-live .motor-video {
+  cursor: default;
+}
+
+/* Safari antigo (antes do 14.1) também não tem "gap" no flex: o mesmo espaço vem pela margem. Quem não conhece
+   "inset" é justamente quem não tem o gap. */
+@supports not (inset: 0) {
+  .web-start > * + * {
+    margin-top: 16px;
+  }
+}

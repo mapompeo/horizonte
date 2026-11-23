@@ -1,0 +1,180 @@
+import type { MouseEngine } from '../src/main/engine/port'
+import { createController, type Controller } from '../src/main/core/controller'
+import { version } from '../package.json'
+import { DEFAULT_SETTINGS, type SettingsStore } from '../src/main/core/settings'
+import { route } from '../src/renderer/src/lib/store'
+import { FakeEngine } from '../src/main/engine/fake'
+import { REPO_URL, type HorizonteApi } from '../src/shared/api'
+import type { AppState, Settings, Snapshot, WebAccess } from '../src/shared/types'
+import { guessKind } from '../src/shared/device'
+
+export interface DemoControl {
+  /** Recomeça o app numa tela (ou no modo salvo, se vazio). Usado pela página para dirigir o app. */
+  reset(initial?: AppState): Promise<void>
+  requestConnection(): void
+}
+
+declare global {
+  interface Window {
+    __demo?: DemoControl
+  }
+}
+
+/**
+ * Liga o app de verdade (o mesmo Svelte, o mesmo núcleo) a um motor de mentira que roda no próprio navegador.
+ * Assim a página mostra sempre a interface atual do projeto, sem uma cópia para manter.
+ */
+export async function installDemo(options: { initial?: AppState; auto: boolean }): Promise<void> {
+  let saved: Settings = {
+    ...DEFAULT_SETTINGS,
+    deviceName: 'Desktop',
+    autostart: false,
+    mode: 'send'
+  }
+  const store: SettingsStore = {
+    load: async () => saved,
+    save: async (next) => {
+      saved = next
+    }
+  }
+  const listeners = new Set<(snapshot: Snapshot) => void>()
+  let controller: Controller
+  let engine: FakeEngine
+  let stopWatching = (): void => undefined
+  let stopForwarding = (): void => undefined
+  let generation = 0
+  let web: WebAccess = { on: false }
+
+  /** O "outro aparelho" da demonstração: pede para conectar e, aprovado, conecta. */
+  function watch(current: Controller, fake: FakeEngine): () => void {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let approvedTimer: ReturnType<typeof setTimeout> | undefined
+    const update = ({ state }: Snapshot): void => {
+      clearTimeout(timer)
+      clearTimeout(approvedTimer)
+      if (options.auto && state.screen === 'ready' && !fake.calls.includes('approve')) {
+        timer = setTimeout(() => fake.simulatePairRequest('Notebook', 'p1', '4821'), 5000)
+      }
+      if (state.screen === 'ready' && fake.calls.includes('approve')) {
+        clearTimeout(approvedTimer)
+        approvedTimer = setTimeout(() => {
+          fake.calls = fake.calls.filter((c) => c !== 'approve')
+          fake.simulateClientConnected('Notebook')
+        }, 900)
+      }
+    }
+    let active = true
+    const stop = current.subscribe(() =>
+      queueMicrotask(() => {
+        if (active) update(current.getSnapshot())
+      })
+    )
+    update(current.getSnapshot())
+    return () => {
+      active = false
+      clearTimeout(timer)
+      clearTimeout(approvedTimer)
+      stop()
+    }
+  }
+
+  async function build(initial?: AppState): Promise<void> {
+    const run = ++generation
+    stopWatching()
+    stopForwarding()
+    const nextEngine = new FakeEngine(450)
+    nextEngine.hosts = [{ name: 'Desktop', address: '192.168.1.5' }]
+    // Modo Mouse de mentira: um PC na lista; emprestar o mouse funciona e "Parar" volta à lista.
+    const mouse: MouseEngine = {
+      start: async () => undefined,
+      stop: async () => undefined,
+      listPeers: async () => [
+        {
+          name: 'Notebook',
+          address: '192.168.1.6',
+          screen: { width: 1920, height: 1080 },
+          kind: 'laptop'
+        },
+        {
+          name: 'Trabalho',
+          address: '192.168.1.7',
+          screen: { width: 1366, height: 768 },
+          kind: 'laptop'
+        }
+      ],
+      share: async () => undefined,
+      setLayout: async () => undefined,
+      accept: async () => undefined,
+      deny: async () => undefined,
+      end: async () => undefined,
+      onRequest: () => () => undefined,
+      onEnded: () => () => undefined
+    }
+    const nextController = await createController({ engine: nextEngine, mouse, store, initial })
+    if (run !== generation) return
+    engine = nextEngine
+    controller = nextController
+    route.set('main')
+    stopForwarding = controller.subscribe((snapshot) =>
+      listeners.forEach((listener) => listener(snapshot))
+    )
+    stopWatching = watch(controller, engine)
+    listeners.forEach((listener) => listener(controller.getSnapshot()))
+  }
+
+  await build(options.initial)
+
+  const api: HorizonteApi = {
+    platform: 'win32',
+    getUpdateStatus: async () => ({ phase: 'unavailable', currentVersion: version }),
+    update: async () => ({ phase: 'unavailable', currentVersion: version }),
+    onUpdate: () => () => undefined,
+    getSnapshot: async () => controller.getSnapshot(),
+    dispatch: async (event) => controller.dispatch(event),
+    updateSettings: (patch) => controller.updateSettings(patch),
+    listHosts: () => controller.listHosts(),
+    listMousePeers: () => controller.listMousePeers(),
+    ownScreen: async () => ({ width: 3840, height: 1080 }),
+    videoHint: async () => null,
+    deviceKind: async (_address, name) => (name ? guessKind(name) : 'desktop'),
+    getWebAccess: async () => web,
+    setWebAccess: async (on) => {
+      // Na demonstração do site, o endereço é o de sempre, mas o QR leva para o próprio site (a câmera de quem visita
+      // abre a página).
+      web = on
+        ? { on: true, url: 'http://192.168.1.6:7777', qr: 'https://horizonte-monitor.vercel.app' }
+        : { on: false }
+      return web
+    },
+    openRepo: async () => void window.open(REPO_URL, '_blank', 'noopener'),
+    openErrorHelp: async (code) =>
+      void window.open(`https://horizonte-monitor.vercel.app/erros#${code}`, '_blank', 'noopener'),
+    uninstall: async () => 'unavailable',
+    copyText: async (text) => {
+      await navigator.clipboard.writeText(text).catch(() => undefined)
+    },
+    shareLink: async () => undefined,
+    firewall: async () => null,
+    shortcut: async () => 'Ctrl+Alt+H',
+    allowFirewall: async () => null,
+    macAccess: async () => null,
+    openPrivacy: async () => undefined,
+    reportDiagnostic: async () => {
+      throw new Error('A demonstração não envia diagnósticos.')
+    },
+    onSnapshot: (callback) => {
+      listeners.add(callback)
+      return () => {
+        listeners.delete(callback)
+      }
+    }
+  }
+  window.horizonte = api
+  window.__demo = {
+    reset: (initial) => build(initial),
+    requestConnection: () => {
+      if (controller.getSnapshot().state.screen === 'ready')
+        engine.simulatePairRequest('Notebook', 'p1', '4821')
+    }
+  }
+}

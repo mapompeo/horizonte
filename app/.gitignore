@@ -1,0 +1,12 @@
+node_modules
+dist
+out
+.DS_Store
+.eslintcache
+*.log*
+
+e2e-out
+
+native/macos/build
+native/linux/build
+*.tsbuildinfo

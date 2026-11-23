@@ -1,0 +1,245 @@
+import { isFingerprint } from '../engine/webrtc/protocol'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { dirname } from 'node:path'
+import { cleanName } from '../../shared/names'
+import { clampBitrate, profileFor } from '../../shared/quality'
+import { isHostAddress } from '../../shared/address'
+import type {
+  Codec,
+  Encoding,
+  ExtendSide,
+  MouseSide,
+  Fps,
+  Resolution,
+  Settings,
+  TrustedDevice,
+  ScreenPlacement,
+  Language
+} from '../../shared/types'
+
+export const DEFAULT_SETTINGS: Settings = {
+  profile: 'equilibrado',
+  bitrate: 30,
+  resolution: '1080p',
+  fps: 60,
+  encoding: 'auto',
+  codec: 'h264',
+  autostart: true,
+  deviceName: 'Dispositivo',
+  extendSide: 'right',
+  mouseSides: {},
+  mouseOffsets: {},
+  trusted: [],
+  screenPlacement: { side: 'right' },
+  screenPlacements: {},
+  mode: null,
+  theme: 'system',
+  language: 'system',
+  lastHost: null
+}
+
+const LEGACY_DEFAULT_NAMES = ['Computador']
+
+function oneOf<T extends string | number>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(value as T) ? (value as T) : fallback
+}
+
+/** Até 20 computadores, cada um com um lado válido; o resto é descartado. */
+function parseMouseSides(raw: unknown): Record<string, MouseSide> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
+  const entries = Object.entries(raw as Record<string, unknown>).filter(
+    (entry): entry is [string, MouseSide] =>
+      entry[0].length > 0 &&
+      entry[0].length <= 200 &&
+      ['left', 'right', 'above', 'below'].includes(entry[1] as string)
+  )
+  return Object.fromEntries(entries.slice(0, 20))
+}
+
+/** Um lado válido e um início entre -4 e 4 (fração da borda); fora disso, nada. */
+function parsePlacement(value: unknown): ScreenPlacement | null {
+  if (typeof value !== 'object' || value === null) return null
+  const { side, offset } = value as Record<string, unknown>
+  if (!['left', 'right', 'above', 'below'].includes(side as string)) return null
+  const valid = typeof offset === 'number' && Number.isFinite(offset) && Math.abs(offset) <= 4
+  // Posição livre: as duas frações juntas, num intervalo de até 8 áreas de trabalho para cada lado.
+  const { x, y } = value as { x?: unknown; y?: unknown }
+  const free = [x, y].every((v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 8)
+  return {
+    side: side as MouseSide,
+    ...(valid ? { offset } : {}),
+    ...(free ? { x: x as number, y: y as number } : {})
+  }
+}
+
+/** Até 20 aparelhos (pela impressão digital), cada um com uma posição válida; o resto é descartado. */
+function parseScreenPlacements(raw: unknown): Record<string, ScreenPlacement> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
+  const entries = Object.entries(raw as Record<string, unknown>).flatMap(
+    ([key, value]): [string, ScreenPlacement][] => {
+      const placement = isFingerprint(key) ? parsePlacement(value) : null
+      return placement ? [[key, placement]] : []
+    }
+  )
+  return Object.fromEntries(entries.slice(0, 20))
+}
+
+/**
+ * Posição padrão da tela estendida. Ajustes antigos tinham uma por aparelho (`screenPlacements`, pela
+ * impressão digital): vale a primeira delas; sem nenhuma, o lado padrão.
+ */
+function parseScreenPlacement(raw: unknown, legacy: unknown, side: ExtendSide): ScreenPlacement {
+  const direct = parsePlacement(raw)
+  if (direct) return direct
+  if (typeof legacy === 'object' && legacy !== null && !Array.isArray(legacy))
+    for (const [key, value] of Object.entries(legacy as Record<string, unknown>)) {
+      const old = isFingerprint(key) ? parsePlacement(value) : null
+      if (old) return old
+    }
+  return { side }
+}
+
+/** Até 20 computadores, cada um com uma posição entre -2 e 2 (fração da borda); o resto é descartado. */
+function parseMouseOffsets(raw: unknown): Record<string, number> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
+  const entries = Object.entries(raw as Record<string, unknown>).filter(
+    (entry): entry is [string, number] =>
+      entry[0].length > 0 &&
+      entry[0].length <= 200 &&
+      typeof entry[1] === 'number' &&
+      Number.isFinite(entry[1]) &&
+      Math.abs(entry[1]) <= 2
+  )
+  return Object.fromEntries(entries.slice(0, 20))
+}
+
+/** Até 20 aparelhos, cada um com nome limpo e endereço de verdade; o resto é descartado. */
+function parseTrusted(raw: unknown): TrustedDevice[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .flatMap((item: unknown): TrustedDevice[] => {
+      if (typeof item !== 'object' || item === null) return []
+      const { name, address, fingerprint, deviceId, screen } = item as Record<string, unknown>
+      const size = screen as { width?: unknown; height?: unknown } | null | undefined
+      const validSize =
+        !!size &&
+        Number.isInteger(size.width) &&
+        Number.isInteger(size.height) &&
+        (size.width as number) > 0 &&
+        (size.height as number) > 0 &&
+        (size.width as number) <= 32768 &&
+        (size.height as number) <= 32768
+      const clean = typeof name === 'string' ? cleanName(name) : ''
+      if (!clean || typeof address !== 'string' || !isHostAddress(address)) return []
+      return [
+        {
+          name: clean,
+          address,
+          ...(isFingerprint(fingerprint) ? { fingerprint } : {}),
+          ...(typeof deviceId === 'string' && /^[0-9a-f-]{8,64}$/.test(deviceId)
+            ? { deviceId }
+            : {}),
+          ...(validSize
+            ? { screen: { width: size.width as number, height: size.height as number } }
+            : {})
+        }
+      ]
+    })
+    .slice(0, 20)
+}
+
+/** Aceita qualquer entrada e sempre devolve ajustes válidos. */
+export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.deviceName): Settings {
+  const input = (
+    typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? raw : {}
+  ) as Record<string, unknown>
+  const bitrate = clampBitrate(
+    typeof input.bitrate === 'number' ? input.bitrate : DEFAULT_SETTINGS.bitrate
+  )
+  const extendSide = oneOf<ExtendSide>(
+    input.extendSide,
+    ['left', 'right', 'above'],
+    DEFAULT_SETTINGS.extendSide
+  )
+  const saved = typeof input.deviceName === 'string' ? cleanName(input.deviceName) : ''
+  // "Computador" era o nome padrão antigo, gravado sem a pessoa escolher: vale o nome do aparelho.
+  const name = LEGACY_DEFAULT_NAMES.includes(saved) ? '' : saved
+
+  return {
+    bitrate,
+    profile: profileFor(bitrate),
+    resolution: oneOf<Resolution>(
+      input.resolution,
+      ['720p', '1080p', '1440p'],
+      DEFAULT_SETTINGS.resolution
+    ),
+    fps: oneOf<Fps>(input.fps, [30, 60, 120], DEFAULT_SETTINGS.fps),
+    encoding: oneOf<Encoding>(input.encoding, ['auto', 'gpu', 'cpu'], DEFAULT_SETTINGS.encoding),
+    codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
+    autostart: typeof input.autostart === 'boolean' ? input.autostart : DEFAULT_SETTINGS.autostart,
+    theme: input.theme === 'light' || input.theme === 'dark' ? input.theme : 'system',
+    language: oneOf<Language>(input.language, ['system', 'pt', 'en', 'es'], 'system'),
+    lastHost:
+      typeof input.lastHost === 'string' &&
+      input.lastHost.length > 0 &&
+      input.lastHost.length <= 128
+        ? input.lastHost
+        : null,
+    trusted: parseTrusted(input.trusted),
+    screenPlacement: parseScreenPlacement(
+      input.screenPlacement,
+      input.screenPlacements,
+      extendSide
+    ),
+    screenPlacements: parseScreenPlacements(input.screenPlacements),
+    extendSide,
+    mouseSides: parseMouseSides(input.mouseSides),
+    mouseOffsets: parseMouseOffsets(input.mouseOffsets),
+    deviceName: name || defaultName,
+    mode:
+      input.mode === 'send' || input.mode === 'receive' || input.mode === 'mouse'
+        ? input.mode
+        : null
+  }
+}
+
+export interface SettingsStore {
+  load(): Promise<Settings>
+  save(settings: Settings): Promise<void>
+}
+
+/** `defaultName` é o nome do próprio aparelho (ex.: o nome do computador no Windows), usado até a pessoa escolher outro. */
+export function createSettingsStore(
+  file: string,
+  defaultName = DEFAULT_SETTINGS.deviceName
+): SettingsStore {
+  /** Gravações entram em fila: cada uma espera a anterior, e a última chamada é a que vale. */
+  let queue: Promise<void> = Promise.resolve()
+  let counter = 0
+
+  return {
+    async load() {
+      try {
+        return parseSettings(JSON.parse(await readFile(file, 'utf8')), defaultName)
+      } catch {
+        return { ...DEFAULT_SETTINGS, deviceName: defaultName }
+      }
+    },
+    save(settings) {
+      const write = async (): Promise<void> => {
+        await mkdir(dirname(file), { recursive: true })
+        const temporary = `${file}.${process.pid}.${counter++}.tmp`
+        try {
+          await writeFile(temporary, JSON.stringify(settings, null, 2), 'utf8')
+          await rename(temporary, file)
+        } catch (cause) {
+          await rm(temporary, { force: true })
+          throw cause
+        }
+      }
+      const run = queue.then(write)
+      queue = run.catch(() => undefined)
+      return run
+    }
+  }
+}

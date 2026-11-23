@@ -1,0 +1,177 @@
+import { describe, expect, it, vi } from 'vitest'
+import {
+  createFileClipboard,
+  MAX_TOTAL_BYTES,
+  type FileClipboardDeps,
+  type OfferedFile
+} from './files'
+
+function harness(sizes: Record<string, number | null> = {}): {
+  deps: FileClipboardDeps
+  copy(paths: string[], image?: boolean): Promise<void>
+  offers: { to: string; files: OfferedFile[] }[]
+  downloads: { from: string; name: string; dest: string }[]
+  clipboard: string[][]
+  images: boolean[]
+} {
+  let onChange: ((paths: string[], image?: boolean) => void) | null = null
+  const images: boolean[] = []
+  const offers: { to: string; files: OfferedFile[] }[] = []
+  const downloads: { from: string; name: string; dest: string }[] = []
+  const clipboard: string[][] = []
+  return {
+    offers,
+    downloads,
+    clipboard,
+    images,
+    copy: async (paths, image) => {
+      onChange?.(paths, image)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    },
+    deps: {
+      watch: (listener) => {
+        onChange = listener
+        return () => (onChange = null)
+      },
+      setClipboard: async (paths, image) => {
+        clipboard.push(paths)
+        images.push(image === true)
+      },
+      sizeOf: async (path) => (path in sizes ? (sizes[path] ?? null) : 10),
+      baseName: (path) => path.split(/[\\/]/).pop() ?? '',
+      newInbox: async () => 'C:/recebidos/1',
+      join: (...parts) => parts.join('/'),
+      download: async (from, file, dest) => void downloads.push({ from, name: file.name, dest }),
+      offer: async (to, files) => void offers.push({ to, files })
+    }
+  }
+}
+
+describe('copiar e colar arquivos entre os PCs', () => {
+  it('uma imagem copiada vai marcada como imagem e chega como imagem para colar, não como arquivo', async () => {
+    const h = harness()
+    const files = createFileClipboard(h.deps)
+    files.start(['192.168.1.6'])
+    await h.copy(['/run/user/1000/imagem-1.png'], true)
+    expect(h.offers[0]!.files[0]).toMatchObject({ name: 'imagem-1.png', image: true })
+    await files.receive(h.offers[0]!.files, '192.168.1.6')
+    await files.receive([{ id: 'a', name: 'foto.png', size: 3 }], '192.168.1.6')
+    expect(h.images).toEqual([true, false])
+  })
+
+  it('a imagem que acabou de chegar não volta como oferta; uma copiada depois, sim', async () => {
+    let clock = 0
+    const h = harness()
+    const files = createFileClipboard({ ...h.deps, now: () => clock })
+    files.start(['192.168.1.6'])
+    await files.receive([{ id: 'a', name: 'imagem-1.png', size: 3, image: true }], '192.168.1.6')
+    clock = 1000
+    await h.copy(['C:/copiadas/imagem-7.png'], true)
+    expect(h.offers).toHaveLength(0)
+    clock = 4000
+    await h.copy(['C:/copiadas/imagem-8.png'], true)
+    expect(h.offers).toHaveLength(1)
+  })
+
+  it('copiar arquivos aqui oferece ao outro PC, que pode baixar cada um pelo id', async () => {
+    const h = harness()
+    const files = createFileClipboard(h.deps)
+    files.start(['192.168.1.6'])
+    await h.copy(['C:\\docs\\relatorio.pdf', 'C:\\docs\\foto.png'])
+    expect(h.offers).toHaveLength(1)
+    const [first] = h.offers[0]!.files
+    expect(h.offers[0]!.files.map((file) => file.name)).toEqual(['relatorio.pdf', 'foto.png'])
+    expect(files.served(first!.id, '192.168.1.6')).toBe('C:\\docs\\relatorio.pdf')
+  })
+
+  it('só o outro lado da conversa baixa; um terceiro na rede recebe nada', async () => {
+    const h = harness()
+    const files = createFileClipboard(h.deps)
+    files.start(['192.168.1.6'])
+    await h.copy(['C:\\docs\\relatorio.pdf'])
+    const id = h.offers[0]!.files[0]!.id
+    expect(files.served(id, '192.168.1.66')).toBeNull()
+  })
+
+  it('pastas ficam de fora e o total passa de 2 GB não oferece nada', async () => {
+    const h = harness({ 'C:\\pasta': null, 'C:\\grande.iso': MAX_TOTAL_BYTES + 1 })
+    const files = createFileClipboard(h.deps)
+    files.start(['192.168.1.6'])
+    await h.copy(['C:\\pasta'])
+    await h.copy(['C:\\grande.iso'])
+    expect(h.offers).toEqual([])
+  })
+
+  it('oferta recebida: baixa cada arquivo com nome seguro e põe na área de transferência', async () => {
+    const h = harness()
+    const files = createFileClipboard(h.deps)
+    files.start(['192.168.1.4'])
+    await files.receive([{ id: 'a', name: '../../etc/senha', size: 3 }], '192.168.1.4')
+    expect(h.downloads).toEqual([
+      { from: '192.168.1.4', name: '../../etc/senha', dest: 'C:/recebidos/1/senha' }
+    ])
+    expect(h.clipboard).toEqual([['C:/recebidos/1/senha']])
+  })
+
+  it('o que chegou do outro PC não volta para ele como oferta nova', async () => {
+    const h = harness()
+    const files = createFileClipboard(h.deps)
+    files.start(['192.168.1.4'])
+    await files.receive([{ id: 'a', name: 'foto.png', size: 3 }], '192.168.1.4')
+    await h.copy(['C:/recebidos/1/foto.png'])
+    expect(h.offers).toEqual([])
+  })
+
+  it('oferta de quem não é o outro lado é ignorada', async () => {
+    const h = harness()
+    const files = createFileClipboard(h.deps)
+    files.start(['192.168.1.4'])
+    await files.receive([{ id: 'a', name: 'x.exe', size: 3 }], '192.168.1.66')
+    expect(h.downloads).toEqual([])
+  })
+
+  it('parar desliga a observação: copiar depois não oferece nada', async () => {
+    const h = harness()
+    const files = createFileClipboard(h.deps)
+    files.start(['192.168.1.6'])
+    files.stop()
+    await h.copy(['C:\\docs\\relatorio.pdf'])
+    expect(h.offers).toEqual([])
+  })
+})
+
+describe('linha do observador do Windows e do Mac', () => {
+  it('separa arquivos, imagem e cópia de outra coisa', async () => {
+    const { parseWatchLine } = await import('./clipboard-watch')
+    expect(parseWatchLine('FC:\\a.txt|C:\\b.pdf\r')).toEqual({
+      paths: ['C:\\a.txt', 'C:\\b.pdf'],
+      image: false
+    })
+    expect(parseWatchLine('I/Users/x/copiadas/imagem-1.png')).toEqual({
+      paths: ['/Users/x/copiadas/imagem-1.png'],
+      image: true
+    })
+    expect(parseWatchLine('')).toEqual({ paths: [], image: false })
+    expect(parseWatchLine('I')).toEqual({ paths: [], image: false })
+  })
+})
+
+describe('texto copiado no Windows e no Mac', () => {
+  it('avisa o texto copiado depois de começar, uma vez, e não devolve o que veio do outro PC', async () => {
+    vi.useFakeTimers()
+    const { pollText } = await import('./clipboard-watch')
+    let clip = 'antes'
+    const copied: string[] = []
+    const text = pollText({ readText: () => clip, writeText: (value) => (clip = value) }, 10)
+    text.start((value) => copied.push(value))
+    await vi.advanceTimersByTimeAsync(30)
+    clip = 'oi'
+    await vi.advanceTimersByTimeAsync(30)
+    text.write('do outro PC')
+    await vi.advanceTimersByTimeAsync(30)
+    text.stop()
+    vi.useRealTimers()
+    expect(copied).toEqual(['oi'])
+    expect(clip).toBe('do outro PC')
+  })
+})

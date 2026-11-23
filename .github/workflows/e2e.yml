@@ -1,0 +1,174 @@
+name: E2E
+
+# Testes de verdade nos três sistemas: instalação real (o que dá para instalar sem administrador) e o app aberto
+# e dirigido pela interface. Capturas de tela e logs ficam como artefatos da execução.
+on:
+  pull_request:
+    paths: ['app/**', '.github/workflows/e2e.yml', '.github/scripts/configure-ci-apt.sh']
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/e2e.yml', '.github/scripts/configure-ci-apt.sh']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: app
+
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Dependências do Linux (tela virtual, área de transferência e bibliotecas do Electron)
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        run: |
+          bash ../.github/scripts/configure-ci-apt.sh
+          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y xserver-xorg-core xserver-xorg-video-dummy xclip x11-xserver-utils libnss3 libgbm1 libgtk-3-0t64 libasound2t64 libxss1
+      - name: Servidor gráfico no Linux (Xorg com driver dummy e tela grande, como um desktop de verdade)
+        if: runner.os == 'Linux'
+        run: |
+          cat > /tmp/xorg-dummy.conf <<'CONF'
+          Section "Device"
+            Identifier "dummy"
+            Driver "dummy"
+            VideoRam 256000
+          EndSection
+          Section "Monitor"
+            Identifier "Monitor0"
+            HorizSync 5.0 - 1000.0
+            VertRefresh 5.0 - 200.0
+            Modeline "1280x800" 83.46 1280 1344 1480 1680 800 801 804 828 -hsync +vsync
+          EndSection
+          Section "Screen"
+            Identifier "Screen0"
+            Device "dummy"
+            Monitor "Monitor0"
+            DefaultDepth 24
+            SubSection "Display"
+              Viewport 0 0
+              Depth 24
+              Virtual 8192 4096
+              Modes "1280x800"
+            EndSubSection
+          EndSection
+          CONF
+          sudo Xorg :99 -noreset -novtswitch -sharevts -ac -config /tmp/xorg-dummy.conf -logfile /tmp/xorg.log &
+          for i in $(seq 1 30); do xrandr -d :99 >/dev/null 2>&1 && break; sleep 1; done
+          xrandr -d :99 | head -3 || (cat /tmp/xorg.log; exit 1)
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+      - name: Serviços do usuário no Linux (systemd --user, como numa sessão de verdade)
+        if: runner.os == 'Linux'
+        run: |
+          sudo loginctl enable-linger "$USER"
+          sudo systemctl start "user@$(id -u).service"
+          for i in $(seq 1 30); do [ -S "/run/user/$(id -u)/bus" ] && break; sleep 1; done
+          echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
+          systemctl --user is-system-running || true
+      - run: npm ci
+      - run: npm run build
+      - name: Compilar o auxiliar do monitor virtual (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get -o Acquire::Retries=2 install -y libpipewire-0.3-dev libglib2.0-dev libei-dev
+          npm run build:helper:linux
+          # Sem GNOME na CI: só confere que abre e recusa argumento inválido (código 2).
+          set +e; native/linux/build/horizonte-display --width x; test $? -eq 2
+      - name: Compilar o auxiliar do monitor virtual (macOS)
+        if: runner.os == 'macOS'
+        run: npm run build:helper:mac
+      - name: Compilar o auxiliar do modo Mouse (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: npm run build:helper:win
+      - name: Testes reais do sistema (rede, instalação, hash)
+        run: npm run test:e2e
+      - name: App aberto de verdade (Linux)
+        if: ${{ success() && runner.os == 'Linux' }}
+        run: npm run e2e:app
+      - name: App aberto de verdade
+        if: ${{ success() && runner.os != 'Linux' }}
+        run: npm run e2e:app
+      - name: Motor novo (transmissão WebRTC entre dois Electron)
+        if: ${{ success() }}
+        run: npm run e2e:motor
+      # Modo compatível (iPad antigo, sem WebRTC): MJPEG, uma imagem por vez, MJPEG com erro, MJPEG que nunca
+      # responde e imagens que falham. Nos três sistemas, porque o computador que envia muda o caminho das imagens.
+      - name: Modo compatível (navegador antigo)
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          for compat in 1 quadro quebrado mudo falha semimagem; do HZ_WEB_COMPAT=$compat node e2e/web.mjs; done
+      # Os aparelhos que de fato abrem o QR: o iPhone (motor do Safari, com tela, toque e user agent de iPhone) e um
+      # celular Android, cada um recebendo a tela pela página.
+      - name: Celulares imitados recebendo (iPhone e Android)
+        if: ${{ success() && runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          # O iPhone só no Linux: no Mac da CI o WebKit esconde o IP atrás de um nome .local que a máquina virtual não
+          # registra, e a busca de endereços nunca termina (visto em 18/11/2026: ICE "new" e nenhum candidato em 45 s).
+          if [ "$RUNNER_OS" = Linux ]; then
+            npx playwright-core install --with-deps webkit
+            HZ_WEB_PHONE=iphone node e2e/web.mjs
+          fi
+          HZ_WEB_PHONE=android node e2e/web.mjs
+      # O uso de verdade, sem quadro de teste: o app captura a tela do sistema e um navegador (o papel do celular)
+      # abre o link com o código e recebe o vídeo. No Windows a tela estendida usa o driver que os testes acima instalaram.
+      - name: Envio de verdade ao navegador (Windows)
+        if: ${{ success() && runner.os == 'Windows' }}
+        shell: bash
+        run: |
+          HZ_WEB_MODE=screen node e2e/web.mjs
+          HZ_WEB_MODE=extend node e2e/web.mjs
+          HZ_WEB_MODE=screen HZ_WEB_COMPAT=1 node e2e/web.mjs
+          HZ_WEB_MODE=screen HZ_WEB_COMPAT=quadro node e2e/web.mjs
+      - name: Permissão de Gravação de Tela para o Electron (macOS)
+        if: ${{ success() && runner.os == 'macOS' }}
+        continue-on-error: true
+        run: |
+          db="/Library/Application Support/com.apple.TCC/TCC.db"
+          sudo sqlite3 "$db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceScreenCapture','com.github.Electron',0,2,4,1,NULL,NULL,0,'UNUSED',NULL,0,$(date +%s),NULL,NULL,'UNUSED',0);"
+          sudo sqlite3 "$db" "SELECT service, client, auth_value FROM access WHERE service='kTCCServiceScreenCapture';"
+      - name: Envio de verdade ao navegador (macOS)
+        if: ${{ success() && runner.os == 'macOS' }}
+        run: |
+          HZ_WEB_MODE=screen node e2e/web.mjs
+          HZ_WEB_MODE=extend node e2e/web.mjs
+      - name: Empacotar o app (sem instalador)
+        if: ${{ success() }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --dir
+      - name: Auxiliar do monitor virtual dentro do app empacotado (macOS)
+        if: ${{ success() && runner.os == 'macOS' }}
+        run: |
+          helper=$(ls -d dist/mac*/Horizonte.app/Contents/Resources/horizonte-display)
+          test -x "$helper"
+          echo "telas: $("$helper" --count)"
+      - name: App empacotado aberto de verdade
+        if: ${{ success() }}
+        env:
+          E2E_PACKAGED: '1'
+        run: node e2e/app.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-${{ matrix.os }}
+          path: app/e2e-out
+          if-no-files-found: ignore

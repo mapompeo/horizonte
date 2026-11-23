@@ -1,0 +1,1089 @@
+/*
+ * horizonte-display (Linux, GNOME): cria um monitor virtual pelo Mutter e fica vivo até receber SIGTERM ou SIGINT.
+ * O monitor some junto com o processo. Imprime "READY <largura>x<altura>" quando a tela já existe.
+ *
+ * O Mutter só cria o monitor quando alguém consome o stream PipeWire dele, e é quem consome que escolhe o tamanho.
+ *
+ * Sem --frames, este auxiliar consome a 1 quadro por segundo e descarta: quem captura é o Chromium, pelo portal de
+ * captura de tela (com o seletor do GNOME).
+ *
+ * Com --frames <socket>, ele escuta nesse socket Unix e manda a quem se conectar cada imagem nova da tela estendida,
+ * sem converter (BGRx ou RGBx, como o Mutter entrega). A janela de envio do Horizonte transforma as imagens em vídeo
+ * (MediaStreamTrackGenerator): assim a tela chega ao WebRTC sem o seletor do GNOME. Sem mudança na tela, a última
+ * imagem é repetida a cada segundo, para o codificador ter o que mandar a quem acabou de entrar.
+ *
+ * Cada imagem vai com um cabeçalho de 24 bytes (inteiros de 32 bits, little-endian): "HZF1", largura, altura, bytes
+ * por linha, formato (0 = BGRX, 1 = RGBX) e tamanho dos dados; depois os dados.
+ *
+ * Escala (--scale): com a tela de quem mostra em alta densidade (Retina, notebooks 2x), a tela estendida recebe a
+ * escala mais perto da pedida entre as que o GNOME aceita no modo dela, para o texto não ficar minúsculo.
+ *
+ * Posição: pela entrada padrão, uma linha por pedido, "place <left|right|above|below> [início]" ou "at <x> <y>" (posição
+ * livre, em frações da caixa das telas de verdade; encosta na tela mais perto). O início é onde a
+ * tela estendida começa ao longo da borda das outras telas, em fração dessa borda; sem ele, fica centralizada. A
+ * disposição é aplicada como temporária (sem o aviso "manter alterações" do GNOME) e responde "PLACED" ou, no erro
+ * padrão, o motivo.
+ *
+ * Entrada (--input): cria também uma sessão de controle remoto do Mutter ligada a este monitor, sem diálogo, e aceita
+ * pela entrada padrão "move <x> <y>" (frações da tela), "button <código evdev> <1|0>", "wheel <dx> <dy>" (passos),
+ * "key <código evdev> <1|0>" e "touch <down|move|up> <dedo> <x> <y>". É assim que o mouse, o teclado e o toque do
+ * aparelho que mostra agem na tela estendida.
+ *
+ * Cursor à parte (--cursor, com --frames): o cursor não vem desenhado na imagem. O GNOME manda a posição e o desenho
+ * dele como informação separada, e o auxiliar repassa pelo mesmo socket (mensagem "HZC1") sem esperar uma imagem nova.
+ * Quem mostra desenha o cursor por cima do vídeo: ele anda com o atraso da rede, não com o de codificar e decodificar.
+ *
+ * Uso: horizonte-display [--width 1920] [--height 1080] [--refresh 60] [--frames /run/user/1000/horizonte.sock]
+ *                        [--scale 2] [--input] [--cursor]
+ * Saída 2: argumentos ou ambiente; 3: o Mutter recusou ou encerrou a sessão; 4: o PipeWire falhou; 5: o socket.
+ */
+#include <errno.h>
+#include <math.h>
+#include <gio/gio.h>
+#include <glib-unix.h>
+#include <pipewire/pipewire.h>
+#include <poll.h>
+#include <pthread.h>
+#include <signal.h>
+#include <spa/buffer/meta.h>
+#include <spa/param/buffers.h>
+#include <spa/param/video/format-utils.h>
+#include <spa/pod/builder.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
+#include <sys/prctl.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+#define MUTTER "org.gnome.Mutter.ScreenCast"
+#define REMOTE "org.gnome.Mutter.RemoteDesktop"
+#define DISPLAY_CONFIG "org.gnome.Mutter.DisplayConfig"
+#define DISPLAY_CONFIG_PATH "/org/gnome/Mutter/DisplayConfig"
+#define FRAME_MAGIC 0x31465A48u  /* "HZF1" */
+#define CURSOR_MAGIC 0x31435A48u /* "HZC1" */
+/* O maior cursor que o GNOME aceita mandar (o mesmo limite do gnome-remote-desktop). */
+#define CURSOR_MAX 384
+#define CURSOR_META_SIZE(w, h) \
+  ((int)(sizeof(struct spa_meta_cursor) + sizeof(struct spa_meta_bitmap) + (w) * (h) * 4))
+#define REPEAT_MS 1000
+
+struct app {
+  GMainLoop *loop;
+  GDBusConnection *bus;
+  char *session;
+  char *stream_path;
+  struct pw_thread_loop *pw_loop;
+  struct pw_context *context;
+  struct pw_core *core;
+  struct pw_stream *input;
+  struct spa_hook input_listener;
+  uint32_t input_format;
+  int width;
+  int height;
+  int refresh;
+  int exit_code;
+  gboolean ready;
+  /* Controle remoto (--input): a sessão do Mutter que recebe o mouse, o teclado e o toque. */
+  gboolean with_input;
+  /* Escala da tela estendida (--scale); 0: a que o GNOME escolher. */
+  double scale;
+  /* Escala em uso depois de posicionar: o Mutter conta a posição do mouse e do toque em pixels lógicos. */
+  double applied_scale;
+  char *remote;
+  /* Monitores virtuais (Meta-N) que já existiam antes deste: o nosso é o que aparecer de novo. */
+  GPtrArray *virtual_before;
+  /* O conector do nosso, guardado na primeira vez: com vários aparelhos, os monitores dos outros também são novos. */
+  char *my_connector;
+
+  /* Envio das imagens (--frames). A thread do PipeWire copia a imagem nova para `frame` quando o envio está livre;
+   * a thread de envio manda e libera. Se o envio ainda está ocupado, a imagem vai para `spare` (a mais recente
+   * substitui a anterior) e sai assim que o envio terminar: sem isso, a última mudança da tela (o texto que acabou de
+   * ser digitado) ficava de fora até a tela mudar de novo. */
+  const char *frames_path;
+  int listen_fd;
+  pthread_t sender;
+  pthread_mutex_t lock;
+  pthread_cond_t wake;
+  uint8_t *frame;
+  uint32_t frame_size, frame_stride, frame_format;
+  uint8_t *spare;
+  uint32_t spare_size, spare_stride, spare_format;
+  gboolean spare_ready;
+  gboolean frame_new, frame_valid, sending, stopping;
+  unsigned frames_in, frames_sent;
+
+  /* Cursor à parte (--cursor): a posição mais recente e, quando muda, o desenho (RGBA ou BGRA, sem folga por linha). */
+  gboolean cursor_meta;
+  gboolean cursor_new, cursor_visible, cursor_shape_new;
+  int32_t cursor_x, cursor_y, cursor_hot_x, cursor_hot_y;
+  uint32_t cursor_w, cursor_h, cursor_rgba;
+  uint8_t *cursor_pixels;
+};
+
+static void quit(struct app *app, int code, const char *message) {
+  if (message) fprintf(stderr, "%s\n", message);
+  if (app->exit_code == 0) app->exit_code = code;
+  g_main_loop_quit(app->loop);
+}
+
+static gboolean on_quit_idle(gpointer data) {
+  struct app *app = data;
+  quit(app, app->exit_code, NULL);
+  return G_SOURCE_REMOVE;
+}
+
+static gboolean announce_ready(gpointer data) {
+  struct app *app = data;
+  if (!app->ready) {
+    app->ready = TRUE;
+    printf("READY %dx%d\n", app->width, app->height);
+    fflush(stdout);
+  }
+  return G_SOURCE_REMOVE;
+}
+
+/* ---------- envio das imagens ---------- */
+
+static int write_all(int fd, const void *data, size_t size) {
+  const uint8_t *p = data;
+  while (size > 0) {
+    ssize_t n = send(fd, p, size, MSG_NOSIGNAL);
+    if (n < 0 && errno == EINTR) continue;
+    if (n <= 0) return -1;
+    p += n;
+    size -= (size_t)n;
+  }
+  return 0;
+}
+
+static int send_frame(struct app *app, int fd) {
+  uint32_t header[6] = { FRAME_MAGIC, (uint32_t)app->width, (uint32_t)app->height, app->frame_stride,
+                         app->frame_format, app->frame_size };
+  if (write_all(fd, header, sizeof(header)) < 0) return -1;
+  return write_all(fd, app->frame, app->frame_size);
+}
+
+/* Mensagem do cursor: "HZC1", x, y, ponto do clique (x, y), opções (1 = visível, 2 = desenho em RGBA), largura e
+ * altura do desenho (16 bits cada) e o tamanho do desenho em bytes (0 quando não mudou); depois o desenho. */
+static int send_cursor(struct app *app, int fd) {
+  pthread_mutex_lock(&app->lock);
+  uint32_t size = app->cursor_shape_new ? app->cursor_w * app->cursor_h * 4 : 0;
+  uint32_t header[8] = { CURSOR_MAGIC,
+                         (uint32_t)app->cursor_x,
+                         (uint32_t)app->cursor_y,
+                         (uint32_t)app->cursor_hot_x,
+                         (uint32_t)app->cursor_hot_y,
+                         (app->cursor_visible ? 1u : 0u) | (app->cursor_rgba ? 2u : 0u),
+                         app->cursor_w | (app->cursor_h << 16),
+                         size };
+  uint8_t shape[CURSOR_MAX * CURSOR_MAX * 4];
+  if (size) memcpy(shape, app->cursor_pixels, size);
+  app->cursor_new = app->cursor_shape_new = FALSE;
+  pthread_mutex_unlock(&app->lock);
+  if (write_all(fd, header, sizeof(header)) < 0) return -1;
+  return size ? write_all(fd, shape, size) : 0;
+}
+
+static void *sender_main(void *data) {
+  struct app *app = data;
+  while (!app->stopping) {
+    /* Um cliente por vez: a janela de envio do Horizonte. */
+    struct pollfd p = { .fd = app->listen_fd, .events = POLLIN };
+    if (poll(&p, 1, 200) <= 0) continue;
+    int client = accept(app->listen_fd, NULL, NULL);
+    if (client < 0) continue;
+    gboolean first = TRUE;
+    for (;;) {
+      pthread_mutex_lock(&app->lock);
+      /* Quem acabou de conectar recebe logo a última imagem; depois, espera uma nova ou 1 s. */
+      if (!first || !app->frame_valid) {
+        struct timespec until;
+        clock_gettime(CLOCK_REALTIME, &until);
+        until.tv_sec += REPEAT_MS / 1000;
+        while (!app->frame_new && !app->cursor_new && !app->stopping &&
+               pthread_cond_timedwait(&app->wake, &app->lock, &until) != ETIMEDOUT) {
+        }
+      }
+      first = FALSE;
+      if (app->stopping) {
+        pthread_mutex_unlock(&app->lock);
+        break;
+      }
+      /* O cursor sai antes da imagem: são poucos bytes, e é ele que a pessoa acompanha com o olho. */
+      if (app->cursor_new) {
+        pthread_mutex_unlock(&app->lock);
+        if (send_cursor(app, client) < 0) break;
+        pthread_mutex_lock(&app->lock);
+        if (!app->frame_new) {
+          pthread_mutex_unlock(&app->lock);
+          continue;
+        }
+      }
+      if (!app->frame_valid) {
+        pthread_mutex_unlock(&app->lock);
+        continue;
+      }
+      app->frame_new = FALSE;
+      app->sending = TRUE;
+      pthread_mutex_unlock(&app->lock);
+      int result = send_frame(app, client);
+      pthread_mutex_lock(&app->lock);
+      app->sending = FALSE;
+      if (result == 0) app->frames_sent++;
+      /* Chegou imagem durante o envio: ela vira a próxima a sair. */
+      if (app->spare_ready) {
+        uint8_t *swap = app->frame;
+        app->frame = app->spare;
+        app->spare = swap;
+        app->frame_size = app->spare_size;
+        app->frame_stride = app->spare_stride;
+        app->frame_format = app->spare_format;
+        app->spare_ready = FALSE;
+        app->frame_new = TRUE;
+      }
+      pthread_mutex_unlock(&app->lock);
+      if (result < 0) break; /* a janela fechou: espera a próxima */
+    }
+    close(client);
+  }
+  return NULL;
+}
+
+static int start_frames(struct app *app) {
+  struct sockaddr_un address = { .sun_family = AF_UNIX };
+  if (strlen(app->frames_path) >= sizeof(address.sun_path)) {
+    fprintf(stderr, "caminho do socket longo demais\n");
+    return -1;
+  }
+  strcpy(address.sun_path, app->frames_path);
+  unlink(app->frames_path);
+  app->listen_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+  /* Só o próprio usuário pode ler a tela. */
+  mode_t old = umask(0077);
+  int bound = app->listen_fd >= 0 ? bind(app->listen_fd, (struct sockaddr *)&address, sizeof(address)) : -1;
+  umask(old);
+  if (bound < 0 || listen(app->listen_fd, 1) < 0) {
+    fprintf(stderr, "não consegui abrir o socket das imagens: %s\n", strerror(errno));
+    return -1;
+  }
+  app->frame = g_malloc((size_t)app->width * app->height * 4);
+  app->cursor_pixels = g_malloc(CURSOR_MAX * CURSOR_MAX * 4);
+  app->spare = g_malloc((size_t)app->width * app->height * 4);
+  pthread_mutex_init(&app->lock, NULL);
+  pthread_cond_init(&app->wake, NULL);
+  return pthread_create(&app->sender, NULL, sender_main, app) == 0 ? 0 : -1;
+}
+
+static void stop_frames(struct app *app) {
+  if (!app->frames_path || app->listen_fd < 0) return;
+  pthread_mutex_lock(&app->lock);
+  app->stopping = TRUE;
+  pthread_cond_signal(&app->wake);
+  pthread_mutex_unlock(&app->lock);
+  shutdown(app->listen_fd, SHUT_RDWR);
+  pthread_join(app->sender, NULL);
+  close(app->listen_fd);
+  unlink(app->frames_path);
+}
+
+/* ---------- tela estendida (vinda do Mutter) ---------- */
+
+static void on_process(void *data) {
+  struct app *app = data;
+  struct pw_buffer *buffer, *latest = NULL;
+  /* Fica só com o mais recente: se atrasou, os mais velhos não interessam. */
+  while ((buffer = pw_stream_dequeue_buffer(app->input)) != NULL) {
+    if (latest) pw_stream_queue_buffer(app->input, latest);
+    latest = buffer;
+  }
+  if (!latest) return;
+  app->frames_in++;
+
+  /* Cursor à parte: posição sempre que vier, desenho quando mudar. Vem também em quadros sem imagem nova. */
+  struct spa_meta_cursor *cursor =
+    app->cursor_meta ? spa_buffer_find_meta_data(latest->buffer, SPA_META_Cursor, sizeof(*cursor)) : NULL;
+  if (cursor && app->frames_path) {
+    pthread_mutex_lock(&app->lock);
+    if (spa_meta_cursor_is_valid(cursor)) {
+      app->cursor_visible = TRUE;
+      app->cursor_x = cursor->position.x;
+      app->cursor_y = cursor->position.y;
+      if (cursor->bitmap_offset >= sizeof(*cursor)) {
+        struct spa_meta_bitmap *bitmap = SPA_PTROFF(cursor, cursor->bitmap_offset, struct spa_meta_bitmap);
+        const uint32_t w = bitmap->size.width, h = bitmap->size.height;
+        if (spa_meta_bitmap_is_valid(bitmap) && bitmap->offset >= sizeof(*bitmap) && w > 0 && h > 0 &&
+            w <= CURSOR_MAX && h <= CURSOR_MAX && bitmap->stride >= (int32_t)(w * 4)) {
+          const uint8_t *rows = SPA_PTROFF(bitmap, bitmap->offset, const uint8_t);
+          for (uint32_t y = 0; y < h; y++) memcpy(app->cursor_pixels + y * w * 4, rows + y * bitmap->stride, w * 4);
+          app->cursor_w = w;
+          app->cursor_h = h;
+          app->cursor_hot_x = cursor->hotspot.x;
+          app->cursor_hot_y = cursor->hotspot.y;
+          app->cursor_rgba = bitmap->format == SPA_VIDEO_FORMAT_RGBA;
+          app->cursor_shape_new = TRUE;
+        } else if (bitmap->offset == 0) {
+          app->cursor_visible = FALSE; /* desenho vazio: cursor escondido */
+        }
+      }
+    } else {
+      /* id 0: nada novo sobre o cursor neste quadro */
+      pthread_mutex_unlock(&app->lock);
+      goto frame;
+    }
+    app->cursor_new = TRUE;
+    pthread_cond_signal(&app->wake);
+    pthread_mutex_unlock(&app->lock);
+  }
+frame:;
+
+  /* O Mutter manda um quadro vazio quando nada mudou na tela; esses não interessam. */
+  struct spa_data *in = &latest->buffer->datas[0];
+  if (app->frames_path && in->data && in->chunk->size > 0) {
+    const uint32_t stride = in->chunk->stride > 0 ? (uint32_t)in->chunk->stride : (uint32_t)app->width * 4;
+    const uint32_t size = stride * (uint32_t)app->height;
+    pthread_mutex_lock(&app->lock);
+    const uint32_t format =
+      (app->input_format == SPA_VIDEO_FORMAT_RGBx || app->input_format == SPA_VIDEO_FORMAT_RGBA) ? 1 : 0;
+    if (size <= (uint32_t)app->width * app->height * 4 && in->chunk->offset + size <= in->maxsize) {
+      const uint8_t *pixels = (const uint8_t *)in->data + in->chunk->offset;
+      if (!app->sending) {
+        memcpy(app->frame, pixels, size);
+        app->frame_size = size;
+        app->frame_stride = stride;
+        app->frame_format = format;
+        app->frame_valid = app->frame_new = TRUE;
+        pthread_cond_signal(&app->wake);
+      } else {
+        memcpy(app->spare, pixels, size);
+        app->spare_size = size;
+        app->spare_stride = stride;
+        app->spare_format = format;
+        app->spare_ready = TRUE;
+      }
+    }
+    pthread_mutex_unlock(&app->lock);
+  }
+  pw_stream_queue_buffer(app->input, latest);
+}
+
+static void on_param_changed(void *data, uint32_t id, const struct spa_pod *param) {
+  struct app *app = data;
+  if (id != SPA_PARAM_Format || param == NULL) return;
+  struct spa_video_info_raw info;
+  if (spa_format_video_raw_parse(param, &info) >= 0) app->input_format = info.format;
+  /* Memória comum (e não DMA-BUF), para o processador poder ler os pixels. */
+  uint8_t buffer[512];
+  struct spa_pod_builder builder = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
+  const struct spa_pod *params[3];
+  params[0] = spa_pod_builder_add_object(
+    &builder, SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
+    SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int((1 << SPA_DATA_MemFd) | (1 << SPA_DATA_MemPtr)));
+  /* Cursor à parte: pede ao GNOME espaço para a posição e o desenho em cada quadro (como o gnome-remote-desktop). */
+  params[1] = spa_pod_builder_add_object(
+    &builder, SPA_TYPE_OBJECT_ParamMeta, SPA_PARAM_Meta,
+    SPA_PARAM_META_type, SPA_POD_Id(SPA_META_Header),
+    SPA_PARAM_META_size, SPA_POD_Int(sizeof(struct spa_meta_header)));
+  params[2] = spa_pod_builder_add_object(
+    &builder, SPA_TYPE_OBJECT_ParamMeta, SPA_PARAM_Meta,
+    SPA_PARAM_META_type, SPA_POD_Id(SPA_META_Cursor),
+    SPA_PARAM_META_size,
+    SPA_POD_CHOICE_RANGE_Int(CURSOR_META_SIZE(64, 64), CURSOR_META_SIZE(1, 1),
+                             CURSOR_META_SIZE(CURSOR_MAX, CURSOR_MAX)));
+  pw_stream_update_params(app->input, params, app->cursor_meta ? 3 : 1);
+}
+
+static void on_state_changed(void *data, enum pw_stream_state old, enum pw_stream_state state, const char *error) {
+  struct app *app = data;
+  (void)old;
+  if (state == PW_STREAM_STATE_STREAMING) {
+    g_idle_add(announce_ready, app);
+  } else if (state == PW_STREAM_STATE_ERROR || (state == PW_STREAM_STATE_UNCONNECTED && app->ready)) {
+    fprintf(stderr, "o stream do monitor virtual parou: %s\n", error ? error : "desconectado");
+    app->exit_code = 4;
+    g_idle_add(on_quit_idle, app);
+  }
+}
+
+static const struct pw_stream_events stream_events = {
+  PW_VERSION_STREAM_EVENTS,
+  .state_changed = on_state_changed,
+  .param_changed = on_param_changed,
+  .process = on_process,
+};
+
+static int connect_stream(struct app *app, uint32_t node) {
+  uint8_t buffer[1024];
+  struct spa_pod_builder builder = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
+  struct spa_rectangle size = SPA_RECTANGLE(app->width, app->height);
+  struct spa_fraction none = SPA_FRACTION(0, 1);
+  struct spa_fraction one = SPA_FRACTION(1, 1);
+  /* O tamanho é fixo (é ele que define o monitor). Sem --frames, a taxa máxima de 1 quadro por segundo faz o Mutter
+   * quase não gastar copiando quadros para cá; o monitor em si continua com a taxa de atualização normal. */
+  struct spa_fraction max = app->frames_path ? SPA_FRACTION(app->refresh, 1) : one;
+  const struct spa_pod *params[1];
+  params[0] = spa_pod_builder_add_object(
+    &builder, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat,
+    SPA_FORMAT_mediaType, SPA_POD_Id(SPA_MEDIA_TYPE_video),
+    SPA_FORMAT_mediaSubtype, SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
+    SPA_FORMAT_VIDEO_format,
+    SPA_POD_CHOICE_ENUM_Id(5, SPA_VIDEO_FORMAT_BGRx, SPA_VIDEO_FORMAT_BGRx, SPA_VIDEO_FORMAT_BGRA,
+                           SPA_VIDEO_FORMAT_RGBx, SPA_VIDEO_FORMAT_RGBA),
+    SPA_FORMAT_VIDEO_size, SPA_POD_Rectangle(&size),
+    SPA_FORMAT_VIDEO_framerate, SPA_POD_Fraction(&none),
+    SPA_FORMAT_VIDEO_maxFramerate, SPA_POD_CHOICE_RANGE_Fraction(&max, &one, &max));
+
+  app->input = pw_stream_new(app->core, "horizonte-display",
+                             pw_properties_new(PW_KEY_MEDIA_TYPE, "Video", PW_KEY_MEDIA_CATEGORY, "Capture",
+                                               PW_KEY_MEDIA_ROLE, "Screen", NULL));
+  if (!app->input) return -1;
+  pw_stream_add_listener(app->input, &app->input_listener, &stream_events, app);
+  return pw_stream_connect(app->input, PW_DIRECTION_INPUT, node,
+                           PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_DONT_RECONNECT |
+                             (app->frames_path ? PW_STREAM_FLAG_MAP_BUFFERS : 0),
+                           params, 1);
+}
+
+/* ---------- Mutter (D-Bus) ---------- */
+
+static void on_stream_added(GDBusConnection *bus, const char *sender, const char *path, const char *iface,
+                            const char *signal, GVariant *parameters, gpointer data) {
+  struct app *app = data;
+  guint32 node = 0;
+  (void)bus; (void)sender; (void)path; (void)iface; (void)signal;
+  g_variant_get(parameters, "(u)", &node);
+  pw_thread_loop_lock(app->pw_loop);
+  int result = connect_stream(app, node);
+  pw_thread_loop_unlock(app->pw_loop);
+  if (result < 0) quit(app, 4, "não consegui ligar ao stream do monitor virtual");
+}
+
+static void on_session_closed(GDBusConnection *bus, const char *sender, const char *path, const char *iface,
+                              const char *signal, GVariant *parameters, gpointer data) {
+  (void)bus; (void)sender; (void)path; (void)iface; (void)signal; (void)parameters;
+  quit(data, 3, "o GNOME encerrou o monitor virtual");
+}
+
+static GVariant *call(struct app *app, const char *path, const char *iface, const char *method,
+                      GVariant *args, const char *reply, GError **error) {
+  return g_dbus_connection_call_sync(app->bus, MUTTER, path, iface, method, args,
+                                     reply ? G_VARIANT_TYPE(reply) : NULL, G_DBUS_CALL_FLAGS_NONE, 10000, NULL,
+                                     error);
+}
+
+static GVariant *remote_call(struct app *app, const char *path, const char *iface, const char *method,
+                             GVariant *args, const char *reply, GError **error) {
+  return g_dbus_connection_call_sync(app->bus, REMOTE, path, iface, method, args,
+                                     reply ? G_VARIANT_TYPE(reply) : NULL, G_DBUS_CALL_FLAGS_NONE, 10000, NULL,
+                                     error);
+}
+
+/* Cria a sessão de controle remoto e devolve o id dela, para ligar a de captura a ela (NULL se falhou). */
+static char *start_remote(struct app *app) {
+  GError *error = NULL;
+  GVariant *result = remote_call(app, "/org/gnome/Mutter/RemoteDesktop", REMOTE, "CreateSession", NULL, "(o)", &error);
+  if (!result) {
+    fprintf(stderr, "o GNOME não aceitou o controle remoto: %s\n", error->message);
+    return NULL;
+  }
+  g_variant_get(result, "(o)", &app->remote);
+  g_variant_unref(result);
+  result = remote_call(app, app->remote, "org.freedesktop.DBus.Properties", "Get",
+                       g_variant_new("(ss)", REMOTE ".Session", "SessionId"), "(v)", &error);
+  if (!result) {
+    fprintf(stderr, "sem o id da sessão de controle remoto: %s\n", error->message);
+    return NULL;
+  }
+  GVariant *value = NULL;
+  g_variant_get(result, "(v)", &value);
+  char *id = g_variant_dup_string(value, NULL);
+  g_variant_unref(value);
+  g_variant_unref(result);
+  g_dbus_connection_signal_subscribe(app->bus, REMOTE, REMOTE ".Session", "Closed", app->remote, NULL,
+                                     G_DBUS_SIGNAL_FLAGS_NONE, on_session_closed, app, NULL);
+  return id;
+}
+
+static int start_mutter(struct app *app) {
+  GError *error = NULL;
+  GVariantBuilder props;
+  g_variant_builder_init(&props, G_VARIANT_TYPE_VARDICT);
+  if (app->with_input) {
+    /* Sem controle remoto (o GNOME recusa com a tela bloqueada, por exemplo), a tela estendida segue sem entrada. */
+    char *id = start_remote(app);
+    if (id) {
+      g_variant_builder_add(&props, "{sv}", "remote-desktop-session-id", g_variant_new_take_string(id));
+    } else {
+      g_clear_pointer(&app->remote, g_free);
+      printf("NO_INPUT\n");
+      fflush(stdout);
+    }
+  }
+  GVariant *result = call(app, "/org/gnome/Mutter/ScreenCast", MUTTER, "CreateSession",
+                          g_variant_new("(a{sv})", &props), "(o)", &error);
+  if (!result) {
+    fprintf(stderr, "o GNOME não aceitou criar o monitor virtual: %s\n", error->message);
+    return -1;
+  }
+  g_variant_get(result, "(o)", &app->session);
+  g_variant_unref(result);
+
+  g_dbus_connection_signal_subscribe(app->bus, MUTTER, MUTTER ".Session", "Closed", app->session, NULL,
+                                     G_DBUS_SIGNAL_FLAGS_NONE, on_session_closed, app, NULL);
+
+  GVariantBuilder record;
+  g_variant_builder_init(&record, G_VARIANT_TYPE_VARDICT);
+  /* 1: cursor desenhado na imagem; 2 (--cursor): posição e desenho à parte, como informação do quadro. */
+  g_variant_builder_add(&record, "{sv}", "cursor-mode", g_variant_new_uint32(app->cursor_meta ? 2 : 1));
+  g_variant_builder_add(&record, "{sv}", "is-platform", g_variant_new_boolean(TRUE));
+  result = call(app, app->session, MUTTER ".Session", "RecordVirtual", g_variant_new("(a{sv})", &record), "(o)",
+                &error);
+  if (!result) {
+    fprintf(stderr, "o GNOME não aceitou o monitor virtual: %s\n", error->message);
+    return -1;
+  }
+  g_variant_get(result, "(o)", &app->stream_path);
+  g_variant_unref(result);
+
+  g_dbus_connection_signal_subscribe(app->bus, MUTTER, MUTTER ".Stream", "PipeWireStreamAdded", app->stream_path,
+                                     NULL, G_DBUS_SIGNAL_FLAGS_NONE, on_stream_added, app, NULL);
+
+  /* Com controle remoto, quem começa (e termina) é a sessão dele; a de captura vai junto. */
+  result = app->remote ? remote_call(app, app->remote, REMOTE ".Session", "Start", NULL, NULL, &error)
+                       : call(app, app->session, MUTTER ".Session", "Start", NULL, NULL, &error);
+  if (!result) {
+    fprintf(stderr, "o GNOME não iniciou o monitor virtual: %s\n", error->message);
+    return -1;
+  }
+  g_variant_unref(result);
+  return 0;
+}
+
+/* ---------- posição (Mutter DisplayConfig) ---------- */
+
+struct logical {
+  int x, y, w, h;
+  /* Tamanho do modo em pixels de verdade, e as escalas que o GNOME aceita nele. */
+  int mode_w, mode_h;
+  double scales[16];
+  int n_scales;
+  gboolean logical_layout;
+  double scale;
+  guint32 transform;
+  gboolean primary;
+  char *connector;
+  char *mode;
+};
+
+static GVariant *display_config(struct app *app, const char *method, GVariant *args, const char *reply,
+                                GError **error) {
+  return g_dbus_connection_call_sync(app->bus, DISPLAY_CONFIG, DISPLAY_CONFIG_PATH, DISPLAY_CONFIG, method, args,
+                                     reply ? G_VARIANT_TYPE(reply) : NULL, G_DBUS_CALL_FLAGS_NONE, 5000, NULL, error);
+}
+
+/* Lê o estado atual: cada tela lógica com o seu conector, o modo em uso e o tamanho em coordenadas da área de
+ * trabalho. Devolve a quantidade (0 se falhou). */
+static int read_layout(struct app *app, guint32 *serial, struct logical *out, int max) {
+  GVariant *state = display_config(app, "GetCurrentState", NULL, "(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv})", NULL);
+  if (!state) return 0;
+  GVariant *monitors = g_variant_get_child_value(state, 1);
+  GVariant *logicals = g_variant_get_child_value(state, 2);
+  GVariant *props = g_variant_get_child_value(state, 3);
+  g_variant_get_child(state, 0, "u", serial);
+  guint32 layout_mode = 1;
+  g_variant_lookup(props, "layout-mode", "u", &layout_mode);
+
+  int count = 0;
+  for (gsize i = 0; i < g_variant_n_children(logicals) && count < max; i++) {
+    GVariant *l = g_variant_get_child_value(logicals, i);
+    struct logical *item = &out[count];
+    memset(item, 0, sizeof(*item));
+    g_variant_get_child(l, 0, "i", &item->x);
+    g_variant_get_child(l, 1, "i", &item->y);
+    g_variant_get_child(l, 2, "d", &item->scale);
+    g_variant_get_child(l, 3, "u", &item->transform);
+    g_variant_get_child(l, 4, "b", &item->primary);
+    GVariant *specs = g_variant_get_child_value(l, 5);
+    if (g_variant_n_children(specs) > 0) g_variant_get_child(specs, 0, "(ssss)", &item->connector, NULL, NULL, NULL);
+    g_variant_unref(specs);
+    g_variant_unref(l);
+    if (!item->connector) continue;
+    /* Modo em uso deste conector, e o tamanho dele. */
+    for (gsize m = 0; m < g_variant_n_children(monitors); m++) {
+      GVariant *monitor = g_variant_get_child_value(monitors, m);
+      char *connector = NULL;
+      GVariant *spec = g_variant_get_child_value(monitor, 0);
+      g_variant_get_child(spec, 0, "s", &connector);
+      g_variant_unref(spec);
+      if (g_strcmp0(connector, item->connector) == 0) {
+        GVariant *modes = g_variant_get_child_value(monitor, 1);
+        for (gsize k = 0; k < g_variant_n_children(modes); k++) {
+          GVariant *mode = g_variant_get_child_value(modes, k);
+          GVariant *mode_props = g_variant_get_child_value(mode, 6);
+          gboolean current = FALSE;
+          g_variant_lookup(mode_props, "is-current", "b", &current);
+          if (current) {
+            int w = 0, h = 0;
+            g_variant_get_child(mode, 0, "s", &item->mode);
+            g_variant_get_child(mode, 1, "i", &w);
+            g_variant_get_child(mode, 2, "i", &h);
+            item->mode_w = w;
+            item->mode_h = h;
+            item->logical_layout = layout_mode == 1;
+            GVariant *scales = g_variant_get_child_value(mode, 5);
+            for (gsize k2 = 0; k2 < g_variant_n_children(scales) && item->n_scales < 16; k2++)
+              g_variant_get_child(scales, k2, "d", &item->scales[item->n_scales++]);
+            g_variant_unref(scales);
+            /* Com o layout lógico (o padrão do GNOME), a área de trabalho conta em pixels lógicos. */
+            const gboolean rotated = item->transform % 2 == 1;
+            const double div = layout_mode == 1 && item->scale > 0 ? item->scale : 1;
+            item->w = (int)((rotated ? h : w) / div + 0.5);
+            item->h = (int)((rotated ? w : h) / div + 0.5);
+          }
+          g_variant_unref(mode_props);
+          g_variant_unref(mode);
+        }
+        g_variant_unref(modes);
+      }
+      g_free(connector);
+      g_variant_unref(monitor);
+    }
+    if (item->mode) count++;
+    else g_free(item->connector);
+  }
+  g_variant_unref(props);
+  g_variant_unref(logicals);
+  g_variant_unref(monitors);
+  g_variant_unref(state);
+  return count;
+}
+
+static void free_layout(struct logical *items, int count) {
+  for (int i = 0; i < count; i++) {
+    g_free(items[i].connector);
+    g_free(items[i].mode);
+  }
+}
+
+static gboolean was_virtual_before(struct app *app, const char *connector) {
+  for (guint i = 0; app->virtual_before && i < app->virtual_before->len; i++)
+    if (g_strcmp0(g_ptr_array_index(app->virtual_before, i), connector) == 0) return TRUE;
+  return FALSE;
+}
+
+static void remember_virtual_monitors(struct app *app) {
+  struct logical items[16];
+  guint32 serial = 0;
+  int count = read_layout(app, &serial, items, 16);
+  app->virtual_before = g_ptr_array_new_with_free_func(g_free);
+  for (int i = 0; i < count; i++)
+    if (g_str_has_prefix(items[i].connector, "Meta-")) g_ptr_array_add(app->virtual_before, g_strdup(items[i].connector));
+  free_layout(items, count);
+}
+
+/* Põe a tela estendida no lado pedido das outras telas; `centered`: no meio da borda, sem olhar `start`. */
+static gboolean overlaps(const struct logical *a, const struct logical *b) {
+  return a->x < b->x + b->w && b->x < a->x + a->w && a->y < b->y + b->h && b->y < a->y + a->h;
+}
+
+/* Encosta em alguma outra tela: um lado em comum, com algum trecho junto. */
+static gboolean touches(const struct logical *a, const struct logical *b) {
+  const gboolean side_by_side = (a->x + a->w == b->x || b->x + b->w == a->x) && a->y < b->y + b->h && b->y < a->y + a->h;
+  const gboolean stacked = (a->y + a->h == b->y || b->y + b->h == a->y) && a->x < b->x + b->w && b->x < a->x + a->w;
+  return side_by_side || stacked;
+}
+
+static gboolean attached(const struct logical *items, int count, int index) {
+  for (int k = 0; k < count; k++)
+    if (k != index && touches(&items[index], &items[k])) return TRUE;
+  return FALSE;
+}
+
+/* Posição livre (pedido "at"): a tela vai para a posição encostada mais perto da pedida, na borda de qualquer outra
+ * tela (inclusive de outro aparelho), sem ficar por cima de nenhuma e com um pedaço da borda em comum. */
+static void snap_free(struct logical *items, int count, int mine) {
+  struct logical *v = &items[mine];
+  const int want_x = v->x, want_y = v->y;
+  double best = 1e18;
+  int bx = v->x, by = v->y;
+  for (int i = 0; i < count; i++) {
+    if (i == mine) continue;
+    const struct logical *o = &items[i];
+    const int min_x = MIN(v->w, o->w) / 10, min_y = MIN(v->h, o->h) / 10;
+    const int sx = MIN(MAX(want_x, o->x - v->w + min_x), o->x + o->w - min_x);
+    const int sy = MIN(MAX(want_y, o->y - v->h + min_y), o->y + o->h - min_y);
+    const int cx[4] = { o->x - v->w, o->x + o->w, sx, sx };
+    const int cy[4] = { sy, sy, o->y - v->h, o->y + o->h };
+    for (int c = 0; c < 4; c++) {
+      struct logical t = *v;
+      t.x = cx[c];
+      t.y = cy[c];
+      gboolean hit = FALSE;
+      for (int k = 0; k < count && !hit; k++)
+        if (k != mine && overlaps(&t, &items[k])) hit = TRUE;
+      if (hit) continue;
+      const double d = hypot(t.x - want_x, t.y - want_y);
+      if (d < best) {
+        best = d;
+        bx = t.x;
+        by = t.y;
+      }
+    }
+  }
+  v->x = bx;
+  v->y = by;
+}
+
+static gboolean place(struct app *app, const char *side, gboolean centered, double start, double free_y, char **why) {
+  struct logical items[16];
+  guint32 serial = 0;
+  int count = read_layout(app, &serial, items, 16);
+  int mine = -1;
+  if (app->my_connector) {
+    for (int i = 0; i < count; i++)
+      if (!g_strcmp0(items[i].connector, app->my_connector)) mine = i;
+  } else {
+    for (int i = count - 1; i >= 0; i--)
+      if (g_str_has_prefix(items[i].connector, "Meta-") && !was_virtual_before(app, items[i].connector)) mine = i;
+    if (mine >= 0) app->my_connector = g_strdup(items[mine].connector);
+  }
+  if (mine < 0 || count < 2) {
+    free_layout(items, count);
+    *why = g_strdup("a tela estendida ainda não apareceu");
+    return FALSE;
+  }
+
+  /* Caixa das telas de verdade (os outros monitores virtuais, de outros aparelhos, ficam de fora: cada um se posiciona
+   * em relação às telas físicas, e não em relação aos outros). Sem tela física, vale a caixa de todas as outras. */
+  int left = G_MAXINT, top = G_MAXINT, right = G_MININT, bottom = G_MININT;
+  gboolean physical = FALSE;
+  for (int i = 0; i < count; i++)
+    if (i != mine && !g_str_has_prefix(items[i].connector, "Meta-")) physical = TRUE;
+  for (int i = 0; i < count; i++) {
+    if (i == mine || (physical && g_str_has_prefix(items[i].connector, "Meta-"))) continue;
+    left = MIN(left, items[i].x);
+    top = MIN(top, items[i].y);
+    right = MAX(right, items[i].x + items[i].w);
+    bottom = MAX(bottom, items[i].y + items[i].h);
+  }
+  struct logical *v = &items[mine];
+  /* Escala pedida (tela de quem mostra com alta densidade): a mais perto que o GNOME aceita neste modo. */
+  if (app->scale > 1 && v->n_scales > 0) {
+    double best = v->scale;
+    for (int k = 0; k < v->n_scales; k++)
+      if (fabs(v->scales[k] - app->scale) < fabs(best - app->scale)) best = v->scales[k];
+    if (best != v->scale && v->logical_layout) {
+      const gboolean rotated = v->transform % 2 == 1;
+      v->w = (int)((rotated ? v->mode_h : v->mode_w) / best + 0.5);
+      v->h = (int)((rotated ? v->mode_w : v->mode_h) / best + 0.5);
+    }
+    v->scale = best;
+  }
+  app->applied_scale = v->scale > 0 ? v->scale : 1;
+  if (!g_strcmp0(side, "at")) {
+    v->x = left + (int)lround(start * (right - left));
+    v->y = top + (int)lround(free_y * (bottom - top));
+    snap_free(items, count, mine);
+    goto positioned;
+  }
+  const gboolean along_x = !g_strcmp0(side, "above") || !g_strcmp0(side, "below");
+  const int edge = along_x ? right - left : bottom - top;
+  const int peer = along_x ? v->w : v->h;
+  const int at = centered ? (edge - peer) / 2 : (int)(start * edge);
+  if (!g_strcmp0(side, "left")) { v->x = left - v->w; v->y = top + at; }
+  else if (!g_strcmp0(side, "right")) { v->x = right; v->y = top + at; }
+  else if (!g_strcmp0(side, "above")) { v->x = left + at; v->y = top - v->h; }
+  else { v->x = left + at; v->y = bottom; }
+
+  /* Outro aparelho já do mesmo lado: este vai para fora dele, sem ficar por cima. */
+  for (int round = 0; round < 8; round++) {
+    gboolean moved = FALSE;
+    for (int i = 0; i < count; i++) {
+      if (i == mine || !overlaps(v, &items[i])) continue;
+      if (!g_strcmp0(side, "left")) v->x = items[i].x - v->w;
+      else if (!g_strcmp0(side, "right")) v->x = items[i].x + items[i].w;
+      else if (!g_strcmp0(side, "above")) v->y = items[i].y - v->h;
+      else v->y = items[i].y + items[i].h;
+      moved = TRUE;
+    }
+    if (!moved) break;
+  }
+
+positioned:
+  /* O GNOME recusa a disposição inteira se alguma tela fica solta, sem encostar em outra. Um monitor de outro aparelho
+   * que ficou solto (estava encostado onde este estava antes) vai para a direita de tudo; o auxiliar dele o devolve ao
+   * lugar dele logo em seguida. */
+  for (int i = 0; i < count; i++) {
+    if (i == mine || !g_str_has_prefix(items[i].connector, "Meta-") || attached(items, count, i)) continue;
+    int edge_x = G_MININT, edge_top = G_MAXINT;
+    for (int k = 0; k < count; k++)
+      if (k != i) {
+        edge_x = MAX(edge_x, items[k].x + items[k].w);
+        if (items[k].x + items[k].w >= edge_x) edge_top = items[k].y;
+      }
+    items[i].x = edge_x;
+    items[i].y = edge_top;
+  }
+
+  /* O GNOME quer a área de trabalho começando em (0, 0). */
+  int ox = G_MAXINT, oy = G_MAXINT;
+  for (int i = 0; i < count; i++) {
+    ox = MIN(ox, items[i].x);
+    oy = MIN(oy, items[i].y);
+  }
+  GVariantBuilder logical;
+  g_variant_builder_init(&logical, G_VARIANT_TYPE("a(iiduba(ssa{sv}))"));
+  for (int i = 0; i < count; i++) {
+    GVariantBuilder monitors;
+    g_variant_builder_init(&monitors, G_VARIANT_TYPE("a(ssa{sv})"));
+    g_variant_builder_add(&monitors, "(ss@a{sv})", items[i].connector, items[i].mode,
+                          g_variant_new_array(G_VARIANT_TYPE("{sv}"), NULL, 0));
+    g_variant_builder_add(&logical, "(iidub@a(ssa{sv}))", items[i].x - ox, items[i].y - oy, items[i].scale,
+                          items[i].transform, items[i].primary, g_variant_builder_end(&monitors));
+  }
+  GVariantBuilder props;
+  g_variant_builder_init(&props, G_VARIANT_TYPE_VARDICT);
+  GError *error = NULL;
+  /* Método 1: temporário. Some quando a sessão acaba, e o GNOME não pergunta se é para manter. */
+  GVariant *result = display_config(app, "ApplyMonitorsConfig",
+                                    g_variant_new("(uu@a(iiduba(ssa{sv}))@a{sv})", serial, 1,
+                                                  g_variant_builder_end(&logical), g_variant_builder_end(&props)),
+                                    NULL, &error);
+  free_layout(items, count);
+  if (!result) {
+    *why = g_strdup(error->message);
+    g_error_free(error);
+    return FALSE;
+  }
+  g_variant_unref(result);
+  return TRUE;
+}
+
+static void on_notified(GObject *source, GAsyncResult *result, gpointer data) {
+  GError *error = NULL;
+  GVariant *reply = g_dbus_connection_call_finish(G_DBUS_CONNECTION(source), result, &error);
+  if (reply) g_variant_unref(reply);
+  if (error) {
+    fprintf(stderr, "o GNOME recusou o evento %s: %s\n", (const char *)data, error->message);
+    g_error_free(error);
+  }
+}
+
+/* Manda um evento à sessão de controle remoto sem esperar a resposta: o movimento do mouse não pode enfileirar.
+ * Se o GNOME recusar, o motivo vai para o erro padrão. */
+static void notify(struct app *app, const char *method, GVariant *args) {
+  g_dbus_connection_call(app->bus, REMOTE, app->remote, REMOTE ".Session", method, args, NULL,
+                         G_DBUS_CALL_FLAGS_NO_AUTO_START, 2000, NULL, on_notified, (gpointer)method);
+}
+
+static gboolean fraction_ok(double v) { return v >= 0 && v <= 1; }
+
+/* Tamanho da tela estendida em pixels lógicos, que é como o Mutter conta a posição (com escala 1,25, 1920 viram 1536). */
+static double logical_w(struct app *app) { return app->width / (app->applied_scale > 0 ? app->applied_scale : 1); }
+static double logical_h(struct app *app) { return app->height / (app->applied_scale > 0 ? app->applied_scale : 1); }
+
+/* Um evento de entrada ("move", "button", "wheel", "key", "touch"); devolve FALSE se a linha não é de entrada. */
+static gboolean input_command(struct app *app, const char *line) {
+  double x = 0, y = 0;
+  int a = 0, b = 0;
+  char phase[8] = "";
+  if (sscanf(line, "move %lf %lf", &x, &y) == 2) {
+    if (app->remote && app->stream_path && fraction_ok(x) && fraction_ok(y))
+      notify(app, "NotifyPointerMotionAbsolute",
+             g_variant_new("(sdd)", app->stream_path, x * logical_w(app), y * logical_h(app)));
+    return TRUE;
+  }
+  if (sscanf(line, "button %d %d", &a, &b) == 2) {
+    if (app->remote && a >= 0x110 && a <= 0x117) notify(app, "NotifyPointerButton", g_variant_new("(ib)", a, b != 0));
+    return TRUE;
+  }
+  if (sscanf(line, "wheel %d %d", &a, &b) == 2) {
+    /* Eixo 0 é o vertical; 1, o horizontal. */
+    if (app->remote && b != 0 && abs(b) <= 20) notify(app, "NotifyPointerAxisDiscrete", g_variant_new("(ui)", 0, b));
+    if (app->remote && a != 0 && abs(a) <= 20) notify(app, "NotifyPointerAxisDiscrete", g_variant_new("(ui)", 1, a));
+    return TRUE;
+  }
+  if (sscanf(line, "key %d %d", &a, &b) == 2) {
+    if (app->remote && a > 0 && a < 0x300) notify(app, "NotifyKeyboardKeycode", g_variant_new("(ub)", (guint32)a, b != 0));
+    return TRUE;
+  }
+  if (sscanf(line, "touch %7s %d %lf %lf", phase, &a, &x, &y) == 4) {
+    if (!app->remote || !app->stream_path || a < 0 || a > 9 || !fraction_ok(x) || !fraction_ok(y)) return TRUE;
+    if (!strcmp(phase, "down"))
+      notify(app, "NotifyTouchDown",
+             g_variant_new("(sudd)", app->stream_path, (guint32)a, x * logical_w(app), y * logical_h(app)));
+    else if (!strcmp(phase, "move"))
+      notify(app, "NotifyTouchMotion",
+             g_variant_new("(sudd)", app->stream_path, (guint32)a, x * logical_w(app), y * logical_h(app)));
+    else if (!strcmp(phase, "up"))
+      notify(app, "NotifyTouchUp", g_variant_new("(u)", (guint32)a));
+    return TRUE;
+  }
+  return FALSE;
+}
+
+static gboolean on_command(GIOChannel *channel, GIOCondition condition, gpointer data) {
+  struct app *app = data;
+  if (condition & (G_IO_HUP | G_IO_ERR)) return G_SOURCE_REMOVE;
+  char *line = NULL;
+  if (g_io_channel_read_line(channel, &line, NULL, NULL, NULL) != G_IO_STATUS_NORMAL || !line) return G_SOURCE_CONTINUE;
+  if (input_command(app, line)) {
+    g_free(line);
+    return G_SOURCE_CONTINUE;
+  }
+  char side[16] = "";
+  char start_text[32] = "";
+  char at_x[32] = "", at_y[32] = "";
+  if (sscanf(line, "at %31s %31s", at_x, at_y) == 2) {
+    g_free(line);
+    char *end_x = NULL, *end_y = NULL;
+    const double fx = g_ascii_strtod(at_x, &end_x), fy = g_ascii_strtod(at_y, &end_y);
+    if (*end_x || *end_y || fabs(fx) > 8 || fabs(fy) > 8) {
+      fprintf(stderr, "pedido de posição inválido\n");
+      return G_SOURCE_CONTINUE;
+    }
+    char *why = NULL;
+    if (place(app, "at", FALSE, fx, fy, &why)) {
+      printf("PLACED at\n");
+      fflush(stdout);
+    } else {
+      fprintf(stderr, "não consegui posicionar a tela estendida: %s\n", why);
+      g_free(why);
+    }
+    return G_SOURCE_CONTINUE;
+  }
+  const int fields = sscanf(line, "place %15s %31s", side, start_text);
+  g_free(line);
+  if (fields < 1 || (strcmp(side, "left") && strcmp(side, "right") && strcmp(side, "above") && strcmp(side, "below"))) {
+    fprintf(stderr, "pedido de posição inválido\n");
+    return G_SOURCE_CONTINUE;
+  }
+  /* O início pode passar um pouco das pontas da borda (tela estendida maior que as outras), nunca muito. */
+  char *end = NULL;
+  double start = fields == 2 ? g_ascii_strtod(start_text, &end) : 0;
+  const gboolean centered = fields < 2 || !end || *end || start < -4 || start > 4;
+  char *why = NULL;
+  if (place(app, side, centered, start, 0, &why)) {
+    printf("PLACED %s\n", side);
+    fflush(stdout);
+  } else {
+    fprintf(stderr, "não consegui posicionar a tela estendida: %s\n", why);
+    g_free(why);
+  }
+  return G_SOURCE_CONTINUE;
+}
+
+static gboolean debug_tick(gpointer data) {
+  struct app *app = data;
+  fprintf(stderr, "quadros do Mutter %u, imagens enviadas %u\n", app->frames_in, app->frames_sent);
+  return G_SOURCE_CONTINUE;
+}
+
+static gboolean on_signal(gpointer data) {
+  quit(data, 0, NULL);
+  return G_SOURCE_REMOVE;
+}
+
+static int parse_int(const char *value, int min, int max) {
+  char *end = NULL;
+  long n = value ? strtol(value, &end, 10) : -1;
+  return (end && *end == '\0' && n >= min && n <= max) ? (int)n : -1;
+}
+
+int main(int argc, char **argv) {
+  struct app app = { .width = 1920, .height = 1080, .refresh = 60, .listen_fd = -1 };
+  for (int i = 1; i < argc; i += 2) {
+    const char *value = i + 1 < argc ? argv[i + 1] : NULL;
+    if (!strcmp(argv[i], "--input")) {
+      app.with_input = TRUE;
+      i--; /* não tem valor */
+      continue;
+    }
+    if (!strcmp(argv[i], "--cursor")) {
+      app.cursor_meta = TRUE;
+      i--;
+      continue;
+    }
+    if (!strcmp(argv[i], "--scale")) {
+      char *end = NULL;
+      app.scale = value ? strtod(value, &end) : 0;
+      if (!end || *end != '\0' || app.scale < 1 || app.scale > 4) {
+        fprintf(stderr, "--scale precisa ser um número entre 1 e 4\n");
+        return 2;
+      }
+      continue;
+    }
+    if (!strcmp(argv[i], "--frames") && value && value[0] == '/') {
+      app.frames_path = value;
+      continue;
+    }
+    int *target = !strcmp(argv[i], "--width")   ? &app.width
+                : !strcmp(argv[i], "--height")  ? &app.height
+                : !strcmp(argv[i], "--refresh") ? &app.refresh
+                                                : NULL;
+    if (!target || (*target = parse_int(value, 1, 16384)) < 0) {
+      fprintf(stderr, "uso: horizonte-display [--width 1920] [--height 1080] [--refresh 60] [--frames /caminho.sock] [--scale 2] [--input]\n");
+      return 2;
+    }
+  }
+
+  /* Se o Horizonte morrer, o monitor não pode ficar para trás. */
+  prctl(PR_SET_PDEATHSIG, SIGTERM);
+  if (getppid() == 1) return 0;
+
+  GError *error = NULL;
+  app.bus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+  if (!app.bus) {
+    fprintf(stderr, "sem a sessão do D-Bus: %s\n", error->message);
+    return 2;
+  }
+  if (app.frames_path && start_frames(&app) < 0) return 5;
+
+  pw_init(&argc, &argv);
+  app.pw_loop = pw_thread_loop_new("horizonte-display", NULL);
+  app.context = pw_context_new(pw_thread_loop_get_loop(app.pw_loop), NULL, 0);
+  if (!app.context || pw_thread_loop_start(app.pw_loop) < 0) {
+    fprintf(stderr, "não consegui iniciar o PipeWire\n");
+    return 4;
+  }
+  pw_thread_loop_lock(app.pw_loop);
+  app.core = pw_context_connect(app.context, NULL, 0);
+  pw_thread_loop_unlock(app.pw_loop);
+  if (!app.core) {
+    fprintf(stderr, "o PipeWire não está rodando nesta sessão\n");
+    return 4;
+  }
+
+  app.loop = g_main_loop_new(NULL, FALSE);
+  g_unix_signal_add(SIGTERM, on_signal, &app);
+  g_unix_signal_add(SIGINT, on_signal, &app);
+  remember_virtual_monitors(&app);
+  if (start_mutter(&app) < 0) return 3;
+  GIOChannel *commands = g_io_channel_unix_new(STDIN_FILENO);
+  g_io_add_watch(commands, G_IO_IN | G_IO_HUP | G_IO_ERR, on_command, &app);
+  if (getenv("HZ_DEBUG")) g_timeout_add_seconds(2, debug_tick, &app);
+
+  g_main_loop_run(app.loop);
+
+  /* Fecha a sessão do Mutter: o monitor some na hora, e as janelas voltam para as outras telas. */
+  if (app.remote) {
+    GVariant *result = remote_call(&app, app.remote, REMOTE ".Session", "Stop", NULL, NULL, NULL);
+    if (result) g_variant_unref(result);
+  } else if (app.session) {
+    GVariant *result = call(&app, app.session, MUTTER ".Session", "Stop", NULL, NULL, NULL);
+    if (result) g_variant_unref(result);
+  }
+  pw_thread_loop_lock(app.pw_loop);
+  if (app.input) pw_stream_destroy(app.input);
+  pw_core_disconnect(app.core);
+  pw_thread_loop_unlock(app.pw_loop);
+  pw_thread_loop_stop(app.pw_loop);
+  stop_frames(&app);
+  pw_context_destroy(app.context);
+  pw_thread_loop_destroy(app.pw_loop);
+  pw_deinit();
+  return app.exit_code;
+}

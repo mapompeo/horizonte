@@ -1,0 +1,108 @@
+import type {
+  LinkQuality,
+  ExtendSide,
+  ScreenPlacement,
+  ScreenSize,
+  Host,
+  MouseSide,
+  PrepProgress,
+  PrepStep,
+  Settings
+} from '../../shared/types'
+
+export interface PairRequest {
+  device: string
+  pairingId: string
+  /** O PIN que o outro aparelho mandou (o motor próprio não usa). */
+  pin?: string
+  address?: string
+  /** Motor próprio: id e impressão digital do certificado do outro aparelho (é nela que vale a confiança). */
+  deviceId?: string
+  fingerprint?: string
+  screen?: ScreenSize
+}
+
+/** Quem acabou de se conectar para ver a tela (motor próprio). */
+export interface ConnectedPeer {
+  fingerprint?: string
+  screen?: ScreenSize
+}
+
+export interface ApproveRequest {
+  pairingId: string
+  /** O motor próprio não usa PIN. */
+  pin?: string
+  name: string
+}
+
+/** Compartilhar mouse e teclado com outro PC pela rede local. */
+/** Um computador encostado neste no modo Mouse: o lado e onde começa a borda dele (fração da borda deste). */
+export interface MousePlacement {
+  host: Host
+  side: MouseSide
+  /** Sem valor: centralizado. */
+  offset?: number
+}
+
+export interface MouseEngine {
+  /** Entra no modo: anuncia este PC na rede e passa a escutar pedidos. */
+  start(name: string): Promise<void>
+  stop(): Promise<void>
+  listPeers(): Promise<Host[]>
+  /**
+   * Este PC empresta o mouse aos computadores encostados nele: sobe o servidor e pede a cada um que se conecte.
+   * Quem não responde fica de fora; se ninguém responder, falha.
+   */
+  share(placements: MousePlacement[], ownName: string): Promise<void>
+  /** Muda onde cada um fica, sem encerrar o compartilhamento (eles reconectam sozinhos). */
+  setLayout(placements: MousePlacement[]): Promise<void>
+  /** Aceita o pedido pendente: este PC passa a ser controlado. */
+  accept(ownName: string): Promise<void>
+  deny(): Promise<void>
+  /** Encerra o compartilhamento e avisa o outro PC. */
+  end(): Promise<void>
+  onRequest(callback: (request: { device: string; address: string }) => void): () => void
+  onEnded(callback: () => void): () => void
+}
+
+/** Papel de quem envia a tela. */
+export interface ServerEngine {
+  prepare(
+    onStep: (step: PrepStep) => void,
+    settings: Settings,
+    onProgress?: (progress: PrepProgress) => void
+  ): Promise<void>
+  /**
+   * Interrompe o que o modo enviar deixou em andamento (preparação, espera por conexão
+   * ou pedido de pareamento pendente). Chamado ao sair desse modo sem ter conectado.
+   */
+  abort(): Promise<void>
+  approve(request: ApproveRequest): Promise<void>
+  deny(pairingId: string): Promise<void>
+  /** Para de mostrar para um aparelho (pela impressão digital) ou, sem ela, para todos. */
+  stopSending(fingerprint?: string): Promise<void>
+  applyBitrate(mbps: number): Promise<void>
+  /** Muda a posição da tela estendida sem preparar tudo de novo. */
+  placeDisplay?(side: ExtendSide): Promise<void>
+  /** Motor próprio: muda na hora a posição da tela de quem está conectado. */
+  placeScreen?(placement: ScreenPlacement, fingerprint?: string): Promise<void>
+  onPairRequest(callback: (request: PairRequest) => void): () => void
+  onPairCancelled(callback: (pairingId: string) => void): () => void
+  onClientConnected(callback: (device: string, peer?: ConnectedPeer) => void): () => void
+  /** Um aparelho saiu (motor próprio: com a impressão digital dele; sem ela, a conexão toda acabou). */
+  onClientDisconnected(callback: (fingerprint?: string) => void): () => void
+  /** Motor próprio: como está a conexão de cada aparelho conectado. */
+  onLink?(callback: (fingerprint: string, link: LinkQuality | null) => void): () => void
+}
+
+/** Papel de quem recebe a tela. */
+export interface ClientEngine {
+  listHosts(): Promise<Host[]>
+  connect(host: string, settings: Settings): Promise<void>
+  disconnect(): Promise<void>
+  applyBitrate(mbps: number): Promise<void>
+  onStreamEnded(callback: () => void): () => void
+}
+
+/** Tudo que o núcleo precisa do motor. */
+export interface EnginePort extends ServerEngine, ClientEngine {}
