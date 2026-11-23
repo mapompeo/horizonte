@@ -269,6 +269,11 @@ try {
     await step('a tela de Enviar não tem o seletor Enviar/Receber', async () => {
       const has = await app.ev(`!!document.querySelector('[aria-label="Modo"]')`)
       if (has) throw new Error('o seletor ainda aparece na tela de Enviar')
+      // Os outros usos ficam à vista na própria tela, desligados enquanto há aparelho conectado.
+      const off = await app.ev(
+        `[...document.querySelectorAll('.ways button')].map((b) => b.disabled).join()`
+      )
+      if (off !== 'true,true') throw new Error(`Receber e Mouse à vista, desligados: ${off}`)
     })
     await step('parar o aparelho e Receber pelos Ajustes vai direto para a lista', async () => {
       await app.click(/^Parar$/)
@@ -277,8 +282,8 @@ try {
         await app.click(/^Recusar$/)
         await app.waitText(/Aponte a câmera/, 15_000)
       }
-      await app.click(/Ajustes/)
-      await app.waitText(/Receber a tela de outro computador/)
+      // Na própria tela de Enviar, à vista (sem entrar nos Ajustes).
+      await app.waitText(/Compartilhar o mouse e o teclado/)
       await app.click(/Receber a tela de outro computador/)
       const text = await app.waitText(/Na sua rede/, 30_000)
       if (/Preparando|permissão/.test(text)) throw new Error('mostrou preparação no receptor')

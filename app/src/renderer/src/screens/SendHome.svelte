@@ -10,7 +10,7 @@
     WebAccess
   } from '../../../shared/types'
   import { safeName } from '../lib/copy'
-  import { send } from '../lib/actions'
+  import { chooseMode, send } from '../lib/actions'
   import { ms } from '../lib/motion'
   import QrCode from '../components/QrCode.svelte'
   import VideoHint from '../components/VideoHint.svelte'
@@ -269,6 +269,65 @@
   {:else}
     {@render hero(false)}
   {/if}
+  <!-- Os outros dois usos, à vista: o segundo computador recebendo e o mouse passando de um para o outro. -->
+  <div
+    class="card ways"
+    role="group"
+    aria-label={L({
+      pt: 'Outras formas de usar',
+      en: 'Other ways to use it',
+      es: 'Otras formas de usar'
+    })}
+  >
+    <button class="row row-button" disabled={connected} onclick={() => chooseMode('receive')}>
+      <span class="way">
+        <span
+          >{L({
+            pt: 'Receber a tela de outro computador',
+            en: 'Receive another computer’s screen',
+            es: 'Recibir la pantalla de otra computadora'
+          })}</span
+        >
+        <small
+          >{connected
+            ? L({
+                pt: 'Desconecte os aparelhos primeiro',
+                en: 'Disconnect the devices first',
+                es: 'Desconecta los dispositivos primero'
+              })
+            : L({
+                pt: 'Use este computador como tela extra de outro',
+                en: 'Use this computer as an extra screen for another one',
+                es: 'Usa esta computadora como pantalla extra de otra'
+              })}</small
+        >
+      </span>
+    </button>
+    <button class="row row-button" disabled={connected} onclick={() => chooseMode('mouse')}>
+      <span class="way">
+        <span
+          >{L({
+            pt: 'Compartilhar o mouse e o teclado',
+            en: 'Share the mouse and keyboard',
+            es: 'Compartir el mouse y el teclado'
+          })}</span
+        >
+        <small
+          >{connected
+            ? L({
+                pt: 'Desconecte os aparelhos primeiro',
+                en: 'Disconnect the devices first',
+                es: 'Desconecta los dispositivos primero'
+              })
+            : L({
+                pt: 'Um mouse para dois computadores, pela borda da tela',
+                en: 'One mouse for two computers, across the screen edge',
+                es: 'Un mouse para dos computadoras, por el borde de la pantalla'
+              })}</small
+        >
+      </span>
+    </button>
+  </div>
   <VideoHint />
 </div>
 
@@ -296,6 +355,18 @@
 {/if}
 
 <style>
+  .way {
+    display: grid;
+    gap: 2px;
+    text-align: left;
+  }
+  .way small {
+    color: var(--muted);
+    font-size: var(--t-small);
+  }
+  .ways {
+    margin-top: 4px;
+  }
   .status {
     display: flex;
     align-items: center;

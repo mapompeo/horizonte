@@ -16,6 +16,11 @@ export const CHANGELOG: Change[] = [
     date: '2026-11-23',
     items: [
       {
+        pt: 'Receber a tela de outro computador e Compartilhar o mouse ficam à vista na tela de Enviar.',
+        en: 'Receive another computer’s screen and Share the mouse are now on the Send screen.',
+        es: 'Recibir la pantalla de otra computadora y Compartir el mouse están en la pantalla de Enviar.'
+      },
+      {
         pt: 'Receber a tela de outro computador foi para os Ajustes; Enviar ficou mais simples.',
         en: 'Receiving another computer’s screen moved to Settings; Send is now simpler.',
         es: 'Recibir la pantalla de otra computadora pasó a Ajustes; Enviar quedó más simple.'
