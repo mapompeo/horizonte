@@ -74,7 +74,10 @@ test("fluxo real de modos, aprovacao e parada", async ({ page }) => {
   await expect(
     app.getByRole("heading", { name: "Aponte a câmera" }),
   ).toBeVisible();
-  await app.getByRole("button", { name: "Receber", exact: true }).click();
+  // No celular o app aparece reduzido dentro do site e a linha fica pequena: clica pelo próprio botão.
+  await app
+    .getByRole("button", { name: /^Receber a tela de outro computador/ })
+    .evaluate((button) => button.click());
   await app.getByRole("button", { name: /^Conectar a Desktop/ }).click();
   await expect(
     app.getByRole("heading", { name: "Recebendo a tela" }),

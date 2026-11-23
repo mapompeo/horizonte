@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { createAutoReporter, MAX_PER_DAY } from './auto-report'
 
-function setup(enabled = true, send = async (): Promise<boolean> => true) {
+function setup(
+  enabled = true,
+  send = async (): Promise<boolean> => true
+): {
+  reporter: ReturnType<typeof createAutoReporter>
+  sent: string[]
+  tick: (ms: number) => number
+} {
   let stored: Record<string, number> = {}
   let clock = 1_000_000
   const sent: string[] = []
