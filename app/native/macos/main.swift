@@ -124,37 +124,50 @@ guard display.apply(settings) else {
 // Coloca o monitor novo à direita das telas que já existem (com outra tela virtual ligada, depois dela), alinhado
 // em cima com a principal. O motor reposiciona depois, conforme o mapa dos Ajustes.
 let mainBounds = CGDisplayBounds(CGMainDisplayID())
-var activeCount: UInt32 = 0
-CGGetActiveDisplayList(0, nil, &activeCount)
-var activeIds = [CGDirectDisplayID](repeating: 0, count: Int(activeCount))
-CGGetActiveDisplayList(activeCount, &activeIds, &activeCount)
-let rightEdge = activeIds.prefix(Int(activeCount)).filter { $0 != display.displayID }
-    .map { CGDisplayBounds($0).maxX }.max() ?? mainBounds.maxX
-guard let x = Int32(exactly: rightEdge), let y = Int32(exactly: mainBounds.minY) else {
-    fail("coordenadas do monitor principal fora do intervalo do Quartz")
-}
-var configuration: CGDisplayConfigRef?
-let beginError = CGBeginDisplayConfiguration(&configuration)
-guard beginError == .success, let config = configuration else {
-    fail("nao consegui iniciar o posicionamento do monitor virtual: Quartz \(beginError.rawValue)")
-}
-let originError = CGConfigureDisplayOrigin(config, display.displayID, x, y)
-guard originError == .success else {
-    let cancelError = CGCancelDisplayConfiguration(config)
-    if cancelError != .success {
-        fputs("nao consegui cancelar o posicionamento: Quartz \(cancelError.rawValue)\n", stderr)
+
+/// Uma tentativa de pôr o monitor à direita de tudo. Devolve nil se deu certo, ou o motivo de não ter dado.
+func placeAtRight() -> String? {
+    var total: UInt32 = 0
+    CGGetActiveDisplayList(0, nil, &total)
+    var ids = [CGDirectDisplayID](repeating: 0, count: Int(total))
+    CGGetActiveDisplayList(total, &ids, &total)
+    let rightEdge = ids.prefix(Int(total)).filter { $0 != display.displayID }
+        .map { CGDisplayBounds($0).maxX }.max() ?? mainBounds.maxX
+    guard let x = Int32(exactly: rightEdge), let y = Int32(exactly: mainBounds.minY) else {
+        return "coordenadas do monitor principal fora do intervalo do Quartz"
     }
-    fail("nao consegui posicionar o monitor virtual: Quartz \(originError.rawValue)")
+    var configuration: CGDisplayConfigRef?
+    let beginError = CGBeginDisplayConfiguration(&configuration)
+    guard beginError == .success, let config = configuration else {
+        return "nao consegui iniciar o posicionamento do monitor virtual: Quartz \(beginError.rawValue)"
+    }
+    let originError = CGConfigureDisplayOrigin(config, display.displayID, x, y)
+    guard originError == .success else {
+        _ = CGCancelDisplayConfiguration(config)
+        return "nao consegui posicionar o monitor virtual: Quartz \(originError.rawValue)"
+    }
+    // Complete consome a referencia da transacao, inclusive quando devolve erro.
+    let completeError = CGCompleteDisplayConfiguration(config, .forSession)
+    guard completeError == .success else {
+        return "nao consegui aplicar o posicionamento do monitor virtual: Quartz \(completeError.rawValue)"
+    }
+    let positioned = CGDisplayBounds(display.displayID)
+    guard positioned.minX == rightEdge, positioned.minY == mainBounds.minY else {
+        return "o macOS nao posicionou o monitor virtual a direita das outras telas"
+    }
+    return nil
 }
-// Complete consome a referencia da transacao, inclusive quando devolve erro.
-let completeError = CGCompleteDisplayConfiguration(config, .forSession)
-guard completeError == .success else {
-    fail("nao consegui aplicar o posicionamento do monitor virtual: Quartz \(completeError.rawValue)")
+
+// Dois auxiliares ligando juntos disputam o "à direita de tudo": quem perde tenta de novo, com a lista de telas já
+// atualizada, antes de desistir.
+var placementError = placeAtRight()
+var attempt = 1
+while placementError != nil && attempt < 6 {
+    usleep(300_000)
+    placementError = placeAtRight()
+    attempt += 1
 }
-let positioned = CGDisplayBounds(display.displayID)
-guard positioned.minX == rightEdge, positioned.minY == mainBounds.minY else {
-    fail("o macOS nao posicionou o monitor virtual a direita das outras telas")
-}
+if let message = placementError { fail(message) }
 
 print("DISPLAY_ID \(display.displayID)")
 fflush(stdout)
