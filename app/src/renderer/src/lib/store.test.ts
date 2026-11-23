@@ -13,6 +13,7 @@ const current: Snapshot = {
     encoding: 'auto',
     codec: 'h264',
     autostart: false,
+    autoReport: false,
     deviceName: 'Desktop',
     extendSide: 'right',
     mouseSides: {},

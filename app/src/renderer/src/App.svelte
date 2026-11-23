@@ -168,7 +168,11 @@
           {:else if state.screen === 'mouse-active'}
             <MouseActive device={state.device} role={state.role} />
           {:else if state.screen === 'error'}
-            <ErrorScreen error={state.error} mode={state.mode} />
+            <ErrorScreen
+              error={state.error}
+              mode={state.mode}
+              autoReport={$snapshot.settings.autoReport}
+            />
           {/if}
         </main>
       {/key}

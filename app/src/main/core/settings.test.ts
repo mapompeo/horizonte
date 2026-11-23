@@ -27,6 +27,7 @@ describe('parseSettings', () => {
       encoding: 'gpu',
       codec: 'hevc',
       autostart: false,
+      autoReport: true,
       deviceName: 'Notebook',
       extendSide: 'left',
       mouseSides: { Trabalho: 'left' },
@@ -241,6 +242,9 @@ describe('tema', () => {
     expect(parseSettings({ theme: 'dark' }).theme).toBe('dark')
     expect(parseSettings({ theme: 'light' }).theme).toBe('light')
     expect(parseSettings({ theme: 'roxo' }).theme).toBe('system')
+    expect(parseSettings({}).autoReport).toBe(false)
+    expect(parseSettings({ autoReport: true }).autoReport).toBe(true)
+    expect(parseSettings({ autoReport: 'sim' }).autoReport).toBe(false)
     expect(parseSettings({ language: 'es' }).language).toBe('es')
     expect(parseSettings({ language: 'fr' }).language).toBe('system')
   })

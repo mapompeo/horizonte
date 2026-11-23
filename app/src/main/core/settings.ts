@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   encoding: 'auto',
   codec: 'h264',
   autostart: true,
+  autoReport: false,
   deviceName: 'Dispositivo',
   extendSide: 'right',
   mouseSides: {},
@@ -177,6 +178,8 @@ export function parseSettings(raw: unknown, defaultName = DEFAULT_SETTINGS.devic
     encoding: oneOf<Encoding>(input.encoding, ['auto', 'gpu', 'cpu'], DEFAULT_SETTINGS.encoding),
     codec: oneOf<Codec>(input.codec, ['h264', 'hevc', 'av1'], DEFAULT_SETTINGS.codec),
     autostart: typeof input.autostart === 'boolean' ? input.autostart : DEFAULT_SETTINGS.autostart,
+    autoReport:
+      typeof input.autoReport === 'boolean' ? input.autoReport : DEFAULT_SETTINGS.autoReport,
     theme: input.theme === 'light' || input.theme === 'dark' ? input.theme : 'system',
     language: oneOf<Language>(input.language, ['system', 'pt', 'en', 'es'], 'system'),
     lastHost:

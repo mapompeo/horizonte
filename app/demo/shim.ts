@@ -29,6 +29,7 @@ export async function installDemo(options: { initial?: AppState; auto: boolean }
     ...DEFAULT_SETTINGS,
     deviceName: 'Desktop',
     autostart: false,
+    autoReport: false,
     mode: 'send'
   }
   const store: SettingsStore = {

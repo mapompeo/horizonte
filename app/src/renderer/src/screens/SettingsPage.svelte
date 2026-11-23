@@ -119,6 +119,39 @@
       </div>
     </section>
 
+    <section class="group" aria-labelledby="g-errors">
+      <h2 class="group-label" id="g-errors">
+        {L({ pt: 'Erros', en: 'Errors', es: 'Errores' })}
+      </h2>
+      <div class="card">
+        <div class="row">
+          <span
+            >{L({
+              pt: 'Enviar erros automaticamente',
+              en: 'Send errors automatically',
+              es: 'Enviar errores automáticamente'
+            })}</span
+          >
+          <Toggle
+            label={L({
+              pt: 'Enviar erros automaticamente',
+              en: 'Send errors automatically',
+              es: 'Enviar errores automáticamente'
+            })}
+            checked={settings.autoReport}
+            onChange={(checked) => patchSettings({ autoReport: checked })}
+          />
+        </div>
+        <p class="row-note">
+          {L({
+            pt: 'Quando algo falha, o relatório vai sozinho para a gente corrigir, sem seu nome, sua pasta pessoal nem o fim dos IPs. No máximo 3 por dia.',
+            en: 'When something fails, the report is sent by itself so we can fix it, without your name, home folder or the end of IP addresses. At most 3 a day.',
+            es: 'Cuando algo falla, el informe se envía solo para que lo corrijamos, sin tu nombre, tu carpeta personal ni el final de las IP. Máximo 3 por día.'
+          })}
+        </p>
+      </div>
+    </section>
+
     <section class="group" aria-labelledby="g-quality">
       <h2 class="group-label" id="g-quality">{L({ pt: 'Imagem', en: 'Picture', es: 'Imagen' })}</h2>
       <div class="card">

@@ -28,6 +28,7 @@ O Horizonte não manda dados para fora da rede local, a não ser nestes casos:
   telas e o final do registro do app, para o site do Horizonte, que abre uma issue pública no GitHub. Antes de sair do
   computador, o texto perde a pasta pessoal, o nome do computador, do usuário e dos aparelhos, as senhas conhecidas e o
   fim dos IPs.
+- **Envio automático de erros:** só se a pessoa ligar em Ajustes › Erros (vem desligado). Manda o mesmo relatório do botão quando uma tela de erro aparece, com o limite de um por código por dia e três por dia.
 - **Instalar o monitor virtual (Windows):** baixa o driver da página de versões dele no GitHub, na primeira tela
   estendida, com a permissão da pessoa.
 

@@ -318,6 +318,12 @@ try {
         throw new Error('os Ajustes não mostram o que mudou')
       await app.ev(`document.querySelector('details.changes').scrollIntoView({ block: 'center' })`)
       await app.shot('04b-o-que-mudou')
+      // O envio automático de erros nasce desligado (só liga quem quiser) e fica ligado depois.
+      const auto = `document.querySelector('[role=switch][aria-label="Enviar erros automaticamente"]')?.getAttribute('aria-checked')`
+      if ((await app.ev(auto)) !== 'false')
+        throw new Error('o envio automático devia nascer desligado')
+      await app.click(/Enviar erros automaticamente/)
+      await app.until(`(${auto}) === 'true'`, 'ligar o envio automático de erros')
       await app.click(/Desinstalar Horizonte/)
       await app.waitText(/não foi instalado por um instalador/)
       await app.shot('04-ajustes')
@@ -345,6 +351,10 @@ try {
       await app.waitText(/Fluidez/)
       if ((await app.pressed('120 fps')) !== 'true') throw new Error('a fluidez voltou ao padrão')
       if ((await app.pressed('Escuro')) !== 'true') throw new Error('o tema voltou ao padrão')
+      const auto = await app.ev(
+        `document.querySelector('[role=switch][aria-label="Enviar erros automaticamente"]')?.getAttribute('aria-checked')`
+      )
+      if (auto !== 'true') throw new Error('o envio automático de erros não ficou ligado')
       await app.click(/^60 fps$/)
       await app.click(/^Sistema$/)
       await app.click(/Voltar/)

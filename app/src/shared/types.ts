@@ -151,6 +151,8 @@ export interface Settings {
   encoding: Encoding
   codec: Codec
   autostart: boolean
+  /** Manda o relatório de cada erro sozinho para as Issues (desligado até a pessoa ligar). */
+  autoReport: boolean
   deviceName: string
   extendSide: ExtendSide
   /** Modo Mouse: de que lado fica cada outro computador (pelo nome), para o mouse passar pela borda certa. */

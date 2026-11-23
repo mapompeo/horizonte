@@ -86,7 +86,7 @@ No Ubuntu e no Debian, prefira o `.deb`: o `.AppImage` precisa do FUSE 2, que n�
 
 **O celular não abre a página do QR:** ele precisa estar no mesmo Wi-Fi do computador (não nos dados móveis) e fora de rede de visitantes, que isola um aparelho do outro. No Windows, a rede precisa estar como privada: o app mostra o botão para isso.
 
-Em **Ajustes › Enviar diagnóstico**. Um clique, sem conta: vão a versão, o sistema, a placa de vídeo, as telas e o final do registro do app (`app.log`, `navegador.log`, `updater.log`), sem a pasta pessoal, o nome do computador, do usuário e dos aparelhos nem o fim dos IPs. O relatório vira uma issue pública no GitHub; sem internet, ele fica salvo na Área de Trabalho para mandar por outro caminho.
+Em **Ajustes › Enviar diagnóstico**. Um clique, sem conta: vão a versão, o sistema, a placa de vídeo, as telas e o final do registro do app (`app.log`, `navegador.log`, `updater.log`), sem a pasta pessoal, o nome do computador, do usuário e dos aparelhos nem o fim dos IPs. O relatório vira uma issue pública no GitHub; sem internet, ele fica salvo na Área de Trabalho para mandar por outro caminho. Em **Ajustes › Erros** dá para ligar o **envio automático de erros**: desligado por padrão, manda o mesmo relatório quando uma tela de erro aparece, no máximo um por código de erro por dia e três por dia; erros repetidos de várias pessoas viram comentário numa issue só.
 
 ## Apoie o projeto
 

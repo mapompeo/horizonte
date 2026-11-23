@@ -1,7 +1,7 @@
 <script lang="ts">
   import { L } from '../lib/i18n'
   import type { AppError, Mode } from '../../../shared/types'
-  import { chooseMode, send } from '../lib/actions'
+  import { chooseMode, patchSettings, send } from '../lib/actions'
   import ReportButton from '../components/ReportButton.svelte'
   import ErrorCode from '../components/ErrorCode.svelte'
   import { errorFix } from '../../../shared/errors'
@@ -9,9 +9,11 @@
   interface Props {
     error: AppError
     mode: Mode
+    /** O envio automático de erros está ligado. */
+    autoReport?: boolean
   }
 
-  let { error, mode }: Props = $props()
+  let { error, mode, autoReport = false }: Props = $props()
 </script>
 
 <div class="badge badge-danger" aria-hidden="true">
@@ -40,6 +42,15 @@
     >{L({ pt: 'Tentar de novo', en: 'Try again', es: 'Intentar de nuevo' })}</button
   >
   <ReportButton class="link" />
+  {#if !autoReport}
+    <button class="link" onclick={() => patchSettings({ autoReport: true })}
+      >{L({
+        pt: 'Enviar erros automaticamente daqui para frente',
+        en: 'Send errors automatically from now on',
+        es: 'Enviar errores automáticamente de ahora en adelante'
+      })}</button
+    >
+  {/if}
   {#if mode !== 'send'}
     <button class="link" onclick={() => chooseMode('send')}
       >{L({ pt: 'Voltar para Enviar', en: 'Back to Send', es: 'Volver a Enviar' })}</button

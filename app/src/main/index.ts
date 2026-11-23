@@ -91,6 +91,7 @@ import { createBrowserAccess, isLocalPageUrl } from './web/browser'
 import { showShortcut } from '../shared/shortcut'
 import { L } from '../shared/lang'
 import { killChildren } from './core/children'
+import { createAutoReporter } from './core/auto-report'
 import { buildReportFile, reportFileName } from './core/report-file'
 import { errorDialogText, errorHelpUrl, errorTitle, isErrorCode } from '../shared/errors'
 
@@ -712,17 +713,20 @@ async function boot(): Promise<void> {
   )
   // Um botão só: manda o relatório para as Issues do GitHub; sem internet (ou o site fora), salva o mesmo arquivo na
   // Área de Trabalho e mostra ele, para a pessoa mandar por outro caminho.
+  const postReport = async (body: Record<string, unknown>): Promise<boolean> =>
+    (
+      await fetch(DIAGNOSTIC_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(20_000)
+      }).catch(() => null)
+    )?.ok === true
+  // Um botão só: manda o relatório para as Issues do GitHub; sem internet (ou o site fora), salva o mesmo arquivo na
+  // Área de Trabalho e mostra ele, para a pessoa mandar por outro caminho.
   const reports = createDiagnosticReporter({
     text: () => makeReport(),
-    post: async (texto) =>
-      (
-        await fetch(DIAGNOSTIC_URL, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ texto }),
-          signal: AbortSignal.timeout(20_000)
-        }).catch(() => null)
-      )?.ok === true,
+    post: (texto) => postReport({ texto }),
     save: async (texto) => {
       const file = join(app.getPath('desktop'), reportFileName())
       writeFileSync(file, texto)
@@ -730,6 +734,37 @@ async function boot(): Promise<void> {
     }
   })
   ipcMain.handle(CHANNELS.reportDiagnostic, () => reports.send())
+  // Envio automático (só se a pessoa ligou nos Ajustes): cada tela de erro manda o relatório uma vez por dia.
+  const autoFile = join(app.getPath('userData'), 'auto-report.json')
+  const autoReporter = createAutoReporter({
+    enabled: () => controller.getSnapshot().settings.autoReport,
+    send: async (code) => postReport({ texto: await makeReport(), automatico: true, codigo: code }),
+    now: () => Date.now(),
+    load: () => {
+      try {
+        const raw = JSON.parse(readFileSync(autoFile, 'utf8')) as Record<string, unknown>
+        return Object.fromEntries(
+          Object.entries(raw).filter(([, at]) => typeof at === 'number')
+        ) as Record<string, number>
+      } catch {
+        return {}
+      }
+    },
+    save: (sent) => {
+      try {
+        writeFileSync(autoFile, JSON.stringify(sent))
+      } catch {
+        // Sem como gravar: o limite diário vale só até fechar o app.
+      }
+    }
+  })
+  let lastAuto = ''
+  controller.subscribe(({ state, settings }) => {
+    const key = state.screen === 'error' ? `${state.error.code}:${settings.autoReport}` : ''
+    if (key === lastAuto) return
+    lastAuto = key
+    if (state.screen === 'error') void autoReporter.onError(state.error.code)
+  })
   // Só texto curto (o link da página): nada de conteúdo grande vindo da janela.
   ipcMain.handle(CHANNELS.copyText, (_event, text: unknown) => {
     if (typeof text === 'string' && text.length <= 2000) clipboard.writeText(text)

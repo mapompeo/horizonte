@@ -16,6 +16,11 @@ export const CHANGELOG: Change[] = [
     date: '2026-11-23',
     items: [
       {
+        pt: 'Ajustes › Erros: envio automático de erros, desligado até você ligar.',
+        en: 'Settings › Errors: automatic error reports, off until you turn them on.',
+        es: 'Ajustes › Errores: envío automático de errores, apagado hasta que lo actives.'
+      },
+      {
         pt: 'Receber a tela de outro computador e Compartilhar o mouse ficam à vista na tela de Enviar.',
         en: 'Receive another computer’s screen and Share the mouse are now on the Send screen.',
         es: 'Recibir la pantalla de otra computadora y Compartir el mouse están en la pantalla de Enviar.'
