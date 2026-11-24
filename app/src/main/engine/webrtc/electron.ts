@@ -79,6 +79,8 @@ const reportListeners = new Map<number, (report: MotorReport) => void>()
 const inputTargets = new Map<number, (raw: string) => void>()
 /** As medidas de cada janela que envia, para quem pediu (a sessão do aparelho). */
 const statsTargets = new Map<number, (stats: MotorStats) => void>()
+/** Quem avisa que a janela de captura falhou (o erro que ela relata ou o travamento dela). */
+const failureTargets = new Map<number, (error: Error) => void>()
 let ipcWired = false
 
 /** Liga o IPC das janelas do motor (uma vez por processo). */
@@ -152,11 +154,18 @@ export function listenReports(
   let identity: { id: string; fp: string } | null = null
   let codecs: string[] | null = null
   const waiters: (() => void)[] = []
+  contents.once('render-process-gone', (_event, details) =>
+    failureTargets.get(contents.id)?.(
+      new Error(`A janela de transmissão parou (${details.reason}).`)
+    )
+  )
   reportListeners.set(contents.id, (report) => {
     if (report.type === 'identity') identity = { id: report.id, fp: report.fp }
     else if (report.type === 'ready') codecs = report.codecs
-    else if (report.type === 'error') log('erro na janela:', report.message)
-    else if (report.type === 'stats') statsTargets.get(contents.id)?.(report.stats)
+    else if (report.type === 'error') {
+      log('erro na janela:', report.message)
+      failureTargets.get(contents.id)?.(new Error(report.message))
+    } else if (report.type === 'stats') statsTargets.get(contents.id)?.(report.stats)
     onReport(report)
     for (const wake of waiters.splice(0)) wake()
   })
@@ -206,6 +215,7 @@ export function windowMedia(
       signalTargets.set(id, send)
       if (hooks.onInput) inputTargets.set(id, hooks.onInput)
       if (hooks.onStats) statsTargets.set(id, hooks.onStats)
+      if (hooks.onError) failureTargets.set(id, hooks.onError)
       void Promise.all([hooks.beforeStart?.(want), ready])
         .then(([extra]) => extra)
         .then(
@@ -223,6 +233,7 @@ export function windowMedia(
       signalTargets.delete(id)
       inputTargets.delete(id)
       statsTargets.delete(id)
+      failureTargets.delete(id)
       push({ t: 'stop' })
       hooks.afterStop?.()
     }

@@ -16,6 +16,16 @@ export const CHANGELOG: Change[] = [
     date: '2026-11-24',
     items: [
       {
+        pt: 'Erros mais específicos: mais de vinte situações agora têm código próprio, com o que fazer.',
+        en: 'More specific errors: many more situations now have their own code and what to do.',
+        es: 'Errores más específicos: muchas más situaciones tienen su propio código y qué hacer.'
+      },
+      {
+        pt: 'Se a captura da tela falhar, o Horizonte mostra o motivo em vez de ficar parado.',
+        en: 'If screen capture fails, Horizonte shows why instead of just sitting there.',
+        es: 'Si la captura de pantalla falla, Horizonte muestra el motivo en vez de quedarse parado.'
+      },
+      {
         pt: 'Windows e Mac: corrigido o erro 608, em que a tela estendida conectava mas a imagem não chegava.',
         en: 'Windows and Mac: fixed error 608, where the extended screen connected but no picture arrived.',
         es: 'Windows y Mac: corregido el error 608, donde la pantalla extendida conectaba pero no llegaba imagen.'

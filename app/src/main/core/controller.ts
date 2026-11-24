@@ -319,6 +319,7 @@ export async function createController({
     )
       trust({ ...known, screen: size })
   })
+  engine.onSendFailed?.((cause) => fail('capture', cause))
   engine.onClientDisconnected((fingerprint) => {
     if (fingerprint) delete links[fingerprint]
     else links = {}

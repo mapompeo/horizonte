@@ -38,6 +38,7 @@ export class FakeEngine implements EnginePort {
   private connected = emitter<[string, ConnectedPeer?]>()
   private disconnected = emitter<[]>()
   private link = emitter<[string, LinkQuality | null]>()
+  private sendFailed = emitter<[string]>()
   private ended = emitter<[]>()
 
   constructor(private readonly delayMs = 0) {}
@@ -143,6 +144,14 @@ export class FakeEngine implements EnginePort {
 
   onLink(callback: (fingerprint: string, quality: LinkQuality | null) => void): () => void {
     return this.link.on(callback)
+  }
+
+  onSendFailed(callback: (cause: string) => void): () => void {
+    return this.sendFailed.on(callback)
+  }
+
+  simulateSendFailed(cause: string): void {
+    this.sendFailed.emit(cause)
   }
 
   simulateLink(fingerprint: string, quality: LinkQuality | null): void {

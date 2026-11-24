@@ -35,6 +35,8 @@ export function createReceiver(
   document.body.append(panel)
 
   let pc: RTCPeerConnection | null = null
+  /** A conexão chegou a ficar de pé nesta sessão? */
+  let linked = false
   let ice: ReturnType<typeof iceQueue> | null = null
   let statsTimer: ReturnType<typeof setInterval> | null = null
   let firstFrameSent = false
@@ -122,15 +124,21 @@ export function createReceiver(
 
   function start(): void {
     stop()
+    linked = false
     const send = (message: MediaMessage): void => api.signal(message)
     pc = createPeer(identity.certificate)
     ice = iceQueue(pc)
     forwardIce(pc, send)
     pc.addEventListener('connectionstatechange', () => {
       console.log('[motor] conexão:', pc?.connectionState)
+      if (pc?.connectionState === 'connected') linked = true
       // Wi-Fi caiu de vez: avisa, para a página do navegador reconectar em vez de deixar a imagem congelada.
+      // Sem nunca ter conectado, o problema é o caminho de rede entre os aparelhos, não o Wi-Fi caindo.
       if (pc?.connectionState === 'failed')
-        api.report({ type: 'error', message: 'A conexão caiu.' })
+        api.report({
+          type: 'error',
+          message: linked ? 'A conexão caiu.' : 'Não achei caminho de rede até o outro aparelho.'
+        })
     })
     pc.addEventListener('datachannel', ({ channel }) => {
       if (channel.label === INPUT || channel.label === INPUT_MOVES)

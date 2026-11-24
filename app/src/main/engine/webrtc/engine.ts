@@ -153,6 +153,7 @@ export class WebRtcEngine implements EnginePort {
   private readonly pairCancelled = listeners<[string]>()
   private readonly clientConnected = listeners<[string, ConnectedPeer]>()
   private readonly clientDisconnected = listeners<[string | undefined]>()
+  private readonly sendFailed = listeners<[string]>()
   private readonly linkChanged = listeners<[string, LinkQuality | null]>()
   private readonly streamEnded = listeners<[]>()
 
@@ -331,6 +332,7 @@ export class WebRtcEngine implements EnginePort {
       },
       onError: (error) => {
         this.log('tela estendida:', error.message)
+        this.sendFailed.emit(error.message)
         viewer.session?.end('error')
       },
       onInput: (raw) => this.input(peer.fp, raw),
@@ -519,6 +521,10 @@ export class WebRtcEngine implements EnginePort {
       if (viewer.session) await this.slot(viewer.slot)?.screen.place?.(placement)
     }
   }
+  onSendFailed(callback: (cause: string) => void): () => void {
+    return this.sendFailed.on(callback)
+  }
+
   onClientDisconnected(callback: (fingerprint?: string) => void): () => void {
     return this.clientDisconnected.on(callback)
   }

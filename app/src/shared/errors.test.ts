@@ -43,6 +43,35 @@ describe('catálogo de erros', () => {
     expect(errorCodeFor(null, 'algo novo')).toBe('100')
   })
 
+  it('cada causa conhecida da captura, da conexão e do mouse tem o seu código', () => {
+    const cases: [string, string][] = [
+      ['Permission denied', '205'],
+      ['NotAllowedError: Permission denied by system', '205'],
+      ['NotReadableError: Could not start video source', '206'],
+      ['EncodingError: encoder initialization failed', '207'],
+      ['A janela de transmissão parou (crashed).', '208'],
+      ['ENOMEM: not enough memory', '108'],
+      ['O firewall (ufw) está ligado e não foi liberado.', '109'],
+      ['Os dois aparelhos estão com versões diferentes do Horizonte. Atualize os dois.', '310'],
+      ['O outro aparelho já está mostrando a tela em outro lugar.', '311'],
+      ['O outro aparelho não permitiu a conexão.', '312'],
+      ['10.0.0.2 não está esperando conexão. Escolha Enviar no outro aparelho.', '309'],
+      ['Não achei caminho de rede até o outro aparelho.', '307'],
+      ['A conexão caiu.', '308'],
+      ['Arraste um computador para perto deste.', '404'],
+      ['O arquivo chegou incompleto.', '405'],
+      ['Mesa ainda não consegue compartilhar o mouse.', '406'],
+      [
+        'Nenhum computador respondeu. Confira se o Horizonte está aberto no modo Mouse neles.',
+        '407'
+      ]
+    ]
+    for (const [cause, code] of cases) expect(errorCodeFor('connect', cause), cause).toBe(code)
+    // Erro de arquivo com "permission denied" continua sendo o de arquivo, não o da captura.
+    expect(errorCodeFor('prepare', "EACCES: permission denied, open 'a'")).toBe('103')
+    expect(errorCodeFor('capture', 'algo novo')).toBe('206')
+  })
+
   it('só código do catálogo passa como código', () => {
     expect(isErrorCode('201')).toBe(true)
     for (const bad of ['999', 'HZ-201', 'hz-201', '20', 'toString', '__proto__', 42, null]) {

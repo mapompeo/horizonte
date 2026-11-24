@@ -219,6 +219,17 @@ describe('erros', () => {
   })
 })
 
+describe('falha da captura da tela', () => {
+  it('mostra o erro com o código da causa, e só o primeiro vale', async () => {
+    const { controller, engine } = await setup({ screen: 'ready', mode: 'send' })
+    engine.simulateSendFailed('Permission denied')
+    expect(screen(controller)).toBe('error')
+    engine.simulateSendFailed('NotReadableError')
+    const state = controller.getSnapshot().state
+    expect(state.screen === 'error' && state.error.code).toBe('205')
+  })
+})
+
 describe('eventos no estado errado', () => {
   it('aprovar duas vezes avisa o motor uma vez só', async () => {
     const { controller, engine } = await setup({

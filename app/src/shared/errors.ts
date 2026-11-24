@@ -115,6 +115,30 @@ export const ERRORS = {
       es: 'Reinicia la computadora y abre Horizonte de nuevo. Si continúa, instala la versión más reciente desde el sitio.'
     }
   },
+  '108': {
+    title: {
+      pt: 'O computador ficou sem memória',
+      en: 'The computer ran out of memory',
+      es: 'La computadora se quedó sin memoria'
+    },
+    fix: {
+      pt: 'Feche outros programas e tente de novo.',
+      en: 'Close other programs and try again.',
+      es: 'Cierra otros programas e inténtalo de nuevo.'
+    }
+  },
+  '109': {
+    title: {
+      pt: 'O firewall bloqueou o Horizonte',
+      en: 'The firewall blocked Horizonte',
+      es: 'El firewall bloqueó Horizonte'
+    },
+    fix: {
+      pt: 'Toque em Liberar no aviso do Horizonte e confirme a senha do sistema.',
+      en: 'Tap Allow on the Horizonte notice and confirm the system password.',
+      es: 'Toca Permitir en el aviso de Horizonte y confirma la contraseña del sistema.'
+    }
+  },
   // 2xx: a tela estendida
   '201': {
     title: {
@@ -163,6 +187,50 @@ export const ERRORS = {
       en: 'Allow Screen Recording for Horizonte in the system settings and try again.',
       es: 'Permite la Grabación de pantalla para Horizonte en los ajustes del sistema e inténtalo de nuevo.'
     }
+  },
+  '205': {
+    title: {
+      pt: 'O sistema negou a captura da tela',
+      en: 'The system denied the screen capture',
+      es: 'El sistema negó la captura de la pantalla'
+    },
+    fix: {
+      pt: 'Libere a gravação de tela para o Horizonte nos ajustes do sistema e abra o Horizonte de novo.',
+      en: 'Allow screen recording for Horizonte in the system settings and open Horizonte again.',
+      es: 'Permite la grabación de pantalla para Horizonte en los ajustes del sistema y abre Horizonte de nuevo.'
+    }
+  },
+  '206': {
+    title: {
+      pt: 'A captura da tela não começou',
+      en: 'The screen capture did not start',
+      es: 'La captura de la pantalla no comenzó'
+    },
+    fix: {
+      pt: 'Feche programas que gravam a tela e tente de novo. Se continuar, reinicie o computador.',
+      en: 'Close programs that record the screen and try again. If it continues, restart the computer.',
+      es: 'Cierra los programas que graban la pantalla e inténtalo de nuevo. Si continúa, reinicia la computadora.'
+    }
+  },
+  '207': {
+    title: {
+      pt: 'O vídeo da tela não pôde ser codificado',
+      en: 'The screen video could not be encoded',
+      es: 'El video de la pantalla no se pudo codificar'
+    },
+    fix: {
+      pt: 'Atualize o driver de vídeo e o Horizonte, e tente de novo.',
+      en: 'Update the video driver and Horizonte, and try again.',
+      es: 'Actualiza el controlador de video y Horizonte, e inténtalo de nuevo.'
+    }
+  },
+  '208': {
+    title: {
+      pt: 'A janela de transmissão parou',
+      en: 'The streaming window stopped',
+      es: 'La ventana de transmisión se detuvo'
+    },
+    fix: RESTART
   },
   // 3xx: a conexão entre os aparelhos
   '301': {
@@ -213,6 +281,78 @@ export const ERRORS = {
     },
     fix: RESTART
   },
+  '307': {
+    title: {
+      pt: 'Não achei caminho de rede até o outro aparelho',
+      en: 'No network path to the other device was found',
+      es: 'No se encontró camino de red hasta el otro dispositivo'
+    },
+    fix: {
+      pt: 'Conecte os dois na mesma rede Wi-Fi e desligue VPN e rede de convidados.',
+      en: 'Connect both to the same Wi-Fi network and turn off VPNs and guest networks.',
+      es: 'Conecta los dos a la misma red Wi-Fi y apaga las VPN y la red de invitados.'
+    }
+  },
+  '308': {
+    title: {
+      pt: 'A conexão caiu no meio do uso',
+      en: 'The connection dropped during use',
+      es: 'La conexión se cayó en pleno uso'
+    },
+    fix: {
+      pt: 'Chegue mais perto do roteador Wi-Fi e conecte de novo.',
+      en: 'Move closer to the Wi-Fi router and connect again.',
+      es: 'Acércate al router Wi-Fi y conéctate de nuevo.'
+    }
+  },
+  '309': {
+    title: {
+      pt: 'O outro aparelho não está esperando conexão',
+      en: 'The other device is not waiting for a connection',
+      es: 'El otro dispositivo no está esperando conexión'
+    },
+    fix: {
+      pt: 'Abra o Horizonte no outro aparelho e escolha Enviar.',
+      en: 'Open Horizonte on the other device and choose Send.',
+      es: 'Abre Horizonte en el otro dispositivo y elige Enviar.'
+    }
+  },
+  '310': {
+    title: {
+      pt: 'Os aparelhos têm versões diferentes do Horizonte',
+      en: 'The devices have different versions of Horizonte',
+      es: 'Los dispositivos tienen versiones distintas de Horizonte'
+    },
+    fix: {
+      pt: 'Atualize o Horizonte nos dois aparelhos.',
+      en: 'Update Horizonte on both devices.',
+      es: 'Actualiza Horizonte en los dos dispositivos.'
+    }
+  },
+  '311': {
+    title: {
+      pt: 'O outro aparelho já está ocupado',
+      en: 'The other device is already busy',
+      es: 'El otro dispositivo ya está ocupado'
+    },
+    fix: {
+      pt: 'Espere ele terminar de mostrar a tela em outro lugar e conecte de novo.',
+      en: 'Wait for it to finish showing the screen elsewhere and connect again.',
+      es: 'Espera a que termine de mostrar la pantalla en otro lugar y conéctate de nuevo.'
+    }
+  },
+  '312': {
+    title: {
+      pt: 'O outro aparelho não permitiu a conexão',
+      en: 'The other device did not allow the connection',
+      es: 'El otro dispositivo no permitió la conexión'
+    },
+    fix: {
+      pt: 'Conecte de novo e escolha Permitir no outro aparelho.',
+      en: 'Connect again and choose Allow on the other device.',
+      es: 'Conéctate de nuevo y elige Permitir en el otro dispositivo.'
+    }
+  },
   // 4xx: o mouse compartilhado
   '401': {
     title: {
@@ -245,6 +385,54 @@ export const ERRORS = {
       es: 'No se pudo compartir el mouse'
     },
     fix: SAME_NETWORK
+  },
+  '404': {
+    title: {
+      pt: 'Nenhum computador está perto deste',
+      en: 'No computer is placed next to this one',
+      es: 'Ninguna computadora está junto a esta'
+    },
+    fix: {
+      pt: 'Arraste um computador para perto deste e tente de novo.',
+      en: 'Drag a computer next to this one and try again.',
+      es: 'Arrastra una computadora junto a esta e inténtalo de nuevo.'
+    }
+  },
+  '405': {
+    title: {
+      pt: 'O arquivo copiado chegou incompleto',
+      en: 'The copied file arrived incomplete',
+      es: 'El archivo copiado llegó incompleto'
+    },
+    fix: {
+      pt: 'Copie o arquivo de novo.',
+      en: 'Copy the file again.',
+      es: 'Copia el archivo de nuevo.'
+    }
+  },
+  '406': {
+    title: {
+      pt: 'O outro computador ainda não compartilha o mouse',
+      en: 'The other computer cannot share the mouse yet',
+      es: 'La otra computadora aún no comparte el mouse'
+    },
+    fix: {
+      pt: 'Atualize o Horizonte no outro computador.',
+      en: 'Update Horizonte on the other computer.',
+      es: 'Actualiza Horizonte en la otra computadora.'
+    }
+  },
+  '407': {
+    title: {
+      pt: 'Nenhum computador respondeu ao mouse',
+      en: 'No computer answered the mouse request',
+      es: 'Ninguna computadora respondió al mouse'
+    },
+    fix: {
+      pt: 'Abra o Horizonte no modo Mouse nos outros computadores e tente de novo.',
+      en: 'Open Horizonte in Mouse mode on the other computers and try again.',
+      es: 'Abre Horizonte en modo Mouse en las otras computadoras e inténtalo de nuevo.'
+    }
   },
   // 5xx: atualizações
   '501': {
@@ -398,6 +586,7 @@ export type ErrorOp =
   | 'answer'
   | 'connect'
   | 'disconnect'
+  | 'capture'
   | 'mouse-unavailable'
   | 'mouse-start'
   | 'mouse-share'
@@ -409,6 +598,7 @@ const OP_CODE: Record<ErrorOp, ErrorCode> = {
   answer: '304',
   connect: '301',
   disconnect: '306',
+  capture: '206',
   'mouse-unavailable': '401',
   'mouse-start': '402',
   'mouse-share': '403',
@@ -424,11 +614,28 @@ const CAUSES: [RegExp, ErrorCode][] = [
   ],
   [/não tem como criar a tela estendida/i, '203'],
   [/nenhuma tela para capturar/i, '204'],
+  // A captura negada vem do navegador do motor (só "Permission denied"); a de arquivo vem com EACCES e o caminho.
+  [/NotAllowedError|(^|[:\s])permission denied\s*$/i, '205'],
+  [/NotReadableError|AbortError|NotFoundError|could not start video source/i, '206'],
+  [/EncodingError|OperationError|encoder|codec/i, '207'],
+  [/janela de transmissão parou|render-process-gone/i, '208'],
+  [/ENOMEM|out of memory|sem memória/i, '108'],
+  [/firewall|preferiu não liberar/i, '109'],
   [/EADDRINUSE|não deu para abrir a conexão/i, '102'],
   [/ENOSPC|disco cheio/i, '104'],
   [/EACCES|EPERM|EROFS|permission denied|sem permissão/i, '103'],
   [/pedido (já )?não está mais|não está mais esperando resposta/i, '305'],
+  [/versões diferentes/i, '310'],
+  [/já está mostrando a tela em outro lugar/i, '311'],
+  [/não permitiu a conexão/i, '312'],
+  [/não está esperando conexão|ECONNREFUSED/i, '309'],
+  [/não achei caminho de rede/i, '307'],
+  [/a conexão caiu/i, '308'],
   [/fechou a conexão/i, '303'],
+  [/arraste um computador/i, '404'],
+  [/chegou incompleto/i, '405'],
+  [/ainda não consegue compartilhar o mouse/i, '406'],
+  [/nenhum computador respondeu/i, '407'],
   [/não respondeu|não se apresentou a tempo/i, '302']
 ]
 
