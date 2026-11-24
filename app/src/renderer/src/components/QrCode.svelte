@@ -24,7 +24,8 @@
   })
 </script>
 
-<div class="qr" style="width: {size}px; height: {size}px">
+<!-- --quiet: a margem branca do código (2 módulos), em %: quem usa o QR como botão deixa só o código reagir. -->
+<div class="qr" style="width: {size}px; height: {size}px; --quiet: {(2 / (code.count + 4)) * 100}%">
   <svg
     viewBox="-2 -2 {code.count + 4} {code.count + 4}"
     shape-rendering="crispEdges"

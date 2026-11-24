@@ -534,8 +534,15 @@
     padding: 0;
     border: 0;
     background: none;
-    cursor: zoom-in;
     border-radius: inherit;
+    /* Só o código reage (cursor, crescer e clique): a borda branca em volta não. O botão continua sendo o alvo do
+       teclado, e o clique cai no próprio código. */
+    pointer-events: none;
+  }
+  .qr-zoom :global(.qr) {
+    pointer-events: auto;
+    cursor: zoom-in;
+    clip-path: inset(var(--quiet));
   }
   .qr-big {
     position: fixed;

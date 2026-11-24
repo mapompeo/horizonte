@@ -132,13 +132,20 @@ async function launch(label) {
       page.ev(
         `[...document.querySelectorAll('button[aria-pressed]')].find(b=>b.innerText.trim()===${JSON.stringify(text)})?.getAttribute('aria-pressed') ?? null`
       ),
+    // Janela escondida ou minimizada não roda animação (o QR ampliado ficaria preso na saída): traz para a frente.
+    front: () =>
+      send('Page.bringToFront').then(() =>
+        send('Emulation.setFocusEmulationEnabled', { enabled: true })
+      ),
     async until(expression, what, ms = 10_000) {
       const end = Date.now() + ms
       while (Date.now() < end) {
         if (await page.ev(expression)) return
         await wait(200)
       }
-      throw new Error(`não aconteceu em ${ms} ms: ${what}`)
+      throw new Error(
+        `não aconteceu em ${ms} ms: ${what} (janela: ${await page.ev('document.visibilityState')})`
+      )
     },
     click: (re) =>
       page.ev(
@@ -396,18 +403,30 @@ try {
       return copied ?? 'sem comando para ler a área de transferência'
     })
     await step('QR amplia ao clicar e volta no Esc e no toque', async () => {
-      await app.click(/Ampliar o QR code/)
-      await app.until(
-        `!!document.querySelector('.qr-big svg, .qr-big canvas, .qr-big img')`,
-        'o QR ampliar'
-      )
+      // Só o código reage: a borda branca do cartão não é alvo do cursor nem do clique.
+      const hit = await app.ev(`(() => {
+        const card = document.querySelector('.qr-card:not(.compact)')
+        const code = card.querySelector('.qr').getBoundingClientRect()
+        const edge = card.getBoundingClientRect()
+        const at = (x, y) => document.elementFromPoint(x, y)?.closest('.qr') !== null
+        return [
+          at(code.x + code.width / 2, code.y + code.height / 2),
+          at(edge.x + 3, edge.y + edge.height / 2),
+          at(code.x + 2, code.y + code.height / 2)
+        ].join()
+      })()`)
+      if (hit !== 'true,false,false')
+        throw new Error(`o QR devia reagir só no código (centro, borda, margem): ${hit}`)
+      await app.front()
+      // Cada ação se repete até o efeito aparecer: o aparelho de teste pode pedir conexão no meio e atrapalhar o tempo.
+      const open = `(!document.querySelector('.qr-big') && document.querySelector('.qr-zoom')?.click(), !!document.querySelector('.qr-big svg, .qr-big canvas, .qr-big img'))`
+      const esc = `(window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })), !document.querySelector('.qr-big'))`
+      const tap = `(document.querySelector('.qr-big')?.click(), !document.querySelector('.qr-big'))`
+      await app.until(open, 'o QR ampliar')
       await app.shot('07-qr-grande')
-      await app.ev(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
-      await app.until(`!document.querySelector('.qr-big')`, 'o Esc fechar o QR')
-      await app.click(/Ampliar o QR code/)
-      await app.until(`!!document.querySelector('.qr-big')`, 'o QR ampliar de novo')
-      await app.click(/Fechar o QR ampliado/)
-      await app.until(`!document.querySelector('.qr-big')`, 'o toque fechar o QR')
+      await app.until(esc, 'o Esc fechar o QR')
+      await app.until(open, 'o QR ampliar de novo')
+      await app.until(tap, 'o toque fechar o QR')
     })
   }
 } catch (error) {
