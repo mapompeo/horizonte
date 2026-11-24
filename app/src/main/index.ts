@@ -90,6 +90,7 @@ import { lanAddress } from './web/wire'
 import { createBrowserAccess, isLocalPageUrl } from './web/browser'
 import { showShortcut } from '../shared/shortcut'
 import { L } from '../shared/lang'
+import { allowsPermission } from './core/permissions'
 import { killChildren } from './core/children'
 import { createAutoReporter } from './core/auto-report'
 import { buildReportFile, reportFileName } from './core/report-file'
@@ -404,9 +405,14 @@ async function boot(): Promise<void> {
   // escolhido nos Ajustes vale assim que os ajustes carregam (`applyLanguage`).
   ;(globalThis as { __hzLang?: string }).__hzLang = app.getLocale()
   electronApp.setAppUserModelId('com.horizonte.app')
-  // O app não usa câmera, microfone, localização nem nada parecido: nega qualquer pedido.
-  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) =>
-    callback(false)
+  // O app não usa câmera, microfone, localização nem nada parecido: nega qualquer pedido. A única exceção é a captura
+  // da tela (o Chromium a pede como `media`), pedida pela janela de transmissão do próprio app (a página local motor.html): sem ela, no Windows e no
+  // Mac a captura falhava com "Permission denied" antes de chegar a escolher a tela, e nenhum aparelho recebia imagem.
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) =>
+    callback(allowsPermission(permission, webContents.getURL()))
+  )
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) =>
+    allowsPermission(permission, webContents?.getURL() ?? '')
   )
   app.on('browser-window-created', (_event, window) => optimizer.watchWindowShortcuts(window))
   // De qualquer lugar, traz a janela (ocupado por outro programa, o registro só falha e o resto segue).

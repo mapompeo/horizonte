@@ -10,6 +10,7 @@ import {
 } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { spawn } from '../../core/children'
+import { allowsPermission } from '../../core/permissions'
 import { existsSync } from 'node:fs'
 import { hostname } from 'node:os'
 import { join } from 'node:path'
@@ -233,12 +234,25 @@ export function windowMedia(
  * sem seletor; no Wayland, o sistema mostra o seletor dele (uma vez por execução).
  */
 export function handleCaptureRequests(target: () => number | null): void {
+  // A mesma política do app (negar tudo, menos a captura pedida pela janela de transmissão): o teste do envio de
+  // verdade (--motor-send) passa por ela também, e a CI pega de novo o "Permission denied" que travava o Windows.
+  electronSession.defaultSession.setPermissionRequestHandler((webContents, permission, callback) =>
+    callback(allowsPermission(permission, webContents.getURL()))
+  )
+  electronSession.defaultSession.setPermissionCheckHandler((webContents, permission) =>
+    allowsPermission(permission, webContents?.getURL() ?? '')
+  )
   electronSession.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    log('pedido de captura da tela')
     void desktopCapturer
       .getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
       .then((sources) => {
         const wanted = String(target() ?? screen.getPrimaryDisplay().id)
         const source = sources.find((s) => s.display_id === wanted) ?? sources[0]
+        // Quais telas o sistema oferece e qual foi escolhida: é o que falta saber quando a imagem não chega.
+        log(
+          `telas para capturar: ${sources.map((s) => `${s.name} (id ${s.display_id || '?'})`).join(', ') || 'nenhuma'}; pedida: ${wanted}`
+        )
         if (!source) throw new Error('Nenhuma tela para capturar.')
         log(`capturando ${source.name}`)
         callback({ video: source })

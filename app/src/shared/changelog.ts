@@ -13,6 +13,16 @@ export interface Change {
 
 export const CHANGELOG: Change[] = [
   {
+    date: '2026-11-24',
+    items: [
+      {
+        pt: 'Windows e Mac: corrigido o erro 608, em que a tela estendida conectava mas a imagem não chegava.',
+        en: 'Windows and Mac: fixed error 608, where the extended screen connected but no picture arrived.',
+        es: 'Windows y Mac: corregido el error 608, donde la pantalla extendida conectaba pero no llegaba imagen.'
+      }
+    ]
+  },
+  {
     date: '2026-11-23',
     items: [
       {
