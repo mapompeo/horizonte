@@ -14,11 +14,15 @@ const qrPath = (text) => {
       if (qr.isDark(row, col)) path += `M${col} ${row}h1v1h-1z`;
   return path;
 };
-test("comando do terminal é o do sistema de quem visita, e no Windows não aparece", async ({ browser }) => {
+test("comando do terminal é o do sistema de quem visita, e no Windows não aparece", async ({
+  browser,
+}) => {
   const agents = {
-    linux: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+    linux:
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
     mac: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
-    windows: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+    windows:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
   };
   for (const [os, userAgent] of Object.entries(agents)) {
     const context = await browser.newContext({ userAgent });
@@ -29,15 +33,21 @@ test("comando do terminal é o do sistema de quem visita, e no Windows não apar
     else {
       await expect(term).toBeVisible();
       await expect(page.locator("#term-cmd")).toHaveText(
-        os === "mac" ? "xattr -cr /Applications/Horizonte.app" : "sudo apt install ./horizonte_*.deb",
+        os === "mac"
+          ? "xattr -cr /Applications/Horizonte.app"
+          : "sudo apt install ./horizonte_*.deb",
       );
     }
     await context.close();
   }
 });
-test("depois do clique em Baixar, o aviso do sistema e como passar por ele", async ({ page }) => {
+test("depois do clique em Baixar, o aviso do sistema e como passar por ele", async ({
+  page,
+}) => {
   // 204: o navegador fica na página (o download de verdade iria para o GitHub).
-  await page.route("https://github.com/**", (route) => route.fulfill({ status: 204 }));
+  await page.route("https://github.com/**", (route) =>
+    route.fulfill({ status: 204 }),
+  );
   await page.goto("/#baixar");
   const note = page.locator("#dl-note");
   await expect(note).toBeHidden();
@@ -51,7 +61,9 @@ test("depois do clique em Baixar, o aviso do sistema e como passar por ele", asy
 test("a demonstração fala o idioma da página", async ({ page }) => {
   await page.goto("/?lang=en");
   const app = page.frameLocator("#hero-app iframe");
-  await expect(app.getByRole("heading", { name: "Point the camera" })).toBeVisible();
+  await expect(
+    app.getByRole("heading", { name: "Point the camera" }),
+  ).toBeVisible();
   await expect(app.getByRole("button", { name: "Copy link" })).toBeVisible();
 });
 test("demo: endereço de sempre na tela, e o QR leva para o site", async ({
@@ -76,7 +88,7 @@ test("fluxo real de modos, aprovacao e parada", async ({ page }) => {
   ).toBeVisible();
   // No celular o app aparece reduzido dentro do site e a linha fica pequena: clica pelo próprio botão.
   await app
-    .getByRole("button", { name: /^Receber a tela de outro computador/ })
+    .getByRole("button", { name: /^Receber a tela/ })
     .evaluate((button) => button.click());
   await app.getByRole("button", { name: /^Conectar a Desktop/ }).click();
   await expect(

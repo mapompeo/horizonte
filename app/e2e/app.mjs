@@ -271,7 +271,7 @@ try {
       if (has) throw new Error('o seletor ainda aparece na tela de Enviar')
       // Os outros usos ficam à vista na própria tela, desligados enquanto há aparelho conectado.
       const off = await app.ev(
-        `[...document.querySelectorAll('.ways button')].map((b) => b.disabled).join()`
+        `[...document.querySelectorAll('.modes button')].map((b) => b.disabled).join()`
       )
       if (off !== 'true,true') throw new Error(`Receber e Mouse à vista, desligados: ${off}`)
     })
@@ -283,8 +283,8 @@ try {
         await app.waitText(/Aponte a câmera/, 15_000)
       }
       // Na própria tela de Enviar, à vista (sem entrar nos Ajustes).
-      await app.waitText(/Compartilhar o mouse e o teclado/)
-      await app.click(/Receber a tela de outro computador/)
+      await app.waitText(/Compartilhar mouse/)
+      await app.click(/^Receber a tela$/)
       const text = await app.waitText(/Na sua rede/, 30_000)
       if (/Preparando|permissão/.test(text)) throw new Error('mostrou preparação no receptor')
       await app.shot('03-lista')

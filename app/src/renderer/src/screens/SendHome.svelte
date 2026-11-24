@@ -207,6 +207,82 @@
   </section>
 {/snippet}
 
+{#snippet modes()}
+  <!-- Os outros dois usos, à vista embaixo: o segundo computador recebendo e o mouse passando de um para o outro. -->
+  <div
+    class="modes"
+    role="group"
+    aria-label={L({
+      pt: 'Outras formas de usar',
+      en: 'Other ways to use it',
+      es: 'Otras formas de usar'
+    })}
+  >
+    <button
+      class="pill"
+      disabled={connected}
+      title={connected
+        ? L({
+            pt: 'Desconecte os aparelhos primeiro',
+            en: 'Disconnect the devices first',
+            es: 'Desconecta los dispositivos primero'
+          })
+        : L({
+            pt: 'Um mouse e um teclado para dois computadores, pela borda da tela',
+            en: 'One mouse and keyboard for two computers, across the screen edge',
+            es: 'Un mouse y un teclado para dos computadoras, por el borde de la pantalla'
+          })}
+      onclick={() => chooseMode('mouse')}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        ><rect x="7" y="3" width="10" height="18" rx="5" /><path d="M12 7v4" /></svg
+      >
+      {L({ pt: 'Compartilhar mouse', en: 'Share mouse', es: 'Compartir mouse' })}
+    </button>
+    <button
+      class="pill"
+      disabled={connected}
+      title={connected
+        ? L({
+            pt: 'Desconecte os aparelhos primeiro',
+            en: 'Disconnect the devices first',
+            es: 'Desconecta los dispositivos primero'
+          })
+        : L({
+            pt: 'Use este computador como tela extra de outro',
+            en: 'Use this computer as an extra screen for another one',
+            es: 'Usa esta computadora como pantalla extra de otra'
+          })}
+      onclick={() => chooseMode('receive')}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        ><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /><path
+          d="M12 7v5m0 0-2-2m2 2 2-2"
+        /></svg
+      >
+      {L({ pt: 'Receber a tela', en: 'Receive screen', es: 'Recibir pantalla' })}
+    </button>
+  </div>
+{/snippet}
+
 <div class="home">
   {#if web.problem}
     <p class="card card-pad problem" role="alert">
@@ -266,68 +342,14 @@
         {/each}
       </ul>
     {/if}
+    {@render modes()}
   {:else}
-    {@render hero(false)}
+    <!-- O cartão e os dois botões formam um bloco só: os botões ficam colados embaixo do cartão, na largura dele. -->
+    <div class="primary">
+      {@render hero(false)}
+      {@render modes()}
+    </div>
   {/if}
-  <!-- Os outros dois usos, à vista: o segundo computador recebendo e o mouse passando de um para o outro. -->
-  <div
-    class="card ways"
-    role="group"
-    aria-label={L({
-      pt: 'Outras formas de usar',
-      en: 'Other ways to use it',
-      es: 'Otras formas de usar'
-    })}
-  >
-    <button class="row row-button" disabled={connected} onclick={() => chooseMode('receive')}>
-      <span class="way">
-        <span
-          >{L({
-            pt: 'Receber a tela de outro computador',
-            en: 'Receive another computer’s screen',
-            es: 'Recibir la pantalla de otra computadora'
-          })}</span
-        >
-        <small
-          >{connected
-            ? L({
-                pt: 'Desconecte os aparelhos primeiro',
-                en: 'Disconnect the devices first',
-                es: 'Desconecta los dispositivos primero'
-              })
-            : L({
-                pt: 'Use este computador como tela extra de outro',
-                en: 'Use this computer as an extra screen for another one',
-                es: 'Usa esta computadora como pantalla extra de otra'
-              })}</small
-        >
-      </span>
-    </button>
-    <button class="row row-button" disabled={connected} onclick={() => chooseMode('mouse')}>
-      <span class="way">
-        <span
-          >{L({
-            pt: 'Compartilhar o mouse e o teclado',
-            en: 'Share the mouse and keyboard',
-            es: 'Compartir el mouse y el teclado'
-          })}</span
-        >
-        <small
-          >{connected
-            ? L({
-                pt: 'Desconecte os aparelhos primeiro',
-                en: 'Disconnect the devices first',
-                es: 'Desconecta los dispositivos primero'
-              })
-            : L({
-                pt: 'Um mouse para dois computadores, pela borda da tela',
-                en: 'One mouse for two computers, across the screen edge',
-                es: 'Un mouse para dos computadoras, por el borde de la pantalla'
-              })}</small
-        >
-      </span>
-    </button>
-  </div>
   <VideoHint />
 </div>
 
@@ -355,17 +377,40 @@
 {/if}
 
 <style>
-  .way {
-    display: grid;
-    gap: 2px;
-    text-align: left;
+  .primary {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-self: center;
+    width: fit-content;
+    max-width: 100%;
   }
-  .way small {
-    color: var(--muted);
-    font-size: var(--t-small);
-  }
-  .ways {
+  .modes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
     margin-top: 4px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--seg);
+    color: var(--fg);
+    font: inherit;
+    font-size: var(--t-small);
+    cursor: pointer;
+  }
+  .pill:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--fg) 14%, transparent);
+  }
+  .pill:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
   .status {
     display: flex;
